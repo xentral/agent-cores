@@ -34,24 +34,53 @@ jobs:
             | tar -xz gitleaks
           ./gitleaks detect --source . --no-git --redact --exit-code 1
 
-  # Import-smoke: cores import the backend contract (entity_registry.core_sdk),
-  # so this job checks out agent-hub-labs at a pin, makes the package importable,
-  # imports every core and validates its CORE against the contract + declared
-  # CONTRACT_VERSION. Enabled once the first core lands (needs a read-only PAT
-  # for the private backend repo as `AGENT_HUB_READ_TOKEN`).
-  #
-  # import-smoke:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         repository: xentral/agent-hub-labs
-  #         ref: <pinned-sha>
-  #         token: ${{ secrets.AGENT_HUB_READ_TOKEN }}
-  #         path: agent-hub-labs
-  #     - uses: actions/setup-python@v5
-  #       with: { python-version: "3.12" }
-  #     - run: |
-  #         pip install -e agent-hub-labs/backend  # exposes entity_registry.core_sdk
-  #         PYTHONPATH=. python3 scripts/import_smoke.py
+  # Import-smoke: every core loads against the LIVE backend contract
+  # (entity_registry.core_sdk). Since agent-hub-labs is private, this checks it out
+  # with a read-only token (`AGENT_HUB_READ_TOKEN` secret) and imports the registry
+  # over this repo's cores/. When the secret is ABSENT the job skips (CI stays
+  # green) — set the secret to turn it on.
+  import-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Gate on the backend read token
+        id: gate
+        env:
+          TOKEN: ${{ secrets.AGENT_HUB_READ_TOKEN }}
+        run: |
+          if [ -n "$TOKEN" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::AGENT_HUB_READ_TOKEN not set — skipping import-smoke. Set the secret to enable it."
+          fi
+
+      - name: Checkout agent-cores
+        if: steps.gate.outputs.enabled == 'true'
+        uses: actions/checkout@v4
+
+      - name: Checkout agent-hub-labs (backend contract)
+        if: steps.gate.outputs.enabled == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: xentral/agent-hub-labs
+          ref: main
+          token: ${{ secrets.AGENT_HUB_READ_TOKEN }}
+          path: _agent-hub-labs
+
+      - name: Set up uv
+        if: steps.gate.outputs.enabled == 'true'
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install backend deps
+        if: steps.gate.outputs.enabled == 'true'
+        working-directory: _agent-hub-labs/backend
+        run: uv sync
+
+      - name: Import-smoke + core adapter tests
+        if: steps.gate.outputs.enabled == 'true'
+        working-directory: _agent-hub-labs/backend
+        env:
+          # registry discovery reads cores from THIS repo's cores/; backend on PYTHONPATH.
+          XENTRAL_CORES_ROOT: ${{ github.workspace }}/cores
+          PYTHONPATH: .
+        run: uv run pytest -q "${{ github.workspace }}/tests/"
