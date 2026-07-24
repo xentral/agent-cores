@@ -405,11 +405,24 @@ class PostgresEntityAdapter:
         )
 
     def _writable_paths(self, *, creating: bool) -> set[str]:
+        """Top-level keys a write may set. An embedded/collection container
+        carries no flag itself — it is writable when any nested field is
+        (billingAddress, items, dates …); per-leaf validation inside accepted
+        containers is a P1 refinement."""
         flag = "creatable" if creating else "updatable"
+
+        def writable(spec: dict[str, Any]) -> bool:
+            if spec.get("access") == "readOnly":
+                return False
+            if spec.get(flag):
+                return True
+            sub = spec.get("properties") or (spec.get("node") or {}).get("properties")
+            if not isinstance(sub, dict):
+                return False
+            return any(writable(child) for child in sub.values() if isinstance(child, dict))
+
         return {
-            name
-            for name, spec in self._props.items()
-            if isinstance(spec, dict) and spec.get(flag) and spec.get("access") != "readOnly"
+            name for name, spec in self._props.items() if isinstance(spec, dict) and writable(spec)
         }
 
     def _required_paths(self) -> set[str]:

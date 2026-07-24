@@ -153,3 +153,14 @@ def test_write_validation_accepts_writable():
         assert err.status_code == 422
     else:
         assert payload == {field: "x"}
+
+
+def test_writable_containers_are_accepted():
+    """Embedded/collection containers whose leaves are creatable count as
+    writable top-level keys (billingAddress, items, dates — the SalesOrder
+    create shape); readOnly containers (totals, documents) stay rejected."""
+    so = ADAPTERS["SalesOrder"]
+    writable = so._writable_paths(creating=True)
+    assert {"customer", "items", "billingAddress", "shippingAddress", "dates"} <= writable
+    assert "totals" not in writable
+    assert "documents" not in writable
