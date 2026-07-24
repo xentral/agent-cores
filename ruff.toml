@@ -12,7 +12,11 @@ ignore = [
 ]
 
 [lint.per-file-ignores]
-"tests/**" = ["S105", "S106", "S107", "S311", "S112"]
+"tests/**" = ["S105", "S106", "S107", "S311", "S112", "S608"]
+# The postgres storage core builds SQL from schema-derived identifiers only
+# (table names and jsonb paths are regex-whitelisted against the model; every
+# value binds as a parameter) — S608 flags the f-strings, not a real vector.
+"cores/agentos_neo_postgres/emulated/base.py" = ["S608"]
 # checks/ are standalone dev/verification scripts (they import full backend
 # internals, not just the core contract, and never run at core load). The benign
 # os.path use in an async main is not real blocking I/O.

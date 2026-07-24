@@ -1,0 +1,130 @@
+#!/usr/bin/env python3
+"""Generate cores/agentos_neo_postgres/model.json from the agentos_neo_xentral core.
+
+The postgres core speaks the SAME outward model as the Xentral facade (contract-2
+schemas, entities, operations) but persists into a tenant-owned Postgres. Cores
+must not import each other's content at runtime ("copy, never import"), so the
+model travels as a **generated snapshot**: this script executes ``metadata()`` of
+every agentos_neo_xentral adapter and writes the result as data.
+
+Regenerate after every agentos_neo_xentral model change:
+
+    PYTHONPATH=<agent-hub-labs>/backend python scripts/generate_neo_postgres_model.py
+
+The snapshot is deterministic (no timestamps); ``modelVersion`` is a content
+hash, so CI can regenerate and fail on drift.
+
+Stripped from the snapshot (facade-specific, not part of the model):
+  * ``verified`` / ``priority`` per-field stamps (live-test results and blue
+    wishes of the *Xentral* upstream),
+  * ``origin`` / ``emulation`` markers (the postgres core stamps its own),
+  * actions marked as ``wish`` (declared-but-unimplemented against Xentral).
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import sys
+import types
+from pathlib import Path
+from typing import Any
+
+REPO = Path(__file__).resolve().parent.parent
+OUT = REPO / "cores" / "agentos_neo_postgres" / "model.json"
+
+# Speaking-id prefix per entity for records CREATED by the postgres core.
+# Aligned with the facade's vocabulary where one exists; ids are core-local
+# either way (the two cores never share a data pool).
+ID_PREFIXES: dict[str, str] = {
+    "Quote": "quo_",
+    "SalesOrder": "so_",
+    "SalesInvoice": "si_",
+    "DeliveryNote": "dn_",
+    "CreditNote": "cn_",
+    "Return": "ret_",
+    "PurchaseOrder": "po_",
+    "GoodsReceipt": "gr_",
+    "PurchaseInvoice": "pi_",
+    "Customer": "cus_",
+    "Supplier": "sup_",
+    "Channel": "ch_",
+    "Product": "prd_",
+    "PriceList": "pl_",
+    "Shipment": "ship_",
+    "Payment": "paym_",
+    "StockMovement": "sm_",
+    "StorageLocation": "loc_",
+    "StockTake": "stk_",
+    "PickingRun": "pick_",
+    "Batch": "bat_",
+    "Tag": "tag_",
+}
+
+
+def _register_namespace() -> None:
+    """Import cores under the synthetic ``xentral_entity_cores`` package, the
+    same way the backend and this repo's conftest do."""
+    pkg_name = "xentral_entity_cores"
+    pkg = sys.modules.get(pkg_name)
+    if pkg is None:
+        pkg = types.ModuleType(pkg_name)
+        pkg.__package__ = pkg_name
+        sys.modules[pkg_name] = pkg
+    pkg.__path__ = [str(REPO / "cores")]  # type: ignore[attr-defined]
+
+
+def _strip(node: Any) -> Any:
+    """Drop facade-specific per-field stamps, recursively."""
+    if isinstance(node, dict):
+        return {k: _strip(v) for k, v in node.items() if k not in ("verified", "priority")}
+    if isinstance(node, list):
+        return [_strip(v) for v in node]
+    return node
+
+
+def main() -> int:
+    _register_namespace()
+    from xentral_entity_cores.agentos_neo_xentral.manifest import CORE
+
+    entities: list[dict[str, Any]] = []
+    for adapter in CORE.adapters:
+        meta = adapter.metadata(None)
+        key = meta["key"]
+        prefix = ID_PREFIXES.get(key)
+        if not prefix:
+            print(f"::error::no ID_PREFIX for entity {key} — add it to the generator")
+            return 1
+        # The postgres core stamps its own origin/emulation; wish-actions are
+        # Xentral-upstream gaps, meaningless against our own persistence.
+        meta.pop("origin", None)
+        meta.pop("emulation", None)
+        actions = [a for a in meta.get("actions") or [] if not a.get("wish")]
+        if actions:
+            meta["actions"] = actions
+        else:
+            meta.pop("actions", None)
+        entities.append(
+            {
+                "key": key,
+                "label": adapter.manifest.label_en,
+                "category": adapter.manifest.category,
+                "operations": list(adapter.manifest.operations),
+                "idPrefix": prefix,
+                "metadata": _strip(meta),
+            }
+        )
+
+    payload = {"source": "agentos_neo_xentral", "entities": entities}
+    digest = hashlib.sha256(
+        json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    ).hexdigest()[:12]
+    payload = {"modelVersion": digest, **payload}
+    OUT.parent.mkdir(parents=True, exist_ok=True)
+    OUT.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(f"wrote {OUT.relative_to(REPO)}: {len(entities)} entities, modelVersion={digest}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
