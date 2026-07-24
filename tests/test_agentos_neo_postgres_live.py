@@ -226,3 +226,77 @@ def test_record_tags_upsert_tag_master_rows():
                 await pool.execute("DELETE FROM neo_tag WHERE data->>'label' LIKE $1", "upsert-%")
             return go()
         _sql(_cleanup)
+
+
+def test_stock_projection_from_movement_journal():
+    """ADR-010: Product.stock / StorageLocation.contents derive live from the
+    movement journal. receipt +, issue -, transfer neutral per product but
+    shifting between locations, correction as delta."""
+    product_e, location_e, movement_e = ADAPTERS["Product"], ADAPTERS["StorageLocation"], ADAPTERS["StockMovement"]
+    marker = f"stock-{uuid.uuid4().hex[:8]}"
+    created = {"Product": [], "StorageLocation": [], "StockMovement": []}
+
+    def make(adapter, key, body):
+        st, out = _call(adapter, method="POST", body=json.dumps(body).encode())
+        assert st == 201, out
+        created[key].append(out["data"]["id"])
+        return out["data"]
+
+    try:
+        prod = make(product_e, "Product", {
+            "name": marker, "kind": "physical", "unit": "piece",
+            "logistics": {"minimumStockQuantity": 5},
+        })
+        loc_a = make(location_e, "StorageLocation", {"name": f"{marker}-A", "kind": "picking"})
+        loc_b = make(location_e, "StorageLocation", {"name": f"{marker}-B", "kind": "bulk"})
+        pref = {"id": prod["id"], "name": prod["name"]}
+
+        def move(type_, qty, **refs):
+            make(movement_e, "StockMovement", {
+                "type": type_, "product": pref,
+                "quantity": {"value": qty, "unit": "piece"},
+                "date": "2026-07-24T10:00:00+00:00", **refs,
+            })
+
+        move("receipt", 10, to={"id": loc_a["id"]})
+        move("issue", 3, **{"from": {"id": loc_a["id"]}})
+        move("transfer", 4, **{"from": {"id": loc_a["id"]}, "to": {"id": loc_b["id"]}})
+        move("correction", 2, to={"id": loc_a["id"]})
+
+        # product: 10 - 3 + 2 = 9 (transfer neutral); above the minimum of 5
+        st, read = _call(product_e, method="GET", handle=prod["id"])
+        assert st == 200
+        assert read["data"]["stock"] == {"available": 9, "belowMinimum": False}, read["data"].get("stock")
+
+        # location A: 10 - 3 - 4 + 2 = 5 ; location B: +4
+        st, read_a = _call(location_e, method="GET", handle=loc_a["id"])
+        st2, read_b = _call(location_e, method="GET", handle=loc_b["id"])
+        assert st == 200 and st2 == 200
+        ca = read_a["data"]["contents"]
+        cb = read_b["data"]["contents"]
+        assert len(ca) == 1 and ca[0]["product"]["id"] == prod["id"], ca
+        assert ca[0]["quantity"] == {"value": 5, "unit": "piece"}, ca
+        assert ca[0]["product"]["name"] == marker  # name resolved for display
+        assert cb and cb[0]["quantity"]["value"] == 4, cb
+
+        # draw down below the minimum -> belowMinimum flips
+        move("issue", 6, **{"from": {"id": loc_a["id"]}})
+        st, read = _call(product_e, method="GET", handle=prod["id"])
+        assert read["data"]["stock"] == {"available": 3, "belowMinimum": True}
+
+        # list projection works too (page containing our product)
+        st, listed = _call(product_e, method="GET", query=[
+            ("filter[0][key]", "name"), ("filter[0][op]", "equals"), ("filter[0][value]", marker),
+        ])
+        assert st == 200 and listed["data"][0]["stock"]["available"] == 3
+    finally:
+        def _cleanup(pool):
+            async def go():
+                for rid in created["StockMovement"]:
+                    await pool.execute("DELETE FROM neo_stock_movement WHERE id = $1", rid)
+                for rid in created["StorageLocation"]:
+                    await pool.execute("DELETE FROM neo_storage_location WHERE id = $1", rid)
+                for rid in created["Product"]:
+                    await pool.execute("DELETE FROM neo_product WHERE id = $1", rid)
+            return go()
+        _sql(_cleanup)

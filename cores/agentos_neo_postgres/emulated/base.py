@@ -389,6 +389,20 @@ class PostgresEntityAdapter:
                            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value""",
                         self._model_version,
                     )
+                # Always ensured (idempotent, outside the version gate): support
+                # indexes for read-time projections over the movement journal.
+                await conn.execute(
+                    "CREATE INDEX IF NOT EXISTS neo_stock_movement_product "
+                    "ON neo_stock_movement ((data #>> '{product,id}'))"
+                )
+                await conn.execute(
+                    "CREATE INDEX IF NOT EXISTS neo_stock_movement_to "
+                    "ON neo_stock_movement ((data #>> '{to,id}'))"
+                )
+                await conn.execute(
+                    "CREATE INDEX IF NOT EXISTS neo_stock_movement_from "
+                    "ON neo_stock_movement ((data #>> '{from,id}'))"
+                )
             finally:
                 await conn.execute("SELECT pg_advisory_unlock(hashtext('agentos_neo_postgres'))")
         _BOOTSTRAPPED[key] = self._model_version
@@ -433,6 +447,97 @@ class PostgresEntityAdapter:
                     logger.debug("%s: tag row '%s' already created concurrently", CORE_ID, title)
         except Exception as exc:  # noqa: BLE001
             logger.warning("%s: tag master sync failed: %s", CORE_ID, exc)
+
+    # ---- read-time projections (ADR-010: stock derives from the journal) ---
+    # Quantity values arrive as JSON numbers or strings — sum only what parses.
+    _QTY = "(CASE WHEN data #>> '{quantity,value}' ~ '^-?[0-9.]+$' THEN (data #>> '{quantity,value}')::numeric ELSE 0 END)"
+
+    @staticmethod
+    def _as_number(value: Any) -> int | float:
+        f = float(value or 0)
+        return int(f) if f.is_integer() else f
+
+    async def _project(self, pool, records: list[dict[str, Any]]) -> None:
+        """Stamp derived read-only projections onto outgoing records. Bestand
+        changes ONLY through stockMovements (ADR-010); Product.stock and
+        StorageLocation.contents are computed live from that journal — the
+        S/4HANA-style choice: the journal is the truth, aggregates are views.
+        Best-effort: a projection failure must never fail the read."""
+        if not records:
+            return
+        try:
+            if self.manifest.key == "Product":
+                await self._project_product_stock(pool, records)
+            elif self.manifest.key == "StorageLocation":
+                await self._project_location_contents(pool, records)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("%s: stock projection failed: %s", CORE_ID, exc)
+
+    async def _project_product_stock(self, pool, records: list[dict[str, Any]]) -> None:
+        ids = [r["id"] for r in records if r.get("id")]
+        rows = await pool.fetch(
+            f"""SELECT data #>> '{{product,id}}' AS pid,
+                       SUM(CASE data ->> 'type'
+                             WHEN 'issue' THEN -{self._QTY}
+                             WHEN 'transfer' THEN 0
+                             ELSE {self._QTY} END) AS available
+                FROM neo_stock_movement
+                WHERE data #>> '{{product,id}}' = ANY($1)
+                GROUP BY 1""",
+            ids,
+        )
+        available = {r["pid"]: r["available"] for r in rows}
+        for rec in records:
+            value = self._as_number(available.get(rec.get("id"), 0))
+            minimum = (rec.get("logistics") or {}).get("minimumStockQuantity")
+            stock: dict[str, Any] = {"available": value}
+            try:
+                if minimum not in (None, ""):
+                    stock["belowMinimum"] = value < float(minimum)
+            except (TypeError, ValueError):
+                pass
+            rec["stock"] = stock
+
+    async def _project_location_contents(self, pool, records: list[dict[str, Any]]) -> None:
+        ids = [r["id"] for r in records if r.get("id")]
+        rows = await pool.fetch(
+            f"""SELECT loc, pid, batch, MAX(unit) AS unit, SUM(delta) AS qty FROM (
+                    SELECT data #>> '{{to,id}}' AS loc,
+                           data #>> '{{product,id}}' AS pid,
+                           data #>> '{{batch,id}}' AS batch,
+                           data #>> '{{quantity,unit}}' AS unit,
+                           {self._QTY} AS delta
+                    FROM neo_stock_movement WHERE data #>> '{{to,id}}' = ANY($1)
+                    UNION ALL
+                    SELECT data #>> '{{from,id}}',
+                           data #>> '{{product,id}}',
+                           data #>> '{{batch,id}}',
+                           data #>> '{{quantity,unit}}',
+                           -{self._QTY}
+                    FROM neo_stock_movement WHERE data #>> '{{from,id}}' = ANY($1)
+                ) t GROUP BY 1, 2, 3 HAVING SUM(delta) <> 0
+                ORDER BY 1, 2""",
+            ids,
+        )
+        # Resolve product names so the contents table renders speaking chips.
+        pids = sorted({r["pid"] for r in rows if r["pid"]})
+        names: dict[str, str] = {}
+        if pids:
+            for p in await pool.fetch(
+                "SELECT id, data ->> 'name' AS name FROM neo_product WHERE id = ANY($1)", pids
+            ):
+                names[p["id"]] = p["name"] or ""
+        contents: dict[str, list[dict[str, Any]]] = {}
+        for r in rows:
+            entry: dict[str, Any] = {
+                "product": {"id": r["pid"], "name": names.get(r["pid"], "")},
+                "quantity": {"value": self._as_number(r["qty"]), "unit": r["unit"] or "piece"},
+            }
+            if r["batch"]:
+                entry["batch"] = {"id": r["batch"]}
+            contents.setdefault(r["loc"], []).append(entry)
+        for rec in records:
+            rec["contents"] = contents.get(rec.get("id"), [])
 
     # ---- helpers -----------------------------------------------------------
     @staticmethod
@@ -532,7 +637,9 @@ class PostgresEntityAdapter:
         row = await pool.fetchrow(f"SELECT data FROM {self._table} WHERE id = $1", handle)
         if row is None:
             return self._json(404, {"title": f"{self.manifest.key} {handle} not found"})
-        return self._json(200, {"data": row["data"]})
+        record = row["data"]
+        await self._project(pool, [record])
+        return self._json(200, {"data": record})
 
     async def _list(self, pool, query: list[tuple[str, str]]) -> AdapterResponse:
         parsed = parse_query(query)
@@ -542,7 +649,9 @@ class PostgresEntityAdapter:
             return self._json(400, {"title": str(exc)})
         rows = await pool.fetch(sql, *args)
         total = rows[0]["_total"] if rows else 0
-        return self._json(200, {"data": [r["data"] for r in rows], "extra": {"total": total}})
+        records = [r["data"] for r in rows]
+        await self._project(pool, records)
+        return self._json(200, {"data": records, "extra": {"total": total}})
 
     def _validate_write(
         self, body: bytes | None, *, creating: bool
