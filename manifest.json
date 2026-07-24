@@ -1,10 +1,16 @@
 {
   "schemaVersion": 1,
-  "version": "0.0.0",
+  "version": "2026.07.7",
   "contractVersion": 1,
   "cores": {
     "count": 5,
-    "ids": ["agentos_neo", "odoo_core", "phoenix", "xentral_api", "xentral_business_entities"]
+    "ids": [
+      "agentos_neo",
+      "odoo_core",
+      "phoenix",
+      "xentral_api",
+      "xentral_business_entities"
+    ]
   },
   "checksums": {}
 }
