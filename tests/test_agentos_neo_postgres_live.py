@@ -223,6 +223,6 @@ def test_record_tags_upsert_tag_master_rows():
             async def go():
                 if rec_id:
                     await pool.execute("DELETE FROM neo_customer WHERE id = $1", rec_id)
-                await pool.execute("DELETE FROM neo_tag WHERE data->>'label' LIKE $1", f"upsert-%")
+                await pool.execute("DELETE FROM neo_tag WHERE data->>'label' LIKE $1", "upsert-%")
             return go()
         _sql(_cleanup)
