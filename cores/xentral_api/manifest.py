@@ -30,6 +30,9 @@ CORE = CoreManifest(
     label_de="Xentral API based",
     label_en="Xentral API based",
     order=0,
+    # Legacy: no longer offered in the ERP-Core selector. Stays vendored + is the
+    # fallback default (DEFAULT_CORE_ID), so instances already on it keep working.
+    hidden=True,
     badge=None,
     native_policy=Allowlist(NATIVE_PASSTHROUGH_KEYS),
     adapters=adapters(),

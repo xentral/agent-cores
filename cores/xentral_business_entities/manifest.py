@@ -15,6 +15,9 @@ CORE = CoreManifest(
     label_de="Xentral Business Entities",
     label_en="Xentral Business Entities",
     order=1,
+    # Legacy raw 1:1 core — no longer offered in the ERP-Core selector (stays
+    # vendored + resolvable so any instance already on it keeps working).
+    hidden=True,
     badge=None,
     native_policy=IncludeAll(curate=False),
     adapters=(),
