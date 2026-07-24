@@ -378,6 +378,12 @@ class PostgresEntityAdapter:
                             f"CREATE INDEX IF NOT EXISTS {table}_data_gin "
                             f"ON {table} USING gin (data jsonb_path_ops)"
                         )
+                    # Tag labels are the shared vocabulary every record's tags
+                    # reference — unique so the write-side upsert stays race-safe.
+                    await conn.execute(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS neo_tag_label_uq "
+                        "ON neo_tag ((data->>'label'))"
+                    )
                     await conn.execute(
                         """INSERT INTO neo_meta (key, value) VALUES ('model_version', $1::jsonb)
                            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value""",
@@ -386,6 +392,47 @@ class PostgresEntityAdapter:
             finally:
                 await conn.execute("SELECT pg_advisory_unlock(hashtext('agentos_neo_postgres'))")
         _BOOTSTRAPPED[key] = self._model_version
+
+    async def _sync_tag_rows(self, pool, tags: Any) -> None:
+        """Every tag title used on a record exists as a Tag master row — the
+        behavior Xentral provides upstream ('created automatically if new').
+        Best-effort: a failure here must never fail the record write."""
+        if self._table == "neo_tag" or not isinstance(tags, list):
+            return
+        titles = sorted({t.strip() for t in tags if isinstance(t, str) and t.strip()})
+        if not titles:
+            return
+        try:
+            rows = await pool.fetch(
+                "SELECT data->>'label' AS label FROM neo_tag WHERE data->>'label' = ANY($1)",
+                titles,
+            )
+            have = {r["label"] for r in rows}
+            from datetime import datetime
+
+            now = datetime.now(UTC).isoformat()
+            for title in titles:
+                if title in have:
+                    continue
+                n = await pool.fetchval("SELECT nextval('neo_tag_handle_seq')")
+                slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-") or title.lower()
+                record = {
+                    "id": f"tag_{n}",
+                    "label": title,
+                    "slug": slug,
+                    "createdAt": now,
+                    "updatedAt": now,
+                }
+                try:
+                    await pool.execute(
+                        "INSERT INTO neo_tag (id, data) VALUES ($1, $2::jsonb)",
+                        record["id"],
+                        record,
+                    )
+                except Exception:  # noqa: BLE001 — concurrent upsert lost the race, fine
+                    logger.debug("%s: tag row '%s' already created concurrently", CORE_ID, title)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("%s: tag master sync failed: %s", CORE_ID, exc)
 
     # ---- helpers -----------------------------------------------------------
     @staticmethod
@@ -546,6 +593,7 @@ class PostgresEntityAdapter:
             record["id"],
             record,
         )
+        await self._sync_tag_rows(pool, record.get("tags"))
         return self._json(201, {"data": record})
 
     async def _update(self, pool, handle: str | None, body: bytes | None) -> AdapterResponse:
@@ -568,6 +616,7 @@ class PostgresEntityAdapter:
         )
         if row is None:
             return self._json(404, {"title": f"{self.manifest.key} {handle} not found"})
+        await self._sync_tag_rows(pool, patch.get("tags"))
         return self._json(200, {"data": row["data"]})
 
     async def _delete(self, pool, handle: str | None) -> AdapterResponse:
@@ -643,6 +692,7 @@ class PostgresEntityAdapter:
                 handle,
                 {"tags": titles},
             )
+            await self._sync_tag_rows(pool, titles)
             return self._json(200, {"data": updated["data"] if updated else record})
         except Exception as exc:  # noqa: BLE001
             logger.warning("%s: tag action failed: %s", CORE_ID, exc)

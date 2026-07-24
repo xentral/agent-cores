@@ -180,3 +180,49 @@ def test_search_answers_with_total():
     customer = ADAPTERS["Customer"]
     st, body = _call(customer, method="GET", query=[("searchTerm", "zzz-nope-nothing")])
     assert st == 200 and body["extra"]["total"] == 0
+
+
+def test_record_tags_upsert_tag_master_rows():
+    """A tag used on any record exists as a Tag master row afterwards — the
+    facade's upstream behavior ('created automatically if new')."""
+    customer = ADAPTERS["Customer"]
+    tag_entity = ADAPTERS["Tag"]
+    marker = f"upsert-{uuid.uuid4().hex[:8]}"
+    rec_id = None
+    try:
+        # via create
+        st, created = _call(
+            customer, method="POST",
+            body=json.dumps({"name": f"tag-upsert-{marker}", "tags": [marker]}).encode(),
+        )
+        assert st == 201, created
+        rec_id = created["data"]["id"]
+        st, tags = _call(tag_entity, method="GET", query=[
+            ("filter[0][key]", "label"), ("filter[0][op]", "equals"), ("filter[0][value]", marker),
+        ])
+        assert st == 200 and tags["extra"]["total"] == 1, tags
+
+        # via addTag action — and no duplicate for the existing title
+        st, _ = _call_action(customer, "addTag", rec_id, {"title": marker + "-b"})
+        assert st == 200
+        st, tags = _call(tag_entity, method="GET", query=[
+            ("filter[0][key]", "label"), ("filter[0][op]", "contains"), ("filter[0][value]", marker),
+        ])
+        assert st == 200 and tags["extra"]["total"] == 2, tags
+
+        # re-writing the same tags creates nothing new
+        st, _ = _call(customer, method="PATCH", handle=rec_id,
+                      body=json.dumps({"tags": [marker, marker + "-b"]}).encode())
+        assert st == 200
+        st, tags = _call(tag_entity, method="GET", query=[
+            ("filter[0][key]", "label"), ("filter[0][op]", "contains"), ("filter[0][value]", marker),
+        ])
+        assert tags["extra"]["total"] == 2
+    finally:
+        def _cleanup(pool):
+            async def go():
+                if rec_id:
+                    await pool.execute("DELETE FROM neo_customer WHERE id = $1", rec_id)
+                await pool.execute("DELETE FROM neo_tag WHERE data->>'label' LIKE $1", f"upsert-%")
+            return go()
+        _sql(_cleanup)
