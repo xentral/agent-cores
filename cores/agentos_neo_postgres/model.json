@@ -1,5 +1,5 @@
 {
-  "modelVersion": "6c18df78a1a2",
+  "modelVersion": "dcca56902558",
   "source": "agentos_neo_xentral",
   "entities": [
     {
@@ -2241,7 +2241,6 @@
                 "payments": {
                   "type": "collection",
                   "label": "Payments",
-                  "access": "readOnly",
                   "node": {
                     "properties": {
                       "id": {
@@ -2300,7 +2299,6 @@
             "eInvoice": {
               "type": "embedded",
               "label": "E-invoice",
-              "access": "readOnly",
               "section": "financials",
               "properties": {
                 "format": {
@@ -2848,7 +2846,6 @@
                   "batches": {
                     "type": "collection",
                     "label": "Batches",
-                    "access": "readOnly",
                     "node": {
                       "properties": {
                         "batch": {
@@ -2874,7 +2871,6 @@
                   "serialNumbers": {
                     "type": "collection",
                     "label": "Serial numbers",
-                    "access": "readOnly",
                     "node": {
                       "properties": {
                         "number": {
@@ -2893,7 +2889,6 @@
             "shipments": {
               "type": "collection",
               "label": "Shipments",
-              "access": "readOnly",
               "section": "shipping",
               "node": {
                 "properties": {
@@ -3613,7 +3608,6 @@
                 "payments": {
                   "type": "collection",
                   "label": "Payments",
-                  "access": "readOnly",
                   "node": {
                     "properties": {
                       "id": {
@@ -4128,7 +4122,6 @@
             "resolution": {
               "type": "embedded",
               "label": "Resolution",
-              "access": "readOnly",
               "section": "flow",
               "properties": {
                 "creditNote": {
@@ -4456,7 +4449,6 @@
             "confirmation": {
               "type": "embedded",
               "label": "Confirmation",
-              "access": "readOnly",
               "section": "confirmation",
               "properties": {
                 "status": {
@@ -5044,7 +5036,6 @@
             "references": {
               "type": "embedded",
               "label": "References",
-              "access": "readOnly",
               "section": "general",
               "properties": {
                 "supplierDeliveryNoteNumber": {
@@ -5060,7 +5051,6 @@
             "dates": {
               "type": "embedded",
               "label": "Dates",
-              "access": "readOnly",
               "section": "general",
               "properties": {
                 "received": {
@@ -5131,7 +5121,6 @@
             "qualityCheck": {
               "type": "embedded",
               "label": "Quality check",
-              "access": "readOnly",
               "section": "general",
               "properties": {
                 "status": {
@@ -5147,7 +5136,6 @@
             "items": {
               "type": "collection",
               "label": "Items",
-              "access": "readOnly",
               "section": "items",
               "node": {
                 "properties": {
@@ -5163,7 +5151,6 @@
                   "quantity": {
                     "type": "embedded",
                     "label": "Quantity",
-                    "access": "readOnly",
                     "properties": {
                       "value": {
                         "type": "decimal",
@@ -5452,7 +5439,6 @@
             "clarification": {
               "type": "embedded",
               "label": "Clarification",
-              "access": "readOnly",
               "section": "match",
               "properties": {
                 "needed": {
@@ -5587,7 +5573,6 @@
             "match": {
               "type": "embedded",
               "label": "Match",
-              "access": "readOnly",
               "section": "match",
               "properties": {
                 "status": {
@@ -5683,7 +5668,6 @@
             "files": {
               "type": "collection",
               "label": "Files",
-              "access": "readOnly",
               "section": "flow",
               "node": {
                 "properties": {
@@ -5723,7 +5707,6 @@
             "approval": {
               "type": "embedded",
               "label": "Approval",
-              "access": "readOnly",
               "section": "general",
               "properties": {
                 "status": {
@@ -5910,7 +5893,6 @@
             "channels": {
               "type": "collection",
               "label": "Channel links",
-              "access": "readOnly",
               "section": "general",
               "node": {
                 "properties": {
@@ -6302,13 +6284,11 @@
             "finance": {
               "type": "embedded",
               "label": "Finance",
-              "access": "readOnly",
               "section": "finance",
               "properties": {
                 "openAmount": {
                   "type": "embedded",
                   "label": "Open amount",
-                  "access": "readOnly",
                   "properties": {
                     "amount": {
                       "type": "string",
@@ -6605,7 +6585,6 @@
             "channels": {
               "type": "collection",
               "label": "Channel links",
-              "access": "readOnly",
               "section": "general",
               "node": {
                 "properties": {
@@ -7039,13 +7018,11 @@
             "finance": {
               "type": "embedded",
               "label": "Finance",
-              "access": "readOnly",
               "section": "finance",
               "properties": {
                 "openAmount": {
                   "type": "embedded",
                   "label": "Open amount",
-                  "access": "readOnly",
                   "properties": {
                     "amount": {
                       "type": "string",
@@ -7274,7 +7251,6 @@
             "defaults": {
               "type": "embedded",
               "label": "Defaults",
-              "access": "readOnly",
               "section": "general",
               "properties": {
                 "priceList": {
@@ -7345,7 +7321,6 @@
             "sync": {
               "type": "embedded",
               "label": "Sync",
-              "access": "readOnly",
               "section": "sync",
               "properties": {
                 "lastRunAt": {
@@ -7634,7 +7609,6 @@
                 "external": {
                   "type": "collection",
                   "label": "External references",
-                  "access": "readOnly",
                   "node": {
                     "properties": {
                       "channel": {
@@ -7662,7 +7636,6 @@
             "manufacturer": {
               "type": "embedded",
               "label": "Manufacturer",
-              "access": "readOnly",
               "section": "general",
               "properties": {
                 "name": {
@@ -7690,7 +7663,6 @@
                 "sale": {
                   "type": "embedded",
                   "label": "Sale price",
-                  "access": "readOnly",
                   "properties": {
                     "amount": {
                       "type": "string",
@@ -7712,7 +7684,6 @@
                 "purchase": {
                   "type": "embedded",
                   "label": "Purchase price",
-                  "access": "readOnly",
                   "properties": {
                     "amount": {
                       "type": "string",
@@ -7785,7 +7756,6 @@
                 "weight": {
                   "type": "embedded",
                   "label": "Weight",
-                  "access": "readOnly",
                   "properties": {
                     "value": {
                       "type": "decimal",
@@ -7807,7 +7777,6 @@
                 "netWeight": {
                   "type": "embedded",
                   "label": "Net weight",
-                  "access": "readOnly",
                   "properties": {
                     "value": {
                       "type": "decimal",
@@ -7829,7 +7798,6 @@
                 "dimensions": {
                   "type": "embedded",
                   "label": "Dimensions",
-                  "access": "readOnly",
                   "properties": {
                     "length": {
                       "type": "decimal",
@@ -7879,7 +7847,6 @@
                 "packagingUnits": {
                   "type": "collection",
                   "label": "Packaging units",
-                  "access": "readOnly",
                   "node": {
                     "properties": {
                       "unit": {
@@ -7906,15 +7873,13 @@
             "tracking": {
               "type": "embedded",
               "label": "Tracking",
-              "access": "readOnly",
               "section": "tracking",
               "properties": {
                 "stock": {
                   "type": "boolean",
                   "label": "Stock item",
-                  "description": "Whether the product is a stock-tracked item.",
-                  "creatable": true,
-                  "updatable": true
+                  "access": "readOnly",
+                  "description": "Whether the product is a stock-tracked item."
                 },
                 "batches": {
                   "type": "boolean",
@@ -7949,30 +7914,26 @@
                 "available": {
                   "type": "integer",
                   "label": "Available",
-                  "description": "Quantity currently available (free) in stock.",
-                  "creatable": true,
-                  "updatable": true
+                  "access": "readOnly",
+                  "description": "Quantity currently available (free) in stock."
                 },
                 "reserved": {
                   "type": "integer",
                   "label": "Reserved",
-                  "description": "Quantity reserved for open orders.",
-                  "creatable": true,
-                  "updatable": true
+                  "access": "readOnly",
+                  "description": "Quantity reserved for open orders."
                 },
                 "incoming": {
                   "type": "integer",
                   "label": "Incoming",
-                  "description": "Quantity expected from open purchase orders.",
-                  "creatable": true,
-                  "updatable": true
+                  "access": "readOnly",
+                  "description": "Quantity expected from open purchase orders."
                 },
                 "belowMinimum": {
                   "type": "boolean",
                   "label": "Below minimum",
-                  "description": "True when available stock has fallen below the minimum level.",
-                  "creatable": true,
-                  "updatable": true
+                  "access": "readOnly",
+                  "description": "True when available stock has fallen below the minimum level."
                 }
               },
               "description": "Read-only current stock figures for the product."
@@ -7980,7 +7941,6 @@
             "production": {
               "type": "embedded",
               "label": "Production",
-              "access": "readOnly",
               "section": "production",
               "properties": {
                 "mode": {
@@ -8050,7 +8010,6 @@
             "variant": {
               "type": "embedded",
               "label": "Variant",
-              "access": "readOnly",
               "section": "variant",
               "properties": {
                 "of": {
@@ -8075,13 +8034,11 @@
             "bom": {
               "type": "embedded",
               "label": "Bill of materials",
-              "access": "readOnly",
               "section": "production",
               "properties": {
                 "items": {
                   "type": "collection",
                   "label": "Items",
-                  "access": "readOnly",
                   "node": {
                     "properties": {
                       "product": {
@@ -8250,7 +8207,6 @@
             "entries": {
               "type": "collection",
               "label": "Entries",
-              "access": "readOnly",
               "section": "general",
               "node": {
                 "properties": {
@@ -8295,7 +8251,6 @@
             "scope": {
               "type": "embedded",
               "label": "Scope",
-              "access": "readOnly",
               "section": "scope",
               "properties": {
                 "customer": {
@@ -8329,7 +8284,6 @@
             "unitPrice": {
               "type": "embedded",
               "label": "Unit price",
-              "access": "readOnly",
               "section": "price",
               "properties": {
                 "amount": {
@@ -8540,7 +8494,6 @@
             "weight": {
               "type": "embedded",
               "label": "Weight",
-              "access": "readOnly",
               "section": "general",
               "properties": {
                 "value": {
@@ -8563,7 +8516,6 @@
             "packages": {
               "type": "collection",
               "label": "Packages",
-              "access": "readOnly",
               "section": "tracking",
               "node": {
                 "properties": {
@@ -8581,7 +8533,6 @@
             "events": {
               "type": "collection",
               "label": "Events",
-              "access": "readOnly",
               "section": "tracking",
               "node": {
                 "properties": {
@@ -8631,7 +8582,6 @@
             "tracking": {
               "type": "embedded",
               "label": "Tracking",
-              "access": "readOnly",
               "section": "tracking",
               "properties": {
                 "number": {
@@ -8660,7 +8610,6 @@
             "dates": {
               "type": "embedded",
               "label": "Dates",
-              "access": "readOnly",
               "section": "general",
               "properties": {
                 "sentAt": {
@@ -8676,7 +8625,6 @@
             "additionalPackages": {
               "type": "collection",
               "label": "Additional packages",
-              "access": "readOnly",
               "section": "tracking",
               "node": {
                 "properties": {
@@ -8808,7 +8756,6 @@
             "fees": {
               "type": "embedded",
               "label": "Fees",
-              "access": "readOnly",
               "section": "general",
               "properties": {
                 "amount": {
@@ -8874,7 +8821,6 @@
             "amount": {
               "type": "embedded",
               "label": "Amount",
-              "access": "readOnly",
               "section": "general",
               "properties": {
                 "amount": {
@@ -8926,7 +8872,6 @@
             "allocations": {
               "type": "collection",
               "label": "Allocations",
-              "access": "readOnly",
               "section": "allocations",
               "node": {
                 "properties": {
@@ -8942,7 +8887,6 @@
                   "amount": {
                     "type": "embedded",
                     "label": "Amount",
-                    "access": "readOnly",
                     "properties": {
                       "amount": {
                         "type": "string",
@@ -9068,7 +9012,6 @@
             "quantity": {
               "type": "embedded",
               "label": "Quantity",
-              "access": "readOnly",
               "section": "general",
               "properties": {
                 "value": {
@@ -9120,7 +9063,6 @@
             "unitCost": {
               "type": "embedded",
               "label": "Unit cost",
-              "access": "readOnly",
               "section": "general",
               "properties": {
                 "amount": {
@@ -9142,7 +9084,6 @@
             "source": {
               "type": "embedded",
               "label": "Source",
-              "access": "readOnly",
               "section": "source",
               "properties": {
                 "document": {
@@ -9310,13 +9251,11 @@
             "capacity": {
               "type": "embedded",
               "label": "Capacity",
-              "access": "readOnly",
               "section": "general",
               "properties": {
                 "maxWeight": {
                   "type": "embedded",
                   "label": "Max weight",
-                  "access": "readOnly",
                   "properties": {
                     "value": {
                       "type": "decimal",
@@ -9346,7 +9285,6 @@
             "contents": {
               "type": "collection",
               "label": "Contents",
-              "access": "readOnly",
               "section": "contents",
               "node": {
                 "properties": {
@@ -9371,7 +9309,6 @@
                   "quantity": {
                     "type": "embedded",
                     "label": "Quantity",
-                    "access": "readOnly",
                     "properties": {
                       "value": {
                         "type": "decimal",
@@ -9392,7 +9329,6 @@
                   "reserved": {
                     "type": "embedded",
                     "label": "Reserved",
-                    "access": "readOnly",
                     "properties": {
                       "value": {
                         "type": "decimal",
@@ -9500,7 +9436,6 @@
             "dates": {
               "type": "embedded",
               "label": "Dates",
-              "access": "readOnly",
               "section": "general",
               "properties": {
                 "keyDate": {
@@ -9601,7 +9536,6 @@
             "scope": {
               "type": "embedded",
               "label": "Scope",
-              "access": "readOnly",
               "section": "general",
               "properties": {
                 "storageLocations": {
@@ -9616,7 +9550,6 @@
             "people": {
               "type": "embedded",
               "label": "People",
-              "access": "readOnly",
               "section": "general",
               "properties": {
                 "controller": {
@@ -9638,7 +9571,6 @@
             "positions": {
               "type": "collection",
               "label": "Positions",
-              "access": "readOnly",
               "section": "positions",
               "node": {
                 "properties": {
@@ -9663,7 +9595,6 @@
                   "expected": {
                     "type": "embedded",
                     "label": "Expected",
-                    "access": "readOnly",
                     "properties": {
                       "value": {
                         "type": "decimal",
@@ -9684,7 +9615,6 @@
                   "counted": {
                     "type": "embedded",
                     "label": "Counted",
-                    "access": "readOnly",
                     "properties": {
                       "value": {
                         "type": "decimal",
@@ -9705,7 +9635,6 @@
                   "difference": {
                     "type": "embedded",
                     "label": "Difference",
-                    "access": "readOnly",
                     "properties": {
                       "value": {
                         "type": "decimal",
@@ -9846,7 +9775,6 @@
             "criteria": {
               "type": "embedded",
               "label": "Criteria",
-              "access": "readOnly",
               "section": "general",
               "properties": {
                 "channel": {
@@ -9870,7 +9798,6 @@
             "orders": {
               "type": "collection",
               "label": "Orders",
-              "access": "readOnly",
               "section": "general",
               "node": {
                 "properties": {
@@ -9886,7 +9813,6 @@
             "containers": {
               "type": "collection",
               "label": "Containers",
-              "access": "readOnly",
               "section": "general",
               "node": {
                 "properties": {
@@ -9998,7 +9924,6 @@
             "assignedTo": {
               "type": "collection",
               "label": "Assigned to",
-              "access": "readOnly",
               "section": "general",
               "node": {
                 "properties": {
@@ -10015,7 +9940,6 @@
             "progress": {
               "type": "embedded",
               "label": "Progress",
-              "access": "readOnly",
               "section": "progress",
               "properties": {
                 "deliveryNotes": {
@@ -10044,7 +9968,6 @@
             "tasks": {
               "type": "collection",
               "label": "Tasks",
-              "access": "readOnly",
               "section": "progress",
               "node": {
                 "properties": {
@@ -10076,7 +9999,6 @@
                   "quantity": {
                     "type": "embedded",
                     "label": "Quantity",
-                    "access": "readOnly",
                     "properties": {
                       "value": {
                         "type": "decimal",
@@ -10275,29 +10197,25 @@
                 "available": {
                   "type": "decimal",
                   "label": "Available",
-                  "description": "Quantity of this batch currently available.",
-                  "creatable": true,
-                  "updatable": true
+                  "access": "readOnly",
+                  "description": "Quantity of this batch currently available."
                 },
                 "reserved": {
                   "type": "decimal",
                   "label": "Reserved",
-                  "description": "Quantity of this batch reserved for orders.",
-                  "creatable": true,
-                  "updatable": true
+                  "access": "readOnly",
+                  "description": "Quantity of this batch reserved for orders."
                 }
               }
             },
             "trace": {
               "type": "embedded",
               "label": "Trace",
-              "access": "readOnly",
               "section": "trace",
               "properties": {
                 "goodsReceipts": {
                   "type": "collection",
                   "label": "Goods receipts",
-                  "access": "readOnly",
                   "node": {
                     "properties": {
                       "id": {
@@ -10312,7 +10230,6 @@
                 "deliveryNotes": {
                   "type": "collection",
                   "label": "Delivery notes",
-                  "access": "readOnly",
                   "node": {
                     "properties": {
                       "id": {

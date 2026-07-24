@@ -90,8 +90,11 @@ def _strip(node: Any) -> Any:
 # entity to full CRUD and every field to create+update, EXCEPT what is
 # structurally computed (identity, stamps, derived subtrees).
 _COMPUTED_FIELDS = frozenset({"id", "object", "number", "createdAt", "updatedAt"})
+# Derived subtrees stay read-only (matched by key at any depth — mind that a
+# nested leaf sharing a name, e.g. the boolean tracking.stock, is skipped too;
+# an acceptable trade-off for keeping the rule simple).
 _COMPUTED_SUBTREES = frozenset(
-    {"totals", "documents", "fulfillment", "holds", "discounts", "priceSource", "cost"}
+    {"totals", "documents", "fulfillment", "holds", "discounts", "priceSource", "cost", "stock"}
 )
 STANDALONE_OPERATIONS = ["list", "read", "create", "update", "delete"]
 
@@ -105,6 +108,10 @@ def _open_writability(props: dict[str, Any]) -> None:
             continue  # keep the facade's readOnly marking (and skip the subtree)
         sub = spec.get("properties") or (spec.get("node") or {}).get("properties")
         if isinstance(sub, dict):
+            # A container inherits the facade's readOnly marking on EVERY
+            # level (prices.sale, manufacturer, bom …) — clear it so the
+            # opened leaves actually count as writable.
+            spec.pop("access", None)
             _open_writability(sub)
             continue
         spec.pop("access", None)
