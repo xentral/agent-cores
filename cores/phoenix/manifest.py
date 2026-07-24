@@ -18,6 +18,8 @@ CORE = CoreManifest(
     label_de="Phoenix",
     label_en="Phoenix",
     order=10,
+    # Experimental — grouped behind the "Labs" disclosure in the core manager.
+    labs=True,
     # No badge: it only echoed the card title. Status badges (WIP/DEMO/…) are
     # reserved for cores that need to signal something the name doesn't.
     badge=None,
