@@ -4,7 +4,7 @@ Covers the two guarantees the ``xentral_entities`` ``describe`` output relies on
 per-field write/query flags (``summarize_props``) and the flat query contract
 (``query_contract``). Both read only the schema flag vocabulary shared by every
 core, so a synthetic schema exercises the generic behaviour and a real
-``agentos_neo`` schema pins the dotted-path contract end to end.
+``agentos_neo_xentral`` schema pins the dotted-path contract end to end.
 """
 
 from __future__ import annotations
@@ -129,11 +129,11 @@ def test_query_contract_carries_select_options_and_references():
     assert by_key["channel"]["references"] == "Channel"
 
 
-def test_agentos_neo_customer_contract_end_to_end():
+def test_agentos_neo_xentral_customer_contract_end_to_end():
     """Regression against the real active-core schema: the dotted address filter
     is exposed, a writable-but-not-queryable field (vatId) stays out of the
     filter contract, and read-only finance fields are not writable."""
-    from xentral_entity_cores.agentos_neo.emulated.customer import CustomerAdapter
+    from xentral_entity_cores.agentos_neo_xentral.emulated.customer import CustomerAdapter
 
     props = CustomerAdapter().metadata("en")["rootNode"]["properties"]
     qc = query_contract(props)
