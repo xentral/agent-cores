@@ -133,7 +133,7 @@ def test_agentos_neo_customer_contract_end_to_end():
     """Regression against the real active-core schema: the dotted address filter
     is exposed, a writable-but-not-queryable field (vatId) stays out of the
     filter contract, and read-only finance fields are not writable."""
-    from agentos_neo.emulated.customer import CustomerAdapter
+    from xentral_entity_cores.agentos_neo.emulated.customer import CustomerAdapter
 
     props = CustomerAdapter().metadata("en")["rootNode"]["properties"]
     qc = query_contract(props)

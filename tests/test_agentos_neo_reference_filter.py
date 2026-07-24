@@ -9,7 +9,7 @@ status, customerOrderNumber) are left untouched.
 
 from __future__ import annotations
 
-from agentos_neo.emulated.delivery_note import DeliveryNoteAdapter
+from xentral_entity_cores.agentos_neo.emulated.delivery_note import DeliveryNoteAdapter
 
 
 def _q(*pairs):

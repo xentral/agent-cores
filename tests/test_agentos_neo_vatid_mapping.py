@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import pytest
 
-from agentos_neo.emulated.customer import CustomerAdapter
-from agentos_neo.emulated.supplier import SupplierAdapter
+from xentral_entity_cores.agentos_neo.emulated.customer import CustomerAdapter
+from xentral_entity_cores.agentos_neo.emulated.supplier import SupplierAdapter
 
 
 @pytest.mark.parametrize("adapter_cls", [CustomerAdapter, SupplierAdapter])
