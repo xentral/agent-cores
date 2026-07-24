@@ -1,0 +1,1780 @@
+<title>Next-Gen ERP API – Payload-Design</title>
+<style>
+  :root {
+    --bg: #FBFBFA; --surface: #FFFFFF; --surface-2: #F3F4F1; --ink: #22252B;
+    --muted: #6A7076; --line: #E5E6E1; --accent: #4A4FD1; --accent-ink: #383CB0;
+    --accent-soft: #EDEEFB; --good: #1E7A4C; --good-bg: #E6F3EC; --warn: #A05E0A;
+    --warn-bg: #F9EFDC; --code-bg: #23262E; --code-ink: #E8EAF0;
+    --j-key: #8FB8FF; --j-str: #A8E5A0; --j-num: #FFC98A; --j-bool: #F0A3C8; --j-com: #7C8494;
+    --shadow: 0 1px 2px rgba(30,35,45,.05), 0 10px 30px rgba(30,35,45,.07);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16181D; --surface: #1E2127; --surface-2: #262A31; --ink: #E7E9EC;
+      --muted: #98A0A8; --line: #2E323A; --accent: #8B8FF0; --accent-ink: #A6A9F5;
+      --accent-soft: #26284A; --good: #6FCF8F; --good-bg: #1B3325; --warn: #E3AB5D;
+      --warn-bg: #37301D; --code-bg: #14161B; --code-ink: #DDE1EA;
+      --shadow: 0 1px 2px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.3);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #16181D; --surface: #1E2127; --surface-2: #262A31; --ink: #E7E9EC;
+    --muted: #98A0A8; --line: #2E323A; --accent: #8B8FF0; --accent-ink: #A6A9F5;
+    --accent-soft: #26284A; --good: #6FCF8F; --good-bg: #1B3325; --warn: #E3AB5D;
+    --warn-bg: #37301D; --code-bg: #14161B; --code-ink: #DDE1EA;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.3);
+  }
+  :root[data-theme="light"] {
+    --bg: #FBFBFA; --surface: #FFFFFF; --surface-2: #F3F4F1; --ink: #22252B;
+    --muted: #6A7076; --line: #E5E6E1; --accent: #4A4FD1; --accent-ink: #383CB0;
+    --accent-soft: #EDEEFB; --good: #1E7A4C; --good-bg: #E6F3EC; --warn: #A05E0A;
+    --warn-bg: #F9EFDC; --code-bg: #23262E; --code-ink: #E8EAF0;
+    --shadow: 0 1px 2px rgba(30,35,45,.05), 0 10px 30px rgba(30,35,45,.07);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font: 15.5px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    margin: 0; padding: 0 24px 90px;
+  }
+  .wrap { max-width: 1140px; margin: 0 auto; display: grid; grid-template-columns: 220px 1fr; gap: 40px; }
+  @media (max-width: 900px) { .wrap { grid-template-columns: 1fr; } nav.toc { display: none; } }
+
+  code { font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace; font-size: .86em; background: var(--surface-2); border-radius: 4px; padding: 1px 5px; }
+
+  nav.toc {
+    position: sticky; top: 0; align-self: start;
+    padding: 48px 0 20px; font-size: 13px;
+    max-height: 100vh; overflow-y: auto;
+  }
+  nav.toc a { display: block; color: var(--muted); text-decoration: none; padding: 3px 10px; border-left: 2px solid var(--line); }
+  nav.toc a:hover { color: var(--accent-ink); }
+  nav.toc a.h { font-weight: 700; color: var(--ink); margin-top: 9px; }
+  nav.toc a.s { padding-left: 22px; font-size: 12.5px; }
+  nav.toc a:focus-visible { outline: 2px solid var(--accent); border-radius: 4px; }
+
+  article { padding-top: 48px; min-width: 0; }
+  .eyebrow { color: var(--accent-ink); font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; margin: 0 0 10px; }
+  h1 { font-size: 33px; font-weight: 780; letter-spacing: -.025em; line-height: 1.12; margin: 0 0 14px; text-wrap: balance; }
+  .lede { color: var(--muted); font-size: 17px; max-width: 64ch; margin: 0 0 8px; }
+  h2 { font-size: 22px; font-weight: 740; letter-spacing: -.015em; margin: 54px 0 6px; scroll-margin-top: 24px; }
+  h2 .no { color: var(--accent); font-variant-numeric: tabular-nums; margin-right: 8px; }
+  h3 { font-size: 17px; font-weight: 720; margin: 34px 0 6px; scroll-margin-top: 24px; }
+  h3 code { font-size: .95em; }
+  h4 { font-size: 14.5px; font-weight: 700; margin: 20px 0 4px; }
+  p { max-width: 72ch; margin: 8px 0; }
+  p.dim { color: var(--muted); font-size: 14px; }
+  ul.tight { margin: 6px 0; padding-left: 22px; max-width: 76ch; }
+  ul.tight li { margin-bottom: 5px; }
+
+  .principles { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 18px 0 8px; }
+  .pr { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .pr b { display: block; font-size: 14.5px; margin-bottom: 4px; }
+  .pr b .n { color: var(--accent); margin-right: 6px; font-variant-numeric: tabular-nums; }
+  .pr p { font-size: 13.5px; color: var(--muted); margin: 0; }
+
+  pre.code {
+    background: var(--code-bg); color: var(--code-ink);
+    border-radius: 12px; padding: 18px 20px; overflow-x: auto;
+    font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12.6px; line-height: 1.55; margin: 12px 0 20px; box-shadow: var(--shadow);
+  }
+  pre.code .k { color: var(--j-key); }
+  pre.code .s { color: var(--j-str); }
+  pre.code .n { color: var(--j-num); }
+  pre.code .b { color: var(--j-bool); }
+  pre.code .c { color: var(--j-com); font-style: italic; }
+  .codehead {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--accent-soft); color: var(--accent-ink);
+    border-radius: 7px; padding: 4px 12px; font-size: 12.5px; font-weight: 700;
+    font-family: ui-monospace, Menlo, Consolas, monospace; margin-top: 14px;
+  }
+
+  .mermaidwrap { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; overflow-x: auto; margin: 14px 0; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; margin: 12px 0; }
+  th { text-align: left; font-size: 11.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); border-bottom: 2px solid var(--line); padding: 8px 10px; }
+  td { border-bottom: 1px solid var(--line); padding: 7px 10px; vertical-align: top; }
+  .tablewrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 0 6px; margin: 14px 0; }
+  .badge { display: inline-block; border-radius: 5px; padding: 1px 8px; font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+  .badge.done { background: var(--good-bg); color: var(--good); }
+  .badge.sketch { background: var(--accent-soft); color: var(--accent-ink); }
+  .badge.new { background: var(--warn-bg); color: var(--warn); }
+
+  .callout { background: var(--surface); border-left: 3px solid var(--accent); border-radius: 0 10px 10px 0; padding: 12px 18px; margin: 14px 0; max-width: 78ch; }
+  .callout.warn { border-left-color: var(--warn); }
+  .callout p { margin: 4px 0; font-size: 14px; }
+</style>
+
+<div class="wrap">
+<nav class="toc" aria-label="Inhalt">
+  <a href="#prinzipien" class="h">1 · Designprinzipien</a>
+  <a href="#modell" class="h">2 · Objektmodell</a>
+  <a href="#refs" class="h">3 · Referenz-Pattern</a>
+  <a href="#filter" class="h">4 · Listen, Filter &amp; Suche</a>
+  <a href="#verkauf" class="h">5 · Verkaufsbelege</a>
+  <a href="#quote" class="s">5.1 Quote</a>
+  <a href="#salesorder" class="s">5.2 SalesOrder</a>
+  <a href="#deliverynote" class="s">5.3 DeliveryNote</a>
+  <a href="#salesinvoice" class="s">5.4 SalesInvoice</a>
+  <a href="#creditnote" class="s">5.5 CreditNote</a>
+  <a href="#return" class="s">5.6 Return</a>
+  <a href="#einkauf" class="h">6 · Einkaufsbelege</a>
+  <a href="#purchaseorder" class="s">6.1 PurchaseOrder</a>
+  <a href="#goodsreceipt" class="s">6.2 GoodsReceipt</a>
+  <a href="#purchaseinvoice" class="s">6.3 PurchaseInvoice</a>
+  <a href="#stamm" class="h">7 · Stammdaten</a>
+  <a href="#customer" class="s">7.1 Customer</a>
+  <a href="#supplier" class="s">7.2 Supplier</a>
+  <a href="#product" class="s">7.3 Product</a>
+  <a href="#channel" class="s">7.4 Channel</a>
+  <a href="#pricelist" class="s">7.5 PriceList</a>
+  <a href="#config" class="s">7.6 Konfig-Objekte</a>
+  <a href="#exec" class="h">8 · Ausführung</a>
+  <a href="#shipment" class="s">8.1 Shipment</a>
+  <a href="#payment" class="s">8.2 Payment</a>
+  <a href="#batch" class="s">8.3 Batch &amp; SerialNumber</a>
+  <a href="#stockmove" class="s">8.4 StockMovement</a>
+  <a href="#location" class="s">8.5 StorageLocation &amp; StockLevel</a>
+  <a href="#picking" class="s">8.6 PickingRun — Kommissionierung</a>
+  <a href="#status" class="h">9 · Steps &amp; Actions für Agenten</a>
+  <a href="#katalog" class="h">10 · Entity-Katalog</a>
+  <a href="#feedback" class="h">11 · Naming &amp; offene Punkte</a>
+  <a href="#review" class="h">12 · Kritischer Review: was noch fehlt</a>
+  <a href="#gobd" class="s">12.1 Audit &amp; GoBD</a>
+  <a href="#multichannel" class="s">12.2 Multi-Channel</a>
+  <a href="#b2b" class="s">12.3 B2B</a>
+  <a href="#anhang" class="h">A · Anhang: Mapping-Layer</a>
+  <a href="#arch" class="s">A.1 Architektur</a>
+  <a href="#maptable" class="s">A.2 Mapping je Entity</a>
+  <a href="#orchestrierung" class="s">A.3 Schreib-Orchestrierung</a>
+  <a href="#offen" class="s">A.4 Entwickler-Aufgaben</a>
+  <a href="#backlog-sichtbar" class="s">A.5 Das lebende Backlog</a>
+</nav>
+
+<article>
+  <p class="eyebrow">Konzept · Entwurf v0.4 · 18.07.2026 · vollständig ausimplementiert</p>
+  <h1>Ein ERP-API-Modell, das Menschen <em>und</em> Agenten sofort verstehen</h1>
+  <p class="lede">
+    Zielbild für die nächste API-Generation, zugeschnitten auf Händler mit physischen Gütern,
+    5–100 Mio. € Umsatz, E-Commerce + B2B gemischt. Alle Entities voll ausgearbeitet:
+    6 Verkaufs- und 3 Einkaufsbelege (inkl. Eingangsrechnung mit Dreiwege-Abgleich),
+    Stammdaten, Ausführungsobjekte — und ein Filter-Modell ohne blinde Flecken.
+  </p>
+
+  <h2 id="prinzipien"><span class="no">1</span>Designprinzipien</h2>
+  <div class="principles">
+    <div class="pr"><b><span class="n">P1</span>Sprechende IDs</b><p>Jede ID trägt ihren Typ: <code>so_…</code>, <code>si_…</code>, <code>cus_…</code>, <code>prd_…</code>. Ein Agent weiß allein an der ID, was es ist und wo er sie GETten kann.</p></div>
+    <div class="pr"><b><span class="n">P2</span>Referenzen sind Objekte</b><p>Nie nackte IDs: Jede Referenz ist <code>{id, number, name, href}</code> — lesbar für Menschen, navigierbar für Agenten, ohne Extra-Request.</p></div>
+    <div class="pr"><b><span class="n">P3</span>Ein Belegskelett</b><p>Alle 9 Belege teilen dieselbe Struktur: <code>party · dates · items · totals · payment · texts · documents · actions</code>. Wer einen kennt, kennt alle.</p></div>
+    <div class="pr"><b><span class="n">P4</span>Symmetrie Lesen/Schreiben</b><p>Was der View liefert, akzeptiert der Write — außer explizit berechneten Blöcken (<code>totals</code>, <code>status</code>, <code>documents</code>, <code>fulfillment</code>).</p></div>
+    <div class="pr"><b><span class="n">P5</span>Der Belegfluss ist sichtbar</b><p>Jeder Beleg trägt seinen Graphen in <code>documents</code>: Quote → SalesOrder → DeliveryNote → SalesInvoice. Vor- und zurücknavigieren in einem Request.</p></div>
+    <div class="pr"><b><span class="n">P6</span>expand statt raten</b><p><code>?expand=customer,items.product</code> lädt Referenzen voll aus. Ein Mechanismus, keine „slim“ Resources, keine zweiten Include-Systeme.</p></div>
+    <div class="pr"><b><span class="n">P7</span>Zustände + Aktionen</b><p><code>status</code> ist eine kleine State-Machine; <code>actions</code> listet, was JETZT erlaubt ist. Agenten müssen keine Regeln erraten.</p></div>
+    <div class="pr"><b><span class="n">P8</span>Standardtypen</b><p>Geld = <code>{"amount": "12.90", "currency": "EUR"}</code> (Dezimal-String). Mengen = <code>{value, unit}</code>. Daten = ISO 8601. Länder = ISO 3166.</p></div>
+  </div>
+
+  <h2 id="modell"><span class="no">2</span>Objektmodell</h2>
+  <p>Verkauf und Einkauf sind symmetrisch aufgebaut — deshalb heißt die Rechnung <strong>SalesInvoice</strong> (Ausgangsrechnung) und bekommt ihr Gegenstück <strong>PurchaseInvoice</strong> (Eingangsrechnung). Ausführungsobjekte (Ware &amp; Geld) verbinden beide Seiten mit dem Lager.</p>
+  <div class="mermaidwrap">
+<pre class="mermaid">
+flowchart LR
+  subgraph Verkauf
+    QUO[Quote<br/>quo_] --> SO[SalesOrder<br/>so_]
+    SO --> DN[DeliveryNote<br/>dn_]
+    SO --> SI[SalesInvoice<br/>si_]
+    DN --> SI
+    SI --> CN[CreditNote<br/>cn_]
+    DN --> RET[Return<br/>ret_]
+    RET --> CN
+  end
+  subgraph Einkauf
+    PO[PurchaseOrder<br/>po_] --> GR[GoodsReceipt<br/>gr_]
+    PO --> PI[PurchaseInvoice<br/>pi_]
+    GR --> PI
+  end
+  subgraph Stammdaten
+    CUS[Customer<br/>cus_]
+    SUP[Supplier<br/>sup_]
+    PRD[Product<br/>prd_]
+    CH[Channel<br/>ch_]
+    PRL[PriceList<br/>prl_]
+  end
+  subgraph Ausführung
+    SHP[Shipment<br/>shp_]
+    PAY[Payment<br/>pay_]
+    BAT[Batch / SN<br/>bat_ sn_]
+    STM[StockMovement<br/>stm_]
+  end
+  CUS --- SO
+  CH --- SO
+  SUP --- PO
+  PRD --- SO
+  PRD --- PO
+  DN --> SHP
+  SI --> PAY
+  PI --> PAY
+  DN --> STM
+  GR --> STM
+  BAT --- STM
+</pre>
+  </div>
+
+  <h2 id="refs"><span class="no">3</span>Das Referenz-Pattern</h2>
+  <span class="codehead">Referenz-Objekt (überall identisch)</span>
+  <pre class="code" data-json>{
+  "id": "si_8m3t7k",
+  "number": "RE-2026-1042",        // menschenlesbar — steht auf dem PDF
+  "name": "Rechnung RE-2026-1042", // Anzeigename für UIs
+  "href": "/v1/salesInvoices/si_8m3t7k"
+}</pre>
+  <ul class="tight">
+    <li><strong>Lesen:</strong> Nummer + Name sind sofort da — Listenansichten und PDF-Infoboxen brauchen keine Nachlade-Requests.</li>
+    <li><strong>Vertiefen:</strong> <code>?expand=customer,items.product,documents.salesInvoices</code> ersetzt Referenzen durch volle Objekte (max. 2 Ebenen).</li>
+    <li><strong>Schreiben:</strong> <code>{"customer": {"id": "cus_4n8p2q"}}</code> oder <code>{"customer": {"number": "K-10023"}}</code> — beides gilt.</li>
+    <li><strong>Rückwärts:</strong> Jede Beziehung ist von beiden Seiten sichtbar.</li>
+  </ul>
+
+  <h2 id="filter"><span class="no">4</span>Listen, Filter &amp; Suche — ohne blinde Flecken</h2>
+  <p>Die wichtigste Regel kommt zuerst, weil sie im Ist-System fehlt:</p>
+  <div class="callout">
+    <p><strong>Filter sind generiert, nicht kuratiert.</strong> Jedes skalare Feld des Payloads (auch verschachtelt, in Punktnotation) und jede Referenz-ID/-Nummer ist filterbar — automatisch aus dem Schema abgeleitet. Es gibt keine Liste „erlaubter Filter“, die jemand pflegen (und vergessen) kann, und keine versteckten Status-Defaults: <em>Listen zeigen immer alles.</em></p>
+  </div>
+  <span class="codehead">Filter-Grammatik</span>
+  <pre class="code" data-json>{
+  "syntax": "?filter[pfad][operator]=wert",
+  "operatoren": ["eq (default)", "ne", "in", "gte", "lte", "between", "contains", "startsWith", "isNull"],
+  "beispiele": [
+    "?filter[status]=confirmed",
+    "?filter[dates.issued][gte]=2026-07-01",
+    "?filter[customer.id]=cus_4n8p2q",
+    "?filter[customer.number]=K-10023",
+    "?filter[references.customerOrderNumber]=PO-4711",
+    "?filter[items.product.id]=prd_9x1v3b",
+    "?filter[items.batches.batch.id]=bat_5w2r",
+    "?filter[totals.gross][gte]=1000",
+    "?filter[payment.dueDate][lt]=2026-07-18&filter[payment.status][ne]=paid",
+    "?filter[channel.id]=ch_shopify&filter[createdAt][gte]=2026-07-18T00:00:00Z"
+  ],
+  "search": "?search=… durchsucht: number, alle references.*, Partner-Name/-Nummer, E-Mail, PLZ, Ort",
+  "sort": "?sort=-dates.issued,number  (jedes filterbare Feld ist sortierbar)",
+  "expand": "?expand=customer,items.product",
+  "pagination": "?page[size]=100&page[after]=cursor…  (Cursor; total auf Wunsch via ?count=true)"
+}</pre>
+  <h3>Die Berater-Checkliste: Standard-Sichten, die jede Liste können muss</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Sicht (Alltag im Handel)</th><th>Query</th></tr></thead>
+    <tbody>
+      <tr><td>Offene Posten (Debitoren)</td><td><code>/salesInvoices?filter[status]=open&amp;filter[payment.status][in]=unpaid,partiallyPaid</code></td></tr>
+      <tr><td>Überfällige Rechnungen fürs Mahnwesen</td><td><code>/salesInvoices?filter[payment.dueDate][lt]=today&amp;filter[payment.status][ne]=paid&amp;filter[dunning.blocked]=false</code></td></tr>
+      <tr><td>Versandfertige Aufträge</td><td><code>/salesOrders?filter[status]=confirmed&amp;filter[shipping.status]=open&amp;filter[holds][isNull]=true</code></td></tr>
+      <tr><td>Heutige Shop-Bestellungen je Kanal</td><td><code>/salesOrders?filter[channel.id]=ch_shopify&amp;filter[createdAt][gte]=2026-07-18T00:00:00Z</code></td></tr>
+      <tr><td>Bestand unter Mindestmenge (Nachschub)</td><td><code>/products?filter[stock.belowMinimum]=true&amp;filter[kind]=physical</code></td></tr>
+      <tr><td>Chargen-Rückruf: wohin ging CH-2026-07?</td><td><code>/deliveryNotes?filter[items.batches.batch.number]=CH-2026-07</code></td></tr>
+      <tr><td>Unbestätigte Bestellungen beim Lieferanten</td><td><code>/purchaseOrders?filter[status]=sent&amp;filter[confirmation.status]=pending</code></td></tr>
+      <tr><td>Eingangsrechnungen ohne Wareneingang (3-Wege-Abgleich)</td><td><code>/purchaseInvoices?filter[match.status]=mismatch</code></td></tr>
+      <tr><td>Retourenquote je Kanal</td><td><code>/returns?filter[channel.id]=ch_amazon&amp;filter[dates.issued][between]=2026-01-01,2026-06-30</code></td></tr>
+      <tr><td>Umsatz eines Kunden im Zeitraum</td><td><code>/salesInvoices?filter[customer.id]=cus_…&amp;filter[dates.issued][between]=…&amp;count=true</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <h2 id="verkauf"><span class="no">5</span>Verkaufsbelege</h2>
+  <p>Alle sechs nutzen das Skelett aus 5.2 (SalesOrder = Referenzbeleg). Adressen, Texte, <code>project</code>/<code>costCenter</code>, <code>currency</code>/<code>exchangeRate</code>, <code>customFields</code> und Timestamps sind überall identisch und werden ab 5.3 nicht wiederholt gezeigt — sie sind aber in jedem Beleg vorhanden.</p>
+
+  <h3 id="quote">5.1 <code>quote</code> — Angebot</h3>
+  <span class="codehead">GET /v1/quotes/quo_5c1d8e</span>
+  <pre class="code" data-json>{
+  "object": "quote",
+  "id": "quo_5c1d8e",
+  "number": "AN-2026-0301",
+  "status": "sent",                            // draft → sent → accepted | declined | expired | cancelled
+  "customer": { "id": "cus_4n8p2q", "number": "K-10023", "name": "Muster GmbH", "href": "/v1/customers/cus_4n8p2q" },
+  "channel": { "id": "ch_direct", "name": "Direktvertrieb", "href": "/v1/channels/ch_direct" },
+  "project": { "id": "prj_2k5m", "number": "P-2026-12", "name": "Messe-Ausstattung", "href": "/v1/projects/prj_2k5m" },
+  "costCenter": "CC-100",
+
+  "references": { "customerInquiryNumber": "ANF-889" },
+
+  "dates": {
+    "issued": "2026-07-10",
+    "validUntil": "2026-08-10",                // danach status = expired (automatisch)
+    "expectedOrderDate": "2026-07-30",         // für den Sales-Forecast
+    "requestedDelivery": "2026-09-01"
+  },
+
+  "billingAddress": { "name": "Muster GmbH", "street": "Fuggerstraße 11", "zip": "86150", "city": "Augsburg", "country": "DE" },
+  "shippingAddress": { "name": "Muster GmbH – Lager", "street": "Industriestraße 5", "zip": "86159", "city": "Augsburg", "country": "DE" },
+
+  "items": [
+    {
+      "object": "quoteItem", "id": "itm_q1", "position": 1,
+      "product": { "id": "prd_9x1v3b", "number": "SKU-100", "name": "Alu-Flasche 750 ml", "href": "/v1/products/prd_9x1v3b" },
+      "description": "Alu-Flasche 750 ml, silber, mit Gravur",
+      "quantity": { "value": 500, "unit": "piece" },
+      "unitPrice": { "amount": "9.90", "currency": "EUR" },
+      "priceSource": "priceList:prl_b2b",      // woher kam der Preis?
+      "discountPercent": 0,
+      "taxRate": "standard",
+      "totals": { "net": "4950.00", "tax": "940.50", "gross": "5890.50" },
+      "isOptional": false                      // optionale Positionen zählen nicht in totals
+    }
+  ],
+
+  "currency": "EUR",
+  "exchangeRate": { "rate": "1.0000", "baseCurrency": "EUR" },
+  "totals": {
+    "currency": "EUR",
+    "net": "4950.00",
+    "taxes": [ { "rate": "standard", "percent": 19, "base": "4950.00", "amount": "940.50" } ],
+    "gross": "5890.50"
+  },
+
+  "payment": {
+    "method": { "id": "paym_inv", "name": "Rechnung", "href": "/v1/paymentMethods/paym_inv" },
+    "terms": { "dueDays": 30, "discountPercent": 2, "discountDays": 10 }
+  },
+  "shipping": { "method": { "id": "ship_sped", "name": "Spedition", "href": "/v1/shippingMethods/ship_sped" } },
+
+  "texts": { "intro": "vielen Dank für Ihre Anfrage …", "outro": "Wir freuen uns auf Ihren Auftrag." },
+  "note": null,
+
+  "documents": {
+    "salesOrders": []                          // gefüllt nach accept → convert
+  },
+  "actions": ["send", "accept", "decline", "convertToSalesOrder", "cancel"],
+  "customFields": {},
+  "createdAt": "2026-07-10T08:00:00Z",
+  "updatedAt": "2026-07-10T08:20:00Z"
+}</pre>
+
+  <h3 id="salesorder">5.2 <code>salesOrder</code> — Auftrag (der Referenzbeleg)</h3>
+  <span class="codehead">GET /v1/salesOrders/so_7g2k9m</span>
+  <pre class="code" data-json>{
+  "object": "salesOrder",
+  "id": "so_7g2k9m",
+  "number": "AB-2026-0815",
+  "status": "confirmed",                       // draft → confirmed → fulfilled → closed | cancelled
+  "customer": { "id": "cus_4n8p2q", "number": "K-10023", "name": "Muster GmbH", "href": "/v1/customers/cus_4n8p2q" },
+  "channel": { "id": "ch_shopify", "name": "Shopify DE", "href": "/v1/channels/ch_shopify" },
+  "project": null,
+  "costCenter": null,
+
+  "references": {
+    "customerOrderNumber": "PO-4711",          // Bestellnummer des Kunden (B2B)
+    "externalId": "gid://shopify/Order/450789",// technische ID im Quellsystem
+    "externalNumber": "#1001",                 // Nummer im Quellsystem
+    "paymentTransactionId": "PAYPAL-8XK21..."  // Zahlungsreferenz des PSP
+  },
+
+  "dates": {
+    "issued": "2026-07-18",
+    "requestedDelivery": "2026-07-25",
+    "confirmedDelivery": null
+  },
+
+  "billingAddress": {
+    "name": "Muster GmbH", "street": "Fuggerstraße 11",
+    "zip": "86150", "city": "Augsburg", "country": "DE",
+    "email": "buchhaltung@muster.de", "phone": "+49 821 123456-0",
+    "vatId": "DE123456789"
+  },
+  "shippingAddress": {
+    "name": "Muster GmbH – Lager", "street": "Industriestraße 5",
+    "zip": "86159", "city": "Augsburg", "country": "DE"
+  },
+
+  "items": [
+    {
+      "object": "salesOrderItem", "id": "itm_1a9f", "position": 1,
+      "product": { "id": "prd_9x1v3b", "number": "SKU-100", "name": "Alu-Flasche 750 ml", "href": "/v1/products/prd_9x1v3b" },
+      "description": "Alu-Flasche 750 ml, silber, mit Gravur",
+      "quantity": { "value": 10, "unit": "piece" },
+      "unitPrice": { "amount": "12.90", "currency": "EUR" },
+      "priceSource": "manual",
+      "discountPercent": 5,
+      "taxRate": "standard",
+      "totals": { "net": "122.55", "tax": "23.28", "gross": "145.83" },
+      "warehouse": { "id": "wh_main", "name": "Hauptlager", "href": "/v1/warehouses/wh_main" },
+      "fulfillment": { "shipped": 10, "invoiced": 10, "returned": 0 },   // read-only
+      "parentItem": null                        // gesetzt bei Stücklisten-Kindern
+    },
+    {
+      "object": "textItem", "id": "itm_2b3c", "position": 2,
+      "style": "heading",                       // heading | subtotal | pageBreak
+      "text": "Zubehör"
+    }
+  ],
+
+  "currency": "EUR",
+  "exchangeRate": { "rate": "1.0000", "baseCurrency": "EUR" },
+  "totals": {
+    "currency": "EUR",
+    "itemsNet": "122.55",
+    "shippingNet": "4.90",                     // Versandkosten als eigene Zeile
+    "net": "127.45",
+    "taxes": [ { "rate": "standard", "percent": 19, "base": "127.45", "amount": "24.22" } ],
+    "gross": "151.67"
+  },
+
+  "payment": {
+    "method": { "id": "paym_paypal", "name": "PayPal", "href": "/v1/paymentMethods/paym_paypal" },
+    "terms": { "dueDays": 0, "discountPercent": 0, "discountDays": 0 },
+    "status": "paid"                           // E-Commerce: oft vor Versand bezahlt
+  },
+  "shipping": {
+    "method": { "id": "ship_dhl", "name": "DHL Paket", "href": "/v1/shippingMethods/ship_dhl" },
+    "status": "open",                          // open | partiallyShipped | shipped
+    "cost": { "amount": "4.90", "currency": "EUR" }
+  },
+
+  "fulfillmentPolicy": {
+    "auto": true,                              // Autoversand: geht ohne manuellen Eingriff raus
+    "priority": "normal",                      // normal | high (FastLane)
+    "partialShipping": "allowed"               // allowed | forbidden (B2B-Kunden wollen oft komplett)
+  },
+  "holds": [],                                  // Blockaden mit Grund, z. B.
+                                                // [{ "type": "creditLimit", "since": "…", "by": "system" }]
+                                                // type: creditLimit | payment | manual | address | fraud
+
+  "texts": { "intro": "Vielen Dank für Ihre Bestellung.", "outro": "Es gelten unsere AGB." },
+  "note": "VIP-Kunde, bitte priorisieren.",
+
+  "documents": {
+    "quote": { "id": "quo_5c1d8e", "number": "AN-2026-0301", "href": "/v1/quotes/quo_5c1d8e" },
+    "deliveryNotes": [ { "id": "dn_2h6j4l", "number": "LS-2026-0733", "href": "/v1/deliveryNotes/dn_2h6j4l" } ],
+    "salesInvoices": [ { "id": "si_8m3t7k", "number": "RE-2026-1042", "href": "/v1/salesInvoices/si_8m3t7k" } ],
+    "returns": []
+  },
+  "available": {                                // was JETZT geht — getrennt nach Zustandswechsel und Operation
+    "steps": ["close", "cancel"],
+    "actions": ["createDeliveryNote", "createSalesInvoice", "createPickingRun", "addHold", "duplicate", "downloadPdf"]
+  },
+  "customFields": { "campaign": "summer26" },
+  "createdAt": "2026-07-18T09:12:00Z",
+  "updatedAt": "2026-07-18T14:30:00Z"
+}</pre>
+
+  <h3 id="deliverynote">5.3 <code>deliveryNote</code> — Lieferschein</h3>
+  <span class="codehead">GET /v1/deliveryNotes/dn_2h6j4l</span>
+  <pre class="code" data-json>{
+  "object": "deliveryNote",
+  "id": "dn_2h6j4l",
+  "number": "LS-2026-0733",
+  "status": "shipped",                         // draft → picking → shipped → delivered | cancelled
+  "customer": { "id": "cus_4n8p2q", "number": "K-10023", "name": "Muster GmbH", "href": "/v1/customers/cus_4n8p2q" },
+  "channel": { "id": "ch_shopify", "name": "Shopify DE", "href": "/v1/channels/ch_shopify" },
+
+  "references": { "customerOrderNumber": "PO-4711" },
+  "dates": { "issued": "2026-07-19", "shipped": "2026-07-19", "delivered": null },
+
+  "shippingAddress": { "name": "Muster GmbH – Lager", "street": "Industriestraße 5", "zip": "86159", "city": "Augsburg", "country": "DE" },
+  "warehouse": { "id": "wh_main", "name": "Hauptlager", "href": "/v1/warehouses/wh_main" },   // Default, je Item überschreibbar
+
+  "items": [
+    {
+      "object": "deliveryNoteItem", "id": "itm_9r4t", "position": 1,
+      "orderItem": { "id": "itm_1a9f", "href": "/v1/salesOrders/so_7g2k9m/items/itm_1a9f" },
+      "product": { "id": "prd_9x1v3b", "number": "SKU-100", "name": "Alu-Flasche 750 ml", "href": "/v1/products/prd_9x1v3b" },
+      "quantity": { "value": 10, "unit": "piece" },
+      "warehouse": { "id": "wh_main", "name": "Hauptlager", "href": "/v1/warehouses/wh_main" },
+      "batches": [ { "batch": { "id": "bat_5w2r", "number": "CH-2026-07", "href": "/v1/batches/bat_5w2r" }, "quantity": 10 } ],
+      "serialNumbers": []
+    }
+  ],
+
+  "shipments": [
+    { "id": "shp_6v2n8c", "number": "00340434161234567890", "name": "DHL Paket · in Zustellung", "href": "/v1/shipments/shp_6v2n8c" }
+  ],
+
+  "customs": {                                  // nur bei Export gefüllt
+    "totalWeight": { "value": 2.1, "unit": "kg" },
+    "incoterm": "DAP",
+    "note": null
+  },
+
+  "texts": { "intro": null, "outro": null },
+  "note": null,
+
+  "documents": {
+    "salesOrder": { "id": "so_7g2k9m", "number": "AB-2026-0815", "href": "/v1/salesOrders/so_7g2k9m" },
+    "salesInvoices": [ { "id": "si_8m3t7k", "number": "RE-2026-1042", "href": "/v1/salesInvoices/si_8m3t7k" } ],
+    "returns": []
+  },
+  "actions": ["createShipment", "markDelivered", "createReturn", "createSalesInvoice", "cancel"],
+  "customFields": {},
+  "createdAt": "2026-07-19T07:40:00Z",
+  "updatedAt": "2026-07-19T09:05:00Z"
+}</pre>
+
+  <h3 id="salesinvoice">5.4 <code>salesInvoice</code> — Ausgangsrechnung (vollständig!)</h3>
+  <span class="codehead">GET /v1/salesInvoices/si_8m3t7k</span>
+  <pre class="code" data-json>{
+  "object": "salesInvoice",
+  "id": "si_8m3t7k",
+  "number": "RE-2026-1042",
+  "status": "open",                            // draft → open → paid | cancelled
+  "customer": { "id": "cus_4n8p2q", "number": "K-10023", "name": "Muster GmbH", "href": "/v1/customers/cus_4n8p2q" },
+  "channel": { "id": "ch_shopify", "name": "Shopify DE", "href": "/v1/channels/ch_shopify" },
+  "project": null,
+  "costCenter": "CC-100",
+
+  "references": {
+    "customerOrderNumber": "PO-4711",
+    "debtorAccountNumber": "10023"             // Debitorenkonto (FiBu-Export)
+  },
+
+  "dates": {
+    "issued": "2026-07-19",
+    "serviceDate": "2026-07-19",               // Leistungs-/Lieferdatum (Pflichtangabe §14 UStG)
+    "servicePeriod": null                      // alternativ { "from": …, "to": … }
+  },
+
+  "billingAddress": {
+    "name": "Muster GmbH", "street": "Fuggerstraße 11", "zip": "86150", "city": "Augsburg",
+    "country": "DE", "email": "buchhaltung@muster.de", "vatId": "DE123456789"
+  },
+
+  "taxation": "domestic",                      // domestic | euB2B (reverse charge) | euOss | export
+
+  "items": [
+    {
+      "object": "salesInvoiceItem", "id": "itm_7q2w", "position": 1,
+      "orderItem": { "id": "itm_1a9f", "href": "/v1/salesOrders/so_7g2k9m/items/itm_1a9f" },
+      "product": { "id": "prd_9x1v3b", "number": "SKU-100", "name": "Alu-Flasche 750 ml", "href": "/v1/products/prd_9x1v3b" },
+      "description": "Alu-Flasche 750 ml, silber, mit Gravur",
+      "quantity": { "value": 10, "unit": "piece" },
+      "unitPrice": { "amount": "12.90", "currency": "EUR" },
+      "discountPercent": 5,
+      "taxRate": "standard",
+      "totals": { "net": "122.55", "tax": "23.28", "gross": "145.83" }
+    },
+    {
+      "object": "salesInvoiceItem", "id": "itm_8s5x", "position": 2,
+      "product": { "id": "prd_ship", "number": "SHIP", "name": "Versandkosten", "href": "/v1/products/prd_ship" },
+      "quantity": { "value": 1, "unit": "piece" },
+      "unitPrice": { "amount": "4.90", "currency": "EUR" },
+      "discountPercent": 0,
+      "taxRate": "standard",
+      "totals": { "net": "4.90", "tax": "0.93", "gross": "5.83" }
+    }
+  ],
+
+  "currency": "EUR",
+  "exchangeRate": { "rate": "1.0000", "baseCurrency": "EUR" },
+  "totals": {                                   // DIE Gesamtsumme — vollständig
+    "currency": "EUR",
+    "itemsNet": "122.55",
+    "shippingNet": "4.90",
+    "net": "127.45",
+    "taxes": [ { "rate": "standard", "percent": 19, "base": "127.45", "amount": "24.22" } ],
+    "gross": "151.67",
+    "paid": "100.00",
+    "outstanding": "51.67"                      // gross − paid − allocated credit notes
+  },
+
+  "payment": {
+    "method": { "id": "paym_paypal", "name": "PayPal", "href": "/v1/paymentMethods/paym_paypal" },
+    "terms": { "dueDays": 30, "discountPercent": 2, "discountDays": 10 },
+    "dueDate": "2026-08-18",
+    "discountDate": "2026-07-29",
+    "status": "partiallyPaid",                 // unpaid | partiallyPaid | paid
+    "payments": [
+      { "id": "pay_3c7x1f", "number": "Z-2026-0451", "name": "Zahlung 100,00 EUR vom 20.07.2026", "href": "/v1/payments/pay_3c7x1f" }
+    ]
+  },
+
+  "dunning": {                                  // Mahnwesen — B2B-Kern
+    "level": 0,                                 // 0 = keine Mahnung
+    "blocked": false,
+    "lastReminderAt": null,
+    "note": null
+  },
+
+  "eInvoice": {                                 // Pflicht im B2B seit 2025/2027
+    "format": "zugferd",                        // none | zugferd | xrechnung | peppol
+    "status": "generated",                      // pending | generated | delivered | failed
+    "buyerReference": "04011000-12345-67",      // Leitweg-ID bei XRechnung
+    "downloadUrl": "/v1/salesInvoices/si_8m3t7k/eInvoice"
+  },
+
+  "texts": { "intro": "wir erlauben uns, wie folgt in Rechnung zu stellen:", "outro": "Zahlbar gemäß Zahlungsbedingungen." },
+  "note": null,
+
+  "documents": {
+    "salesOrder": { "id": "so_7g2k9m", "number": "AB-2026-0815", "href": "/v1/salesOrders/so_7g2k9m" },
+    "deliveryNotes": [ { "id": "dn_2h6j4l", "number": "LS-2026-0733", "href": "/v1/deliveryNotes/dn_2h6j4l" } ],
+    "creditNotes": []
+  },
+  "actions": ["send", "registerPayment", "remind", "createCreditNote", "cancel"],
+  "customFields": {},
+  "createdAt": "2026-07-19T10:00:00Z",
+  "updatedAt": "2026-07-20T08:30:00Z"
+}</pre>
+
+  <h3 id="creditnote">5.5 <code>creditNote</code> — Gutschrift</h3>
+  <span class="codehead">GET /v1/creditNotes/cn_4d9h2s</span>
+  <pre class="code" data-json>{
+  "object": "creditNote",
+  "id": "cn_4d9h2s",
+  "number": "GS-2026-0088",
+  "status": "open",                            // draft → open → settled | cancelled
+  "kind": "correction",                        // correction | cancellation (Stornorechnung — steuert Titel + Buchung)
+  "customer": { "id": "cus_4n8p2q", "number": "K-10023", "name": "Muster GmbH", "href": "/v1/customers/cus_4n8p2q" },
+
+  "references": { "customerOrderNumber": "PO-4711" },
+  "dates": { "issued": "2026-07-28", "serviceDate": "2026-07-19" },
+  "taxation": "domestic",
+
+  "items": [
+    {
+      "object": "creditNoteItem", "id": "itm_c1", "position": 1,
+      "invoiceItem": { "id": "itm_7q2w", "href": "/v1/salesInvoices/si_8m3t7k/items/itm_7q2w" },
+      "product": { "id": "prd_9x1v3b", "number": "SKU-100", "name": "Alu-Flasche 750 ml", "href": "/v1/products/prd_9x1v3b" },
+      "description": "Gutschrift: 2 Stück beschädigt",
+      "quantity": { "value": 2, "unit": "piece" },
+      "unitPrice": { "amount": "12.90", "currency": "EUR" },
+      "discountPercent": 5,
+      "taxRate": "standard",
+      "totals": { "net": "24.51", "tax": "4.66", "gross": "29.17" }
+    }
+  ],
+
+  "currency": "EUR",
+  "totals": {
+    "currency": "EUR",
+    "net": "24.51",
+    "taxes": [ { "rate": "standard", "percent": 19, "base": "24.51", "amount": "4.66" } ],
+    "gross": "29.17",
+    "settled": "0.00",
+    "outstanding": "29.17"
+  },
+  "settlement": {
+    "mode": "refund",                          // refund (auszahlen) | offset (mit Rechnung verrechnen)
+    "status": "open",                          // open | settled
+    "payments": []
+  },
+
+  "documents": {
+    "salesInvoice": { "id": "si_8m3t7k", "number": "RE-2026-1042", "href": "/v1/salesInvoices/si_8m3t7k" },
+    "return": { "id": "ret_1f6b9d", "number": "RT-2026-0102", "href": "/v1/returns/ret_1f6b9d" }
+  },
+  "actions": ["send", "registerRefund", "cancel"],
+  "customFields": {},
+  "createdAt": "2026-07-28T11:00:00Z",
+  "updatedAt": "2026-07-28T11:00:00Z"
+}</pre>
+
+  <h3 id="return">5.6 <code>return</code> — Retoure</h3>
+  <span class="codehead">GET /v1/returns/ret_1f6b9d</span>
+  <pre class="code" data-json>{
+  "object": "return",
+  "id": "ret_1f6b9d",
+  "number": "RT-2026-0102",
+  "status": "checked",                         // requested → received → checked → settled | cancelled
+  "customer": { "id": "cus_4n8p2q", "number": "K-10023", "name": "Muster GmbH", "href": "/v1/customers/cus_4n8p2q" },
+  "channel": { "id": "ch_shopify", "name": "Shopify DE", "href": "/v1/channels/ch_shopify" },
+
+  "references": { "rmaNumber": "RMA-2026-0102", "customerOrderNumber": "PO-4711" },
+  "dates": { "requested": "2026-07-24", "received": "2026-07-27", "settled": null },
+  "warehouse": { "id": "wh_returns", "name": "Retourenlager", "href": "/v1/warehouses/wh_returns" },
+
+  "items": [
+    {
+      "object": "returnItem", "id": "itm_r1", "position": 1,
+      "deliveryNoteItem": { "id": "itm_9r4t", "href": "/v1/deliveryNotes/dn_2h6j4l/items/itm_9r4t" },
+      "product": { "id": "prd_9x1v3b", "number": "SKU-100", "name": "Alu-Flasche 750 ml", "href": "/v1/products/prd_9x1v3b" },
+      "quantity": { "value": 2, "unit": "piece" },
+      "reason": { "id": "rsn_damaged", "name": "Beschädigt", "href": "/v1/returnReasons/rsn_damaged" },
+      "condition": "damaged",                  // resellable | damaged | disposal
+      "action": "credit",                      // credit | replace | repair
+      "receivedQuantity": 2,
+      "creditedQuantity": 2
+    }
+  ],
+
+  "resolution": {
+    "creditNote": { "id": "cn_4d9h2s", "number": "GS-2026-0088", "href": "/v1/creditNotes/cn_4d9h2s" },
+    "replacementOrder": null
+  },
+
+  "documents": {
+    "salesOrder": { "id": "so_7g2k9m", "number": "AB-2026-0815", "href": "/v1/salesOrders/so_7g2k9m" },
+    "deliveryNote": { "id": "dn_2h6j4l", "number": "LS-2026-0733", "href": "/v1/deliveryNotes/dn_2h6j4l" }
+  },
+  "actions": ["receive", "check", "createCreditNote", "createReplacementOrder", "settle", "cancel"],
+  "customFields": {},
+  "createdAt": "2026-07-24T15:00:00Z",
+  "updatedAt": "2026-07-27T09:30:00Z"
+}</pre>
+
+  <h2 id="einkauf"><span class="no">6</span>Einkaufsbelege</h2>
+
+  <h3 id="purchaseorder">6.1 <code>purchaseOrder</code> — Bestellung</h3>
+  <span class="codehead">GET /v1/purchaseOrders/po_3z8c5v</span>
+  <pre class="code" data-json>{
+  "object": "purchaseOrder",
+  "id": "po_3z8c5v",
+  "number": "BE-2026-0450",
+  "status": "confirmed",                       // draft → sent → confirmed → received → closed | cancelled
+  "supplier": { "id": "sup_3f8k1z", "number": "L-2001", "name": "Alu Trading Ltd.", "href": "/v1/suppliers/sup_3f8k1z" },
+  "project": null,
+  "costCenter": "CC-200",
+
+  "references": {
+    "ourCustomerNumber": "CUST-88231",         // unsere Kundennummer BEIM Lieferanten
+    "supplierOfferNumber": "AT-Q-5521"
+  },
+
+  "dates": {
+    "issued": "2026-07-01",
+    "requestedDelivery": "2026-07-20",
+    "confirmedDelivery": "2026-07-22"
+  },
+
+  "confirmation": {                             // AB-Handling — Einkaufs-Kern
+    "status": "confirmed",                      // pending | confirmed | deviating
+    "supplierOrderNumber": "AT-SO-99120",       // AB-Nummer des Lieferanten
+    "confirmedAt": "2026-07-03",
+    "via": "email"                              // email | portal | edi | phone
+  },
+
+  "deliveryAddress": { "name": "Muster GmbH – Wareneingang", "street": "Industriestraße 5", "zip": "86159", "city": "Augsburg", "country": "DE" },
+  "warehouse": { "id": "wh_main", "name": "Hauptlager", "href": "/v1/warehouses/wh_main" },
+
+  "items": [
+    {
+      "object": "purchaseOrderItem", "id": "itm_p1", "position": 1,
+      "product": { "id": "prd_9x1v3b", "number": "SKU-100", "name": "Alu-Flasche 750 ml", "href": "/v1/products/prd_9x1v3b" },
+      "supplierProductNumber": "AT-750-SLV",
+      "supplierProductName": "Alu Bottle 750 silver",
+      "quantity": { "value": 1000, "unit": "piece" },
+      "unitPrice": { "amount": "6.20", "currency": "EUR" },
+      "taxRate": "standard",
+      "totals": { "net": "6200.00", "tax": "1178.00", "gross": "7378.00" },
+      "fulfillment": { "received": 500, "invoiced": 500 }   // read-only: Teillieferung/-rechnung
+    }
+  ],
+
+  "currency": "EUR",
+  "exchangeRate": { "rate": "1.0000", "baseCurrency": "EUR" },
+  "totals": {
+    "currency": "EUR",
+    "net": "6200.00",
+    "taxes": [ { "rate": "standard", "percent": 19, "base": "6200.00", "amount": "1178.00" } ],
+    "gross": "7378.00"
+  },
+
+  "payment": {
+    "method": { "id": "paym_sepa", "name": "Überweisung", "href": "/v1/paymentMethods/paym_sepa" },
+    "terms": { "dueDays": 45, "discountPercent": 3, "discountDays": 14 }
+  },
+
+  "printSettings": { "withoutPrices": false, "requestConfirmation": true },
+
+  "texts": { "intro": "hiermit bestellen wir:", "outro": "Bitte AB mit Liefertermin senden." },
+  "note": null,
+
+  "documents": {
+    "goodsReceipts": [ { "id": "gr_1a2b", "number": "WE-2026-0210", "href": "/v1/goodsReceipts/gr_1a2b" } ],
+    "purchaseInvoices": [ { "id": "pi_7k3m9x", "number": "ER-2026-0331", "href": "/v1/purchaseInvoices/pi_7k3m9x" } ]
+  },
+  "actions": ["send", "recordConfirmation", "createGoodsReceipt", "close", "cancel"],
+  "customFields": {},
+  "createdAt": "2026-07-01T10:00:00Z",
+  "updatedAt": "2026-07-14T16:00:00Z"
+}</pre>
+
+  <h3 id="goodsreceipt">6.2 <code>goodsReceipt</code> — Wareneingang <span class="badge new">heute komplett fehlend</span></h3>
+  <span class="codehead">GET /v1/goodsReceipts/gr_1a2b</span>
+  <pre class="code" data-json>{
+  "object": "goodsReceipt",
+  "id": "gr_1a2b",
+  "number": "WE-2026-0210",
+  "status": "posted",                          // draft → posted | cancelled
+  "supplier": { "id": "sup_3f8k1z", "number": "L-2001", "name": "Alu Trading Ltd.", "href": "/v1/suppliers/sup_3f8k1z" },
+  "warehouse": { "id": "wh_main", "name": "Hauptlager", "href": "/v1/warehouses/wh_main" },
+
+  "references": { "supplierDeliveryNoteNumber": "AT-LS-71took" },
+  "dates": { "received": "2026-07-14", "posted": "2026-07-14" },
+
+  "items": [
+    {
+      "object": "goodsReceiptItem", "id": "itm_g1", "position": 1,
+      "purchaseOrderItem": { "id": "itm_p1", "href": "/v1/purchaseOrders/po_3z8c5v/items/itm_p1" },
+      "product": { "id": "prd_9x1v3b", "number": "SKU-100", "name": "Alu-Flasche 750 ml", "href": "/v1/products/prd_9x1v3b" },
+      "quantity": { "value": 500, "unit": "piece" },
+      "storageLocation": { "id": "loc_A-03-2", "name": "A-03-2", "href": "/v1/warehouses/wh_main/locations/loc_A-03-2" },
+      "batches": [
+        { "batch": { "id": "bat_5w2r", "number": "CH-2026-07", "href": "/v1/batches/bat_5w2r" }, "quantity": 500, "bestBefore": "2028-06-30" }
+      ],
+      "serialNumbers": [],
+      "qualityCheck": { "status": "passed", "note": null }   // passed | failed | pending
+    }
+  ],
+
+  "documents": {
+    "purchaseOrder": { "id": "po_3z8c5v", "number": "BE-2026-0450", "href": "/v1/purchaseOrders/po_3z8c5v" },
+    "purchaseInvoices": [ { "id": "pi_7k3m9x", "number": "ER-2026-0331", "href": "/v1/purchaseInvoices/pi_7k3m9x" } ],
+    "stockMovements": [ { "id": "stm_9q1w2e", "number": "LB-2026-8812", "href": "/v1/stockMovements/stm_9q1w2e" } ]
+  },
+  "actions": ["post", "cancel"],
+  "note": null,
+  "customFields": {},
+  "createdAt": "2026-07-14T11:20:00Z",
+  "updatedAt": "2026-07-14T11:25:00Z"
+}</pre>
+
+  <h3 id="purchaseinvoice">6.3 <code>purchaseInvoice</code> — Eingangsrechnung <span class="badge new">neu, Gegenstück zur SalesInvoice</span></h3>
+  <span class="codehead">GET /v1/purchaseInvoices/pi_7k3m9x</span>
+  <pre class="code" data-json>{
+  "object": "purchaseInvoice",
+  "id": "pi_7k3m9x",
+  "number": "ER-2026-0331",                    // unsere interne Nummer
+  "status": "approved",                        // received → matched → approved → paid | rejected
+  "supplier": { "id": "sup_3f8k1z", "number": "L-2001", "name": "Alu Trading Ltd.", "href": "/v1/suppliers/sup_3f8k1z" },
+  "project": null,
+  "costCenter": "CC-200",
+
+  "references": {
+    "supplierInvoiceNumber": "AT-INV-20441",   // Rechnungsnummer DES LIEFERANTEN (Pflichtfeld)
+    "creditorAccountNumber": "70201"           // Kreditorenkonto (FiBu)
+  },
+
+  "dates": {
+    "invoiceDate": "2026-07-15",               // Rechnungsdatum des Lieferanten
+    "received": "2026-07-16",
+    "serviceDate": "2026-07-14"
+  },
+
+  "items": [
+    {
+      "object": "purchaseInvoiceItem", "id": "itm_e1", "position": 1,
+      "purchaseOrderItem": { "id": "itm_p1", "href": "/v1/purchaseOrders/po_3z8c5v/items/itm_p1" },
+      "product": { "id": "prd_9x1v3b", "number": "SKU-100", "name": "Alu-Flasche 750 ml", "href": "/v1/products/prd_9x1v3b" },
+      "quantity": { "value": 500, "unit": "piece" },
+      "unitPrice": { "amount": "6.20", "currency": "EUR" },
+      "taxRate": "standard",
+      "totals": { "net": "3100.00", "tax": "589.00", "gross": "3689.00" }
+    }
+  ],
+
+  "currency": "EUR",
+  "totals": {
+    "currency": "EUR",
+    "net": "3100.00",
+    "taxes": [ { "rate": "standard", "percent": 19, "base": "3100.00", "amount": "589.00" } ],
+    "gross": "3689.00",
+    "paid": "0.00",
+    "outstanding": "3689.00"
+  },
+
+  "match": {                                    // Dreiwege-Abgleich: Bestellung ↔ Wareneingang ↔ Rechnung
+    "status": "matched",                        // pending | matched | mismatch
+    "deviations": [],                           // z. B. [{ "type": "price", "item": "itm_e1", "expected": "6.20", "actual": "6.50" }]
+    "purchaseOrder": { "id": "po_3z8c5v", "number": "BE-2026-0450", "href": "/v1/purchaseOrders/po_3z8c5v" },
+    "goodsReceipts": [ { "id": "gr_1a2b", "number": "WE-2026-0210", "href": "/v1/goodsReceipts/gr_1a2b" } ]
+  },
+  "approval": {
+    "status": "approved",                       // pending | approved | rejected
+    "by": { "id": "usr_9k2f", "name": "B. Sauter", "href": "/v1/users/usr_9k2f" },
+    "at": "2026-07-17T09:00:00Z"
+  },
+
+  "payment": {
+    "method": { "id": "paym_sepa", "name": "Überweisung", "href": "/v1/paymentMethods/paym_sepa" },
+    "terms": { "dueDays": 45, "discountPercent": 3, "discountDays": 14 },
+    "dueDate": "2026-08-29",
+    "discountDate": "2026-07-29",
+    "status": "unpaid",
+    "payments": []
+  },
+
+  "files": [                                     // Original-Beleg (PDF/E-Mail/OCR-Quelle)
+    { "id": "fil_5t8u", "name": "AT-INV-20441.pdf", "downloadUrl": "/v1/files/fil_5t8u/download" }
+  ],
+
+  "documents": {
+    "purchaseOrder": { "id": "po_3z8c5v", "number": "BE-2026-0450", "href": "/v1/purchaseOrders/po_3z8c5v" },
+    "goodsReceipts": [ { "id": "gr_1a2b", "number": "WE-2026-0210", "href": "/v1/goodsReceipts/gr_1a2b" } ]
+  },
+  "actions": ["approve", "reject", "registerPayment", "schedulePayment"],
+  "note": null,
+  "customFields": {},
+  "createdAt": "2026-07-16T08:00:00Z",
+  "updatedAt": "2026-07-17T09:00:00Z"
+}</pre>
+
+  <h2 id="stamm"><span class="no">7</span>Stammdaten</h2>
+
+  <h3 id="customer">7.1 <code>customer</code> — Kunde</h3>
+  <span class="codehead">GET /v1/customers/cus_4n8p2q</span>
+  <pre class="code" data-json>{
+  "object": "customer",
+  "id": "cus_4n8p2q",
+  "number": "K-10023",
+  "status": "active",                          // active | archived
+  "type": "company",                           // company | person
+  "name": "Muster GmbH",
+
+  "email": "info@muster.de",
+  "phone": "+49 821 123456-0",
+  "website": "https://www.muster.de",
+  "vatId": "DE123456789",
+
+  "addresses": [
+    { "id": "adr_1", "type": "billing", "isDefault": true,
+      "name": "Muster GmbH", "street": "Fuggerstraße 11", "zip": "86150", "city": "Augsburg", "country": "DE" },
+    { "id": "adr_2", "type": "shipping", "isDefault": true,
+      "name": "Muster GmbH – Lager", "street": "Industriestraße 5", "zip": "86159", "city": "Augsburg", "country": "DE" }
+  ],
+  "contacts": [
+    { "id": "con_1", "name": "Erika Beispiel", "role": "Einkauf", "email": "e.beispiel@muster.de", "phone": "+49 821 123456-22" }
+  ],
+
+  "defaults": {                                 // fließen in neue Belege ein, dort überschreibbar
+    "currency": "EUR",
+    "language": "de",
+    "paymentMethod": { "id": "paym_inv", "name": "Rechnung", "href": "/v1/paymentMethods/paym_inv" },
+    "paymentTerms": { "dueDays": 30, "discountPercent": 2, "discountDays": 10 },
+    "shippingMethod": { "id": "ship_dhl", "name": "DHL Paket", "href": "/v1/shippingMethods/ship_dhl" },
+    "priceList": { "id": "prl_b2b", "name": "B2B Händler", "href": "/v1/priceLists/prl_b2b" },
+    "taxation": "domestic",
+    "partialShipping": "allowed"
+  },
+
+  "finance": {                                  // read-only, berechnet
+    "openAmount": { "amount": "1240.00", "currency": "EUR" },
+    "creditLimit": { "amount": "5000.00", "currency": "EUR" },
+    "overdueAmount": { "amount": "0.00", "currency": "EUR" },
+    "onHold": false,
+    "dunningBlocked": false
+  },
+
+  "channels": [                                 // Kundenkonten je Kanal (E-Commerce)
+    { "channel": { "id": "ch_shopify", "name": "Shopify DE", "href": "/v1/channels/ch_shopify" }, "externalId": "cust-7781" }
+  ],
+
+  "tags": ["b2b", "vip"],
+  "customFields": {},
+  "createdAt": "2024-03-02T10:00:00Z",
+  "updatedAt": "2026-07-01T08:15:00Z"
+}</pre>
+
+  <h3 id="supplier">7.2 <code>supplier</code> — Lieferant</h3>
+  <span class="codehead">GET /v1/suppliers/sup_3f8k1z</span>
+  <pre class="code" data-json>{
+  "object": "supplier",
+  "id": "sup_3f8k1z",
+  "number": "L-2001",
+  "status": "active",
+  "type": "company",
+  "name": "Alu Trading Ltd.",
+
+  "email": "orders@alutrading.example",
+  "phone": "+44 20 7946 0812",
+  "vatId": "GB123456789",
+
+  "addresses": [
+    { "id": "adr_9", "type": "billing", "isDefault": true, "name": "Alu Trading Ltd.", "street": "12 Commerce Rd", "zip": "E1 6AN", "city": "London", "country": "GB" }
+  ],
+  "contacts": [
+    { "id": "con_7", "name": "James Miller", "role": "Sales", "email": "j.miller@alutrading.example" }
+  ],
+
+  "defaults": {
+    "currency": "EUR",
+    "paymentMethod": { "id": "paym_sepa", "name": "Überweisung", "href": "/v1/paymentMethods/paym_sepa" },
+    "paymentTerms": { "dueDays": 45, "discountPercent": 3, "discountDays": 14 },
+    "deliveryDays": 14,                        // Standard-Wiederbeschaffungszeit
+    "minimumOrderValue": { "amount": "500.00", "currency": "EUR" }
+  },
+  "purchasing": {
+    "ourCustomerNumber": "CUST-88231",         // unsere Kundennummer beim Lieferanten
+    "confirmationRequired": true,
+    "sendOrdersVia": "email"                   // email | portal | edi
+  },
+  "finance": {
+    "openAmount": { "amount": "3689.00", "currency": "EUR" },
+    "creditorAccountNumber": "70201"
+  },
+
+  "tags": [],
+  "customFields": {},
+  "createdAt": "2023-11-12T09:00:00Z",
+  "updatedAt": "2026-07-14T12:00:00Z"
+}</pre>
+
+  <h3 id="product">7.3 <code>product</code> — Produkt</h3>
+  <p>Konsolidiert aus der heutigen v3-Read-API (PR API-710, ~100 Felder, 33 Includes). Die wichtigste Übersetzung: <strong>Flags → Enums</strong> (<code>kind</code>, <code>production.mode</code>, <code>status</code>, <code>tracking</code>) und die 16-Konten-Steuermatrix wird ein referenzierbares <code>TaxProfile</code>.</p>
+  <span class="codehead">GET /v1/products/prd_9x1v3b</span>
+  <pre class="code" data-json>{
+  "object": "product",
+  "id": "prd_9x1v3b",
+  "number": "SKU-100",
+  "status": "active",                          // active | inactive | archived
+  "statusReason": null,
+  "kind": "physical",                          // physical | service | digital | shippingCost | fee
+  "name": "Alu-Flasche 750 ml",
+  "description": "Trinkflasche aus Aluminium, 750 ml, silber.",
+  "unit": "piece",
+
+  "category": { "id": "cat_bottles", "name": "Flaschen", "href": "/v1/categories/cat_bottles" },
+  "project": null,
+  "tags": ["bottles"],
+
+  "identifiers": {
+    "ean": "4001234567890",
+    "manufacturerNumber": "ALB-750-S",
+    "hsCode": "76129080",
+    "countryOfOrigin": "DE",
+    "external": [
+      { "channel": { "id": "ch_shopify", "name": "Shopify DE", "href": "/v1/channels/ch_shopify" }, "id": "gid://shopify/Product/84512" }
+    ]
+  },
+  "manufacturer": { "name": "AluBottle Inc.", "website": "https://alubottle.example" },
+
+  "prices": {
+    "sale": { "amount": "12.90", "currency": "EUR" },
+    "purchase": { "amount": "6.20", "currency": "EUR", "source": "calculated" }   // manual | calculated
+  },
+  "tax": { "rate": "standard", "profile": null },
+
+  "logistics": {
+    "weight": { "value": 0.18, "unit": "kg" },
+    "netWeight": { "value": 0.15, "unit": "kg" },
+    "dimensions": { "length": 8, "width": 8, "height": 26, "unit": "cm" },
+    "minimumOrderQuantity": 1,
+    "minimumStockQuantity": 50,
+    "packagingUnits": [ { "unit": "carton", "quantity": 24, "ean": "4001234567906" } ]
+  },
+
+  "tracking": {
+    "stock": true,
+    "batches": true,
+    "serialNumbers": "none",                   // none | onReceipt | onDelivery
+    "bestBefore": true
+  },
+
+  "stock": {                                    // read-only
+    "available": 240, "reserved": 25, "incoming": 500,
+    "belowMinimum": false,
+    "byWarehouse": [
+      { "warehouse": { "id": "wh_main", "name": "Hauptlager", "href": "/v1/warehouses/wh_main" }, "available": 240, "reserved": 25 }
+    ]
+  },
+
+  "production": { "mode": "none", "hasBillOfMaterials": false },   // none | inHouse | external | justInTime
+
+  "documentDefaults": {                         // Verhalten in Belegen (Produkt-Defaults; Konditionen je Kunde → PriceList)
+    "hidePrice": false,
+    "noticeText": null,                         // Hinweis beim Erfassen
+    "requiresCustomerApproval": false
+  },
+
+  "variant": { "of": null, "attributes": {}, "isMatrix": false },
+
+  "suppliers": [
+    {
+      "supplier": { "id": "sup_3f8k1z", "number": "L-2001", "name": "Alu Trading Ltd.", "href": "/v1/suppliers/sup_3f8k1z" },
+      "supplierProductNumber": "AT-750-SLV",
+      "purchasePrice": { "amount": "6.20", "currency": "EUR" },
+      "deliveryDays": 14,
+      "isDefault": true
+    }
+  ],
+
+  "customFields": {},
+  "createdAt": "2025-01-10T09:00:00Z",
+  "updatedAt": "2026-07-12T16:40:00Z"
+}</pre>
+  <p class="dim">Includes: <code>texts</code> (Sprachen), <code>media</code>, <code>priceLists</code>, <code>shopCategories</code>, <code>batches / serialNumbers / bestBeforeDates</code>, <code>storageLocations</code>, <code>warehouseMinimums</code>, <code>reservations</code>, <code>bom.parts / bom.usedIn</code>, <code>workInstructions</code>, <code>calculation</code>, <code>channels</code>, <code>crossSelling</code>, <code>certificates / rawMaterials / properties</code>. Formeln, Provisionen, Funktionsprotokolle: Expert-Includes. <code>uuid</code> entfällt.</p>
+
+  <h3 id="channel">7.4 <code>channel</code> — Verkaufskanal <span class="badge new">E-Commerce-Kern</span></h3>
+  <span class="codehead">GET /v1/channels/ch_shopify</span>
+  <pre class="code" data-json>{
+  "object": "channel",
+  "id": "ch_shopify",
+  "name": "Shopify DE",
+  "status": "active",
+  "platform": "shopify",                       // shopify | shopware | amazon | ebay | otto | pos | direct | api
+  "defaults": {
+    "priceList": { "id": "prl_shop", "name": "Shop-Preise", "href": "/v1/priceLists/prl_shop" },
+    "warehouse": { "id": "wh_main", "name": "Hauptlager", "href": "/v1/warehouses/wh_main" },
+    "paymentMethod": { "id": "paym_paypal", "name": "PayPal", "href": "/v1/paymentMethods/paym_paypal" },
+    "project": null,
+    "autoFulfill": true                        // Bestellungen dieses Kanals laufen automatisch
+  },
+  "sync": {                                     // read-only Statusanzeige
+    "orders": { "lastRunAt": "2026-07-18T14:00:00Z", "status": "ok" },
+    "stock": { "lastRunAt": "2026-07-18T14:05:00Z", "status": "ok" }
+  },
+  "customFields": {},
+  "createdAt": "2025-05-01T08:00:00Z",
+  "updatedAt": "2026-07-18T14:05:00Z"
+}</pre>
+
+  <h3 id="pricelist">7.5 <code>priceList</code> — Preisliste</h3>
+  <span class="codehead">GET /v1/priceLists/prl_b2b</span>
+  <pre class="code" data-json>{
+  "object": "priceList",
+  "id": "prl_b2b",
+  "name": "B2B Händler",
+  "status": "active",
+  "currency": "EUR",
+  "validFrom": "2026-01-01",
+  "validUntil": null,
+  "entries": [
+    {
+      "id": "ple_1",
+      "product": { "id": "prd_9x1v3b", "number": "SKU-100", "name": "Alu-Flasche 750 ml", "href": "/v1/products/prd_9x1v3b" },
+      "tiers": [
+        { "minQuantity": 1,   "unitPrice": { "amount": "11.90", "currency": "EUR" } },
+        { "minQuantity": 50,  "unitPrice": { "amount": "9.90",  "currency": "EUR" } },
+        { "minQuantity": 500, "unitPrice": { "amount": "8.90",  "currency": "EUR" } }
+      ]
+    }
+  ]
+}</pre>
+  <p class="dim">Preisauflösung, deterministisch und am Item dokumentiert (<code>priceSource</code>): expliziter Preis am Item &gt; Preisliste des Kunden &gt; Preisliste des Kanals &gt; Basispreis am Produkt.</p>
+
+  <h3 id="config">7.6 Konfig-Objekte — bewusst klein</h3>
+  <span class="codehead">Warehouse · PaymentMethod · ShippingMethod · TaxProfile · Project · User · Category · ReturnReason</span>
+  <pre class="code" data-json>{
+  "warehouse":      { "object": "warehouse", "id": "wh_main", "name": "Hauptlager", "status": "active",
+                      "address": { "street": "Industriestraße 5", "zip": "86159", "city": "Augsburg", "country": "DE" },
+                      "locations": "?expand=locations" },
+  "paymentMethod":  { "object": "paymentMethod", "id": "paym_inv", "name": "Rechnung", "status": "active",
+                      "kind": "invoice",        // invoice | prepaid | directDebit | psp | cash
+                      "defaultTerms": { "dueDays": 30, "discountPercent": 2, "discountDays": 10 } },
+  "shippingMethod": { "object": "shippingMethod", "id": "ship_dhl", "name": "DHL Paket", "status": "active",
+                      "carrier": "dhl", "trackingUrlTemplate": "https://www.dhl.de/…/{trackingNumber}" },
+  "taxProfile":     { "object": "taxProfile", "id": "taxp_std", "name": "Standard DE",
+                      "accounts": { "revenueDomestic": "8400", "revenueEu": "8125", "revenueExport": "8120",
+                                    "expenseDomestic": "3400", "expenseEu": "3425", "expenseImport": "3559" } },
+  "project":        { "object": "project", "id": "prj_2k5m", "number": "P-2026-12", "name": "Messe-Ausstattung", "status": "active" },
+  "user":           { "object": "user", "id": "usr_9k2f", "name": "B. Sauter", "email": "b.sauter@firma.de", "status": "active" },
+  "category":       { "object": "category", "id": "cat_bottles", "name": "Flaschen", "parent": null },
+  "returnReason":   { "object": "returnReason", "id": "rsn_damaged", "name": "Beschädigt", "requiresPhoto": true },
+  "stockMovementReason": { "object": "stockMovementReason", "id": "smr_stocktaking", "name": "Inventurdifferenz",
+                      "appliesTo": ["correction"] }   // Katalog wie heutige stockMovementTypes, pflegbar
+}</pre>
+
+  <h2 id="exec"><span class="no">8</span>Ausführung — Ware &amp; Geld bewegen sich</h2>
+
+  <h3 id="shipment">8.1 <code>shipment</code> — Paket/Sendung</h3>
+  <span class="codehead">GET /v1/shipments/shp_6v2n8c</span>
+  <pre class="code" data-json>{
+  "object": "shipment",
+  "id": "shp_6v2n8c",
+  "status": "inTransit",                       // label → handedOver → inTransit → delivered | exception | returned
+  "carrier": "dhl",
+  "service": "paket",
+  "trackingNumber": "00340434161234567890",
+  "trackingUrl": "https://www.dhl.de/…/00340434161234567890",
+  "labelUrl": "/v1/shipments/shp_6v2n8c/label",
+  "weight": { "value": 2.1, "unit": "kg" },
+  "packages": [
+    { "id": "pkg_1", "sscc": "340123450000000018", "weight": { "value": 2.1, "unit": "kg" },
+      "dimensions": { "length": 40, "width": 30, "height": 30, "unit": "cm" } }
+  ],
+  "events": [                                   // read-only Carrier-Tracking
+    { "at": "2026-07-19T16:02:00Z", "status": "handedOver", "location": "Augsburg" },
+    { "at": "2026-07-20T04:11:00Z", "status": "inTransit", "location": "Nürnberg Hub" }
+  ],
+  "documents": {
+    "deliveryNote": { "id": "dn_2h6j4l", "number": "LS-2026-0733", "href": "/v1/deliveryNotes/dn_2h6j4l" }
+  },
+  "actions": ["cancelLabel"],
+  "createdAt": "2026-07-19T15:30:00Z",
+  "updatedAt": "2026-07-20T04:11:00Z"
+}</pre>
+
+  <h3 id="payment">8.2 <code>payment</code> — Zahlung (n:m)</h3>
+  <span class="codehead">GET /v1/payments/pay_3c7x1f</span>
+  <pre class="code" data-json>{
+  "object": "payment",
+  "id": "pay_3c7x1f",
+  "number": "Z-2026-0451",
+  "direction": "incoming",                     // incoming (Kunde zahlt) | outgoing (wir zahlen Lieferant)
+  "date": "2026-07-20",
+  "amount": { "amount": "245.83", "currency": "EUR" },
+  "method": { "id": "paym_sepa", "name": "Überweisung", "href": "/v1/paymentMethods/paym_sepa" },
+  "party": { "id": "cus_4n8p2q", "number": "K-10023", "name": "Muster GmbH", "href": "/v1/customers/cus_4n8p2q" },
+  "reference": "RE-2026-1042, RE-2026-1043",   // Verwendungszweck
+  "allocations": [                              // EIN Zahlungseingang → MEHRERE Rechnungen
+    { "invoice": { "id": "si_8m3t7k", "number": "RE-2026-1042", "href": "/v1/salesInvoices/si_8m3t7k" }, "amount": "145.83" },
+    { "invoice": { "id": "si_9p4u2l", "number": "RE-2026-1043", "href": "/v1/salesInvoices/si_9p4u2l" }, "amount": "100.00" }
+  ],
+  "unallocated": "0.00",
+  "createdAt": "2026-07-20T07:00:00Z",
+  "updatedAt": "2026-07-20T07:00:00Z"
+}</pre>
+
+  <h3 id="batch">8.3 <code>batch</code> &amp; <code>serialNumber</code> — rückverfolgbar</h3>
+  <span class="codehead">GET /v1/batches/bat_5w2r</span>
+  <pre class="code" data-json>{
+  "object": "batch",
+  "id": "bat_5w2r",
+  "number": "CH-2026-07",
+  "product": { "id": "prd_9x1v3b", "number": "SKU-100", "name": "Alu-Flasche 750 ml", "href": "/v1/products/prd_9x1v3b" },
+  "bestBefore": "2028-06-30",
+  "status": "released",                        // released | blocked
+  "stock": { "available": 120, "reserved": 10 },
+  "trace": {                                    // Rückverfolgung in beide Richtungen
+    "goodsReceipts": [ { "id": "gr_1a2b", "number": "WE-2026-0210", "href": "/v1/goodsReceipts/gr_1a2b" } ],
+    "deliveryNotes": [ { "id": "dn_2h6j4l", "number": "LS-2026-0733", "href": "/v1/deliveryNotes/dn_2h6j4l" } ]
+  }
+}</pre>
+  <p class="dim"><code>serialNumber</code> (<code>sn_</code>) ist strukturgleich: <code>number</code>, <code>product</code>, <code>status</code> (inStock | delivered | returned), <code>trace</code> — plus <code>customer</code>-Referenz nach Auslieferung (Garantiefälle!).</p>
+
+  <h3 id="stockmove">8.4 <code>stockMovement</code> — Lagerbewegung <span class="badge new">Audit-Kern</span></h3>
+  <span class="codehead">GET /v1/stockMovements/stm_9q1w2e</span>
+  <pre class="code" data-json>{
+  "object": "stockMovement",
+  "id": "stm_9q1w2e",
+  "number": "LB-2026-8812",
+  "type": "receipt",                           // receipt | issue | transfer | correction
+  "date": "2026-07-14T11:25:00Z",
+  "product": { "id": "prd_9x1v3b", "number": "SKU-100", "name": "Alu-Flasche 750 ml", "href": "/v1/products/prd_9x1v3b" },
+  "quantity": { "value": 500, "unit": "piece" },
+  "from": null,
+  "to": {
+    "warehouse": { "id": "wh_main", "name": "Hauptlager", "href": "/v1/warehouses/wh_main" },
+    "storageLocation": { "id": "loc_A-03-2", "name": "A-03-2", "href": "/v1/warehouses/wh_main/locations/loc_A-03-2" }
+  },
+  "batch": { "id": "bat_5w2r", "number": "CH-2026-07", "href": "/v1/batches/bat_5w2r" },
+  "source": {                                   // WER hat die Bewegung ausgelöst? Immer nachvollziehbar
+    "document": { "id": "gr_1a2b", "number": "WE-2026-0210", "href": "/v1/goodsReceipts/gr_1a2b" },
+    "user": { "id": "usr_9k2f", "name": "B. Sauter", "href": "/v1/users/usr_9k2f" },
+    "reason": null                              // Referenz auf stockMovementReason; bei type=correction Pflicht
+  },
+  "createdAt": "2026-07-14T11:25:00Z"
+}</pre>
+
+  <h4>Schreiben: Einlagern, Auslagern, Umlagern, Korrigieren — ein Endpoint, vier Typen</h4>
+  <p>Belege buchen automatisch (GoodsReceipt → receipt, DeliveryNote → issue). Für alles Manuelle gibt es <code>POST /v1/stockMovements</code> — dieselbe Struktur, die auch gelesen wird:</p>
+  <span class="codehead">POST /v1/stockMovements — Einlagern (receipt)</span>
+  <pre class="code" data-json>{
+  "type": "receipt",
+  "product": { "number": "SKU-100" },
+  "quantity": { "value": 50, "unit": "piece" },
+  "to": { "warehouse": { "id": "wh_main" }, "storageLocation": { "name": "A-03-2" } },
+  "batch": { "number": "CH-2026-07" },          // oder neu: { "new": { "number": "CH-2026-08", "bestBefore": "2028-09-30" } }
+  "serialNumbers": [],
+  "source": { "reason": { "id": "smr_found" }, "note": "Nachlieferung ohne Beleg" }
+}</pre>
+  <span class="codehead">POST /v1/stockMovements — Auslagern (issue)</span>
+  <pre class="code" data-json>{
+  "type": "issue",
+  "product": { "number": "SKU-100" },
+  "quantity": { "value": 3, "unit": "piece" },
+  "from": { "warehouse": { "id": "wh_main" }, "storageLocation": { "name": "A-03-2" } },
+  "batch": { "number": "CH-2026-07" },
+  "source": { "reason": { "id": "smr_damaged" }, "note": "Bruch beim Kommissionieren" }
+}</pre>
+  <span class="codehead">POST /v1/stockMovements — Umlagern (transfer) &amp; Inventur-Korrektur (correction)</span>
+  <pre class="code" data-json>{
+  "transfer": {
+    "type": "transfer",
+    "product": { "number": "SKU-100" },
+    "quantity": { "value": 100, "unit": "piece" },
+    "from": { "warehouse": { "id": "wh_main" },    "storageLocation": { "name": "A-03-2" } },
+    "to":   { "warehouse": { "id": "wh_main" },    "storageLocation": { "name": "B-01-4" } }
+  },
+  "correction": {
+    "type": "correction",
+    "product": { "number": "SKU-100" },
+    "setQuantityTo": { "value": 118, "unit": "piece" },   // absolut (Zählung) — Alternative zu quantity (Delta)
+    "at": { "warehouse": { "id": "wh_main" }, "storageLocation": { "name": "A-03-2" } },
+    "source": { "reason": { "id": "smr_stocktaking" }, "note": "Inventur 07/2026" }   // reason ist Pflicht
+  }
+}</pre>
+
+  <h3 id="location">8.5 <code>storageLocation</code> &amp; <code>stockLevel</code> — der Lagerplatz als Objekt</h3>
+  <p>Heute verstreut über v1-CRUD, v2-Items und <code>setTotalStock</code> — im Zielmodell ein Objekt mit Inhalt und eine einheitliche Bestands-Query:</p>
+  <span class="codehead">GET /v1/storageLocations/loc_A-03-2?expand=contents</span>
+  <pre class="code" data-json>{
+  "object": "storageLocation",
+  "id": "loc_A-03-2",
+  "name": "A-03-2",                            // Regal A, Reihe 03, Ebene 2 — frei benennbar
+  "status": "active",                          // active | blocked (gesperrt für Kommissionierung)
+  "warehouse": { "id": "wh_main", "name": "Hauptlager", "href": "/v1/warehouses/wh_main" },
+  "kind": "picking",                           // picking | bulk | inbound | returns | quarantine
+  "pickingOrder": 312,                          // Laufweg-Sortierung für Kommissionierlisten
+  "capacity": { "maxWeight": { "value": 150, "unit": "kg" }, "note": null },
+
+  "contents": [                                 // read-only — was liegt hier gerade?
+    {
+      "product": { "id": "prd_9x1v3b", "number": "SKU-100", "name": "Alu-Flasche 750 ml", "href": "/v1/products/prd_9x1v3b" },
+      "batch": { "id": "bat_5w2r", "number": "CH-2026-07", "href": "/v1/batches/bat_5w2r" },
+      "quantity": { "value": 118, "unit": "piece" },
+      "reserved": { "value": 10, "unit": "piece" }
+    }
+  ],
+
+  "customFields": {},
+  "createdAt": "2025-02-01T08:00:00Z",
+  "updatedAt": "2026-07-14T11:25:00Z"
+}</pre>
+  <span class="codehead">GET /v1/stockLevels — die eine Bestands-Query für alles</span>
+  <pre class="code" data-json>{
+  "beispiele": [
+    "?filter[product.number]=SKU-100                     → Bestand eines Produkts über alle Lager/Plätze",
+    "?filter[warehouse.id]=wh_main&filter[quantity][gt]=0 → alles, was im Hauptlager liegt",
+    "?filter[storageLocation.id]=loc_A-03-2              → Inhalt eines Platzes",
+    "?filter[batch.number]=CH-2026-07                    → wo liegt diese Charge? (Rückruf!)",
+    "?filter[product.stock.belowMinimum]=true            → Nachschub-Liste"
+  ],
+  "zeile": {
+    "object": "stockLevel",                    // read-only Projektion: Produkt × Platz × Charge
+    "product": { "id": "prd_9x1v3b", "number": "SKU-100", "name": "Alu-Flasche 750 ml", "href": "/v1/products/prd_9x1v3b" },
+    "warehouse": { "id": "wh_main", "name": "Hauptlager", "href": "/v1/warehouses/wh_main" },
+    "storageLocation": { "id": "loc_A-03-2", "name": "A-03-2", "href": "/v1/storageLocations/loc_A-03-2" },
+    "batch": { "id": "bat_5w2r", "number": "CH-2026-07", "href": "/v1/batches/bat_5w2r" },
+    "quantity": { "value": 118, "unit": "piece" },
+    "reserved": { "value": 10, "unit": "piece" },
+    "available": { "value": 108, "unit": "piece" }
+  }
+}</pre>
+  <p class="dim">CRUD: <code>POST/PATCH /v1/storageLocations</code> (Plätze anlegen/umbenennen/sperren), verschachtelt auch als <code>/v1/warehouses/{id}/locations</code> erreichbar. Bestände selbst ändern sich <em>ausschließlich</em> über stockMovements — nie per PATCH (Audit-Trail bleibt lückenlos). Ersetzt heutiges <code>setTotalStock</code> durch <code>correction + setQuantityTo</code>.</p>
+
+  <h3 id="picking">8.6 <code>pickingRun</code> — Kommissionierung <span class="badge new">Einzel · Multi-Order · Welle · Zone</span></h3>
+  <p>Das Bindeglied zwischen Auftrag und Lieferschein. Ein <code>pickingRun</code> bündelt Aufträge nach einer <strong>Strategie</strong>, erzeugt laufweg-sortierte <strong>Pick-Tasks</strong> für mobile Geräte und löst sich beim Abschluss in Lieferscheine + Lagerbewegungen auf. Behälter (<code>containers</code>) ordnen beim Multi-Order-Picking jede Entnahme dem richtigen Auftrag zu.</p>
+  <span class="codehead">POST /v1/pickingRuns — Welle anlegen (Kriterien statt Handarbeit)</span>
+  <pre class="code" data-json>{
+  "strategy": "wave",                          // single | multiOrder | wave | zone
+  "warehouse": { "id": "wh_main" },
+  "criteria": {                                 // welche Aufträge kommen in die Welle?
+    "channel": { "id": "ch_shopify" },
+    "shippingMethod": { "id": "ship_dhl" },
+    "orderedBefore": "2026-07-18T12:00:00Z",    // Cutoff für den 14-Uhr-DHL-Abhol-Slot
+    "onlyFullyAllocatable": true,               // nur Aufträge, die komplett bedienbar sind
+    "maxOrders": 40
+  },
+  "assignTo": [ { "id": "usr_2p7d" } ]
+}</pre>
+  <span class="codehead">GET /v1/pickingRuns/pkr_5f8w2n?expand=tasks</span>
+  <pre class="code" data-json>{
+  "object": "pickingRun",
+  "id": "pkr_5f8w2n",
+  "number": "KO-2026-0512",
+  "status": "inProgress",                      // draft → released → inProgress → picked → completed | cancelled
+  "strategy": "wave",
+  "warehouse": { "id": "wh_main", "name": "Hauptlager", "href": "/v1/warehouses/wh_main" },
+  "assignedTo": [ { "id": "usr_2p7d", "name": "A. Picker", "href": "/v1/users/usr_2p7d" } ],
+
+  "orders": [                                   // 40 Aufträge in dieser Welle
+    { "id": "so_7g2k9m", "number": "AB-2026-0815", "href": "/v1/salesOrders/so_7g2k9m" },
+    { "id": "so_8h3l1p", "number": "AB-2026-0816", "href": "/v1/salesOrders/so_8h3l1p" }
+  ],
+  "containers": [                               // 1 Behälter je Auftrag (Multi-Order/Welle)
+    { "id": "tote_12", "name": "Wanne 12", "barcode": "TOTE-000012",
+      "salesOrder": { "id": "so_7g2k9m", "number": "AB-2026-0815", "href": "/v1/salesOrders/so_7g2k9m" } },
+    { "id": "tote_13", "name": "Wanne 13", "barcode": "TOTE-000013",
+      "salesOrder": { "id": "so_8h3l1p", "number": "AB-2026-0816", "href": "/v1/salesOrders/so_8h3l1p" } }
+  ],
+
+  "tasks": [                                    // laufweg-sortiert (storageLocation.pickingOrder)
+    {
+      "object": "pickTask",
+      "id": "pkt_a1", "position": 1,
+      "status": "picked",                       // open → picked | short | skipped
+      "zone": "A",                              // für Zonenkommissionierung: Tasks je Zone filterbar
+      "storageLocation": { "id": "loc_A-03-2", "name": "A-03-2", "href": "/v1/storageLocations/loc_A-03-2" },
+      "product": { "id": "prd_9x1v3b", "number": "SKU-100", "name": "Alu-Flasche 750 ml", "href": "/v1/products/prd_9x1v3b" },
+      "batch": { "id": "bat_5w2r", "number": "CH-2026-07", "href": "/v1/batches/bat_5w2r" },
+      "quantity": { "value": 10, "unit": "piece" },
+      "container": { "id": "tote_12", "name": "Wanne 12" },
+      "for": { "orderItem": { "id": "itm_1a9f", "href": "/v1/salesOrders/so_7g2k9m/items/itm_1a9f" } },
+      "verification": { "scanLocation": true, "scanProduct": true, "scanContainer": true },   // was das MDE prüfen muss
+      "picked": {
+        "quantity": { "value": 10, "unit": "piece" },
+        "by": { "id": "usr_2p7d", "name": "A. Picker", "href": "/v1/users/usr_2p7d" },
+        "at": "2026-07-18T13:02:11Z",
+        "scans": ["LOC:A-03-2", "EAN:4001234567890", "TOTE-000012"]
+      },
+      "shortReason": null
+    },
+    {
+      "object": "pickTask",
+      "id": "pkt_a2", "position": 2,
+      "status": "short",                        // Fehlmenge — Platz war leer
+      "zone": "A",
+      "storageLocation": { "id": "loc_A-05-1", "name": "A-05-1", "href": "/v1/storageLocations/loc_A-05-1" },
+      "product": { "id": "prd_7w2q8r", "number": "SKU-210", "name": "Deckel schwarz", "href": "/v1/products/prd_7w2q8r" },
+      "quantity": { "value": 4, "unit": "piece" },
+      "container": { "id": "tote_13", "name": "Wanne 13" },
+      "for": { "orderItem": { "id": "itm_9z2x", "href": "/v1/salesOrders/so_8h3l1p/items/itm_9z2x" } },
+      "picked": { "quantity": { "value": 1, "unit": "piece" }, "by": { "id": "usr_2p7d", "name": "A. Picker", "href": "/v1/users/usr_2p7d" }, "at": "2026-07-18T13:07:40Z", "scans": [] },
+      "shortReason": { "id": "smr_empty", "name": "Platz leer (Differenz)" }
+    }
+  ],
+
+  "progress": { "tasks": 96, "picked": 61, "short": 1, "open": 34 },   // read-only, live
+
+  "documents": {
+    "deliveryNotes": []                         // gefüllt nach complete — je Auftrag/Behälter einer
+  },
+  "actions": ["assign", "pause", "complete", "cancel"],
+  "createdAt": "2026-07-18T12:05:00Z",
+  "updatedAt": "2026-07-18T13:07:40Z"
+}</pre>
+  <span class="codehead">Mobile Bestätigung: POST /v1/pickingRuns/pkr_5f8w2n/tasks/pkt_a1/pick</span>
+  <pre class="code" data-json>{
+  "quantity": { "value": 10, "unit": "piece" },
+  "scans": ["LOC:A-03-2", "EAN:4001234567890", "TOTE-000012"],   // Server validiert gegen verification
+  "batch": { "number": "CH-2026-07" }           // falls der Picker eine andere Charge greift: hier melden
+}</pre>
+  <ul class="tight">
+    <li><strong>Einzelkommissionierung:</strong> <code>strategy: "single"</code> — ein Auftrag, ein Läufer, kein Behälter-Zwang. <strong>Multi-Order:</strong> ein Läufer, N Behälter. <strong>Welle:</strong> Kriterien-basiert (Cutoff, Kanal, Versandart). <strong>Zone:</strong> Tasks tragen <code>zone</code>; das MDE lädt <code>?filter[tasks.zone]=A</code>, Behälter wandern von Zone zu Zone.</li>
+    <li><strong>Abschluss:</strong> <code>complete</code> erzeugt je Auftrag/Behälter den Lieferschein (Status <code>picking → shipped</code>-Flow), bucht die <code>issue</code>-StockMovements mit Task-Referenz als <code>source</code> und meldet Fehlmengen zurück an den Auftrag (<code>fulfillment.backordered</code>) — plus optional eine Inventur-Aufgabe für den leeren Platz.</li>
+    <li><strong>Mobile Pickliste = eine Query:</strong> <code>GET /v1/pickingRuns/pkr_…?expand=tasks&amp;filter[tasks.status]=open&amp;sort=tasks.position</code> — laufweg-sortiert, mit allen Scan-Anforderungen; offline-fähig, weil Bestätigungen idempotent je Task sind.</li>
+    <li><strong>Auswertbar:</strong> Picks/Stunde je User, Fehlmengen-Gründe, Wellen-Durchlaufzeit — alles normale Filter auf <code>pickTask</code>-Feldern (<code>picked.by</code>, <code>picked.at</code>, <code>shortReason</code>).</li>
+  </ul>
+
+  <h2 id="status"><span class="no">9</span>Steps &amp; Actions — das Bedienkonzept für Agenten</h2>
+  <p>Ein Agent ist ein blinder Sachbearbeiter: Er sieht keine Maske, keine ausgegrauten Buttons, keine Tooltips. Also muss die API selbst sagen, <em>was</em> geht, <em>wie</em> es aufgerufen wird und <em>warum</em> etwas gerade nicht geht. Zwei sauber getrennte Begriffe:</p>
+  <ul class="tight">
+    <li><strong>Step</strong> = Prozess-Schritt: ändert den <code>status</code> der Entity selbst (State-Machine). <code>POST /v1/salesOrders/{id}/steps/confirm</code>. Genau ein Statusübergang, deterministisch, festgehalten im Audit-Trail.</li>
+    <li><strong>Action</strong> = Operation: tut etwas — erzeugt Folgebelege, versendet, weist zu, druckt, bucht. <code>POST /v1/salesOrders/{id}/actions/createDeliveryNote</code>. Kann als <em>Nebenwirkung</em> andere Objekte (oder Neben-Status wie <code>payment.status</code>) verändern, nie den eigenen Haupt-Status.</li>
+  </ul>
+
+  <h3>Die fünf Agenten-Garantien</h3>
+  <span class="codehead">1 · Discovery: Was kann diese Instanz JETZT? — steht im Payload</span>
+  <pre class="code" data-json>{
+  "available": {
+    "steps": ["close", "cancel"],
+    "actions": ["createDeliveryNote", "createSalesInvoice", "createPickingRun", "addHold", "duplicate", "downloadPdf"]
+  }
+}</pre>
+  <span class="codehead">2 · Discovery: WIE rufe ich es auf? — GET /v1/salesOrders/$schema/steps+actions (statisch, cachebar)</span>
+  <pre class="code" data-json>{
+  "steps": {
+    "confirm": {
+      "description": "Bestätigt den Auftrag: reserviert Bestand, vergibt die Belegnummer.",
+      "from": ["draft"], "to": "confirmed",
+      "params": {},
+      "preconditions": ["items not empty", "customer.finance.onHold == false", "holds empty"]
+    }
+  },
+  "actions": {
+    "createDeliveryNote": {
+      "description": "Erzeugt einen Lieferschein für offene Mengen.",
+      "params": {
+        "items": { "type": "array", "optional": true, "note": "Teilmengen: [{orderItem, quantity}] — weglassen = alles Offene" },
+        "warehouse": { "type": "ref:warehouse", "optional": true }
+      },
+      "requires": { "status": ["confirmed"] },
+      "returns": "deliveryNote",
+      "scope": "deliveryNote:create"
+    }
+  }
+}</pre>
+  <span class="codehead">3 · Fehler sind Anweisungen: 409 mit maschinenlesbarer Abhilfe</span>
+  <pre class="code" data-json>{
+  "error": "precondition_failed",
+  "step": "confirm",
+  "reasons": [
+    {
+      "code": "hold_active",
+      "message": "Auftrag ist blockiert: Kreditlimit überschritten.",
+      "blocking": { "type": "creditLimit", "since": "2026-07-18T09:12:00Z" },
+      "resolution": { "action": "releaseHold", "requiresScope": "salesOrder:approve", "hint": "Kreditlimit-Freigabe durch Berechtigten nötig" }
+    }
+  ]
+}</pre>
+  <ul class="tight">
+    <li><strong>4 · Idempotenz &amp; Dry-Run:</strong> Jeder Step/Action-Call trägt einen <code>Idempotency-Key</code>-Header (Retry-sicher — Netzabbrüche erzeugen nie doppelte Lieferscheine). <code>?dryRun=true</code> validiert alle Preconditions und liefert das <em>voraussichtliche</em> Ergebnis, ohne zu buchen — damit können Agenten planen, bevor sie handeln.</li>
+    <li><strong>5 · Einheitliche Antwort:</strong> Jeder Step/Action antwortet mit dem aktualisierten Objekt (bzw. dem erzeugten Beleg) plus <code>"performed": {"step": "confirm", "by": "agent:copilot-1", "at": "…"}</code> — und derselbe Eintrag landet im Audit-Trail. Bulk: <code>POST /v1/salesOrders/steps/confirm</code> mit <code>{"ids": […]}</code> antwortet je ID mit Erfolg oder 409-Objekt.</li>
+  </ul>
+
+  <h3>Systematisch: Steps &amp; Actions je Entity</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Entity</th><th>Steps (Status-Kette)</th><th>Actions (Operationen)</th></tr></thead>
+    <tbody>
+      <tr><td><strong>quote</strong></td><td><code>draft →send→ sent →accept→ accepted | decline | expire(auto) | cancel</code></td><td>convertToSalesOrder, duplicate, downloadPdf, sendByEmail</td></tr>
+      <tr><td><strong>salesOrder</strong></td><td><code>draft →confirm→ confirmed →(auto)→ fulfilled →close→ closed | cancel</code></td><td>createDeliveryNote(items?), createSalesInvoice(items?), createPickingRun, addHold(type,reason), releaseHold(holdId), allocateStock, split(items), duplicate, downloadPdf, sendConfirmation</td></tr>
+      <tr><td><strong>deliveryNote</strong></td><td><code>draft →startPicking→ picking →(shipment)→ shipped →markDelivered→ delivered | cancel</code></td><td>createShipment(carrier,service), createReturn(items), createSalesInvoice, downloadPdf, printLabels</td></tr>
+      <tr><td><strong>salesInvoice</strong></td><td><code>draft →issue→ open →(payment)→ paid | cancel(→Storno-Beleg)</code> · issue = Festschreibung!</td><td>send(channel: email|eInvoice|peppol), registerPayment(amount,date), remind(→dunning.level+1 + Brief), createCreditNote(items?), writeOff(reason), downloadPdf, downloadEInvoice</td></tr>
+      <tr><td><strong>creditNote</strong></td><td><code>draft →issue→ open →(settlement)→ settled | cancel</code></td><td>send, registerRefund(amount,date), offsetAgainstInvoice(invoice)</td></tr>
+      <tr><td><strong>return</strong></td><td><code>requested →receive→ received →check→ checked →settle→ settled | cancel</code></td><td>sendReturnLabel(email), createCreditNote, createReplacementOrder, restock(items→stockMovements), downloadPdf</td></tr>
+      <tr><td><strong>purchaseOrder</strong></td><td><code>draft →send→ sent →recordConfirmation→ confirmed →(auto)→ received →close→ closed | cancel</code></td><td>createGoodsReceipt(items?), createPurchaseInvoice, requestConfirmation (Erinnerung), updateDeliveryDates, downloadPdf</td></tr>
+      <tr><td><strong>goodsReceipt</strong></td><td><code>draft →post→ posted | cancel</code> · post bucht Movements + aktualisiert EK</td><td>proposeStorageLocations (Einlager-Vorschläge), printProductLabels, printBatchLabels</td></tr>
+      <tr><td><strong>purchaseInvoice</strong></td><td><code>received →(auto)→ matched →approve→ approved →(payment)→ paid | reject</code></td><td>rematch, registerPayment, schedulePayment(date), attachFile</td></tr>
+      <tr><td><strong>pickingRun</strong></td><td><code>draft →release→ released →start→ inProgress →(tasks)→ picked →complete→ completed | cancel | pause/resume</code></td><td>assign(users), pick(task: qty,scans,batch), reportShort(task,reason), reprioritize, printPickList</td></tr>
+      <tr><td><strong>shipment</strong></td><td><code>label →(carrier-events)→ handedOver → inTransit → delivered | exception | returned</code></td><td>createLabel, cancelLabel, downloadLabel, refreshTracking</td></tr>
+      <tr><td><strong>payment</strong></td><td>— (unveränderlicher Datensatz, keine Steps)</td><td>allocate(invoice,amount), unallocate(allocationId), refund(amount)</td></tr>
+      <tr><td><strong>stockTake</strong></td><td><code>draft →startCounting→ counting →submit→ review →post→ posted | cancel</code></td><td>exportCountingList, recount(position), addPosition</td></tr>
+      <tr><td><strong>stockMovement</strong></td><td>— (append-only, keine Steps)</td><td>— (Erzeugung nur via POST bzw. durch Belege)</td></tr>
+      <tr><td><strong>batch / serialNumber</strong></td><td><code>released ↔block/release↔ blocked</code></td><td>traceReport (Rückverfolgungs-Bericht)</td></tr>
+      <tr><td><strong>product</strong></td><td><code>active ↔deactivate(reason)/activate↔ inactive →archive→ archived</code></td><td>adjustStock(→stockMovement), duplicate, recalculatePurchasePrice, syncToChannel(channel), mergeInto(product)</td></tr>
+      <tr><td><strong>customer / supplier</strong></td><td><code>active →archive→ archived | reactivate</code></td><td>setHold(reason)/releaseHold, mergeInto(duplicate), runCreditCheck, statement (Kontoauszug offene Posten)</td></tr>
+      <tr><td><strong>channel</strong></td><td><code>active ↔pause/resume↔ paused</code></td><td>syncOrders, syncStock, syncProducts, testConnection</td></tr>
+      <tr><td><strong>priceList</strong></td><td><code>active ↔deactivate/activate↔ inactive</code></td><td>duplicate(validFrom), bulkAdjust(percent)</td></tr>
+      <tr><td><strong>storageLocation</strong></td><td><code>active ↔block/release↔ blocked</code></td><td>printLabel, requestCount(→stockTake-Position)</td></tr>
+    </tbody>
+  </table></div>
+  <p class="dim">Regeln: Haupt-Status ändert nur ein Step, nie ein PATCH. Neben-Status (<code>payment.status</code>, <code>shipping.status</code>, <code>match.status</code>, <code>fulfillment</code>) sind berechnet und ändern sich als Nebenwirkung von Actions/anderen Objekten — mit <code>(auto)</code> markierte Übergänge ebenso. Ein „blinder“ Agent arbeitet damit vollständig über drei Fragen: <em>Was ist der Zustand?</em> (Payload) → <em>Was geht jetzt?</em> (<code>available</code>) → <em>Wie geht es?</em> (<code>$schema</code>) — und jeder Fehler sagt ihm, welche Action ihn entblockt.</p>
+
+  <h2 id="katalog"><span class="no">10</span>Entity-Katalog</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Objekt</th><th>Präfix</th><th>Status</th><th>Abschnitt</th></tr></thead>
+    <tbody>
+      <tr><td>Quote / SalesOrder / DeliveryNote / SalesInvoice / CreditNote / Return</td><td><code>quo_ so_ dn_ si_ cn_ ret_</code></td><td><span class="badge done">voll designt</span></td><td>5.1–5.6</td></tr>
+      <tr><td>PurchaseOrder / GoodsReceipt / PurchaseInvoice</td><td><code>po_ gr_ pi_</code></td><td><span class="badge done">voll designt</span></td><td>6.1–6.3</td></tr>
+      <tr><td>Customer / Supplier / Product / Channel / PriceList</td><td><code>cus_ sup_ prd_ ch_ prl_</code></td><td><span class="badge done">voll designt</span></td><td>7.1–7.5</td></tr>
+      <tr><td>Shipment / Payment / Batch / SerialNumber / StockMovement</td><td><code>shp_ pay_ bat_ sn_ stm_</code></td><td><span class="badge done">voll designt</span></td><td>8.1–8.4</td></tr>
+      <tr><td>StorageLocation / StockLevel</td><td><code>loc_</code> / (Projektion)</td><td><span class="badge done">voll designt</span></td><td>8.5 — Ein-/Aus-/Umlagern über stockMovements</td></tr>
+      <tr><td>PickingRun / PickTask / Container</td><td><code>pkr_ pkt_ tote_</code></td><td><span class="badge done">voll designt</span></td><td>8.6 — Einzel/Multi-Order/Welle/Zone, mobile Scans</td></tr>
+      <tr><td>Warehouse / PaymentMethod / ShippingMethod / TaxProfile / Project / User / Category / ReturnReason</td><td><code>wh_ paym_ ship_ taxp_ prj_ usr_ cat_ rsn_</code></td><td><span class="badge done">designt (kompakt)</span></td><td>7.6</td></tr>
+      <tr><td>StockTake (Inventur)</td><td><code>stk_</code></td><td><span class="badge done">voll designt</span></td><td>12.1 — GoBD-Kern</td></tr>
+      <tr><td>NumberRange / AuditLog / AccountingExport</td><td><code>nr_ evt? acc_</code></td><td><span class="badge sketch">designt (12.1)</span></td><td>Festschreibung, Lückenprotokoll, DATEV-Lauf</td></tr>
+      <tr><td>Payout (PSP-/Marktplatz-Abrechnung)</td><td><code>pot_</code></td><td><span class="badge sketch">designt (12.2)</span></td><td>Settlement-Reconciliation mit Gebühren/Chargebacks</td></tr>
+      <tr><td>Event / Webhook-Subscription</td><td><code>evt_ whk_</code></td><td><span class="badge sketch">designt (12.2)</span></td><td>Push für Headless-UIs, Integrationen &amp; Agenten</td></tr>
+      <tr><td>Letterhead (Briefkopf-Kontext)</td><td>—</td><td><span class="badge sketch">skizziert</span></td><td>als <code>?expand=letterhead</code> je Beleg (siehe Feldmatrix-Artefakt)</td></tr>
+      <tr><td>ProductionOrder / BlanketOrder / Company (Mandant)</td><td><code>prod_ — com_</code></td><td><span class="badge sketch">Phase 2</span></td><td>vorbereitet über kind-/Scope-Felder (12.3)</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2 id="feedback"><span class="no">11</span>Naming-Entscheidungen &amp; markierte Feedback-Punkte</h2>
+  <ul class="tight">
+    <li><strong>Invoice → salesInvoice, Order → salesOrder:</strong> Verkauf und Einkauf sind symmetrisch benannt (salesInvoice/purchaseInvoice, salesOrder/purchaseOrder). Kurze Präfixe: <code>si_ / pi_ / so_ / po_</code>.</li>
+    <li><strong>Produkt-„salesPolicies“ aufgeräumt (dein Hinweis):</strong> Rabattfähigkeit &amp; Skonto sind KEINE Produkteigenschaften mehr — Konditionen leben in <code>PriceList</code> (Kunde/Kanal ↔ Produkt). Am Produkt bleibt nur <code>documentDefaults</code> (hidePrice, noticeText, requiresCustomerApproval) — Dinge, die wirklich am Produkt selbst hängen. Bitte prüfen, ob dir die Grenze so passt.</li>
+    <li><strong>Gesamtsummen vervollständigt:</strong> <code>totals</code> enthält jetzt überall <code>itemsNet / shippingNet / net / taxes[] / gross</code> und bei Rechnungen zusätzlich <code>paid / outstanding</code>.</li>
+    <li><strong>Für die Zielgruppe ergänzt:</strong> <code>channel</code> an jedem Verkaufsbeleg + Channel-Objekt, <code>holds</code> mit Grund statt anonymer Ampeln, <code>fulfillmentPolicy</code> (auto/priority/partialShipping), <code>eInvoice</code>-Block (XRechnung/ZUGFeRD), <code>dunning</code>, Dreiwege-<code>match</code> an der Eingangsrechnung, <code>stockMovement</code> als Audit-Trail, SN mit Kunden-Referenz für Garantiefälle.</li>
+    <li><strong>Nächster Schritt (auf Zuruf):</strong> Formale Spezifikation + Feld-für-Feld-Mapping Alt-API → neues Modell für den virtuellen Kern.</li>
+  </ul>
+
+  <h2 id="review"><span class="no">12</span>Kritischer Review — was den Zielkunden jetzt noch fehlt</h2>
+  <p>Prüfstand: ein Shopify-Multi-Channel-Händler und ein reiner B2B-Händler, 5–200 Mio. €. Beide müssen ihr Geschäft <em>vollständig und auditierfähig</em> wegschreiben können. Drei Lückenfelder bleiben — sortiert nach „ohne das scheitert der Jahresabschluss“ bis „ohne das nervt der Alltag“.</p>
+
+  <h3 id="gobd">12.1 Audit &amp; GoBD — das Fundament der Auditierfähigkeit</h3>
+  <ul class="tight">
+    <li><strong>Unveränderbarkeit (Festschreibung):</strong> Jeder gebuchte Beleg bekommt <code>"fixedAt": "2026-07-19T10:00:01Z"</code>. Ab dann: kein PATCH mehr — Änderungen nur über die Storno-Kette (<code>cancel</code> erzeugt Storno-Beleg, Korrektur = neuer Beleg). Rechnungen werden mit <code>send</code>/<code>open</code> automatisch festgeschrieben. Das fehlte im Modell komplett und ist die GoBD-Kernanforderung.</li>
+    <li><strong>Lückenlose Nummernkreise als Objekt:</strong> <code>numberRange</code> (<code>nr_</code>) je Belegtyp mit Format, Zähler und <em>Lückenprotokoll</em> — der Prüfer fragt zuerst nach fehlenden Rechnungsnummern.</li>
+    <li><strong>Audit-Trail überall:</strong> Jedes Objekt hat <code>?expand=activity</code>: wer (User/API-Key/Agent!), wann, welches Feld, alt → neu. Gerade wenn Agenten schreiben, ist „welcher Akteur hat das geändert“ Pflicht.</li>
+    <li><strong>Beleg-Archiv:</strong> Jeder Beleg trägt <code>files[]</code> + <code>pdf</code> (revisionssicher versioniert: jede gedruckte/gesendete Version bleibt abrufbar) — bisher hatte nur die PurchaseInvoice files.</li>
+    <li><strong>Bewertung am Movement:</strong> <code>stockMovement</code> bekommt read-only <code>unitCost</code>/<code>totalCost</code> (EK zum Buchungszeitpunkt) — sonst ist keine Bestandsbewertung (HGB) und keine Rohertragsrechnung je Kanal möglich.</li>
+    <li><strong>Inventur als eigener Prozess</strong> (nicht nur Korrektur-Movements):</li>
+  </ul>
+  <span class="codehead">GET /v1/stockTakes/stk_2026main — Inventur, auditierfähig</span>
+  <pre class="code" data-json>{
+  "object": "stockTake",
+  "id": "stk_2026main",
+  "number": "INV-2026-01",
+  "status": "posted",                          // draft → counting → review → posted | cancelled
+  "warehouse": { "id": "wh_main", "name": "Hauptlager", "href": "/v1/warehouses/wh_main" },
+  "scope": { "storageLocations": "all", "products": "all" },
+  "dates": { "keyDate": "2026-12-31", "started": "2026-12-30", "posted": "2027-01-02" },
+  "positions": [
+    {
+      "id": "stp_1", "storageLocation": { "id": "loc_A-03-2", "name": "A-03-2", "href": "/v1/storageLocations/loc_A-03-2" },
+      "product": { "id": "prd_9x1v3b", "number": "SKU-100", "name": "Alu-Flasche 750 ml", "href": "/v1/products/prd_9x1v3b" },
+      "batch": { "id": "bat_5w2r", "number": "CH-2026-07", "href": "/v1/batches/bat_5w2r" },
+      "expected": { "value": 120, "unit": "piece" },
+      "counted": { "value": 118, "unit": "piece" },
+      "countedBy": { "id": "usr_9k2f", "name": "B. Sauter", "href": "/v1/users/usr_9k2f" },
+      "difference": { "value": -2, "unit": "piece" },
+      "differenceValue": { "amount": "-12.40", "currency": "EUR" }
+    }
+  ],
+  "totals": { "positions": 1842, "differences": 37, "differenceValue": { "amount": "-486.20", "currency": "EUR" } },
+  "documents": { "stockMovements": [ { "id": "stm_7h2j", "number": "LB-2027-0001", "href": "/v1/stockMovements/stm_7h2j" } ] },
+  "actions": ["exportCountingList"]
+}</pre>
+  <ul class="tight">
+    <li><strong>FiBu-Übergabe:</strong> <code>accountingExport</code> (<code>acc_</code>): Exportlauf (DATEV &amp; Co.) über einen Zeitraum, markiert Belege als exportiert (<code>exportedAt</code> — zweite Schreibsperre), mit Konten aus <code>taxProfile</code> + Debitor/Kreditor aus Customer/Supplier. Ohne diesen Lauf ist das ERP für 5–200 M€ nicht abschlussfähig.</li>
+  </ul>
+
+  <h3 id="multichannel">12.2 Multi-Channel — was der Shopify-Händler sofort vermisst</h3>
+  <ul class="tight">
+    <li><strong>Beleg-Rabatte &amp; Gutscheine:</strong> Shop-Bestellungen kommen mit Discount-Codes. Der SalesOrder bekommt einen <code>discounts</code>-Block (Kopfebene, anteilig auf Positionen verteilt für die Steuer):</li>
+  </ul>
+  <span class="codehead">salesOrder.discounts — Kopfrabatte/Gutscheine</span>
+  <pre class="code" data-json>{
+  "discounts": [
+    { "kind": "voucher", "code": "SOMMER10", "description": "10 % Sommeraktion",
+      "amount": { "amount": "12.75", "currency": "EUR" }, "percent": 10 }
+  ],
+  "totals": { "itemsNet": "127.45", "discountNet": "-12.75", "shippingNet": "4.90", "net": "119.60", "…": "…" }
+}</pre>
+  <ul class="tight">
+    <li><strong>PSP-/Marktplatz-Abrechnung (Payout):</strong> Der größte Abstimm-Schmerz im Multi-Channel. Neues Objekt <code>payout</code> (<code>pot_</code>): eine Auszahlung von Shopify Payments/Amazon/PayPal mit Positionen (Zahlung, Gebühr, Chargeback, Erstattung), die auf <code>payments</code>/<code>salesInvoices</code> referenzieren. <code>fees</code> außerdem direkt am <code>payment</code>. Damit ist „Auszahlung 4.812,33 € — welche Bestellungen sind das und was hat der Kanal gekostet?“ eine einzige Query.</li>
+    <li><strong>OSS-taugliche Steuern:</strong> <code>taxRate: "standard"</code> ist DE-zentrisch. Zielform am Item: <code>"tax": { "category": "standard", "country": "FR", "percent": 20 }</code> — bei <code>taxation: euOss</code> löst der Server den Zielland-Satz auf. Ohne das ist EU-B2C ab 10 T€ falsch.</li>
+    <li><strong>Externe Läger (FBA &amp; 3PL):</strong> <code>warehouse.kind: "internal" | "external" | "fba" | "consignment"</code> + Channel-Verknüpfung; Bestände externer Läger kommen per Sync und sind als <code>stockLevels</code> normal filterbar, aber nicht direkt buchbar.</li>
+    <li><strong>Events &amp; Webhooks:</strong> Headless + Agenten brauchen Push: <code>/v1/events</code> (Stream, <code>evt_</code>, z. B. <code>salesOrder.created</code>, <code>shipment.delivered</code>, <code>payment.allocated</code>) + Webhook-Subscriptions. Jedes Event trägt das Referenz-Objekt — Integrationen ohne Polling.</li>
+  </ul>
+
+  <h3 id="b2b">12.3 B2B — was dem klassischen Großhändler fehlt</h3>
+  <ul class="tight">
+    <li><strong>Kundenhierarchie &amp; Zentralregulierung:</strong> <code>customer.parent</code> (Filiale → Zentrale) und <code>customer.billTo</code> (Rechnung geht an Verband/Zentrale, Lieferung an Mitglied) — Verbandsgeschäft ist im deutschen Großhandel Standard.</li>
+    <li><strong>Verfügbarkeit &amp; Rückstand (ATP light):</strong> <code>salesOrderItem.fulfillment</code> bekommt <code>allocated</code> (reserviert) und <code>expectedDate</code> (aus eingehenden Bestellungen berechnet) — die B2B-Frage „wann kommt der Rest?“ beantwortet dann der Payload. Rückstands-Sicht: <code>?filter[items.fulfillment.backordered][gt]=0</code>.</li>
+    <li><strong>Rahmenaufträge/Abrufe (blanket orders):</strong> Phase 2, aber vorgemerkt: <code>salesOrder.kind: "standard" | "blanket"</code> + Abruf-Orders mit <code>blanketOrder</code>-Referenz.</li>
+    <li><strong>Dropshipping (Streckengeschäft):</strong> <code>purchaseOrder.dropship: { "salesOrder": ref, "deliveryAddress": Kundenadresse }</code> — der Lieferant liefert direkt an den Endkunden; DeliveryNote/Tracking laufen trotzdem über unser Modell.</li>
+    <li><strong>Mehrere Firmen (Mandanten):</strong> ab ~50 M€ fast immer mehrere Legal Entities. Vorschlag: <code>company</code>-Scope (<code>com_</code>) an jedem Beleg + getrennte Nummernkreise/TaxProfiles je Company — Phase 2, aber die IDs/Struktur sind darauf vorbereitet.</li>
+  </ul>
+
+  <div class="callout">
+    <p><strong>Priorisierung aus Berater-Sicht:</strong> (1) GoBD-Block (Festschreibung, Nummernkreise, Audit-Trail, Beleg-Archiv, Movement-Bewertung, Inventur, FiBu-Export) — ohne ihn ist das System nicht abschlussfähig. (2) Payout-Reconciliation + Beleg-Rabatte + OSS-Steuern — ohne sie scheitert der Multi-Channel-Alltag. (3) Kundenhierarchie + ATP/Rückstand — ohne sie kauft der B2B-Händler nicht. Alles andere (Blanket Orders, Multi-Company, Dropship) ist sauber vorbereitbar und kann in Phase 2.</p>
+  </div>
+
+  <h2 id="anhang"><span class="no">A</span>Anhang: Der Mapping-Layer — neues Modell auf heutiger Xentral-API</h2>
+  <p>Der „virtuelle Kern“: ein eigenständiger Zwischenlayer, der nach außen ausschließlich das neue Modell spricht (inkl. aller Garantien aus Abschnitt 9) und intern die heutige Xentral-API (v3 + v1/v2-Reste) bedient. Grundlage: die vollständige Feldmatrix-Analyse dieser Session.</p>
+
+  <h3 id="arch">A.1 Architektur</h3>
+  <div class="mermaidwrap">
+<pre class="mermaid">
+flowchart LR
+  A[Agent / Headless-UI] -->|neues Modell| L[Mapping-Layer]
+  L --> RC[Read-Composer<br/>Fan-in + expand]
+  L --> WO[Write-Orchestrator<br/>1 Call → n Alt-Calls]
+  L --> GE[Guarantee-Engine<br/>Idempotenz · dryRun · 409-Remediation]
+  L --> IDM[(ID-Map + Cache<br/>so_… ↔ 4711)]
+  RC --> X3[Xentral v3<br/>Belege · Products]
+  WO --> X3
+  RC --> X1[Xentral v1/v2<br/>Lager · Shipments · Inventur]
+  WO --> X1
+  L --> DS[Delta-Sync<br/>updatedAt-Polling]
+  DS --> X3
+</pre>
+  </div>
+  <ul class="tight">
+    <li><strong>ID-Map:</strong> Neue IDs sind deterministisch: <code>so_</code> + Kodierung der numerischen Alt-ID (kein Lookup nötig), plus persistente Map für Objekte, die im Layer entstehen (pkr_, pay_ …). <code>number</code>-Lookups gehen direkt gegen Alt-Filter.</li>
+    <li><strong>Read-Composer:</strong> Baut einen neuen Payload aus mehreren Alt-Quellen (Beleg + Includes + Nachlade-GETs für Referenz-Belegnummern) und cached aufgelöste Referenzen (<code>{id, number, name}</code>) aggressiv — Invalidierung über <code>updatedAt</code>-Polling.</li>
+    <li><strong>Guarantee-Engine:</strong> Was das Alt-System nicht bietet, erzwingt der Layer selbst: Idempotency-Keys (eigener Store), <code>dryRun</code> (Preconditions lokal prüfen), 409-Remediation (Alt-Fehlertexte → maschinenlesbare Codes), Status-Mapping (Alt-Status → neue Ketten), <em>keine versteckten Listen-Defaults</em> (Layer setzt den status-Filter im Alt-System immer explizit auf „alle“!).</li>
+    <li><strong>Berechnungs-Schicht:</strong> Steuerbetrag je Satz, <code>outstanding</code>, <code>fulfillment</code>-Zähler und Zwischensummen rechnet der Layer aus den lineItems — mit dokumentierter Rundungsregel (siehe A.4).</li>
+  </ul>
+
+  <h3 id="maptable">A.2 Mapping je Entity — Quelle lesen / schreiben</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Neues Objekt</th><th>Lesen aus</th><th>Schreiben über</th><th>Deckung</th></tr></thead>
+    <tbody>
+      <tr><td><strong>salesOrder</strong></td><td><code>GET /v3/salesOrders(+includes)</code>; Belegnummern der Referenzen per Nachlade-GET; Ampeln → <code>holds</code>; Status-Map: released→confirmed, sent→confirmed …</td><td><code>POST/PATCH /v3/salesOrders</code> (Beta) + Actions (release→confirm, cancel …)</td><td><span class="badge sketch">Lesen gut · Schreiben dünn</span> — Termine, shippingMethod, Flags, references.* erst nach Task-Liste schreibbar</td></tr>
+      <tr><td><strong>quote</strong></td><td><code>/v3/offers</code> — deckt fast alles (validUntil, customerReference, desiredDelivery)</td><td><code>POST/PATCH /v3/offers</code> + Actions</td><td><span class="badge done">gut</span> — isOptional je Item fehlt</td></tr>
+      <tr><td><strong>salesInvoice</strong></td><td><code>/v3/invoices</code> inkl. dunning*, paymentStatus; <code>outstanding</code> = berechnet (soll − ist via dunningManualSettings nur teilweise)</td><td><code>POST/PATCH /v3/invoices</code> (inkl. documentNumber-Override!) + Actions release/send</td><td><span class="badge sketch">gut · eInvoice/Storno-Kette offen</span></td></tr>
+      <tr><td><strong>creditNote / return</strong></td><td><code>/v3/creditNotes</code>, <code>/v3/returnOrders</code> (progress→status-Map)</td><td>v3 POST/PATCH + Actions; Return-createFromDeliveryNote ✓</td><td><span class="badge done">gut</span> — settlement/refund-Status offen</td></tr>
+      <tr><td><strong>deliveryNote</strong></td><td><code>/v3/deliveryNotes</code> + <code>GET /v1/deliveryNotes/{id}/shipments</code> (Tracking!)</td><td>v3 POST/PATCH + Actions; Label: <code>POST /v1/shipments</code> + createLabel</td><td><span class="badge sketch">gut · SN/Charge je Position nur lesend via Umwege</span></td></tr>
+      <tr><td><strong>purchaseOrder</strong></td><td><code>/v3/purchaseOrders</code> (confirmation-Felder ✓)</td><td>v3 (Beta) — Bestätigungsfelder/AB per API erst nach Task-Liste</td><td><span class="badge sketch">Lesen gut · Schreiben dünn</span></td></tr>
+      <tr><td><strong>goodsReceipt</strong></td><td><code>GET /v1/goodsReceipts/{id}</code> — <em>kein List-Endpoint!</em></td><td><code>POST /v1/goodsReceipts</code> (auch via PO/Return-Action)</td><td><span class="badge sketch">create/view ja · list/storno offen</span></td></tr>
+      <tr><td><strong>purchaseInvoice</strong></td><td>Verbindlichkeiten: <code>GET /v1/liabilities</code> + SupplierInvoice-File-Endpoints</td><td>teils v1; approve/match: nur Legacy-intern</td><td><span class="badge new">lückig</span> — 3-Wege-Match nachbauen</td></tr>
+      <tr><td><strong>product</strong></td><td><code>/v3/products</code> (PR API-710: ~100 Felder + 33 Includes) — Flag→Enum-Übersetzung im Layer</td><td><code>/v2/products</code> (create/update) + v2 purchasePrices</td><td><span class="badge done">Lesen stark</span> · Schreiben v2-Feldabgleich nötig</td></tr>
+      <tr><td><strong>customer / supplier</strong></td><td>v1 customers/suppliers + Ansprechpartner/Lieferadressen-Endpoints; finance.openAmount aus offenen Rechnungen berechnet</td><td>v1 create/update</td><td><span class="badge sketch">ok</span> — creditLimit/onHold-Write prüfen</td></tr>
+      <tr><td><strong>priceList</strong></td><td><code>/v1/salesPrices</code> (list) + v2 purchasePrices</td><td>salesPrice-Write nicht gefunden → v1 prüfen</td><td><span class="badge new">halb</span></td></tr>
+      <tr><td><strong>channel</strong></td><td>SalesChannelConfiguration-Endpoints + Shopimporter-Settings</td><td>teils</td><td><span class="badge new">halb</span> — sync-Status offen</td></tr>
+      <tr><td><strong>warehouse / storageLocation / stockLevel</strong></td><td>v1 storageLocations + <code>/v2/…/items</code> + <code>/v1/products/{id}/stocks|storageLocations</code> (Fan-in!)</td><td>v1 CRUD; Korrektur: <code>PATCH /storageLocations/setTotalStock</code></td><td><span class="badge sketch">ok</span> — stockLevel = Layer-Projektion</td></tr>
+      <tr><td><strong>stockMovement</strong></td><td><em>kein generischer Read gefunden</em> (nur stockMovementTypes); Lagerprotokoll ist Legacy-intern</td><td>einlagern/auslagern nur via setTotalStock/Belege</td><td><span class="badge new">größte Lücke</span></td></tr>
+      <tr><td><strong>batch / serialNumber</strong></td><td>v3 product-Includes (batches, serialNumbers, bestBeforeDates)</td><td>—</td><td><span class="badge new">read-only, trace fehlt</span></td></tr>
+      <tr><td><strong>pickingRun</strong></td><td>v1 <code>GET /pickLists(+/{id})</code> + <code>mobilePickingTotes</code> (Feature-Flag Mobile-Picking)</td><td>Actions <code>start</code>/<code>complete</code>, Totes assign/unassign — <em>kein Create per Kriterien</em></td><td><span class="badge sketch">gut lesbar · Anlegen fehlt</span></td></tr>
+      <tr><td><strong>stockTake</strong></td><td>v1 inventoryRuns (+ Zähllisten-Reports, storageLocation-Positionen) — gute Basis!</td><td>v1 inventory-Endpoints</td><td><span class="badge sketch">ok</span></td></tr>
+      <tr><td><strong>payment</strong></td><td><code>GET /paymentTransactions/{id}</code> + PSP-Transactions (<code>GET+POST /v1/paymentServiceProviders/{id}/transactions</code>) + <code>matchTransactions</code></td><td><code>PATCH …/status</code></td><td><span class="badge sketch">teils — LIST + allocations fehlen</span></td></tr>
+      <tr><td><strong>payout</strong></td><td>PSP-Transactions als Rohdaten</td><td>—</td><td><span class="badge new">Aggregation fehlt</span></td></tr>
+      <tr><td><strong>events / webhooks</strong></td><td><code>/webhooks</code> CRUD + <code>/webhookEventTypes</code> — vorhanden!</td><td>v1</td><td><span class="badge done">gut</span> — EventType-Abdeckung prüfen</td></tr>
+      <tr><td><strong>accountingExport</strong></td><td>DATEV CSV/XML-Export + Download-Status (v1) — vorhanden!</td><td>POST-Exportläufe</td><td><span class="badge done">gut</span></td></tr>
+      <tr><td><strong>shipment</strong></td><td><code>/v1/shipments</code> + je Lieferschein</td><td><code>POST /v1/shipments</code>, createLabel</td><td><span class="badge done">gut</span></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 id="orchestrierung">A.3 Schreib-Orchestrierung — ein neuer Call, n Alt-Calls</h3>
+  <span class="codehead">Beispiel: POST /v1/salesOrders (neues Modell) → Orchestrierung</span>
+  <pre class="code" data-json>{
+  "schritte": [
+    "1. dryRun: Kunde auflösen (v1 customers?number=…), Produkte auflösen (v3 products?filter[number]=…), Preise bestimmen",
+    "2. POST /api/v3/salesOrders  — Kopf + lineItems (nur die dort schreibbaren Felder)",
+    "3. Felder außerhalb des v3-Create im Request → 409 mit Feldliste (KEIN Overlay — Beschluss: keine eigene Persistenz; die Lücke bleibt blau sichtbar, siehe A.5)",
+    "4. Bei status=confirmed gewünscht: PATCH …/actions/release",
+    "5. Antwort komponieren: v3-GET + Overlay + berechnete Blöcke → neuer Payload",
+    "6. Idempotency-Key → Schritt 2–4 werden bei Retry übersprungen (Layer-Store)"
+  ],
+  "rollback": "Scheitert Schritt 4, bleibt der Beleg als draft liegen und die 409-Antwort nennt den Alt-Fehler als resolution-Hinweis — keine halben Zustände nach außen."
+}</pre>
+
+  <h3 id="offen">A.4 Die Aufgabenliste für die Xentral-Entwickler — final verifiziert (18.07.2026, routes/api.php + routes/v3.php)</h3>
+  <div class="callout">
+    <p><strong>Bereits vorhanden — NICHT bauen</strong> (frühere Annahmen korrigiert): PickList-Ausführung
+    (<code>GET /pickLists</code>, start/complete, mergedLabels, mobilePickingTotes), PaymentTransactions
+    (view + status je ID), PSP-Transactions (list+create), incomingPayments/matchTransactions,
+    <strong>Webhooks komplett</strong> (CRUD + eventTypes), <strong>DATEV-Export</strong> (CSV/XML + Status),
+    eInvoice-XML-Daten (<code>/v3/einvoice/invoices/{id}/xmlData</code>), Shipments, Inventur (inventoryRuns).</p>
+  </div>
+  <h4>Ganz fehlend — 9 neue APIs bauen</h4>
+  <ul class="tight">
+    <li><strong>1 · StockMovements</strong> lesen + generisch buchen (heute nur <code>setTotalStock</code> + implizite Beleg-Buchungen): <code>GET+POST /v3/stockMovements</code> mit type receipt|issue|transfer|correction, from/to, batch/SN, source, unitCost.</li>
+    <li><strong>2 · Batches/Seriennummern/MHD</strong> als eigene Ressourcen + Trace (heute nur Product-Includes lesend, Pflege nur interne Web-Routen): <code>GET /v3/batches|serialNumbers (+/{id}/trace)</code> + Schreib-Bezug in DN-/WE-Items.</li>
+    <li><strong>3 · Nummernkreise</strong> lesen + Lückenprotokoll: <code>GET /v3/numberRanges (+/gaps)</code>.</li>
+    <li><strong>4 · Festschreibung + Storno-Gegenbeleg</strong> (GoBD): <code>fixedAt</code> + PATCH-Sperre; cancel erzeugt Gegenbeleg mit Rückreferenz.</li>
+    <li><strong>5 · Globaler AuditLog</strong> (heute nur activity je Beleg): <code>GET /v3/auditLog?filter[object|actor|period]</code>, Akteur inkl. API-Key/Agent.</li>
+    <li><strong>6 · Beleg-PDF-Versionsarchiv</strong>: <code>GET /v3/{beleg}/{id}/pdfVersions</code> — jede gesendete Version unveränderlich abrufbar.</li>
+    <li><strong>7 · Preislisten/Verkaufspreise schreiben</strong> (nur <code>GET /v1/salesPrices</code> gefunden): <code>GET+POST+PATCH /v3/priceLists(+entries mit Staffeln)</code>.</li>
+    <li><strong>8 · Customer-Finance</strong>: creditLimit/onHold schreibbar + <code>GET /v3/customers/{id}/openItems</code>.</li>
+    <li><strong>9 · Letterhead-Kontext</strong>: <code>?expand=letterhead</code> auf allen Beleg-GETs (Beispiel-Payload: Kapitel „include=letterhead“ / Feldmatrix-Artefakt).</li>
+  </ul>
+  <h4>Nur ergänzen — 7 Erweiterungen bestehender APIs</h4>
+  <ul class="tight">
+    <li><strong>10 · PaymentTransactions:</strong> LIST/Filter-Endpoint + allocations (Zuordnung Zahlung↔Rechnung lesen/schreiben).</li>
+    <li><strong>11 · PickLists:</strong> Anlegen per Kriterien (Welle: Kanal, Versandart, Cutoff) + Task-Level-Pick-Bestätigung mit Menge/Scans.</li>
+    <li><strong>12 · eInvoice:</strong> fertiges ZUGFeRD/XRechnung-Artefakt + Zustell-Status (XML-Rohdaten existieren).</li>
+    <li><strong>13 · Payout:</strong> Aggregation je Auszahlung (Gebühren, Chargebacks, Erstattungen) über den PSP-Transaction-Rohdaten.</li>
+    <li><strong>14 · GoodsReceipt:</strong> List-Endpoint + Storno (create/view existieren).</li>
+    <li><strong>15 · PurchaseInvoice:</strong> vollwertiges CRUD + approve/reject + 3-Wege-Match (heute nur liabilities-List + File-Endpoints).</li>
+    <li><strong>16 · Webhooks:</strong> EventType-Abdeckung prüfen/ergänzen (Beleg-Statuswechsel, Zahlungseingang, Lagerbewegung).</li>
+  </ul>
+  <p class="dim">Dazu (niedrig): SalesChannel-Sync-Status; StorageLocation-Inhalte in v3 vereinheitlichen (funktioniert heute via v1+v2-Fan-in). Maschinenlesbar: <code>docs/erp-core-xentral-v3/05-fehlende-apis.csv</code> im xentral-Repo. Die 279 Feld-Lücken der bestehenden Endpunkte (Create/Update/View-Flags) sind davon getrennt: <code>04-backlog-tasks.csv</code>.</p>
+
+  <h3 id="backlog-sichtbar">A.5 · Wie die Lücken im Kern sichtbar bleiben — das lebende Backlog</h3>
+  <div class="callout">
+    <p><strong>Der Kern trägt sein eigenes To-do.</strong> Jede Lücke — ob fehlende
+    Ressource (<code>05-fehlende-apis.csv</code>) oder nicht schreibbares Feld
+    (<code>04-backlog-tasks.csv</code>, 279 Tasks) — wird im Kern <em>blau markiert</em>:
+    „geht noch nicht, muss gebaut werden“, mit Begründung. Das ist kein separates
+    Dokument, das veraltet, sondern Teil der Metadaten jeder Entity.</p>
+  </div>
+  <ul class="tight">
+    <li><strong>Blau = Soll</strong> (<code>priorities.json</code>): jede <code>Feld × Operation</code>,
+      die ein Händler braucht, aber die Alt-API heute nicht kann — mit „warum gebraucht“.
+      Feld-Lücken erscheinen als Zelle (<code>salesOrder.desiredDeliveryDate · create</code>),
+      Ressourcen-Lücken auf Entity-Ebene (<code>stockMovement</code>, <code>purchaseInvoice.approve</code>).</li>
+    <li><strong>Grün/Rot/Grau = Ist</strong> (<code>verified.json</code>): was <em>live getestet</em>
+      wirklich geht (grün), fehlschlägt (rot mit Grund) oder verfügbar-aber-ungetestet (grau).
+      Aus echten Tests erzeugt — veraltet nie.</li>
+    <li><strong>Selbst-heilend:</strong> baut Xentral einen der 16 Endpoints oder schließt eine
+      der 279 Feld-Lücken, dreht der nächste Testlauf die Zelle auf grün und der blaue Wunsch
+      verschwindet automatisch. Der Fortschritt am neuen Modell ist damit jederzeit ablesbar,
+      ohne dass jemand eine Liste pflegt.</li>
+  </ul>
+  <p class="dim">So ist der Fassaden-Kern gleichzeitig Implementierung <em>und</em> Backlog: Was heute
+  über die Alt-API geht, funktioniert; was fehlt, steht blau markiert daneben — genau die zwei
+  CSVs, nur lebendig und im Produkt statt in einer Tabelle.</p>
+  <h4>Kategorie 2 · Alt-System kann lesen, aber nicht schreiben (bis die Task-Liste umgesetzt ist)</h4>
+  <ul class="tight">
+    <li>Die komplette blaue Lücken-Liste der Feldmatrix (279 Tasks): customFields, paymentMethod/-Terms, shippingMethod, Termine, Automatisierungs-Flags, references.* am SalesOrder u.v.m. — <strong>Beschluss: KEIN Overlay-Store, keine eigene Persistenz.</strong> Der Kern reicht 1:1 durch; diese Felder sind <code>creatable/updatable = false</code>, erscheinen als blaue Wünsche (A.5) und flippen automatisch auf grün, sobald die Alt-API sie nachreicht. Requests mit solchen Feldern → 409 mit Feldliste.</li>
+  </ul>
+  <h4>Kategorie 3 · Konzeptionelle Klärung nötig (zusammen entscheiden)</h4>
+  <ul class="tight">
+    <li><strong>Rundungsparität:</strong> Layer berechnet Steuersummen selbst — muss centgenau zum Legacy-PDF passen (Legacy rundet je nach projekt.preisberechnung unterschiedlich). Regel festlegen + Vergleichstests.</li>
+    <li><strong>Status-Parität:</strong> Neue Ketten sind feiner (z. B. deliveryNote picking/delivered) als Alt-Status — welche Übergänge simuliert der Layer, welche bleiben (auto) ohne Alt-Gegenstück?</li>
+    <li><strong>Festschreibung vs. Alt-Verhalten:</strong> Das neue Modell verbietet PATCH nach issue — das Alt-System erlaubt es (Schreibschutz ist optional). Erzwingt der Layer die härtere Regel (empfohlen) oder spiegelt er das Alt-Verhalten?</li>
+    <li><strong>Storno-Kette:</strong> cancel erzeugt im neuen Modell einen Storno-Beleg; Alt-cancel ändert nur den Status. Wer erzeugt den Gegenbeleg?</li>
+    <li><strong>Delta-Sync-Grenzen:</strong> updatedAt-Polling ✓ überall in v3 — aber Legacy-Schreibpfade (Shopimport!) ändern Daten, ohne dass der Layer es merkt, bis gepollt wird. Event-Bedarf definieren.</li>
+  </ul>
+</article>
+</div>
+
+<script>
+(function () {
+  document.querySelectorAll('pre[data-json]').forEach(function (pre) {
+    var t = pre.textContent;
+    t = t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    t = t.replace(/(\/\/[^\n]*)/g, 'c$1');
+    t = t.replace(/("(?:[^"\\]|\\.)*")(\s*:)/g, 'k$1$2');
+    t = t.replace(/(:\s*)("(?:[^"\\]|\\.)*")/g, '$1s$2');
+    t = t.replace(/(\[\s*)("(?:[^"\\]|\\.)*")/g, '$1s$2');
+    t = t.replace(/(:\s*)(-?\d+(?:\.\d+)?)/g, '$1n$2');
+    t = t.replace(/(:\s*)(true|false|null)/g, '$1b$2');
+    t = t.replace(/([ksnbc])/g, function (_, c) { return '<span class="' + c + '">'; });
+    t = t.replace(//g, '</span>');
+    pre.innerHTML = t;
+  });
+})();
+</script>

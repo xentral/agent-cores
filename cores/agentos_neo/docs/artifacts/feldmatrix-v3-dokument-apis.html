@@ -1,0 +1,1386 @@
+<title>V3 Dokument-APIs – Feldmatrix</title>
+<style>
+  :root {
+    --bg: #F6F8F7; --surface: #FFFFFF; --surface-2: #EFF3F1; --ink: #21282B;
+    --muted: #64707A; --line: #DFE6E3; --accent: #0E7468; --accent-ink: #0A5A50;
+    --accent-soft: #E1F0ED; --yes: #177245; --yes-bg: #E4F2E8; --partial: #A05E0A;
+    --partial-bg: #F9EFDC; --no: #A9B2B8; --gap: #1D4FD7; --gap-bg: #E3EAFB;
+    --code-bg: #EEF2F0;
+    --shadow: 0 1px 2px rgba(30,40,40,.05), 0 8px 24px rgba(30,40,40,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #15191B; --surface: #1D2226; --surface-2: #232A2E; --ink: #E6EAEA;
+      --muted: #93A0A8; --line: #2C3438; --accent: #3CBBA8; --accent-ink: #5ED0BE;
+      --accent-soft: #17332F; --yes: #6FCF8F; --yes-bg: #1B3325; --partial: #E3AB5D;
+      --partial-bg: #37301D; --no: #55616A; --gap: #8AAEFF; --gap-bg: #1E2B4D;
+      --code-bg: #262E32;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #15191B; --surface: #1D2226; --surface-2: #232A2E; --ink: #E6EAEA;
+    --muted: #93A0A8; --line: #2C3438; --accent: #3CBBA8; --accent-ink: #5ED0BE;
+    --accent-soft: #17332F; --yes: #6FCF8F; --yes-bg: #1B3325; --partial: #E3AB5D;
+    --partial-bg: #37301D; --no: #55616A; --gap: #8AAEFF; --gap-bg: #1E2B4D; --code-bg: #262E32;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+  }
+  :root[data-theme="light"] {
+    --bg: #F6F8F7; --surface: #FFFFFF; --surface-2: #EFF3F1; --ink: #21282B;
+    --muted: #64707A; --line: #DFE6E3; --accent: #0E7468; --accent-ink: #0A5A50;
+    --accent-soft: #E1F0ED; --yes: #177245; --yes-bg: #E4F2E8; --partial: #A05E0A;
+    --partial-bg: #F9EFDC; --no: #A9B2B8; --gap: #1D4FD7; --gap-bg: #E3EAFB; --code-bg: #EEF2F0;
+    --shadow: 0 1px 2px rgba(30,40,40,.05), 0 8px 24px rgba(30,40,40,.06);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    margin: 0; padding: 36px 24px 80px;
+  }
+  main { max-width: 1280px; margin: 0 auto; }
+  code, .mono { font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace; font-size: .86em; }
+  code { background: var(--code-bg); border-radius: 4px; padding: 1px 5px; white-space: nowrap; }
+
+  .eyebrow { color: var(--accent-ink); font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; margin: 0 0 8px; }
+  h1 { font-size: 29px; font-weight: 750; letter-spacing: -.02em; line-height: 1.15; margin: 0 0 10px; text-wrap: balance; }
+  .lede { color: var(--muted); max-width: 74ch; margin: 0 0 18px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; color: var(--muted); font-size: 13px; align-items: center; margin-bottom: 20px; }
+  .m {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 21px; height: 21px; border-radius: 50%;
+    font-size: 12px; font-weight: 700; line-height: 1; flex: none;
+  }
+  .m.yes { background: var(--yes-bg); color: var(--yes); }
+  .m.part { background: var(--partial-bg); color: var(--partial); }
+  .m.no { background: transparent; color: var(--no); font-weight: 400; }
+  .m.gap { background: var(--gap-bg); color: var(--gap); font-weight: 800; font-size: 13.5px; border: 1.5px solid var(--gap); cursor: help; }
+  .m.rec { background: var(--gap-bg); color: var(--gap); font-weight: 800; font-size: 12px; border: 1.5px dashed var(--gap); cursor: help; }
+
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; border-bottom: 2px solid var(--line); padding-bottom: 10px; }
+  .tab {
+    background: var(--surface); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 7px;
+    padding: 7px 13px; font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .tab .cnt {
+    background: var(--gap-bg); color: var(--gap);
+    border-radius: 10px; padding: 0 7px; font-size: 11.5px; font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+  .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .tab.active .cnt { background: rgba(255,255,255,.25); color: #fff; }
+  .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .dochead { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline; margin: 4px 0 10px; }
+  .dochead h2 { font-size: 21px; font-weight: 750; letter-spacing: -.015em; margin: 0; }
+  .dochead .sub { color: var(--muted); font-size: 13.5px; }
+  h3.section { font-size: 16px; margin: 18px 0 8px; letter-spacing: -.01em; }
+  .endpoints { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 12px; }
+  .ep {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 6px;
+    padding: 3px 9px; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12px;
+  }
+  .ep b { font-weight: 700; font-size: 10.5px; letter-spacing: .04em; color: var(--accent-ink); }
+  .ep .beta { color: var(--partial); font-weight: 700; font-size: 10px; letter-spacing: .05em; }
+
+  .metastrip { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .meta { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 13px; font-size: 13px; }
+  .meta b { display: block; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+
+  .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .toolbar input[type="search"] {
+    flex: 0 1 300px; background: var(--surface); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 7px; padding: 7px 12px; font: inherit; font-size: 14px;
+  }
+  .toolbar input[type="search"]:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+  .dl {
+    background: var(--gap); color: #fff; border: none; border-radius: 7px;
+    padding: 8px 14px; font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .dl.alt { background: var(--surface); color: var(--gap); border: 1.5px solid var(--gap); }
+  .dl:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .tablewrap { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); overflow-x: auto; margin-bottom: 14px; }
+  table { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1040px; }
+  table.li { min-width: 760px; }
+  thead th {
+    position: sticky; top: 0; z-index: 2; background: var(--surface);
+    border-bottom: 2px solid var(--line); padding: 9px 8px;
+    font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--muted); text-align: center; white-space: nowrap;
+  }
+  thead th:first-child { text-align: left; padding-left: 15px; }
+  thead th:last-child { text-align: left; }
+  tbody td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: center; vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody td:first-child { text-align: left; padding-left: 15px; white-space: nowrap; }
+  tbody td:last-child { text-align: left; color: var(--muted); font-size: 12.8px; min-width: 230px; }
+  tbody tr:hover td { background: var(--surface-2); }
+  tr.group td {
+    background: var(--accent-soft) !important; color: var(--accent-ink);
+    font-weight: 700; font-size: 12px; letter-spacing: .07em; text-transform: uppercase;
+    text-align: left; padding: 7px 15px;
+  }
+  td.sub { padding-left: 30px !important; }
+
+  .gapbox { background: var(--gap-bg); border: 1px solid var(--gap); border-radius: 10px; padding: 16px 19px; margin-bottom: 14px; }
+  .gapbox h3 { font-size: 15px; margin: 0 0 6px; color: var(--gap); }
+  .gapbox p, .gapbox ul { margin: 0 0 6px; font-size: 13.5px; }
+  .gapbox ul { padding-left: 19px; }
+  .gapbox li { margin-bottom: 3px; }
+
+  .pdfbox { background: var(--surface); border: 1px solid var(--partial); border-radius: 10px; padding: 16px 19px; margin-bottom: 14px; }
+  .pdfbox h3 { font-size: 15px; margin: 0 0 6px; color: var(--partial); }
+  .pdfbox p, .pdfbox ul { margin: 0 0 6px; font-size: 13.5px; color: var(--ink); }
+  .pdfbox ul { padding-left: 19px; }
+  .pdfbox li { margin-bottom: 3px; }
+  .pdfbox .ok { color: var(--yes); font-weight: 600; }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-bottom: 8px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 15px 18px; }
+  .card h3 { font-size: 14.5px; margin: 0 0 7px; letter-spacing: -.01em; }
+  .card p { margin: 0 0 7px; color: var(--muted); font-size: 13px; }
+  .card ul { margin: 4px 0 0; padding-left: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 5px; }
+  .card li { margin: 0; }
+  .card.wide ul { display: block; padding-left: 18px; list-style: disc; }
+  .card.wide li { margin-bottom: 3px; font-size: 13px; color: var(--muted); }
+
+  .ovtable td, .ovtable th { font-size: 13.5px; }
+  .ovtable tbody td:first-child { font-weight: 600; }
+  .badge { display: inline-block; border-radius: 5px; padding: 1px 7px; font-size: 11.5px; font-weight: 700; }
+  .badge.beta { background: var(--partial-bg); color: var(--partial); }
+  .badge.ok { background: var(--yes-bg); color: var(--yes); }
+  .badge.gapb { background: var(--gap-bg); color: var(--gap); }
+  .badge.no { background: var(--code-bg); color: var(--muted); }
+
+  .src { margin-top: 16px; color: var(--muted); font-size: 12.5px; }
+  .hidden { display: none !important; }
+  pre.json {
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px 18px; overflow-x: auto; font-size: 12.5px; line-height: 1.5;
+    font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    margin: 0 0 14px;
+  }
+</style>
+
+<main>
+  <header>
+    <p class="eyebrow">API-Referenz · Stand 18.07.2026 · vollständig aus dem Code extrahiert</p>
+    <h1>Xentral V3 Dokument-APIs – Feldmatrix, API-Lücken &amp; PDF-Rendering</h1>
+    <p class="lede">
+      Alle 9 belegbasierten V3-Endpunkte im Vergleich: Was ist pro Feld über die (Legacy-)<strong>UI</strong> pflegbar,
+      was liefert der <strong>View</strong> (GET), was ist bei <strong>Create</strong>/<strong>Update</strong> setzbar,
+      was ist <strong>filter-/such-/sortierbar</strong>? Adress-, Financial- und Positions-Felder sind einzeln aufgeschlüsselt.
+      Pro Beleg zusätzlich: Was fehlt in der View-Payload, um das <strong>Beleg-PDF vollständig selbst zu rendern</strong>.
+    </p>
+    <div class="legend">
+      <span><span class="m yes">✓</span> ja</span>
+      <span><span class="m part">◐</span> eingeschränkt / indirekt / Include bzw. Action</span>
+      <span><span class="m no">–</span> nein</span>
+      <span><span class="m gap">!</span> fehlt in der API → ergänzen (UI/Prozess braucht es)</span>
+      <span><span class="m rec">➜</span> Empfehlung: durchsuchbar machen (Sachbearbeiter-Suche)</span>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs"></nav>
+  <div class="toolbar">
+    <input type="search" id="q" placeholder="Feld suchen … (z. B. email, paymentTarget, sscc)" aria-label="Felder filtern">
+    <button class="dl" id="dlxls" type="button">⬇ Aufgabenliste (Excel)</button>
+    <button class="dl alt" id="dlcsv" type="button">⬇ CSV</button>
+  </div>
+  <div id="exportout" class="hidden" style="margin-bottom:14px">
+    <div class="pdfbox">
+      <h3>Export-Fallback</h3>
+      <p>Falls der eingebettete Viewer den Datei-Download blockiert: Inhalt unten kopieren (CSV, Semikolon-getrennt) und in Excel einfügen — oder das Artefakt in einem eigenen Browser-Tab öffnen, dort funktioniert der Download.</p>
+      <p><button class="dl" id="copycsv" type="button">📋 In Zwischenablage kopieren</button> <span id="copystate" style="color:var(--yes);font-weight:600"></span></p>
+      <textarea id="csvout" readonly style="width:100%;height:180px;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;background:var(--code-bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px"></textarea>
+    </div>
+  </div>
+  <div id="panels"></div>
+
+  <p class="src">
+    Quellen: V3-Controller/Resources/Data-Klassen (Dokument- + LineItem-Ebene) inkl. Basisklassen &amp; Traits, Filter-Collections, PostalAddress-Klassen,
+    <code>QueryBuilder::withBusinessDocumentSearch()</code>, Legacy-UI-Templates (<code>www/widgets/templates/*.tpl</code>),
+    Legacy-PDF-Klassen (<code>www/lib/dokumente/class.*.php</code>) und der konfigurierbare Infoblock (<code>DocumentCustomizationService</code>).
+  </p>
+</main>
+
+<script>
+(function () {
+'use strict';
+
+/* Markierungen: y=✓, p=◐, n=–, g=! (Lücke), r=➜ (Search-Empfehlung)
+   Hauptmatrix-Spalten: [UI, View, Create, Update, Filter, Search, Sort]
+   LineItem-Spalten: [View, Create, Update] */
+
+function addrRows() {
+  return [
+    'G:documentAddress – 18 Unterfelder (einzeln verifiziert)',
+    ['documentAddress.name', 'yyyyyyn', 'Create: Pflichtfeld des Adressobjekts; einzige Standard-Suchspalte'],
+    ['documentAddress.type', 'yyyynnn', 'BusinessPartnerTypeEnum (mr/ms/company …); nicht filterbar'],
+    ['documentAddress.title', 'yyyyynn', ''],
+    ['documentAddress.contactPerson', 'yyyyynn', ''],
+    ['documentAddress.department', 'yyyyynn', ''],
+    ['documentAddress.subDepartment', 'yyyyynn', ''],
+    ['documentAddress.addressSupplement', 'yyyyynn', ''],
+    ['documentAddress.street', 'yyyyynn', ''],
+    ['documentAddress.zipCode', 'yyyyyrn', 'PLZ-Suche = Standard-Use-Case am Telefon'],
+    ['documentAddress.city', 'yyyyynn', ''],
+    ['documentAddress.state', 'yyyyynn', ''],
+    ['documentAddress.country', 'yyyyyny', 'Einziges sortierbares Adressfeld'],
+    ['documentAddress.gln', 'yyyyynn', ''],
+    ['documentAddress.salutation', 'yyyynnn', 'UI „Anschreiben“; nicht filterbar'],
+    ['documentAddress.email', 'yyyyyrn', 'E-Mail-Suche = Standard-Use-Case (Shop-Bestellungen)'],
+    ['documentAddress.phone', 'yyyyynn', ''],
+    ['documentAddress.fax', 'yyyyynn', ''],
+    ['documentAddress.mobile', 'yyyynnn', 'In View/Create/Update vorhanden — aber nicht filterbar'],
+  ];
+}
+
+/* Financials einzeln (o: {pm:marks, ptFilter:'y'|'n', taxRateFilter, currency:marks, xr:marks, netF, grossF, dtn:marks}) */
+function finRows(o) {
+  var f = o.ptFilter || 'y';
+  return [
+    'G:Financials — einzeln',
+    ['financials.paymentMethod', o.pm, o.pmNote || 'UI „Zahlungsweise“'],
+    ['financials.paymentTerms.paymentTargetDays', 'yygg' + f + 'nn', 'Zahlungsziel (Tage)'],
+    ['financials.paymentTerms.paymentTargetDiscount', 'yygg' + f + 'nn', 'Skonto (%)'],
+    ['financials.paymentTerms.paymentTargetDiscountDays', 'yygg' + f + 'nn', 'Skontofrist (Tage)'],
+    ['financials.tax.taxation', o.taxation || 'yyyyynn', 'domestic / eu / export'],
+    ['financials.tax.disableTaxNotice', o.dtn || 'yyggynn', 'UI „kein Steuersatz“'],
+    ['financials.tax.taxRates.standard', 'nynn' + (o.taxRateFilter || 'y') + 'nn', 'Systemseitig aus Steuereinstellungen'],
+    ['financials.tax.taxRates.reduced', 'nynn' + (o.taxRateFilter || 'y') + 'nn', 'Systemseitig'],
+    ['financials.currency', o.currency || 'yyyypnn', o.currencyNote || 'Filter über totals.net.currency'],
+    ['financials.exchangeRate', o.xr || 'yyyynnn', '0 = globale Kurstabelle'],
+    'G:Totals (berechnet)',
+    ['totals.net', 'pynn' + (o.netF || 'y') + 'nn', 'Filter totals.net.amount'],
+    ['totals.gross', o.gross || ('pynn' + (o.grossF || 'n') + 'nn'), o.grossNote || ''],
+    ['totals.contributionMargin', 'pynnnnn', 'Deckungsbeitrag, berechnet'],
+  ];
+}
+
+function baseRows(o) {
+  o = o || {};
+  return [
+    'G:Basis & System',
+    ['id', 'pynnyyy', 'Systemvergeben; Default-Sortierung'],
+    ['documentNumber', o.docNum || 'pynnyyy', o.docNumNote || 'Vergabe beim Freigeben (Draft: null)'],
+    ['status', 'yynpynn', o.statusNote || 'Änderung nur über Actions'],
+    ['documentDate', 'yyyyyyy', 'Create: heute, wenn nicht angegeben'],
+    ['writeProtection', 'yynpynn', 'Über Actions setWriteProtection / removeWriteProtection'],
+    ['language', 'yyyyynn', 'ISO 639-1'],
+    ['createdAt', 'nynnyny', 'Datetime-Filter'],
+    ['updatedAt', 'nynnyny', 'Datetime-Filter'],
+    'G:Referenzen & Kopf (Basis)',
+    ['address (' + (o.partner || 'Kunde') + ')', 'yyygynn', 'Create: Pflichtfeld; Partnerwechsel per UI möglich, per API nicht; Filter address.id'],
+    ['customerNumber', 'pynnyyy', 'Abgeleitet aus ' + (o.partner || 'Kunde')],
+    ['project', 'yyyyyny', 'Filter project.id, project.abbreviation'],
+    ['editor', 'yyyyynn', 'Filter editor.id'],
+    ['tags', 'ypyyynn', 'View nur mit Include; Update ersetzt die Liste'],
+    ['isDocumentSent', 'pynnynn', 'Wird durch Versand gesetzt (Action send)'],
+  ]
+  .concat(addrRows())
+  .concat([
+    'G:Texte (Basis)',
+    ['internalDesignation', 'yyyyynn', ''],
+    ['bodyIntroduction', 'yyyyynn', 'Kopftext'],
+    ['bodyOutroduction', 'yyyyynn', 'Fußtext'],
+    ['vatId', 'yyyyynn', ''],
+    ['deliveryTerms', 'yyyyynn', ''],
+    ['internalComment', 'yyyyynn', ''],
+    'G:Druck, Positionen & Includes (Basis)',
+    ['printSettings.withoutLetterhead', o.psFilter ? 'yyyyynn' : 'yyyynnn', ''],
+    ['printSettings.withoutProductText', o.psFilter ? 'yyyyynn' : 'yyyynnn', ''],
+    ['lineItems', o.lineItems || 'ypypynn', o.lineItemsNote || 'Unterfelder: siehe eigene Tabelle unten'],
+    ['customFields (Freifelder)', 'ypggnnn', 'View nur mit Include; Schreiben per API fehlt bei allen Dokumenten'],
+    ['activity', 'ppnpnnn', 'Include; Einträge über Action logActivity'],
+  ]);
+}
+
+/* LineItem-Basis [View, Create, Update]; opts: fin true/false, hidden 'yes'|'ro'|'no' */
+function liBase(opts) {
+  opts = opts || {};
+  var rows = [
+    'G:Positions-Basis',
+    ['product.id', 'yyn', 'Create: Pflicht; per Update nicht änderbar; Include liefert nur id+number (slim!)'],
+    ['quantity', 'yyy', 'Create: Pflicht, > 0'],
+    ['name', 'yyy', 'Fallback: Produktname'],
+    ['description', 'yyy', 'Positions-Langtext (PDF hängt SN/Charge/Hersteller u. a. zusätzlich an)'],
+    ['number', 'ynn', 'Read-only, kommt vom Produkt'],
+    ['unit', 'yyy', 'Roher DE-Wert — Übersetzung je Belegsprache fehlt in der API'],
+    ['deliveryDate (+AsCalendarWeek)', 'yyy', 'Lieferdatum je Position'],
+    ['countryOfOrigin', 'yyg', 'Nur im Create — Update fehlt; Artikel-Fallback nur im PDF'],
+    ['hsCode (Zolltarifnummer)', 'yyg', 'Nur im Create — Update fehlt'],
+    ['customerProductNumber', 'yyg', 'Nur im Create — Update fehlt'],
+    ['internalComment', 'yyy', ''],
+    ['packagingUnit (VPE)', 'ygg', 'Im View, aber in keiner Create/Update-Klasse'],
+    ['order / sort', 'yny', 'Create: automatisch; Update: sort setzbar'],
+    ['customFields', 'pgg', 'Nur Include — Schreiben fehlt'],
+    ['Intermediate-Positionen (heading, subtotal, groupTotal, image, pageBreak)', 'ygg', 'Nur lesbar! V3-Schreibseite kennt ausschließlich Produkt-Positionen — die UI kann Zwischenüberschriften/-summen anlegen'],
+    ['Produkt-Stammdaten via Include (EAN, Gewicht, Abmessung, Hersteller)', 'gnn', 'ProductResource ist „slim“ (nur id + number) — für Headless-UIs und PDF-Rendering nötig'],
+  ];
+  if (opts.hidden === 'yes') { rows.push(['printSettings.hidden', 'yyy', 'Position im PDF ausblenden']); }
+  if (opts.hidden === 'ro') { rows.push(['printSettings.hidden', 'ygg', 'Im View, aber nicht schreibbar (kein CanBeHiddenOnPDF-Trait)']); }
+  if (opts.fin) {
+    rows = rows.concat([
+      'G:Positions-Financials',
+      ['price.net', 'yyy', 'Einzelpreis netto'],
+      ['price.gross', 'ynn', 'Berechnet — nur net ist schreibbar'],
+      ['discount', 'yyy', 'EIN kombinierter %-Wert — UI-Rabattstaffeln (grundrabatt, rabatt1–5) nicht abgebildet'],
+      ['taxRate / effectiveTaxRate', 'ynn', 'Aus Steuerlogik ermittelt'],
+      ['taxLegalNotice', 'yyy', 'Steuertext je Position'],
+      ['itemRevenue / lineItemRevenue (net/gross)', 'ynn', 'Berechnete Positionssummen'],
+      ['purchasePrice.net / contributionMargin', 'ynn', 'EK / Deckungsbeitrag, read-only'],
+      ['printSettings.withoutPrice', 'yyy', '„ohne Preis“ drucken'],
+    ]);
+  }
+  return rows;
+}
+
+var DOCS = [
+{
+  id: 'salesOrder', name: 'SalesOrder', de: 'Auftrag', base: '/api/v3/salesOrders',
+  eps: [['GET','/salesOrders',0],['GET','/salesOrders/{id}',0],['POST','/salesOrders',1],['PATCH','/salesOrders/{id}',1],['DELETE','/salesOrders/{id}',0]],
+  actions: 'complete, cancel, release, logActivity, setWriteProtection, removeWriteProtection, send',
+  status: 'draft, released, completed, cancelled, sent — Filter-Default: released, completed, cancelled, sent (Drafts ausgeblendet!)',
+  search: 'id, documentNumber, documentDate, documentAddress.name, customerNumber — Empfehlung (➜): externalOrderNumber, customerOrderNumber, transactionNumber, externalOrderId, email, zipCode',
+  sort: 'id (Default), documentNumber, documentDate, customerNumber, documentAddress.country, project.id, createdAt, updatedAt',
+  uiOnly: ['Aktionscode', 'Auftragseingang per', 'Einzugsermächtigung', 'PayPal-Kennzeichen', 'Info für Auftragserfassung'],
+  pdf: {
+    ok: ['externalOrderNumber deckt die Infobox-Zeile „Internetnummer" ab', 'customerOrderNumber („Ihre Bestellnummer") vorhanden'],
+    missing: [
+      'Referenzierte Angebots-Belegnummer (offer nur als ID) — Kopfzeile „Angebot" + corr-Block ANGEBOTSNUMMER',
+      'Kundennummer-Anzeige-Label + Projekt-Abkürzung (nur project.id)',
+      'systemfreitext (an den Fußtext angehängter Systemtext)',
+      'Titel-Logik: abweichende Belegbezeichnung + Proforma-Titelvariante (sprachabhängige Beschriftungs-Vorlagen)',
+      'EU-/Export-Steuervermerk als fertiger Text (inkl. UStID-Länderkennung), Zahlungsbedingungs-Text mit Platzhaltern',
+    ],
+  },
+  li: liBase({ fin: true, hidden: 'yes' }).concat([
+    'G:Positions-Spezifisch',
+    ['externalNumber', 'yyy', 'Filter lineItems.externalNumber'],
+    ['hasChildLineItems / parentLineItem', 'ynn', 'Stücklisten-Struktur, read-only'],
+    ['desiredQualityControlAttributes (bestBeforeDate, batch)', 'ygg', 'Wunsch-Charge/MHD — nur lesbar'],
+  ]),
+  rows: baseRows({ statusNote: 'Nur über Actions (release …); Filter-Default blendet Drafts aus' }).concat([
+    'G:Dokumentspezifisch',
+    ['offer', 'yyggnnn', 'Angebots-Referenz — per UI verknüpfbar, API read-only'],
+    ['sales', 'yyyyynn', 'UI „Vertrieb“; Filter sales.id'],
+    ['preferredWarehouse', 'yyyyynn', 'UI „Wunschlager“'],
+    ['commissionConsignmentWarehouse', 'yyyyynn', ''],
+    ['shippingMethod', 'yyggynn', 'UI „Versandart“ — zentrales Feld, fehlt in Create/Update'],
+    ['salesChannel', 'nyggnnn', 'Heute nur vom Shop-Importer gesetzt — V3-Integrationen können Herkunft nicht kennzeichnen → ergänzen'],
+    ['supplierNumber', 'pynnynn', 'Abgeleitet aus Lieferantenwahl'],
+    ['isSalesOrderToSupplier', 'yyggynn', 'UI „an Lieferanten“'],
+    ['externalOrderNumber', 'yyggyrn', 'UI „Internet“ — Shop-Bestellnummer, die Kunden am Telefon nennen'],
+    ['customerOrderNumber', 'yyggyrn', 'UI „Ihre Bestellnummer / Kommission“ — B2B-Standardfeld'],
+    ['transactionNumber', 'nyggyrn', 'Heute nur vom Shop-Importer/Payment gesetzt — für Payment-Integrationen ergänzen'],
+    ['externalOrderId', 'nyggyrn', 'Heute nur vom Shop-Importer (class.remote.php) gesetzt — für Integrationen ergänzen'],
+    ['masterReferenceNumber', 'yyyyynn', 'UI „MRN“'],
+    ['costCenter', 'yyyyynn', ''],
+    ['deviatingDebtorAccountNumber', 'yyggnnn', 'UI „Abw. Debitorennummer“'],
+    ['deviatingShipToAddress', 'yyyyynn', '18 Unterfelder wie documentAddress; Filtername abweichend: deviatingDeliveryAddress.*'],
+    ['effectiveAddresses (soldTo/shipTo)', 'nynnnnn', 'Berechnet, read-only'],
+    'G:Termine',
+    ['desiredDeliveryDate', 'yyggynn', 'Wunschlieferdatum — Kernfeld für Fulfillment'],
+    ['desiredDeliveryDateAsCalendarWeek', 'yyggynn', 'Checkbox „als KW“'],
+    ['earliestFulfillmentDate', 'yyggynn', 'UI „Liefertermin“'],
+    ['reservationDate', 'yyggynn', ''],
+    ['directDebitDate', 'yyggynn', 'Einzugsdatum (Lastschrift)'],
+  ])
+  .concat(finRows({ pm: 'yyggynn', gross: 'pynnynn', grossNote: 'Filter totals.gross.amount' }))
+  .concat([
+    'G:Automatisierung & Versand',
+    ['storageCountry', 'nyggynn', 'Heute nur systemseitig einmalig gesetzt (OSS/Lieferschwelle, erpapi) — soll per API voll pflegbar werden (externe Steuer-Engine)'],
+    ['useAlternativeDocumentTitle', 'yyggynn', ''],
+    ['autoDispatch', 'yyggynn', 'UI „Autoversand“ — Kandidat für externe Automatisierungs-Algorithmen'],
+    ['vatChecked', 'yyggynn', 'Blockiert sonst den Versand — Kandidat für externe Compliance-Checks'],
+    ['createDocuments', 'yyggynn', 'Belegerzeugung beim Autoversand'],
+    ['manualPaymentApproval', 'yyggynn', '„als vorab bezahlt markieren“ — Kandidat für externe Payment-Abgleiche'],
+    ['manualShippingCostApproval', 'yyggynn', '„kein Porto“'],
+    ['manualDeliveryBlockApproval', 'yyggynn', '„Lieferung trotz Sperre“ — Kandidat für externe Fraud-/Bonitätslogik'],
+    ['fastLane', 'yyggynn', 'Kandidat für externe Priorisierungs-Algorithmen'],
+    ['disableCancellationEmail', 'yyggynn', ''],
+    ['disableTrackingEmail', 'yyggynn', ''],
+    ['disablePaymentEmail', 'yyggynn', ''],
+    ['trafficLights (Ampeln)', 'ppnnynn', 'Interner Include; Filter trafficLights.* (13 System- + Custom)'],
+    ['invoices', 'ppnnynn', 'Interner Include; Filter hasInvoice'],
+  ]),
+},
+{
+  id: 'invoice', name: 'Invoice', de: 'Rechnung', base: '/api/v3/invoices',
+  eps: [['GET','/invoices',0],['GET','/invoices/{id}',0],['POST','/invoices',1],['PATCH','/invoices/{id}',1],['DELETE','/invoices/{id}',0]],
+  actions: 'release, send, setWriteProtection, removeWriteProtection, logActivity, createFromSalesOrder, createFromDeliveryNote',
+  status: 'draft, released, sent, cancelled, completed — Filter-Default: released, sent, cancelled (Drafts + completed ausgeblendet!)',
+  search: 'id, documentNumber, documentDate, documentAddress.name, customerNumber — Empfehlung (➜): customerOrderNumber, masterReferenceNumber, email, zipCode',
+  sort: 'id (Default), documentNumber, documentDate, customerNumber, documentAddress.name, documentAddress.country, project.id, totals.gross.amount, totals.gross.currency, financials.paymentMethod.id, paymentStatus, createdAt, updatedAt',
+  uiOnly: ['USt-Brief (Eingang/Datum)', 'Einzugsermächtigung + Einzugsdatum', 'PayPal-Kennzeichen', 'Duplikat-Kennzeichen', 'Internet-Feld'],
+  pdf: {
+    ok: ['customerOrderNumber + deliveryDate vorhanden', 'dunningSettings-Rohdaten (Stufe, Datum) vorhanden'],
+    missing: [
+      'Referenzierte Auftrags- UND Lieferschein-Belegnummer + LS-Datum (nur IDs) — Standard-Infobox-Zeilen!',
+      'Trackingnummer + Versandart-Name (Setting festetrackingnummer) — Versandart fehlt in der Invoice-Payload komplett',
+      'Ansprechpartner Buchhaltung (Feld buchhaltung)',
+      'Kompletter Mahnwesen-Zweig: Titel je Stufe, Body-Vorlagen mit Gebühren/Fristen, Positions-Sichtbarkeit',
+      'Kopie-Vermerk („Doppel"), berechnetes Fälligkeits-/Skontodatum, Steuerbetrag je Steuersatz',
+      'GiroCode/QR-Zahlungscode (qr_iban/qr_bic) + Bankverbindung, EU-/Export-Steuervermerk, Zahlungsbedingungs-Text',
+    ],
+  },
+  li: liBase({ fin: true, hidden: 'yes' }).concat([
+    'G:Positions-Spezifisch',
+    ['salesOrderLineItem.id', 'ynn', 'Referenz auf Auftragsposition, read-only'],
+  ]),
+  rows: baseRows({
+    statusNote: 'Actions release/send; Filter-Default blendet draft + completed aus',
+    docNum: 'pyynyyy', docNumNote: 'Create: optionale Angabe überschreibt Nummernkreis → Beleg sofort released (z. B. Amazon VCS)',
+  }).concat([
+    'G:Dokumentspezifisch',
+    ['salesOrder', 'yyygnnn', 'Reine Referenz (Positionen werden nicht kopiert); Update fehlt; Filter salesOrder.id'],
+    ['deliveryNote', 'pynnnnn', 'Referenz, read-only'],
+    ['shippingMethod + Trackingnummer', 'pgggnnn', 'Rechnung hat Versandart-Spalte + Versandinfo-Zeile im PDF — im V3-Contract komplett abwesend'],
+    ['sales', 'yyyyynn', 'Filter sales.id'],
+    ['customerOrderNumber', 'yyyynrn', 'Kein Filter vorhanden'],
+    ['deliveryDate', 'yyyynnn', 'Liefer-/Leistungsdatum'],
+    ['deviatingDebtorAccountNumber', 'yyyynnn', ''],
+    ['useAlternativeDocumentTitle', 'yyyynnn', ''],
+    ['masterReferenceNumber', 'yyyyyrn', ''],
+    ['costCenter', 'yyyyynn', ''],
+    ['effectiveAddresses.billTo', 'nynnnnn', 'Berechnet, read-only'],
+    'G:Zahlung & Mahnwesen — einzeln',
+    ['paymentStatus', 'yyppyny', 'Setzbar nur über dunningManualSettings bei dunningSetManually=true — Kandidat für direkte Payment-Provider-Anbindung'],
+    ['dunningSettings.level', 'yyyyynn', 'Mahnstufe'],
+    ['dunningSettings.date', 'yyyyynn', 'Datum der letzten Mahnung'],
+    ['dunningSettings.blocked', 'yyyyynn', 'Mahnsperre'],
+    ['dunningSettings.comment', 'yyyyynn', 'Interner Mahn-Kommentar'],
+    ['dunningSetManually', 'yyyynnn', ''],
+    ['dunningManualSettings.paidAt', 'yyyynnn', 'Nur bei dunningSetManually=true'],
+    ['dunningManualSettings.actualAmount', 'yyyynnn', 'Nur bei dunningSetManually=true'],
+    ['dunningManualSettings.discountGiven', 'yyyynnn', 'Nur bei dunningSetManually=true'],
+    ['dunningManualSettings.difference', 'pynnnnn', 'Berechnet'],
+  ])
+  .concat(finRows({
+    pm: 'yyggyny', pmNote: 'UI „Zahlungsweise“ — fehlt in Create/Update; sortierbar',
+    currency: 'yyyyyny', currencyNote: 'Filter/Sort über totals.gross.currency',
+    gross: 'pynnyny', grossNote: 'Filter totals.gross.amount (soll); sortierbar',
+  })),
+},
+{
+  id: 'creditNote', name: 'CreditNote', de: 'Gutschrift', base: '/api/v3/creditNotes',
+  eps: [['GET','/creditNotes',0],['GET','/creditNotes/{id}',0],['POST','/creditNotes',1],['PATCH','/creditNotes/{id}',1],['DELETE','/creditNotes/{id}',0]],
+  actions: 'release, send, setWriteProtection, removeWriteProtection, logActivity',
+  status: 'draft, released, cancelled (aktiv); sent + completed deprecated — Filter-Default: released, sent, cancelled',
+  search: 'id, documentNumber, documentDate, documentAddress.name, customerNumber — Empfehlung (➜): customerOrderNumber, email, zipCode',
+  sort: 'id (Default), documentNumber, documentDate, customerNumber, documentAddress.country, project.id, createdAt, updatedAt',
+  uiOnly: ['USt-Brief', 'Aktionscode', 'Avis-Hinweis', 'Lieferschein-Referenz', 'Bankdaten-Anzeige'],
+  pdf: {
+    ok: ['isCancellationInvoice-Flag + deliveryDate + customerOrderNumber vorhanden'],
+    missing: [
+      'Referenzierte Rechnungs-Belegnummer UND -Datum (invoice nur ID) — Standard-Kopfzeilen',
+      'Auftrags-Belegnummer (via referenzierte Rechnung) + LS-Nummer/-Datum',
+      'Storno-Rendering: Titel, {ART}-Ersetzung, Vorzeichen-Negation aller Preise/Summen',
+      'Lastschrift-Sondertext „Offene Lastschriften", Skonto-Hinweistext, Steuerbetrag je Satz, EU-/Export-Vermerk',
+    ],
+  },
+  li: liBase({ fin: true, hidden: 'yes' }).concat([
+    'G:Positions-Spezifisch',
+    ['salesOrderLineItem.id', 'ynn', 'Referenz, read-only'],
+  ]),
+  rows: baseRows({
+    statusNote: 'Actions release/send; sent + completed sind deprecated',
+    docNum: 'pyynyyy', docNumNote: 'Create: optionale Angabe → Beleg sofort released (z. B. Amazon VCS)',
+    lineItems: 'ypyyynn', lineItemsNote: 'Einziges Dokument mit lineItems auch im Update! Unterfelder unten',
+  }).concat([
+    'G:Dokumentspezifisch',
+    ['invoice', 'yyygynn', 'Referenz auf Rechnung (Create ja, Update fehlt); Filter invoice.id'],
+    ['deliveryNote (Referenz)', 'pgnnnnn', 'UI zeigt Lieferschein-Referenz (LIEFERID) — im V3-View abwesend; PDF druckt LS-Nummer + -Datum'],
+    ['salesOrder (via Rechnung)', 'pgnnnnn', 'PDF-Kopfzeile „Auftrag“ zieht die Auftragsnummer aus der referenzierten Rechnung — im View fehlt jede Auftrags-Referenz'],
+    ['sales', 'yyyyynn', 'Filter sales.id'],
+    ['customerOrderNumber', 'yyggnrn', 'UI „Ihre Bestellnummer“ — im View, fehlt in Create/Update'],
+    ['deviatingDebtorAccountNumber', 'yyggnnn', 'UI „Abw. Debitorennummer“'],
+    ['deliveryDate', 'yyyynnn', ''],
+    ['isCancellationInvoice', 'yyggnnn', 'UI „Stornorechnung“'],
+    ['paymentStatus', 'pynnynn', ''],
+    ['debtStatus.doneAt', 'yyyynnn', 'UI „manuell vorabbezahlt“'],
+    ['debtStatus.comment', 'yyyynnn', 'Interner Hinweis dazu'],
+    ['costCenter', 'yyyyynn', ''],
+  ])
+  .concat(finRows({ pm: 'yyggynn' })),
+},
+{
+  id: 'offer', name: 'Offer', de: 'Angebot', base: '/api/v3/offers',
+  eps: [['GET','/offers',0],['GET','/offers/{id}',0],['POST','/offers',1],['PATCH','/offers/{id}',1],['DELETE','/offers/{id}',0]],
+  actions: 'cancel, release, send, setWriteProtection, removeWriteProtection, logActivity',
+  status: 'draft, commissioned, completed, ordered, released, accepted, declined, expired, sent, cancelled — Filter-Default: released, sent, cancelled, completed',
+  search: 'id, documentNumber, documentDate, documentAddress.name, customerNumber — Empfehlung (➜): customerReference, email, zipCode',
+  sort: 'id (Default), documentNumber, documentDate, customerNumber, documentAddress.country, project.id, createdAt, updatedAt',
+  uiOnly: ['Abteilung/Unterabteilung', 'Bankdaten', 'Aktionscode', 'Info für Auftragserfassung', 'Rabattanzeige', 'Autoversand-Flag'],
+  pdf: {
+    ok: ['customerReference deckt die Kopfzeile „Angebot/Anfrage" ab', 'printSettings.withoutTotalAmount vorhanden'],
+    missing: [
+      'Kundennummer-Label + Projekt-Abkürzung für die Infobox',
+      'Titel-Logik (abweichende Bezeichnung, angebot_header/_footer-Vorlagen + ParseUserVars)',
+      'EU-/Export-Steuervermerk, Zahlungsbedingungs-Text, Steuerbetrag je Satz, Footer-Reihenfolge',
+      'Hinweis: validUntilDate/plannedOrderDate druckt das Legacy-PDF gar nicht — für ein eigenes Layout aber vorhanden ✓',
+    ],
+  },
+  li: liBase({ fin: true, hidden: 'yes' }).concat([
+    'G:Positions-Spezifisch',
+    ['parentLineItem.id', 'ynn', 'Stücklisten-Referenz, read-only'],
+  ]),
+  rows: baseRows({
+    statusNote: '10 Status-Werte (accepted, declined, expired …); Actions cancel/release/send',
+    psFilter: true,
+  }).concat([
+    'G:Dokumentspezifisch',
+    ['customerReference', 'yyyyyrn', 'UI „Anfrage“ — Anfragenummer, die Kunden nennen'],
+    ['validUntilDate', 'yyyyynn', 'Validierung: after:today'],
+    ['plannedOrderDate', 'yyyyynn', ''],
+    ['desiredDeliveryDate', 'yyyyynn', 'Per API setzbar — anders als beim SalesOrder!'],
+    ['desiredDeliveryDateAsCalendarWeek', 'yyyyynn', ''],
+    ['useAlternativeDocumentTitle', 'yyyyynn', ''],
+    ['manualShippingCostApproval', 'yyyyynn', '„kein Porto“'],
+    ['printSettings.withoutTotalAmount', 'yyyyynn', 'Gesamtsumme ausblenden'],
+    ['shippingMethod', 'yyygynn', 'Create ja, Update fehlt (asymmetrisch)'],
+    ['preferredWarehouse', 'yyyynnn', ''],
+    ['sales', 'yyyyynn', 'Filter sales.id'],
+    ['costCenter', 'yyyyynn', ''],
+    ['deviatingShipToAddress', 'yyyyynn', '18 Unterfelder wie documentAddress; Filtername: deviatingDeliveryAddress.*'],
+    ['effectiveAddresses (soldTo/shipTo)', 'nynnnnn', 'Berechnet, read-only'],
+  ])
+  .concat(finRows({ pm: 'yyygynn', pmNote: 'Create ja (paymentMethod-Ref), Update fehlt (asymmetrisch)' })),
+},
+{
+  id: 'deliveryNote', name: 'DeliveryNote', de: 'Lieferschein', base: '/api/v3/deliveryNotes',
+  eps: [['GET','/deliveryNotes',0],['GET','/deliveryNotes/{id}',0],['POST','/deliveryNotes',1],['PATCH','/deliveryNotes/{id}',1],['DELETE','/deliveryNotes/{id}',0]],
+  actions: 'complete, cancel, release, send, setWriteProtection, removeWriteProtection, logActivity',
+  status: 'draft, released, sent, cancelled, completed — Filter-Default: released, sent, cancelled',
+  search: 'id, documentNumber, documentDate, documentAddress.name, customerNumber — Empfehlung (➜): customerOrderNumber, email, zipCode',
+  sort: 'id (Default), documentNumber, documentDate, customerNumber, documentAddress.country, project.id, createdAt, updatedAt',
+  uiOnly: ['UST_BEFREIT (keine Financials im DeliveryNote-Contract)', 'Konsignations-Umlagerung'],
+  pdf: {
+    ok: ['customerProductNumber + deliveryDate je Position vorhanden', 'customs.* (Zollwert/-gewicht) je Position im View — als einziges Dokument'],
+    missing: [
+      'Referenzierte Auftrags-Belegnummer (nur salesOrder.id) — Standard-Kopfzeile + corr-Block',
+      'Trackingnummer (versand-Tabelle; Setting festetrackingnummer + corr-Block TRACKINGNUMMER) — kein V3-Endpunkt, nur Legacy-v1 /shipments',
+      'Tatsächliche Seriennummern / Chargen / MHD je Position (nur desired-Wunschwerte im View)',
+      'Lagerplatz/Lagertext je Position inkl. Kommissionierschein-Sortierung',
+      'Hersteller(-nummer), EAN, Abmessungen je Position (auch nicht via include — ProductResource ist slim)',
+      'Positions-Freifelder 1–40, Bearbeiter-/Ansprechpartner-Kontakte, Titel-Override „Lieferscheinersatz"',
+    ],
+  },
+  li: liBase({ fin: false, hidden: 'yes' }).concat([
+    'G:Positions-Spezifisch (Lieferschein)',
+    ['deliveredQuantity', 'yyy', 'Einziges DN-spezifisches Schreibfeld'],
+    ['sscc', 'ygg', 'NVE/SSCC — im View, nicht schreibbar'],
+    ['package / packagingUnitQuantity / individualPieceQuantity', 'ygg', 'Packstück-Infos — read-only'],
+    ['customs.valueSingle/valueTotal/weightSingle/weightTotal', 'ygg', 'Zollwerte/-gewichte — read-only'],
+    ['desiredQualityControlAttributes (bestBeforeDate, batch)', 'ygg', 'Wunsch-Charge/MHD — read-only'],
+    ['Seriennummern / Chargen / MHD (tatsächlich gebucht)', 'ggg', 'Gar nicht im V3 (nur interne Web-Routen) — PDF druckt sie, Headless-UIs brauchen sie lesbar!'],
+    ['Trackingnummer (Versand)', 'ggg', 'Kein V3-Endpunkt — nur Legacy-v1 /shipments; für Headless lesbar machen'],
+    ['salesOrderLineItem.id', 'ynn', 'Referenz, read-only'],
+  ]),
+  rows: baseRows({
+    statusNote: 'Actions complete/cancel/release/send',
+  }).concat([
+    'G:Dokumentspezifisch',
+    ['salesOrder', 'yyyyynn', 'Filter salesOrder.id'],
+    ['orderPicking', 'pyyyynn', 'Kommissionierungs-Referenz; Filter orderPicking.id'],
+    ['invoice', 'pynnynn', 'Referenz, read-only; Filter invoice.id'],
+    ['commissionConsignmentWarehouse', 'yyyyynn', ''],
+    ['customerOrderNumber', 'yyggyrn', 'Im View + Filter, fehlt in Create/Update'],
+    ['useAlternativeDocumentTitle', 'yyggynn', ''],
+    ['isDeliveryNoteToSupplier', 'yyggynn', 'UI „Lieferantenretoure“-Flag'],
+    ['supplierNumber', 'pynnnnn', 'Nur bei Lieferanten-LS'],
+    ['noInvoice', 'ygggynn', 'UI „keine Rechnung“ — nur als Filter vorhanden, nicht mal im View'],
+    ['shippingMethod', 'yyggynn', 'UI „Versandart“ — fehlt in Create/Update'],
+    ['masterReferenceNumber', 'yyyyynn', ''],
+    ['preferredWarehouse', 'yyyyynn', ''],
+    ['sales', 'yyyyynn', ''],
+    ['costCenter', 'yyyyynn', ''],
+    ['effectiveAddresses.shipTo', 'nynnnnn', 'Berechnet, read-only'],
+    'G:Versand-Spezialfilter (nur Filter, kein View-Feld)',
+    ['shipments.count', 'nnnnynn', 'Operatoren: notEquals, lessThan(OrEquals), greaterThan(OrEquals)'],
+    ['hasOpenShipment', 'nnnnynn', 'Offene, nicht abgeschlossene Shipments'],
+    ['withoutInvoice', 'nnnnynn', 'Weder direkte noch Auftrags-Rechnung'],
+    ['notRetrievedFromStock', 'nnnnynn', 'Lagerware noch nicht ausgelagert'],
+  ]),
+},
+{
+  id: 'returnOrder', name: 'ReturnOrder', de: 'Retoure', base: '/api/v3/returnOrders',
+  eps: [['GET','/returnOrders',0],['GET','/returnOrders/{id}',0],['POST','/returnOrders',1],['PATCH','/returnOrders/{id}',1],['DELETE','/returnOrders/{id}',0]],
+  actions: 'complete, cancel, release, send, setWriteProtection, removeWriteProtection, logActivity, createFromDeliveryNote',
+  status: 'draft, received, released, sent, cancelled, completed (sent/received inaktiv) — Filter-Default: released, completed, cancelled, sent',
+  search: 'id, documentNumber, documentDate, documentAddress.name, customerNumber + lineItems.number (Artikelnummer!) — Empfehlung (➜): customerOrderNumber, email, zipCode',
+  sort: 'id (Default), documentNumber, documentDate, customerNumber, documentAddress.country, project.id, createdAt, updatedAt',
+  uiOnly: ['„keine Rechnung“-Flag', 'Konsignations-/Wunschlager-Umlagerung', 'Rabattanzeige'],
+  pdf: {
+    ok: ['Eigene PDF-Klasse (class.retoure.php), Struktur wie Lieferschein', 'reimbursement-/receivedQuantity + returnReason je Position vorhanden'],
+    missing: [
+      'Ursprungs-Lieferschein: Belegnummer UND Datum (deliveryNote nur ID)',
+      'Auftrags-Belegnummer, Trackingnummer (versand-Tabelle, Feld retoure)',
+      'Wie beim Lieferschein: SN/Charge/MHD, Hersteller(-nummer), EAN, Lagertext, Positions-Freifelder',
+      'Bearbeiter-/Ansprechpartner-Kontakte, Titel-Override „Retoureersatz"',
+    ],
+  },
+  li: liBase({ fin: false, hidden: 'yes' }).concat([
+    'G:Positions-Spezifisch (Retoure)',
+    ['returnReason.id', 'yyy', 'Retourengrund — schreibbar'],
+    ['deliveredQuantity / receivedQuantity / reimbursementQuantity', 'ynn', 'Mengen read-only (Prozess setzt sie)'],
+    ['deliveryNoteLineItem.id / defaultStorageLocation.id', 'ynn', 'Referenzen, read-only'],
+    ['parentLineItem.id', 'ynn', ''],
+  ]),
+  rows: baseRows({
+    statusNote: 'Zusätzliches progress-Feld für den Bearbeitungsfortschritt',
+  }).concat([
+    'G:Dokumentspezifisch',
+    ['salesOrder', 'yyyyynn', ''],
+    ['deliveryNote', 'yyyyynn', ''],
+    ['creditNote', 'yyyyynn', 'Filter creditNote.id'],
+    ['replacementSalesOrder', 'yyyynnn', 'Ersatz-Auftrag'],
+    ['progress', 'yyyyynn', 'announced, received, checked, done'],
+    ['customerOrderNumber', 'yyyyyrn', ''],
+    ['useAlternativeDocumentTitle', 'yygyynn', 'Nur im Update — fehlt im Create (asymmetrisch)'],
+    ['isReturnOrderToSupplier', 'yyygynn', 'Nur im Create — fehlt im Update (asymmetrisch)'],
+    ['supplierNumber', 'pynnnnn', 'Nur bei Lieferantenretoure'],
+    ['preferredWarehouse', 'yyggynn', 'UI „Standardlager“ + Filter — fehlt in Create/Update'],
+    ['sales', 'yyyyynn', ''],
+    ['shippingMethod', 'yyggynn', 'UI „Versandart“ — fehlt in Create/Update'],
+    ['effectiveAddresses (soldTo/returnTo)', 'nynnnnn', 'Berechnet, read-only'],
+  ]),
+},
+{
+  id: 'purchaseOrder', name: 'PurchaseOrder', de: 'Bestellung', base: '/api/v3/purchaseOrders',
+  eps: [['GET','/purchaseOrders',0],['GET','/purchaseOrders/{id}',0],['POST','/purchaseOrders',1],['PATCH','/purchaseOrders/{id}',1],['DELETE','/purchaseOrders/{id}',0]],
+  actions: 'release, complete, cancel, send, setWriteProtection, removeWriteProtection, logActivity + File-Endpoints',
+  status: 'draft, released, sent, completed, cancelled — Filter-Default: released, completed, cancelled, sent',
+  search: 'id, documentNumber, documentDate, documentAddress.name, customerNumber + supplierNumber + lineItems.bestellnummer — Empfehlung (➜): supplierOrderNumber, supplierOfferNumber',
+  sort: 'id (Default), documentNumber, documentDate, customerNumber, documentAddress.country, project.id, createdAt, updatedAt',
+  uiOnly: ['Bankdaten', 'Vorkasse/PayPal', 'Rechnungs-Referenz', 'Info für Auftragserfassung'],
+  pdf: {
+    ok: ['supplierProductNumber + supplierProductName je Position vorhanden UND schreibbar ✓', 'printSettings.withoutPrices/withoutProductNumbers + packagingUnit im View'],
+    missing: [
+      'Positionssummen (nur price.net Einzelpreis, keine lineItemRevenue) + Steuerbetrag je Satz → Summenblock selbst berechnen',
+      '„Unsere Kundennummer beim Lieferanten" (kundennummerlieferant) + Einkäufer-Name — Infobox-Zeilen',
+      'Artikelnummer-Beimischung in Beschreibung (artikelnummerninfotext), VPE-Umrechnungslogik, Währung je Position',
+      'EAN/Hersteller/Herstellernummer, Positions-Freifelder 1–40',
+      'Bestellbestätigungs-Fußtext, Titel-Override, corr-Block „suppliers_order"',
+    ],
+  },
+  li: [
+    'G:Positions-Basis',
+    ['product.id', 'yyn', 'Create: Pflicht; Update: nicht änderbar'],
+    ['quantity', 'yyy', 'Pflicht, > 0'],
+    ['name', 'yyy', ''],
+    ['description', 'yyy', ''],
+    ['number', 'ynn', 'Read-only'],
+    ['unit', 'yyy', 'Roher DE-Wert'],
+    ['deliveryDate (+AsCalendarWeek)', 'yyy', ''],
+    ['countryOfOrigin', 'yyg', 'Nur im Create'],
+    ['hsCode', 'yyg', 'Nur im Create'],
+    ['internalComment', 'yyy', ''],
+    ['order / sort', 'yny', ''],
+    ['customFields', 'pgg', 'Nur Include'],
+    ['Intermediate-Positionen (heading, subtotal …)', 'ygg', 'Nur lesbar — per API nicht anlegbar'],
+    'G:Positions-Spezifisch (Bestellung)',
+    ['supplierProductNumber', 'yyy', 'Lieferanten-Artikelnummer — schreibbar ✓; durchsuchbar (lineItems.bestellnummer)'],
+    ['supplierProductName', 'yyy', 'Lieferanten-Bezeichnung — schreibbar ✓'],
+    ['price.net', 'yyy', 'EK-Preis netto (inline definiert, kein Financials-Trait)'],
+    ['taxRate / effectiveTaxRate', 'ynn', ''],
+    ['taxLegalNotice', 'yyy', ''],
+    ['deliveredQuantity', 'ynn', 'Read-only'],
+    ['salesOrderLineItem.id', 'ynn', ''],
+    ['discount', 'gnn', 'Weder lesbar noch schreibbar — Legacy-Spalte bestellung_position.rabatt existiert'],
+    ['printSettings.hidden / withoutPrice', 'nnn', 'Nicht vorhanden'],
+    ['Positionssummen (itemRevenue …)', 'gnn', 'Fehlen im View — für Headless-UIs und Summenblock nötig'],
+  ],
+  rows: baseRows({
+    partner: 'Lieferant',
+    statusNote: 'Actions release/complete/cancel/send',
+  }).concat([
+    'G:Dokumentspezifisch',
+    ['supplierNumber', 'pynnnyn', 'Abgeleitet aus Lieferant (address); durchsuchbar'],
+    ['deviatingShipToAddress', 'yyggnnn', 'Im View + UI voll editierbar — per API überhaupt nicht setzbar!'],
+    ['confirmedDeliveryDate', 'yyyyynn', 'Bestätigtes Lieferdatum'],
+    ['desiredDeliveryDate', 'yyyyynn', 'Gewünschtes Lieferdatum'],
+    ['confirmationType', 'yyyyynn', 'internet, email, telephone, telefax, letter, other'],
+    ['isConfirmed', 'yyggnnn', 'UI „Bestellung bestätigt“ — Kandidat für Lieferantenportal-/OCR-Prozesse'],
+    ['supplierOrderNumber', 'yyggyrn', 'AB-Nummer des Lieferanten — Standard-Suchbegriff im Einkauf'],
+    ['supplierOfferNumber', 'yyggyrn', 'Angebotsnummer des Lieferanten'],
+    ['customerNumberAtSupplier', 'ygggnnn', 'UI „Kundennummer“ (kundennummerlieferant) — PDF-Kopfzeile „Unsere Kundennummer“, im V3 komplett abwesend'],
+    ['priceInquiry', 'pynnnnn', 'Referenz auf Preisanfrage'],
+    ['useAlternativeDocumentTitle', 'yyyyynn', ''],
+    ['printSettings.withoutPrices', 'yyyynnn', 'Preise im PDF ausblenden'],
+    ['printSettings.withoutProductNumbers', 'yyyynnn', ''],
+    ['printSettings.isConfirmationRequestVisible', 'yyggnnn', 'UI „Bestellbestätigung anfordern“'],
+    ['costCenter', 'yyyyynn', ''],
+    ['shippingMethod', 'nynnnnn', 'Nur im View (auch UI-Maske hat kein Feld)'],
+    'G:Financials — einzeln (keine FinancialFilterCollection!)',
+    ['financials.paymentMethod', 'yyggnnn', 'Nicht mal filterbar'],
+    ['financials.paymentTerms.paymentTargetDays', 'yyggnnn', ''],
+    ['financials.paymentTerms.paymentTargetDiscount', 'yyggnnn', ''],
+    ['financials.paymentTerms.paymentTargetDiscountDays', 'yyggnnn', ''],
+    ['financials.tax.taxation', 'yyyynnn', ''],
+    ['financials.tax.taxRates.standard', 'nynnnnn', 'Systemseitig'],
+    ['financials.tax.taxRates.reduced', 'nynnnnn', 'Systemseitig'],
+    ['financials.currency', 'yyyynnn', ''],
+    ['financials.exchangeRate', 'nyyynnn', 'Per API setzbar, in der UI-Maske nicht vorhanden'],
+    ['totals.gross', 'pynnnnn', 'Berechnet; totals.net fehlt hier ganz'],
+  ]),
+},
+{
+  id: 'proformaInvoice', name: 'ProformaInvoice', de: 'Proformarechnung', base: '/api/v3/proformaInvoices',
+  eps: [['GET','/proformaInvoices',1],['GET','/proformaInvoices/{id}',1],['POST','/proformaInvoices',1],['PATCH','/proformaInvoices/{id}',1],['DELETE','/proformaInvoices/{id}',0]],
+  actions: 'release, send, setWriteProtection, removeWriteProtection, logActivity',
+  status: 'draft, released, completed (sent deprecated) — Filter-Default: released, sent, completed',
+  search: 'id, documentNumber, documentDate, documentAddress.name, customerNumber — Empfehlung (➜): customerOrderNumber, email, zipCode',
+  sort: 'id (Default), documentNumber, documentDate, customerNumber, documentAddress.country, project.id, createdAt, updatedAt',
+  uiOnly: ['Bankdaten', 'Einzugsermächtigung/-datum', 'USt-Brief', 'PayPal', 'Buchhaltungs-Flag'],
+  pdf: {
+    ok: ['hsCode + countryOfOrigin je Position vorhanden ✓', 'customsInformation + addCustomsInformation im View'],
+    missing: [
+      'Gewicht je Position (× Menge, „Weight:"-Text) — Kern des Zollblocks, fehlt komplett',
+      'Artikel-Fallback für hsCode/countryOfOrigin (PDF nutzt Artikel-Stammwert bei leerer Position)',
+      'Positionssummen (keine itemRevenue) + Steuerbetrag je Satz',
+      'SN/Chargen aus dem Ursprungs-Lieferschein + dessen Belegnummer/Datum + Trackingnummer',
+      'Verzollungs-Land-Override-Logik, berechneter Zahlungs-/Skontotext, Buchhaltungs-Ansprechpartner, Rabattstaffeln je Position',
+    ],
+  },
+  li: [
+    'G:Positions-Basis',
+    ['product.id', 'yyn', 'Create: Pflicht'],
+    ['quantity', 'yyy', 'Pflicht, > 0'],
+    ['name / description', 'yyy', ''],
+    ['number', 'ynn', 'Read-only'],
+    ['unit', 'yyy', 'Roher DE-Wert'],
+    ['deliveryDate (+AsCalendarWeek)', 'yyy', ''],
+    ['countryOfOrigin', 'yyg', 'Nur im Create — für Zollbeleg kritisch!'],
+    ['hsCode (Zolltarifnummer)', 'yyg', 'Nur im Create — für Zollbeleg kritisch!'],
+    ['customerProductNumber', 'yyg', 'Nur im Create'],
+    ['internalComment', 'yyy', ''],
+    ['order / sort', 'yny', ''],
+    ['Intermediate-Positionen', 'ygg', 'Nur lesbar'],
+    'G:Positions-Financials (schlank)',
+    ['price.net', 'yyy', ''],
+    ['price.gross', 'ynn', 'Berechnet'],
+    ['discount', 'yyy', 'Kombinierter %-Wert'],
+    ['taxRate / effectiveTaxRate', 'ynn', ''],
+    ['taxLegalNotice', 'yyy', ''],
+    ['printSettings.withoutPrice', 'yyy', ''],
+    ['printSettings.hidden', 'ygg', 'Im View, aber nicht schreibbar (kein Trait)'],
+    ['deliveredQuantity', 'ynn', 'Read-only'],
+    ['salesOrderLineItem.id', 'ynn', ''],
+    ['Positionssummen (itemRevenue …)', 'gnn', 'Fehlen im View — für Headless-UIs und Summenblock nötig'],
+    ['Gewicht je Position', 'ggg', 'Fehlt komplett — PDF-Zollblock und Headless brauchen es'],
+  ],
+  rows: baseRows({
+    statusNote: 'Auch GET-Endpoints sind hier als Beta markiert',
+  }).concat([
+    'G:Dokumentspezifisch',
+    ['salesOrder', 'yyygynn', 'Create ja, Update fehlt; Filter salesOrder.id'],
+    ['deliveryNote (Referenz)', 'pgnnnnn', 'PDF zeigt LS-Nummer/-Datum + SN/Chargen aus dem Ursprungs-LS — Referenz fehlt im View komplett'],
+    ['sales', 'yyyyynn', 'Filter sales.id'],
+    ['customerOrderNumber', 'yyyynrn', ''],
+    ['deliveryDate', 'yyyynnn', ''],
+    ['useAlternativeDocumentTitle', 'yyyynnn', ''],
+    ['deviatingShipToAddress', 'yyggnnn', 'Im View + UI editierbar — per API nicht setzbar'],
+    ['deviatingCustomsToAddress', 'yyggnnn', 'Verzollungsadresse — im View + UI, per API nicht setzbar'],
+    ['customsInformation', 'yyggnnn', 'Verzollungstext'],
+    ['addCustomsInformation', 'yyggnnn', 'Zolltarifnr./Ursprungsland je Position ausgeben'],
+    ['effectiveAddresses (soldTo/shipTo/customsTo)', 'nynnnnn', 'Berechnet, read-only'],
+  ])
+  .concat(finRows({ pm: 'yyggynn', xr: 'nyyynnn' })),
+},
+{
+  id: 'production', name: 'Production', de: 'Produktionsauftrag', base: '/api/v3/productions',
+  eps: [['GET','/productions',1],['GET','/productions/{id}',1],['POST','/productions',1],['DELETE','/productions/{id}',0]],
+  actions: 'release, start, logActivity + File-Endpoints — KEIN PATCH auf die Ressource!',
+  status: 'draft, released, started, completed, cancelled — Filter-Default: released, started, completed, cancelled (Drafts ausgeblendet)',
+  search: 'KEINE Volltextsuche vorhanden! — Empfehlung (➜): Basissuche freischalten (documentNumber, internalDesignation)',
+  sort: 'id, documentNumber, documentDate, createdAt, updatedAt — kein expliziter Default',
+  uiOnly: ['Charge + MHD (Eingabefelder der Maske, komplett ohne API-Gegenstück!)'],
+  pdf: {
+    ok: ['Grunddaten (Termine, Flags, bodyText) im View vorhanden'],
+    missing: [
+      'Das Produktions-PDF ist ein Eigen-Layout — fast alles fehlt in der Payload:',
+      'Arbeitsschritte komplett (produktion_arbeitsanweisung): Bezeichnung, Arbeitsplatzgruppe, Einzel-/Gesamtzeit, Beschreibung, Bild',
+      'Lagerbestände je Lagerplatz/Regal inkl. MHD-/Chargen-Sortierung',
+      'Kundenname/-nummer, Bearbeitername, Projekt-Abkürzung, Auftrags-Belegnummer',
+      'Interner Kommentar aus dem Produkt-Artikel, Stücklisten-Preise/Steuersätze, Positions-Freifelder',
+    ],
+  },
+  li: [
+    'G:materials (Stückliste) — komplett read-only',
+    ['number / name / description / quantity', 'ynn', 'Nur lesen (Include materials)'],
+    ['product', 'pnn', 'Include materials.product'],
+    ['hasChildLineItems / parentLineItem / sort', 'ynn', ''],
+    ['Positionen anlegen / ändern / löschen', 'ngg', 'Keine LineItem-Endpoints für Production — Stückliste per API unantastbar!'],
+  ],
+  rows: [
+    'G:Basis & System (kein BusinessDocument!)',
+    ['id', 'pynnyny', 'Systemvergeben'],
+    ['documentNumber', 'pynnyry', 'Vergabe beim Freigeben'],
+    ['status', 'yynpynn', 'Nur Actions release/start; kein cancel/complete per API!'],
+    ['documentDate', 'yyygyny', 'KEIN Update-Endpoint — alle Felder nach Create unveränderbar'],
+    ['writeProtection', 'yyngynn', 'Keine set/removeWriteProtection-Actions (anders als alle Belege)'],
+    ['createdAt', 'nynnyny', ''],
+    ['updatedAt', 'nynnyny', ''],
+    'G:Referenzen',
+    ['address (Kunde)', 'yyygynn', 'Create: Pflichtfeld'],
+    ['project', 'yyygynn', ''],
+    ['salesOrder', 'yyygynn', 'Filter salesOrder.id'],
+    ['preferredWarehouse', 'yyygynn', 'UI „Standardlager“'],
+    ['tags', 'ypygynn', ''],
+    ['produceProduct', 'nyynnnn', 'Zu produzierendes Produkt — kein UI-Feld in der Maske, kein Include'],
+    ['produceQuantity', 'nyynnnn', 'RequiredWith produceProduct'],
+    'G:Produktionsplanung',
+    ['productionStartDate', 'yyygynn', 'Kandidat für externe Planungsalgorithmen — nach Create nicht mehr verschiebbar!'],
+    ['productionEndDate', 'yyygynn', ''],
+    ['stockProvisioningDate', 'yyygynn', 'Bereitstellung'],
+    ['stockRetrievalDate', 'yyygynn', 'Auslieferung Lager'],
+    ['materialReservation', 'yyygynn', 'instant, onRelease, onStart'],
+    ['materialRetrieval', 'yyygynn', 'single, collective'],
+    ['resolveMultiLevelBOM', 'yyygynn', 'Unterlisten explodieren'],
+    ['functionTest', 'yyygynn', ''],
+    ['createSerialNumbers', 'yyygynn', ''],
+    ['recordSubSerialNumbers', 'yyygynn', ''],
+    ['printSettings.showTaskDescription', 'yyygynn', 'Arbeitsschritte-Text anzeigen'],
+    ['batch (Charge)', 'ygggnnn', 'UI-Eingabefeld — im API-Contract komplett abwesend (nicht mal View)'],
+    ['bestBeforeDate (MHD)', 'ygggnnn', 'UI-Eingabefeld — im API-Contract komplett abwesend'],
+    'G:Texte & Positionen',
+    ['internalDesignation', 'yyygyrn', ''],
+    ['bodyText', 'yyygynn', 'Freitext'],
+    ['internalComment', 'yyygynn', ''],
+    ['materials (Stückliste)', 'ypggnnn', 'Unterfelder: siehe Tabelle unten — komplett read-only'],
+    ['activity', 'ppnpnnn', 'Include; Action logActivity'],
+  ],
+},
+];
+
+var MARK = {
+  y: '<span class="m yes">✓</span>',
+  p: '<span class="m part">◐</span>',
+  n: '<span class="m no">–</span>',
+  g: '<span class="m gap" title="Fehlt in der API – ergänzen">!</span>',
+  r: '<span class="m rec" title="Empfehlung: per API durchsuchbar machen (Sachbearbeiter-Suche)">➜</span>',
+};
+
+function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+
+function rowsToHtml(rows, cols, countRef) {
+  return rows.map(function (r) {
+    if (typeof r === 'string') {
+      return '<tr class="group"><td colspan="' + (cols + 2) + '">' + esc(r.slice(2)) + '</td></tr>';
+    }
+    var cells = r[1].split('').map(function (c) { return '<td>' + MARK[c] + '</td>'; }).join('');
+    if (r[1].indexOf('g') !== -1) { countRef.gaps++; }
+    var sub = r[0].indexOf('documentAddress.') === 0 ? ' class="sub"' : '';
+    return '<tr><td' + sub + '><code>' + esc(r[0]) + '</code></td>' + cells + '<td>' + esc(r[2] || '') + '</td></tr>';
+  }).join('');
+}
+
+function renderDoc(doc) {
+  var count = { gaps: 0 };
+  var body = rowsToHtml(doc.rows, 7, count);
+  var liBody = doc.li ? rowsToHtml(doc.li, 3, count) : '';
+
+  var eps = doc.eps.map(function (e) {
+    return '<span class="ep"><b>' + e[0] + '</b> ' + esc(e[1]) + (e[2] ? ' <span class="beta">BETA</span>' : '') + '</span>';
+  }).join('');
+
+  var pdfHtml = '<div class="pdfbox"><h3>PDF selbst rendern: Was in der View-Payload fehlt</h3>';
+  if (doc.pdf.ok.length) {
+    pdfHtml += '<p class="ok">✓ Bereits abgedeckt: ' + doc.pdf.ok.map(esc).join(' · ') + '</p>';
+  }
+  pdfHtml += '<ul>' + doc.pdf.missing.map(function (m) { return '<li>' + esc(m) + '</li>'; }).join('') + '</ul>' +
+    '<p style="color:var(--muted)">Dazu kommen die dokumentübergreifenden Lücken (Briefpapier/Firmendaten, aufgelöste Namen, Steuersummen je Satz, Text-Templates, Positions-Stammdaten) — siehe Übersicht.</p></div>';
+
+  var html =
+    '<div class="dochead"><h2>' + doc.name + '</h2><span class="sub">' + doc.de + ' · <span class="mono">' + doc.base + '</span> · <b style="color:var(--gap)">' + count.gaps + ' API-Lücken</b></span></div>' +
+    '<div class="endpoints">' + eps + '</div>' +
+    '<div class="metastrip">' +
+      '<div class="meta"><b>Status &amp; Filter-Default</b>' + esc(doc.status) + '</div>' +
+      '<div class="meta"><b>Search (searchTerm)</b>' + esc(doc.search) + '</div>' +
+      '<div class="meta"><b>Sort</b>' + esc(doc.sort) + '</div>' +
+      '<div class="meta"><b>Actions</b>' + esc(doc.actions) + '</div>' +
+    '</div>' +
+    '<div class="tablewrap"><table>' +
+    '<thead><tr><th>Feld (API-Name)</th><th>UI</th><th>View<br>GET</th><th>Create<br>POST</th><th>Update<br>PATCH</th><th>Filter</th><th>Search</th><th>Sort</th><th>Hinweis</th></tr></thead>' +
+    '<tbody>' + body + '</tbody></table></div>' +
+    (doc.li
+      ? '<h3 class="section">lineItems — Unterfelder (Positions-Ebene: eigene Endpoints POST/PATCH/DELETE …/lineItems/{id})</h3>' +
+        '<div class="tablewrap"><table class="li">' +
+        '<thead><tr><th>Positionsfeld</th><th>View</th><th>Create</th><th>Update</th><th>Hinweis</th></tr></thead>' +
+        '<tbody>' + liBody + '</tbody></table></div>'
+      : '') +
+    pdfHtml +
+    '<div class="cards">' +
+      (doc.id === 'production'
+        ? '<div class="card"><h3>Includes</h3><ul><li><code>materials</code></li><li><code>materials.product</code></li><li><code>project</code></li><li><code>address</code></li><li><code>tags</code></li><li><code>activity</code></li></ul></div>'
+        : '<div class="card"><h3>Includes</h3><p>Für alle Belege identisch:</p><ul><li><code>lineItems</code></li><li><code>lineItems.product</code></li><li><code>lineItems.customFields</code></li><li><code>project</code></li><li><code>address</code></li><li><code>tags</code></li><li><code>activity</code></li><li><code>customFields</code></li></ul></div>') +
+      '<div class="card wide"><h3>UI-Felder ohne API-Gegenstück</h3><ul>' + doc.uiOnly.map(function (u) { return '<li>' + esc(u) + '</li>'; }).join('') + '</ul></div>' +
+    '</div>';
+  return { html: html, gaps: count.gaps };
+}
+
+function renderOverview(gapCounts) {
+  var rows = DOCS.map(function (d, i) {
+    var hasPatch = d.eps.some(function (e) { return e[0] === 'PATCH'; });
+    return '<tr>' +
+      '<td>' + d.name + ' <span style="color:var(--muted);font-weight:400">(' + d.de + ')</span></td>' +
+      '<td><span class="badge ok">List/View</span>' + (d.id === 'proformaInvoice' || d.id === 'production' ? ' <span class="badge beta">Beta</span>' : '') + '</td>' +
+      '<td><span class="badge beta">POST Beta</span></td>' +
+      '<td>' + (hasPatch ? '<span class="badge beta">PATCH Beta</span>' : '<span class="badge no">KEIN PATCH</span>') + '</td>' +
+      '<td>' + esc(d.status.split('— Filter-Default:')[1] || '') + '</td>' +
+      '<td style="text-align:center"><span class="badge gapb">' + gapCounts[i] + '</span></td>' +
+      '</tr>';
+  }).join('');
+
+  return '<div class="dochead"><h2>Übersicht</h2><span class="sub">9 belegbasierte V3-Endpunkte · ' + gapCounts.reduce(function (a, b) { return a + b; }, 0) + ' API-Lücken gesamt (inkl. Positions-Ebene)</span></div>' +
+    '<div class="tablewrap"><table class="ovtable">' +
+    '<thead><tr><th>Dokument</th><th>Lesen</th><th>Create</th><th>Update</th><th>Status-Filter-Default (ohne expliziten Filter!)</th><th>Lücken</th></tr></thead>' +
+    '<tbody>' + rows + '</tbody></table></div>' +
+
+    '<div class="gapbox"><h3>Die wichtigsten API-Lücken über alle Dokumente</h3>' +
+    '<p><strong>Zielbild Headless:</strong> Eigene UIs und externe Prozesse sollen komplett über die API laufen. Maßstab ist daher: Alles, was das System kennt, muss <em>lesbar</em> sein (View), alles, was UI oder Prozesse pflegen, muss <em>schreibbar</em> sein (Create/Update) — blaue Marker in allen drei Spalten werden im Excel-Export zu Aufgaben.</p>' +
+    '<ul>' +
+    '<li><strong>customFields (Freifelder)</strong> — Kopf- und Positionsebene, überall nur lesbar. Größte Einzellücke.</li>' +
+    '<li><strong>financials.paymentMethod + die 3 paymentTerms-Felder</strong> — bei allen Financial-Belegen UI-pflegbar, in Create/Update fehlend (Ausnahme: Offer-Create hat paymentMethod).</li>' +
+    '<li><strong>shippingMethod</strong> — fehlt in Create/Update bei SalesOrder, DeliveryNote, ReturnOrder; bei Offer nur im Create.</li>' +
+    '<li><strong>Intermediate-Positionen</strong> (Zwischenüberschriften, Zwischen-/Gruppensummen, Seitenumbrüche) — per API bei keinem Beleg anlegbar, die UI kann es.</li>' +
+    '<li><strong>Positions-Update-Asymmetrien</strong> — countryOfOrigin, hsCode, customerProductNumber nur im Create; packagingUnit (VPE) gar nicht schreibbar.</li>' +
+    '<li><strong>deviatingShipToAddress</strong> — bei PurchaseOrder und ProformaInvoice (inkl. Verzollungsadresse) im View + UI, per API nicht setzbar.</li>' +
+    '<li><strong>SalesOrder ist der dünnste Kopf-Contract</strong> — Termine, Automatisierungs-Flags, externalOrderNumber/customerOrderNumber fehlen in Create/Update.</li>' +
+    '<li><strong>Production hat gar kein Update</strong> — kein PATCH, Stückliste komplett read-only, Charge/MHD fehlen im Contract, keine Suche.</li>' +
+    '</ul></div>' +
+
+    '<div class="gapbox"><h3>Extern setzbar machen: Felder für Algorithmen &amp; Prozesse (Code-verifiziert)</h3>' +
+    '<p>Diese Felder werden heute nur „hintenrum“ von internen Prozessen geschrieben oder sind reine UI-Checkboxen — sie müssen von außen (Integrationen, Algorithmen, Menschen) setzbar werden:</p>' +
+    '<ul>' +
+    '<li><strong>storageCountry</strong> — wird nur einmalig systemseitig gesetzt (OSS-/Lieferschwellen-Logik in class.erpapi.php, nur WHERE storage_country=\'\'). Externe Steuer-Engines brauchen vollen Schreibzugriff (Create + Update).</li>' +
+    '<li><strong>externalOrderId + transactionNumber</strong> — Schreiber ist heute ausschließlich der Shop-Importer (class.remote.php). Wer Aufträge per V3 anlegt, kann diese Referenzen nicht mitgeben.</li>' +
+    '<li><strong>salesChannel</strong> — nur vom Importer gesetzt; V3-erzeugte Aufträge können ihre Herkunft nicht kennzeichnen.</li>' +
+    '<li><strong>Entscheidungs-Flags</strong> (vatChecked, manualPayment-/ShippingCost-/DeliveryBlockApproval, autoDispatch, fastLane, createDocuments) — reine UI-Checkboxen; klassische Ziele für externe Fraud-/Bonitäts-/Priorisierungs-Algorithmen.</li>' +
+    '<li><strong>Invoice.paymentStatus</strong> — nur indirekt über dunningSetManually erreichbar; Payment-Provider-Anbindungen brauchen einen direkten Weg.</li>' +
+    '<li><strong>PurchaseOrder.isConfirmed + supplierOrderNumber/-OfferNumber</strong> — Lieferantenportale/AB-OCR müssen Bestellbestätigungen zurückschreiben können.</li>' +
+    '<li><strong>Production-Termine</strong> (productionStart-/EndDate, stockProvisioning-/RetrievalDate) — ohne PATCH kann kein Planungsalgorithmus Termine verschieben; Charge/MHD fehlen komplett.</li>' +
+    '<li><strong>Tracking / Seriennummern / Chargen</strong> — keinerlei V3-Endpunkte (nur Legacy-v1 /shipments bzw. interne Web-Routen); für WMS-/Carrier-Integrationen und das PDF-Rendering nötig.</li>' +
+    '</ul></div>' +
+
+    '<h3 class="section">Fremd-Belegnummern auf den PDFs — Kreuzmatrix</h3>' +
+    '<p style="color:var(--muted);font-size:13.5px;max-width:90ch">Welche fremden Belegnummern druckt jeder Beleg (Standard-Infobox + konfigurierbarer corr-Block), und stehen sie in der Payload? Quelle: PDF-Klassen-Analyse.</p>' +
+    '<div class="tablewrap"><table class="ovtable">' +
+    '<thead><tr><th>PDF-Beleg</th><th>Zeigt Nummer von …</th><th>Wo im PDF</th><th>In der Payload?</th></tr></thead><tbody>' +
+    [
+      ['Angebot', 'Anfrage (Kundenreferenz)', 'Kopfzeile „Angebot/Anfrage“ + ANFRAGENUMMER', '<span class="badge ok">✓ customerReference (String)</span>'],
+      ['Auftrag', 'Angebot', 'Kopfzeile „Angebot“ + ANGEBOTSNUMMER', '<span class="badge gapb">nur ID (offer.id)</span>'],
+      ['Rechnung', 'Auftrag', 'Kopfzeile „Auftrag“ + AUFTRAGSNUMMER', '<span class="badge gapb">nur ID (salesOrder.id)</span>'],
+      ['Rechnung', 'Lieferschein (Nummer + Datum)', 'Kopfzeilen „Lieferschein“/„Lieferdatum“ + LIEFERSCHEINNUMMER/-DATUM', '<span class="badge gapb">nur ID; LS-Datum fehlt ganz</span>'],
+      ['Gutschrift', 'Rechnung (Nummer + Datum)', 'Kopfzeile „Rechnung“ + RECHNUNGSNUMMER/-DATUM', '<span class="badge gapb">nur ID; Datum fehlt</span>'],
+      ['Gutschrift', 'Auftrag (via Rechnung)', 'Kopfzeile „Auftrag“', '<span class="badge no">fehlt komplett</span>'],
+      ['Gutschrift', 'Lieferschein (Nummer + Datum)', 'corr-Block LIEFERSCHEINNUMMER/-DATUM', '<span class="badge no">fehlt komplett (keine Referenz)</span>'],
+      ['Lieferschein', 'Auftrag', 'Kopfzeile + AUFTRAGSNUMMER', '<span class="badge gapb">nur ID (salesOrder.id)</span>'],
+      ['Lieferschein', 'Tracking (Versand)', 'Versandinfo-Zeile + TRACKINGNUMMER', '<span class="badge no">fehlt komplett</span>'],
+      ['Retoure', 'Lieferschein (Nummer + Datum)', 'Kopfzeile + corr-Block', '<span class="badge gapb">nur ID; Datum fehlt</span>'],
+      ['Retoure', 'Auftrag', 'Kopfzeile', '<span class="badge gapb">nur ID (salesOrder.id)</span>'],
+      ['Bestellung', 'Lieferanten-Angebot (AN-Nr.)', 'Kopfzeile „Angebot“', '<span class="badge ok">✓ supplierOfferNumber (String)</span>'],
+      ['Bestellung', 'Lieferanten-AB', 'Kopfblock', '<span class="badge ok">✓ supplierOrderNumber (String)</span>'],
+      ['Bestellung', 'Unsere Kundennr. beim Lieferanten', 'Kopfzeile „Unsere Kundennummer“', '<span class="badge no">fehlt komplett (kundennummerlieferant)</span>'],
+      ['Bestellung', 'Preisanfrage', 'Referenz', '<span class="badge gapb">nur ID (priceInquiry.id)</span>'],
+      ['Proforma', 'Auftrag', 'Kopfzeile', '<span class="badge gapb">nur ID (salesOrder.id)</span>'],
+      ['Proforma', 'Lieferschein (Nummer + Datum) + Tracking', 'Kopfzeilen + SN/Chargen-Quelle', '<span class="badge no">fehlt komplett (keine Referenz)</span>'],
+      ['Produktion', 'Auftrag', 'Infobox', '<span class="badge gapb">nur ID (salesOrder.id)</span>'],
+    ].map(function (r) {
+      return '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td><td style="text-align:left">' + r[2] + '</td><td style="text-align:left">' + r[3] + '</td></tr>';
+    }).join('') +
+    '</tbody></table></div>' +
+    '<div class="pdfbox"><h3>PDF selbst rendern: dokumentübergreifende Lücken (gelten für alle Belege)</h3>' +
+    '<p>Aus der View-Payload allein ist ein maßgetreues Beleg-PDF derzeit <strong>nicht</strong> renderbar. Sechs Kategorien fehlen überall — Details je Beleg im jeweiligen Tab:</p>' +
+    '<ul>' +
+    '<li><strong>Referenzierte Belegnummern statt IDs</strong> — Infobox + konfigurierbarer corr-Block drucken Belegnummern (+ teils Datum) verknüpfter Belege. Payload liefert nur IDs → pro Referenz ein Nachlade-Request.</li>' +
+    '<li><strong>Aufgelöste Namen &amp; Kontaktdaten</strong> — Bearbeiter-/Vertriebs-Name (+E-Mail/Telefon), Zahlungsart-/Versandart-Name, Projekt-Abkürzung, lokalisierte Ländernamen. Payload: nur IDs/Codes.</li>' +
+    '<li><strong>Firmen-/Briefpapier-Konfiguration</strong> — Logo + Briefpapier-PDFs (auch je Projekt/Sprache!), Absenderzeile, Footer-Stammdaten (24 Freitextfelder inkl. Bankverbindung), GiroCode-Daten. Kein V3-Endpunkt.</li>' +
+    '<li><strong>Berechnete Blöcke</strong> — Steuerbetrag je Steuersatz, Beträge der Zwischen-/Gruppensummen (Subtotal-Zeilen kommen ohne Summe!), Versandkosten-/Zahlartaufschlag-Zeilen, Netto-/Brutto-Anzeigelogik, Fälligkeits-/Skontodaten.</li>' +
+    '<li><strong>Text-Templates &amp; Übersetzungen</strong> — Belegtitel je Sprache, Spaltenüberschriften, Zahlungsbedingungs-Texte mit Platzhaltern, EU-/Export-Steuervermerke, Kopf-/Fußtext-Komposition (footer_reihenfolge_*, systemfreitext), Einheiten-Übersetzung.</li>' +
+    '<li><strong>Positions-Stammdaten</strong> — tatsächliche SN/Chargen/MHD, Gewicht, EAN, Abmessungen, Hersteller(-nummer), Produkt-Freifelder, Rabattstaffeln (rabatt1–5). Auch nicht via include lineItems.product — die ProductResource ist bewusst „slim“ (nur id + number).</li>' +
+    '</ul>' +
+    '<p><strong>Zuschaltbare Infoboxen verschärfen das:</strong> Firmendaten-/Layout-Settings (festetrackingnummer, herstellernummerimdokument, abmessungimdokument, freifelderimdokument, beleg_pos_sn/charge/mhd/ean, gewichtbezeichnung …) und der frei konfigurierbare corr-Infoblock können jede dieser Angaben aufs PDF bringen — ein API-Renderer muss sie alle vorhalten, sobald der Tenant sie aktiviert.</p>' +
+    '<p class="ok">Kurzfristiger Workaround: Die fertigen PDFs sind per <code>Accept: application/pdf</code> auf jedem GET-Endpoint abrufbar.</p></div>' +
+
+    '<div class="cards">' +
+    '<div class="card wide"><h3>Search-Ausbau für Sachbearbeiter (➜)</h3><ul>' +
+    '<li>Überall nur 5 Basisspalten durchsuchbar — zu wenig für den Alltag.</li>' +
+    '<li><strong>Alle Belege:</strong> documentAddress.email + documentAddress.zipCode.</li>' +
+    '<li><strong>SalesOrder:</strong> externalOrderNumber, customerOrderNumber, transactionNumber, externalOrderId.</li>' +
+    '<li><strong>Invoice:</strong> customerOrderNumber, masterReferenceNumber. <strong>CreditNote/DeliveryNote/Proforma/ReturnOrder:</strong> customerOrderNumber.</li>' +
+    '<li><strong>Offer:</strong> customerReference. <strong>PurchaseOrder:</strong> supplierOrderNumber (AB-Nr.), supplierOfferNumber.</li>' +
+    '<li><strong>Production:</strong> hat gar keine Suche — Basissuche freischalten.</li>' +
+    '</ul></div>' +
+    '<div class="card wide"><h3>Im V3 fehlende Belegtypen</h3><ul>' +
+    '<li><strong>Warenbuchungsbelege (Wareneingang/-ausgang):</strong> kein V3-Endpunkt. GoodsReceipts nur als Sub-Aktionen der Legacy-Fulfillment-API (POST /purchaseOrders/{id}/goodsReceipts, POST /returns/{id}/goodsReceipts).</li>' +
+    '<li><strong>Versand/Shipments (Tracking):</strong> nur Legacy-v1 (/v1/shipments, createLabel) — kein V3.</li>' +
+    '<li><strong>Preisanfrage (PriceInquiry):</strong> nur File-Endpoints im V3. <strong>Anfrage (Verkauf):</strong> Legacy-PDF existiert, kein V3-Endpunkt.</li>' +
+    '</ul></div>' +
+    '<div class="card wide"><h3>Gemeinsame Architektur</h3><ul>' +
+    '<li>Alle status-Filter haben Defaults, die <strong>Drafts ausblenden</strong> — Integrationen müssen den Filter explizit setzen.</li>' +
+    '<li>Statuswechsel + Schreibschutz über Action-Endpoints (Ausnahme Production: nur release/start).</li>' +
+    '<li>documentAddress: alle 18 Unterfelder in View/Create/Update ✓ — nicht filterbar nur type, salutation, mobile.</li>' +
+    '<li>V3-Schreibseite der Positionen kennt nur Produkt-Positionen — keine Intermediate-Typen, kein product-Wechsel per PATCH.</li>' +
+    '<li>Invoice + CreditNote: documentNumber-Override im Create (sofort released). DELETE überall nur im Status draft. Pagination SIMPLE/TABLE/CURSOR, maxPageSize 1000.</li>' +
+    '</ul></div>' +
+    '<div class="card wide"><h3>Empfohlene Ausbau-Prioritäten</h3><ul>' +
+    '<li><strong>Hoch:</strong> customFields schreibbar (Kopf + Position); paymentMethod/paymentTerms in Create+Update; SalesOrder-Basics; storageCountry + externalOrderId/transactionNumber/salesChannel schreibbar; referenzierte Belegnummern in die Views; Search-Ausbau (➜).</li>' +
+    '<li><strong>Mittel:</strong> Production-PATCH + materials-Endpoints; V3-Shipments/Tracking; SN/Chargen lesbar; deviatingShipToAddress für PurchaseOrder/Proforma; Automatisierungs-Flags; aufgelöste Namen ({id, name}) in Views; Steuerbetrag je Satz + Zwischensummen-Beträge.</li>' +
+    '<li><strong>Niedrig:</strong> Create/Update-Asymmetrien (auch Positions-Ebene: countryOfOrigin/hsCode im Update); Intermediate-Positionen schreibbar; Positions-Stammdaten (Gewicht/EAN/Hersteller) über vollwertige Product-Include-Variante.</li>' +
+    '</ul></div>' +
+    '</div>';
+}
+
+/* ---------- Vorschlag: include=letterhead (Briefkopf-/Footer-Kontext je Beleg) ---------- */
+
+var LETTERHEAD_EXAMPLE = {
+  "id": "4711",
+  "documentNumber": "AB-2026-0815",
+  "…": "… bestehende Beleg-Payload (Kopf, financials, lineItems …) …",
+  "letterhead": {
+    "resolvedFor": {
+      "documentType": "salesOrder",
+      "language": "de",
+      "project": { "id": "3", "abbreviation": "SHOP" }
+    },
+    "sender": {
+      "line": "Muster GmbH · Fuggerstraße 11 · 86150 Augsburg",
+      "visible": true
+    },
+    "company": {
+      "name": "Muster GmbH",
+      "street": "Fuggerstraße 11",
+      "zipCode": "86150",
+      "city": "Augsburg",
+      "country": "DE",
+      "phone": "+49 821 123456-0",
+      "fax": "+49 821 123456-99",
+      "email": "info@muster.de",
+      "website": "https://www.muster.de",
+      "vatId": "DE123456789",
+      "taxNumber": "103/123/45678",
+      "commercialRegister": { "court": "Amtsgericht Augsburg", "number": "HRB 12345" },
+      "managingDirectors": ["Max Muster", "Erika Muster"]
+    },
+    "bankAccounts": [
+      {
+        "accountHolder": "Muster GmbH",
+        "iban": "DE02 1203 0000 0000 2020 51",
+        "bic": "BYLADEM1001",
+        "bankName": "Deutsche Kreditbank"
+      }
+    ],
+    "girocode": {
+      "active": true,
+      "recipient": "Muster GmbH",
+      "iban": "DE02120300000000202051",
+      "bic": "BYLADEM1001"
+    },
+    "stationery": {
+      "origin": "project",
+      "logo": { "fileId": "f_9a12", "mimeType": "image/png", "downloadUrl": "/api/v3/files/f_9a12/download" },
+      "backgroundFirstPage": { "fileId": "f_77b0", "mimeType": "application/pdf", "downloadUrl": "/api/v3/files/f_77b0/download" },
+      "backgroundFollowingPages": { "fileId": "f_77b1", "mimeType": "application/pdf", "downloadUrl": "/api/v3/files/f_77b1/download" }
+    },
+    "footer": {
+      "color": "#5A6570",
+      "centered": false,
+      "columns": [
+        { "widthPercent": 30, "lines": ["Muster GmbH", "Fuggerstraße 11", "86150 Augsburg", "Deutschland"] },
+        { "widthPercent": 25, "lines": ["Tel. +49 821 123456-0", "Fax +49 821 123456-99", "info@muster.de", "www.muster.de"] },
+        { "widthPercent": 25, "lines": ["USt-IdNr. DE123456789", "Steuernr. 103/123/45678", "Amtsgericht Augsburg, HRB 12345", "GF: Max Muster, Erika Muster"] },
+        { "widthPercent": 20, "lines": ["Deutsche Kreditbank", "IBAN DE02 1203 0000 0000 2020 51", "BIC BYLADEM1001"] }
+      ]
+    },
+    "labels": {
+      "documentTitle": "Auftragsbestätigung",
+      "draftNotice": "Entwurf",
+      "copyNotice": "Kopie",
+      "customerNumber": "Kundennummer",
+      "customerOrderNumber": "Ihre Bestellnummer",
+      "date": "Datum",
+      "editor": "Bearbeiter",
+      "sales": "Vertrieb",
+      "project": "Projekt",
+      "contactPerson": "Ansprechpartner",
+      "page": "Seite",
+      "pageOf": "von",
+      "columns": {
+        "position": "Pos.",
+        "number": "Art.-Nr.",
+        "name": "Bezeichnung",
+        "quantity": "Menge",
+        "unit": "Einheit",
+        "vat": "MwSt.",
+        "price": "Einzelpreis",
+        "discount": "Rabatt",
+        "total": "Gesamt"
+      },
+      "totals": {
+        "subtotal": "Zwischensumme",
+        "shipping": "Versandkosten",
+        "net": "Gesamt netto",
+        "vatLine": "zzgl. {rate} % MwSt.",
+        "gross": "Gesamtbetrag"
+      }
+    },
+    "texts": {
+      "headerTemplate": "Sehr geehrte Damen und Herren,",
+      "footerComposed": "Vielen Dank für Ihren Auftrag.\nZahlbar innerhalb von 30 Tagen bis zum 17.08.2026, 2 % Skonto bei Zahlung bis 28.07.2026.\nEs gelten unsere Allgemeinen Geschäftsbedingungen.",
+      "paymentTerms": "Zahlbar innerhalb von 30 Tagen bis zum 17.08.2026, 2 % Skonto (23,80 EUR) bei Zahlung bis 28.07.2026.",
+      "taxNotice": null,
+      "smallBusinessNotice": null
+    },
+    "format": {
+      "locale": "de-DE",
+      "dateFormat": "DD.MM.YYYY",
+      "currency": "EUR",
+      "priceDecimals": 2,
+      "displayPricesGross": false
+    },
+    "unitTranslations": { "Stk": "Stück", "h": "Stunde", "pal": "Palette" }
+  }
+};
+
+var LETTERHEAD_MAPPING = [
+  ['letterhead.resolvedFor', 'Auflösung je Beleg: Belegsprache + Projekt bestimmen Briefpapier, Labels und Texte', 'DocumentLanguageGetter, projekt.*'],
+  ['sender.line / .visible', 'Absenderzeile über dem Adressfeld', "Firmendaten 'absender', Style 'sichtbar', 'absenderunterstrichen'"],
+  ['company.*', 'Strukturierte Firmenstammdaten (heute nur als Freitext im Footer!)', 'Grundeinstellungen / firmendaten'],
+  ['bankAccounts / girocode', 'Bankverbindung strukturiert + GiroCode-Daten', "footer-Freitext bzw. Zahlungsart-Settings qr_active/qr_iban/qr_bic (renderQRCode)"],
+  ['stationery.*', 'Logo + Briefpapier-PDFs Seite 1/Folgeseiten, projekt- und sprachabhängig aufgelöst', "imageService 'logo'/'briefpapier'/'briefpapier2', projekt.speziallieferschein, File-Store"],
+  ['footer.columns', 'Die 4 Footer-Spalten wie im PDF (Rohdaten der 24 Freitextfelder)', "footer_0_0 … footer_3_5, footer_breite1-4, footer_farbe, footer_zentriert"],
+  ['labels.*', 'Alle Beschriftungen in Belegsprache: Titel (inkl. abweichender Bezeichnung), Infobox-Labels, Spaltenüberschriften, Summen-Labels', "Beschriftung()/uebersetzung: dokument_*, bezeichnung*ersatz, auftrag_bezeichnung_*"],
+  ['texts.headerTemplate / .footerComposed', 'Fertig komponierte Kopf-/Fußtexte (Reihenfolge-Template + systemfreitext + ParseUserVars angewendet)', "Beschriftung '<typ>_header/_footer', Firmendaten footer_reihenfolge_<typ>, ParseUserVars/BerechneFormel"],
+  ['texts.paymentTerms', 'Aufgelöster Zahlungsbedingungs-Text mit eingesetzten Daten/Beträgen', "Zahlungsweisetext() inkl. {ZAHLUNGSZIELTAGE}/{ZAHLUNGBISDATUM}/{ZAHLUNGSZIELSKONTO*}"],
+  ['texts.taxNotice / .smallBusinessNotice', 'Steuerhinweis EU/Export bzw. Kleinunternehmer — fertig gerendert oder null', "eu_/export_lieferung_vermerk ({USTID}/{LAND}), Setting kleinunternehmer"],
+  ['format.*', 'Datums-/Währungsformat + Netto-Brutto-Anzeigelogik des Empfängers', "GetCompanyDateFormat, waehrung, viernachkommastellen_belege, AnzeigeBelegNettoAdresse()"],
+  ['unitTranslations', 'Einheiten-Übersetzungen in Belegsprache (für lineItems.unit)', "artikeleinheit + uebersetzung"],
+];
+
+function renderLetterhead() {
+  var mapRows = LETTERHEAD_MAPPING.map(function (m) {
+    return '<tr><td><code>' + esc(m[0]) + '</code></td><td style="text-align:left">' + esc(m[1]) + '</td><td style="text-align:left"><span class="mono">' + esc(m[2]) + '</span></td></tr>';
+  }).join('');
+  return '<div class="dochead"><h2>Vorschlag: <code>?include=letterhead</code></h2>' +
+    '<span class="sub">Ein Include für alle Belegarten, das den kompletten Briefkopf-/Footer-Kontext aufgelöst mitliefert</span></div>' +
+    '<div class="gapbox"><h3>Idee</h3>' +
+    '<p>Statt dass jeder Integrator Firmendaten, Briefpapier-Dateien, Beschriftungen und Textbausteine aus Legacy-Settings zusammensucht, löst der Server sie <strong>pro Beleg</strong> auf (Belegsprache + Projekt + Belegtyp) und liefert sie als Include mit. Zusammen mit den Feldern der Feldmatrix wird das PDF damit vollständig aus einer einzigen Response renderbar.</p>' +
+    '<ul><li>Verfügbar auf allen GET-Endpoints: <code>GET /api/v3/salesOrders/4711?include=letterhead</code></li>' +
+    '<li>Projekt-Briefpapier, abweichende Belegbezeichnungen und Sprach-Übersetzungen sind bereits angewendet</li>' +
+    '<li>Berechnete Texte (Zahlungsbedingung, Steuervermerk) kommen fertig gerendert — die Templates bleiben serverseitig</li></ul></div>' +
+    '<h3 class="section">Vollständiger Beispiel-Payload</h3>' +
+    '<pre class="json">' + esc(JSON.stringify(LETTERHEAD_EXAMPLE, null, 2)) + '</pre>' +
+    '<h3 class="section">Mapping auf die heutigen Legacy-Quellen (aus der Briefpapier-Analyse)</h3>' +
+    '<div class="tablewrap"><table class="li"><thead><tr><th>Payload-Feld</th><th>Inhalt</th><th>Legacy-Quelle (class.briefpapier.php &amp; Settings)</th></tr></thead>' +
+    '<tbody>' + mapRows + '</tbody></table></div>' +
+    '<div class="pdfbox"><h3>Abgrenzung</h3><p>Nicht Teil von <code>letterhead</code> (gehören in die Beleg-Payload selbst): referenzierte Belegnummern, aufgelöste Bearbeiter-/Vertriebs-/Versandart-Namen, Steuerbetrag je Steuersatz, Zwischensummen-Beträge, Positions-Stammdaten (SN/Charge/Gewicht/EAN) — siehe Aufgabenliste. Für Belege ohne Financials (DeliveryNote, ReturnOrder, Production) entfallen <code>girocode</code>, <code>texts.paymentTerms</code> und die Summen-Labels.</p></div>';
+}
+
+/* Render */
+var tabsEl = document.getElementById('tabs');
+var panelsEl = document.getElementById('panels');
+var gapCounts = [];
+
+var panelsHtml = DOCS.map(function (d) {
+  var r = renderDoc(d);
+  gapCounts.push(r.gaps);
+  return '<section class="panel" id="p-' + d.id + '">' + r.html + '</section>';
+}).join('');
+
+panelsEl.innerHTML = '<section class="panel active" id="p-overview">' + renderOverview(gapCounts) + '</section>' +
+  '<section class="panel" id="p-letterhead">' + renderLetterhead() + '</section>' + panelsHtml;
+
+var tabDefs = [
+  { id: 'overview', label: 'Übersicht', cnt: gapCounts.reduce(function (a, b) { return a + b; }, 0) },
+  { id: 'letterhead', label: 'include=letterhead', cnt: null },
+].concat(DOCS.map(function (d, i) { return { id: d.id, label: d.name, cnt: gapCounts[i] }; }));
+
+tabsEl.innerHTML = tabDefs.map(function (t, i) {
+  return '<button class="tab' + (i === 0 ? ' active' : '') + '" data-panel="p-' + t.id + '">' + t.label +
+    (t.cnt !== null ? ' <span class="cnt">' + t.cnt + '</span>' : ' <span class="cnt">💡</span>') + '</button>';
+}).join('');
+
+tabsEl.addEventListener('click', function (e) {
+  var btn = e.target.closest('.tab');
+  if (!btn) { return; }
+  document.querySelectorAll('.tab').forEach(function (t) { t.classList.remove('active'); });
+  document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+  btn.classList.add('active');
+  document.getElementById(btn.getAttribute('data-panel')).classList.add('active');
+  applyFilter();
+});
+
+/* ---------- Aufgaben-Export (Excel/CSV) — generiert aus denselben Matrix-Daten ---------- */
+
+var PRIO_HIGH = ['customFields', 'financials.paymentMethod', 'paymentTargetDays', 'paymentTargetDiscount', 'externalOrderNumber', 'customerOrderNumber', 'desiredDeliveryDate', 'shippingMethod', 'storageCountry', 'transactionNumber', 'externalOrderId', 'salesChannel', 'hsCode', 'countryOfOrigin'];
+var PRIO_LOW = ['offer', 'writeProtection', 'deviatingDebtorAccountNumber', 'isCancellationInvoice', 'useAlternativeDocumentTitle', 'directDebitDate', 'isSalesOrderToSupplier', 'isReturnOrderToSupplier', 'noInvoice', 'Intermediate', 'packagingUnit', 'salutation'];
+
+function prioFor(field) {
+  var f = field.toLowerCase();
+  var hit = function (list) { return list.some(function (k) { return f.indexOf(k.toLowerCase()) !== -1; }); };
+  if (hit(PRIO_HIGH)) { return 'Hoch'; }
+  if (hit(PRIO_LOW)) { return 'Niedrig'; }
+  return 'Mittel';
+}
+
+function collectTasks() {
+  var tasks = [];
+  DOCS.forEach(function (doc) {
+    var scan = function (rows, area, cIdx, uIdx, sIdx, vIdx) {
+      rows.forEach(function (r) {
+        if (typeof r === 'string') { return; }
+        var m = r[1], parts = [];
+        var viewGap = vIdx !== null && m[vIdx] === 'g';
+        if (viewGap) { parts.push('View'); }
+        if (cIdx !== null && m[cIdx] === 'g') { parts.push('Create'); }
+        if (uIdx !== null && m[uIdx] === 'g') { parts.push('Update'); }
+        if (parts.length) {
+          var what = 'In ' + parts.join(' + ') + ' ' + (viewGap ? 'aufnehmen' : 'ergänzen');
+          if (viewGap && parts.length === 1) { what = 'Im View lesbar machen (Headless-Anforderung)'; }
+          if (doc.id === 'production' && parts.indexOf('Update') !== -1) { what += ' (setzt neuen PATCH-Endpoint voraus)'; }
+          tasks.push([prioFor(r[0]), doc.name, area, r[0], what, r[2] || '']);
+        }
+        if (sIdx !== null && m[sIdx] === 'r') {
+          tasks.push(['Hoch', doc.name, 'Search', r[0], 'In searchTerm-Volltextsuche aufnehmen', r[2] || '']);
+        }
+      });
+    };
+    scan(doc.rows, 'Kopf', 2, 3, 5, 1);
+    if (doc.li) { scan(doc.li, 'Position', 1, 2, null, 0); }
+    doc.pdf.missing.forEach(function (m) {
+      tasks.push(['Mittel', doc.name, 'PDF/View', 'PDF-Rendering', 'Daten in der View-Payload ergänzen: ' + m, 'Aus der Legacy-PDF-Analyse (' + doc.de + ')']);
+    });
+  });
+
+  [
+    'Referenzierte Belegnummern statt IDs (Infobox + corr-Block drucken Belegnummern verknüpfter Belege)',
+    'Aufgelöste Namen & Kontaktdaten (Bearbeiter/Vertrieb inkl. E-Mail/Telefon, Zahlungsart-/Versandart-Name, Projekt-Abkürzung, lokalisierte Ländernamen)',
+    'Firmen-/Briefpapier-Konfiguration (Logo, Briefpapier-PDFs je Projekt/Sprache, Footer-Stammdaten inkl. Bank, GiroCode) — siehe include=letterhead',
+    'Berechnete Blöcke (Steuerbetrag je Steuersatz, Zwischen-/Gruppensummen-Beträge, Versandkosten-/Zahlartaufschlag-Zeilen, Netto-/Brutto-Logik)',
+    'Text-Templates & Übersetzungen (Belegtitel je Sprache, Spaltenüberschriften, Zahlungsbedingungs-Texte, EU-/Export-Vermerke, Kopf-/Fußtext-Komposition)',
+    'Positions-Stammdaten (tatsächliche SN/Chargen/MHD, Gewicht, EAN, Abmessungen, Hersteller, Produkt-Freifelder, Rabattstaffeln)',
+  ].forEach(function (m) {
+    tasks.push(['Mittel', 'Übergreifend', 'PDF/View', 'PDF-Rendering (Kategorie)', m, 'Gilt für alle Belege — Details je Tab']);
+  });
+
+  tasks = tasks.concat([
+    ['Hoch', 'Übergreifend', 'View', 'Belegreferenzen als {id, documentNumber, documentDate}', 'Alle Referenzfelder (salesOrder, deliveryNote, invoice, offer, priceInquiry) einheitlich um documentNumber + documentDate erweitern', 'Siehe Kreuzmatrix „Fremd-Belegnummern“ in der Übersicht — PDF druckt Nummern, Payload liefert nur IDs (bzw. bei Gutschrift/Proforma gar nichts)'],
+    ['Hoch', 'Production', 'Endpunkt', 'PATCH /v3/productions/{id}', 'Update-Endpoint einführen', 'Voraussetzung für alle Production-Feld-Tasks; Planungsalgorithmen können sonst keine Termine verschieben'],
+    ['Mittel', 'Production', 'Endpunkt', 'LineItem-Endpoints für materials', 'POST/PATCH/DELETE für Stücklistenpositionen', 'Stückliste ist per API komplett unantastbar'],
+    ['Mittel', 'Übergreifend', 'Endpunkt', 'V3 Shipments/Tracking', 'Versand-/Tracking-Endpunkte nach V3 bringen (heute nur Legacy-v1 /shipments)', 'Trackingnummer wird auf LS-/Rechnungs-PDF gedruckt und von Sachbearbeitern gesucht'],
+    ['Mittel', 'DeliveryNote', 'Endpunkt', 'Seriennummern/Chargen/MHD', 'Tatsächlich gebuchte SN/Chargen/MHD lesbar machen (Position oder Sub-Ressource)', 'PDF druckt sie; V3 kennt nur desired-Wunschwerte'],
+    ['Mittel', 'Übergreifend', 'View', 'Aufgelöste Referenz-Namen', 'editor/sales/shippingMethod/paymentMethod/project als {id, name} bzw. mit abbreviation liefern', 'PDF-Infobox braucht Namen; heute pro Referenz ein Nachlade-Request'],
+    ['Mittel', 'Übergreifend', 'View', 'Steuersummen & Zwischensummen', 'Steuerbetrag je Steuersatz in totals + Beträge in Subtotal-/GroupTotal-LineItems', 'Summenblock des PDFs ist sonst nicht reproduzierbar'],
+    ['Mittel', 'Übergreifend', 'Endpunkt', 'Warenbuchungsbelege', 'GoodsReceipt als V3-Belegtyp einführen', 'Heute nur Sub-Aktionen der Legacy-Fulfillment-API'],
+    ['Niedrig', 'Übergreifend', 'Endpunkt', 'Intermediate-Positionen', 'heading/subtotal/groupTotal/image/pageBreak per API anlegbar machen', 'UI kann Zwischenpositionen, API nur Produkt-Positionen'],
+    ['Hoch', 'Übergreifend', 'Endpunkt', 'include=letterhead', 'Briefkopf-/Footer-Kontext als Include auf allen GET-Endpoints (siehe Tab „include=letterhead“ mit Beispiel-Payload)', 'Firmendaten, Footer-Spalten, Bank/GiroCode, Labels je Sprache, aufgelöste Zahlungs-/Steuertexte, Formatierung, Briefpapier-Dateien'],
+  ]);
+
+  var order = { 'Hoch': 0, 'Mittel': 1, 'Niedrig': 2 };
+  tasks.sort(function (a, b) { return (order[a[0]] - order[b[0]]) || a[1].localeCompare(b[1]) || a[3].localeCompare(b[3]); });
+  return tasks.map(function (t, i) { return [i + 1].concat(t); });
+}
+
+var TASK_HEAD = ['Nr', 'Priorität', 'Dokument', 'Bereich', 'Feld / Task', 'Was ist zu tun', 'Hinweis'];
+
+function buildCsv() {
+  var tasks = collectTasks();
+  var csvCell = function (c) { return '"' + String(c).replace(/"/g, '""') + '"'; };
+  return [TASK_HEAD.map(csvCell).join(';')].concat(
+    tasks.map(function (t) { return t.map(csvCell).join(';'); })
+  ).join('\r\n');
+}
+
+function showFallback() {
+  var out = document.getElementById('exportout');
+  var ta = document.getElementById('csvout');
+  ta.value = buildCsv();
+  out.classList.remove('hidden');
+}
+
+function downloadBlob(content, mime, filename) {
+  try {
+    var blob = new Blob([content], { type: mime });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+  } catch (e) { /* Sandbox blockiert Downloads */ }
+  showFallback();
+}
+
+document.getElementById('copycsv').addEventListener('click', function () {
+  var ta = document.getElementById('csvout');
+  ta.select();
+  var done = function () { document.getElementById('copystate').textContent = '✓ kopiert (' + ta.value.split('\r\n').length + ' Zeilen)'; };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(ta.value).then(done, function () { document.execCommand('copy'); done(); });
+  } else {
+    document.execCommand('copy'); done();
+  }
+});
+
+document.getElementById('dlxls').addEventListener('click', function () {
+  var tasks = collectTasks();
+  var th = TASK_HEAD.map(function (h) { return '<th style="background:#1D4FD7;color:#fff;text-align:left">' + h + '</th>'; }).join('');
+  var trs = tasks.map(function (t) {
+    return '<tr>' + t.map(function (c, i) {
+      var bg = t[1] === 'Hoch' && i === 1 ? ' style="background:#E3EAFB;font-weight:bold"' : '';
+      return '<td' + bg + '>' + String(c).replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</td>';
+    }).join('') + '</tr>';
+  }).join('');
+  var html = '﻿<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8">' +
+    '<style>td,th{border:.5pt solid #ccc;padding:3pt;vertical-align:top;font-family:Calibri;font-size:10pt}</style></head>' +
+    '<body><table><thead><tr>' + th + '</tr></thead><tbody>' + trs + '</tbody></table></body></html>';
+  downloadBlob(html, 'application/vnd.ms-excel;charset=utf-8', 'xentral-v3-api-tasks.xls');
+});
+
+document.getElementById('dlcsv').addEventListener('click', function () {
+  var tasks = collectTasks();
+  var csvCell = function (c) { return '"' + String(c).replace(/"/g, '""') + '"'; };
+  var lines = [TASK_HEAD.map(csvCell).join(';')].concat(
+    tasks.map(function (t) { return t.map(csvCell).join(';'); })
+  );
+  downloadBlob('﻿' + lines.join('\r\n'), 'text/csv;charset=utf-8', 'xentral-v3-api-tasks.csv');
+});
+
+var q = document.getElementById('q');
+function applyFilter() {
+  var term = q.value.trim().toLowerCase();
+  var panel = document.querySelector('.panel.active');
+  if (!panel) { return; }
+  var rows = Array.prototype.slice.call(panel.querySelectorAll('tbody tr'));
+  rows.forEach(function (r) {
+    if (r.classList.contains('group')) { return; }
+    var hit = !term || r.textContent.toLowerCase().indexOf(term) !== -1;
+    r.classList.toggle('hidden', !hit);
+  });
+  rows.forEach(function (g) {
+    if (!g.classList.contains('group')) { return; }
+    var any = false, next = g.nextElementSibling;
+    while (next && !next.classList.contains('group')) {
+      if (!next.classList.contains('hidden')) { any = true; break; }
+      next = next.nextElementSibling;
+    }
+    g.classList.toggle('hidden', !any);
+  });
+}
+q.addEventListener('input', applyFilter);
+})();
+</script>

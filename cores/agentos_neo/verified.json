@@ -1,0 +1,3393 @@
+{
+  "entities": {
+    "Channel": {
+      "fields": {
+        "active": {
+          "read": "pass"
+        },
+        "createdAt": {
+          "read": "pass",
+          "sort": "pass"
+        },
+        "defaults": {
+          "read": "pass"
+        },
+        "defaults.priceList": {
+          "read": "pass"
+        },
+        "defaults.warehouse": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "name": {
+          "filter": "pass",
+          "read": "pass",
+          "search": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "platform": {
+          "read": "pass"
+        },
+        "sync": {
+          "read": "pass"
+        },
+        "sync.lastRunAt": {
+          "read": "pass"
+        },
+        "sync.status": {
+          "read": "pass"
+        },
+        "type": {
+          "read": "pass"
+        },
+        "updatedAt": {
+          "read": "pass",
+          "sort": "pass"
+        }
+      }
+    },
+    "CreditNote": {
+      "actions": {
+        "addTag": "pass",
+        "removeTag": "pass",
+        "send": "pass"
+      },
+      "actionsNotes": {
+        "addTag": "reachable — 422: addTag requires a non-empty 'title'.",
+        "removeTag": "reachable — 422: removeTag requires a non-empty 'title'.",
+        "send": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma"
+      },
+      "fields": {
+        "billingAddress": {
+          "read": "pass"
+        },
+        "billingAddress.city": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.country": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.email": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.name": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.phone": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.street": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.vatId": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.zip": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "costCenter": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "createdAt": {
+          "read": "pass",
+          "sort": "pass"
+        },
+        "currency": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "customFields": {
+          "read": "pass"
+        },
+        "customer": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass"
+        },
+        "dates": {
+          "read": "pass"
+        },
+        "dates.issued": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "sort": "pass",
+          "update": "pass"
+        },
+        "dates.serviceDate": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass"
+        },
+        "documents": {
+          "read": "pass"
+        },
+        "documents.return": {
+          "read": "pass"
+        },
+        "documents.salesInvoice": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "items": {
+          "read": "pass"
+        },
+        "items.description": {
+          "read": "pass"
+        },
+        "items.discountPercent": {
+          "read": "pass"
+        },
+        "items.id": {
+          "read": "pass"
+        },
+        "items.invoiceItem": {
+          "read": "pass"
+        },
+        "items.object": {
+          "read": "pass"
+        },
+        "items.position": {
+          "read": "pass"
+        },
+        "items.product": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass"
+        },
+        "items.quantity": {
+          "read": "pass"
+        },
+        "items.quantity.unit": {
+          "read": "pass"
+        },
+        "items.quantity.value": {
+          "read": "pass"
+        },
+        "items.taxRate": {
+          "read": "pass"
+        },
+        "items.unitPrice": {
+          "read": "pass"
+        },
+        "items.unitPrice.amount": {
+          "read": "pass"
+        },
+        "items.unitPrice.currency": {
+          "read": "pass"
+        },
+        "kind": {
+          "read": "pass"
+        },
+        "note": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "number": {
+          "filter": "pass",
+          "read": "pass",
+          "search": "pass",
+          "sort": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "project": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass",
+          "updateNote": "only one project on the instance — write accepted, change not provable"
+        },
+        "references": {
+          "read": "pass"
+        },
+        "references.customerOrderNumber": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass",
+          "update": "pass"
+        },
+        "references.debtorAccountNumber": {
+          "read": "pass"
+        },
+        "settlement": {
+          "read": "pass"
+        },
+        "settlement.mode": {
+          "read": "pass"
+        },
+        "settlement.payments": {
+          "read": "pass"
+        },
+        "settlement.payments.id": {
+          "read": "pass"
+        },
+        "settlement.payments.number": {
+          "read": "pass"
+        },
+        "settlement.status": {
+          "read": "pass"
+        },
+        "status": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "tags": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "taxation": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "totals": {
+          "read": "pass"
+        },
+        "totals.currency": {
+          "read": "pass"
+        },
+        "totals.gross": {
+          "read": "pass"
+        },
+        "totals.net": {
+          "read": "pass"
+        },
+        "totals.outstanding": {
+          "read": "pass"
+        },
+        "totals.settled": {
+          "read": "pass"
+        },
+        "updatedAt": {
+          "read": "pass",
+          "sort": "pass"
+        }
+      },
+      "processSteps": {
+        "cancel": "fail",
+        "issue": "pass"
+      },
+      "processStepsNotes": {
+        "cancel": "route not available (404): error",
+        "issue": "reachable — 409: Resource status invalid for requested operation"
+      }
+    },
+    "Customer": {
+      "actions": {
+        "addTag": "pass",
+        "removeTag": "pass"
+      },
+      "actionsNotes": {
+        "addTag": "reachable — 422: addTag requires a non-empty 'title'.",
+        "removeTag": "reachable — 422: removeTag requires a non-empty 'title'."
+      },
+      "fields": {
+        "addresses": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "addresses.city": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass",
+          "searchNote": "no sample text value — search not probed",
+          "sort": "pass"
+        },
+        "addresses.contactPerson": {
+          "read": "pass"
+        },
+        "addresses.country": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass",
+          "searchNote": "no sample text value — search not probed",
+          "sort": "pass"
+        },
+        "addresses.email": {
+          "read": "pass"
+        },
+        "addresses.gln": {
+          "read": "pass"
+        },
+        "addresses.id": {
+          "read": "pass"
+        },
+        "addresses.isDefault": {
+          "read": "pass"
+        },
+        "addresses.label": {
+          "read": "pass"
+        },
+        "addresses.name": {
+          "read": "pass"
+        },
+        "addresses.phone": {
+          "read": "pass"
+        },
+        "addresses.state": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass",
+          "searchNote": "no sample text value — search not probed",
+          "sort": "pass"
+        },
+        "addresses.street": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass",
+          "searchNote": "no sample text value — search not probed",
+          "sort": "pass"
+        },
+        "addresses.type": {
+          "read": "pass"
+        },
+        "addresses.zip": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass",
+          "searchNote": "no sample text value — search not probed",
+          "sort": "pass"
+        },
+        "billTo": {
+          "read": "pass"
+        },
+        "channel": {
+          "read": "pass"
+        },
+        "channels": {
+          "read": "pass"
+        },
+        "channels.channel": {
+          "read": "pass"
+        },
+        "channels.externalId": {
+          "read": "pass"
+        },
+        "contacts": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "contacts.email": {
+          "read": "pass"
+        },
+        "contacts.id": {
+          "read": "pass"
+        },
+        "contacts.mobile": {
+          "read": "pass"
+        },
+        "contacts.name": {
+          "read": "pass"
+        },
+        "contacts.phone": {
+          "read": "pass"
+        },
+        "contacts.role": {
+          "read": "pass"
+        },
+        "contacts.title": {
+          "read": "pass"
+        },
+        "contacts.type": {
+          "read": "pass"
+        },
+        "createdAt": {
+          "filter": "pass",
+          "read": "pass",
+          "sort": "pass"
+        },
+        "customFields": {
+          "read": "pass"
+        },
+        "defaults": {
+          "read": "pass"
+        },
+        "defaults.currency": {
+          "read": "pass"
+        },
+        "defaults.language": {
+          "read": "pass"
+        },
+        "defaults.partialShipping": {
+          "read": "pass"
+        },
+        "defaults.paymentMethod": {
+          "read": "pass"
+        },
+        "defaults.paymentTerms": {
+          "read": "pass"
+        },
+        "defaults.paymentTerms.discountDays": {
+          "read": "pass"
+        },
+        "defaults.paymentTerms.discountPercent": {
+          "read": "pass"
+        },
+        "defaults.paymentTerms.dueDays": {
+          "read": "pass"
+        },
+        "defaults.priceList": {
+          "read": "pass"
+        },
+        "defaults.shippingMethod": {
+          "read": "pass"
+        },
+        "defaults.taxation": {
+          "read": "pass"
+        },
+        "email": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "search": "pass",
+          "update": "pass"
+        },
+        "finance": {
+          "read": "pass"
+        },
+        "finance.creditLimit": {
+          "read": "pass"
+        },
+        "finance.creditLimit.amount": {
+          "read": "pass"
+        },
+        "finance.creditLimit.currency": {
+          "read": "pass"
+        },
+        "finance.debtorAccountNumber": {
+          "read": "pass"
+        },
+        "finance.dunningBlocked": {
+          "read": "pass"
+        },
+        "finance.onHold": {
+          "read": "pass"
+        },
+        "finance.openAmount": {
+          "read": "pass"
+        },
+        "finance.openAmount.amount": {
+          "read": "pass"
+        },
+        "finance.openAmount.currency": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "language": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "name": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "search": "pass",
+          "sort": "pass",
+          "update": "pass"
+        },
+        "number": {
+          "filter": "pass",
+          "read": "pass",
+          "search": "pass",
+          "sort": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "parent": {
+          "read": "pass"
+        },
+        "phone": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "project": {
+          "read": "pass",
+          "update": "pass",
+          "updateNote": "only one project on the instance — write accepted, change not provable"
+        },
+        "status": {
+          "read": "pass"
+        },
+        "tags": {
+          "filter": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "type": {
+          "read": "pass"
+        },
+        "updatedAt": {
+          "filter": "pass",
+          "read": "pass",
+          "sort": "pass"
+        },
+        "vatId": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "website": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        }
+      }
+    },
+    "DeliveryNote": {
+      "actions": {
+        "addTag": "pass",
+        "createReturn": "pass",
+        "createSalesInvoice": "pass",
+        "removeTag": "pass"
+      },
+      "actionsNotes": {
+        "addTag": "reachable — 422: addTag requires a non-empty 'title'.",
+        "createReturn": "reachable — 400: line items must be present. {\"lineItems\": [\"line items must be present.\"]}",
+        "createSalesInvoice": "reachable — 400: All product line items must have a quantity greater than zero. {\"lineItems\": [\"All product line items must have a quantity greater than zero.\"]}",
+        "removeTag": "reachable — 422: removeTag requires a non-empty 'title'."
+      },
+      "fields": {
+        "billingAddress": {
+          "read": "pass"
+        },
+        "billingAddress.city": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.country": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.email": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.name": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.phone": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.street": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.vatId": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.zip": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "channel": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass"
+        },
+        "costCenter": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "createdAt": {
+          "read": "pass",
+          "sort": "pass"
+        },
+        "customFields": {
+          "read": "pass"
+        },
+        "customer": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass"
+        },
+        "customs": {
+          "read": "pass"
+        },
+        "customs.incoterm": {
+          "read": "pass"
+        },
+        "customs.note": {
+          "read": "pass"
+        },
+        "customs.totalWeight": {
+          "read": "pass"
+        },
+        "customs.totalWeight.unit": {
+          "read": "pass"
+        },
+        "customs.totalWeight.value": {
+          "read": "pass"
+        },
+        "dates": {
+          "read": "pass"
+        },
+        "dates.delivered": {
+          "read": "pass"
+        },
+        "dates.issued": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "sort": "pass",
+          "update": "pass"
+        },
+        "dates.shipped": {
+          "read": "pass"
+        },
+        "documents": {
+          "read": "pass"
+        },
+        "documents.returns": {
+          "read": "pass"
+        },
+        "documents.returns.id": {
+          "read": "pass"
+        },
+        "documents.returns.number": {
+          "read": "pass"
+        },
+        "documents.salesInvoices": {
+          "read": "pass"
+        },
+        "documents.salesInvoices.id": {
+          "read": "pass"
+        },
+        "documents.salesInvoices.number": {
+          "read": "pass"
+        },
+        "documents.salesOrder": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "items": {
+          "read": "pass"
+        },
+        "items.batches": {
+          "read": "pass"
+        },
+        "items.batches.batch": {
+          "read": "pass"
+        },
+        "items.batches.quantity": {
+          "read": "pass"
+        },
+        "items.deliveredQuantity": {
+          "read": "pass"
+        },
+        "items.description": {
+          "read": "pass"
+        },
+        "items.id": {
+          "read": "pass"
+        },
+        "items.object": {
+          "read": "pass"
+        },
+        "items.orderItem": {
+          "read": "pass"
+        },
+        "items.position": {
+          "read": "pass"
+        },
+        "items.product": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass"
+        },
+        "items.quantity": {
+          "read": "pass"
+        },
+        "items.quantity.unit": {
+          "read": "pass"
+        },
+        "items.quantity.value": {
+          "read": "pass"
+        },
+        "items.serialNumbers": {
+          "read": "pass"
+        },
+        "items.serialNumbers.number": {
+          "read": "pass"
+        },
+        "note": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "number": {
+          "filter": "pass",
+          "read": "pass",
+          "search": "pass",
+          "sort": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "project": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass",
+          "updateNote": "only one project on the instance — write accepted, change not provable"
+        },
+        "references": {
+          "read": "pass"
+        },
+        "references.customerOrderNumber": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass",
+          "update": "pass"
+        },
+        "shipments": {
+          "read": "pass"
+        },
+        "shipments.id": {
+          "read": "pass"
+        },
+        "shipments.name": {
+          "read": "pass"
+        },
+        "shipments.number": {
+          "read": "pass"
+        },
+        "status": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "tags": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "updatedAt": {
+          "read": "pass",
+          "sort": "pass"
+        },
+        "warehouse": {
+          "read": "pass"
+        }
+      },
+      "processSteps": {
+        "cancel": "pass",
+        "markDelivered": "pass"
+      },
+      "processStepsNotes": {
+        "cancel": "reachable — 409: Resource status invalid for requested operation",
+        "markDelivered": "reachable — 409: Resource status invalid for requested operation"
+      }
+    },
+    "GoodsReceipt": {
+      "fields": {
+        "createdAt": {
+          "read": "pass",
+          "sort": "pass"
+        },
+        "dates": {
+          "read": "pass"
+        },
+        "dates.posted": {
+          "read": "pass"
+        },
+        "dates.received": {
+          "read": "pass"
+        },
+        "documents": {
+          "read": "pass"
+        },
+        "documents.parcelReceipt": {
+          "read": "pass"
+        },
+        "documents.purchaseOrder": {
+          "read": "pass"
+        },
+        "documents.returnOrder": {
+          "read": "pass"
+        },
+        "documents.salesOrder": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "items": {
+          "read": "pass"
+        },
+        "items.product": {
+          "read": "pass"
+        },
+        "items.quantity": {
+          "read": "pass"
+        },
+        "items.quantity.unit": {
+          "read": "pass"
+        },
+        "items.quantity.value": {
+          "read": "pass"
+        },
+        "items.storageLocation": {
+          "read": "pass"
+        },
+        "number": {
+          "filter": "pass",
+          "read": "pass",
+          "search": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "qualityCheck": {
+          "read": "pass"
+        },
+        "qualityCheck.status": {
+          "read": "pass"
+        },
+        "references": {
+          "read": "pass"
+        },
+        "references.supplierDeliveryNoteNumber": {
+          "read": "pass"
+        },
+        "status": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "supplier": {
+          "read": "pass"
+        },
+        "updatedAt": {
+          "read": "pass",
+          "sort": "pass"
+        }
+      }
+    },
+    "PickingRun": {
+      "fields": {
+        "assignedTo": {
+          "read": "pass"
+        },
+        "assignedTo.name": {
+          "read": "pass"
+        },
+        "containers": {
+          "read": "pass"
+        },
+        "containers.barcode": {
+          "read": "pass"
+        },
+        "containers.name": {
+          "read": "pass"
+        },
+        "createdAt": {
+          "read": "pass"
+        },
+        "criteria": {
+          "read": "pass"
+        },
+        "criteria.channel": {
+          "read": "pass"
+        },
+        "criteria.shippingMethod": {
+          "read": "pass"
+        },
+        "documents": {
+          "read": "pass"
+        },
+        "documents.deliveryNotes": {
+          "read": "pass"
+        },
+        "documents.deliveryNotes.id": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "name": {
+          "read": "pass"
+        },
+        "number": {
+          "read": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "orders": {
+          "read": "pass"
+        },
+        "orders.id": {
+          "read": "pass"
+        },
+        "progress": {
+          "read": "pass"
+        },
+        "progress.deliveryNotes": {
+          "read": "pass"
+        },
+        "progress.products": {
+          "read": "pass"
+        },
+        "progress.totalWeight": {
+          "read": "pass"
+        },
+        "status": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "strategy": {
+          "read": "pass"
+        },
+        "tasks": {
+          "read": "pass"
+        },
+        "tasks.product": {
+          "read": "pass"
+        },
+        "tasks.quantity": {
+          "read": "pass"
+        },
+        "tasks.quantity.unit": {
+          "read": "pass"
+        },
+        "tasks.quantity.value": {
+          "read": "pass"
+        },
+        "tasks.status": {
+          "read": "pass"
+        },
+        "tasks.storageLocation": {
+          "read": "pass"
+        },
+        "updatedAt": {
+          "read": "pass"
+        },
+        "warehouse": {
+          "read": "pass"
+        }
+      }
+    },
+    "PriceList": {
+      "fields": {
+        "createdAt": {
+          "read": "pass"
+        },
+        "currency": {
+          "read": "pass"
+        },
+        "entries": {
+          "read": "pass"
+        },
+        "entries.minQuantity": {
+          "read": "pass"
+        },
+        "entries.product": {
+          "read": "pass"
+        },
+        "entries.unitPrice": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "minQuantity": {
+          "read": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "product": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "remark": {
+          "read": "pass"
+        },
+        "scope": {
+          "read": "pass"
+        },
+        "scope.customer": {
+          "read": "pass"
+        },
+        "scope.customerGroup": {
+          "read": "pass"
+        },
+        "unitPrice": {
+          "read": "pass"
+        },
+        "unitPrice.amount": {
+          "read": "pass"
+        },
+        "unitPrice.amountGross": {
+          "read": "pass"
+        },
+        "unitPrice.currency": {
+          "read": "pass"
+        },
+        "unitPrice.taxRate": {
+          "read": "pass"
+        },
+        "updatedAt": {
+          "read": "pass"
+        },
+        "validFrom": {
+          "read": "pass"
+        },
+        "validUntil": {
+          "read": "pass"
+        }
+      }
+    },
+    "PurchaseInvoice": {
+      "fields": {
+        "approval": {
+          "read": "pass"
+        },
+        "approval.at": {
+          "read": "pass"
+        },
+        "approval.by": {
+          "read": "pass"
+        },
+        "approval.status": {
+          "read": "pass"
+        },
+        "clarification": {
+          "read": "pass"
+        },
+        "clarification.needed": {
+          "read": "pass"
+        },
+        "clarification.reason": {
+          "read": "pass"
+        },
+        "costCenter": {
+          "read": "pass"
+        },
+        "createdAt": {
+          "read": "pass",
+          "sort": "pass"
+        },
+        "currency": {
+          "read": "pass"
+        },
+        "dates": {
+          "read": "pass"
+        },
+        "dates.invoiceDate": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "dates.received": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "dates.serviceDate": {
+          "read": "pass"
+        },
+        "documents": {
+          "read": "pass"
+        },
+        "documents.purchaseOrder": {
+          "read": "pass"
+        },
+        "files": {
+          "read": "pass"
+        },
+        "files.id": {
+          "read": "pass"
+        },
+        "files.name": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "items": {
+          "read": "pass"
+        },
+        "items.id": {
+          "read": "pass"
+        },
+        "items.object": {
+          "read": "pass"
+        },
+        "items.product": {
+          "read": "pass"
+        },
+        "items.quantity": {
+          "read": "pass"
+        },
+        "items.quantity.unit": {
+          "read": "pass"
+        },
+        "items.quantity.value": {
+          "read": "pass"
+        },
+        "items.unitPrice": {
+          "read": "pass"
+        },
+        "items.unitPrice.amount": {
+          "read": "pass"
+        },
+        "items.unitPrice.currency": {
+          "read": "pass"
+        },
+        "match": {
+          "read": "pass"
+        },
+        "match.goodsCheck": {
+          "read": "pass"
+        },
+        "match.invoiceCheck": {
+          "read": "pass"
+        },
+        "match.purchaseOrder": {
+          "read": "pass"
+        },
+        "match.status": {
+          "read": "pass"
+        },
+        "number": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "payment": {
+          "read": "pass"
+        },
+        "payment.discountUntil": {
+          "read": "pass"
+        },
+        "payment.dueDate": {
+          "read": "pass"
+        },
+        "payment.method": {
+          "read": "pass"
+        },
+        "payment.paidOn": {
+          "read": "pass"
+        },
+        "payment.status": {
+          "read": "pass"
+        },
+        "references": {
+          "read": "pass"
+        },
+        "references.creditorAccountNumber": {
+          "read": "pass"
+        },
+        "references.externalReference": {
+          "read": "pass"
+        },
+        "references.supplierInvoiceNumber": {
+          "filter": "pass",
+          "read": "pass",
+          "search": "pass"
+        },
+        "status": {
+          "read": "pass"
+        },
+        "supplier": {
+          "read": "pass"
+        },
+        "tags": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "totals": {
+          "read": "pass"
+        },
+        "totals.currency": {
+          "read": "pass"
+        },
+        "totals.gross": {
+          "read": "pass"
+        },
+        "totals.outstanding": {
+          "read": "pass"
+        },
+        "totals.paid": {
+          "read": "pass"
+        },
+        "updatedAt": {
+          "read": "pass",
+          "sort": "pass"
+        }
+      }
+    },
+    "PurchaseOrder": {
+      "actions": {
+        "addTag": "pass",
+        "removeTag": "pass",
+        "send": "pass"
+      },
+      "actionsNotes": {
+        "addTag": "reachable — 422: addTag requires a non-empty 'title'.",
+        "removeTag": "reachable — 422: removeTag requires a non-empty 'title'.",
+        "send": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma"
+      },
+      "fields": {
+        "confirmation": {
+          "read": "pass"
+        },
+        "confirmation.confirmedAt": {
+          "read": "pass"
+        },
+        "confirmation.status": {
+          "read": "pass"
+        },
+        "confirmation.supplierOrderNumber": {
+          "read": "pass"
+        },
+        "confirmation.via": {
+          "read": "pass"
+        },
+        "costCenter": {
+          "create": "pass",
+          "read": "pass"
+        },
+        "createdAt": {
+          "read": "pass",
+          "sort": "pass"
+        },
+        "currency": {
+          "read": "pass"
+        },
+        "customFields": {
+          "read": "pass"
+        },
+        "dates": {
+          "read": "pass"
+        },
+        "dates.confirmedDelivery": {
+          "read": "pass"
+        },
+        "dates.issued": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "sort": "pass",
+          "update": "pass"
+        },
+        "dates.requestedDelivery": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass"
+        },
+        "deliveryAddress": {
+          "read": "pass"
+        },
+        "deliveryAddress.city": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "deliveryAddress.country": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "deliveryAddress.email": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "deliveryAddress.name": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "deliveryAddress.phone": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "deliveryAddress.street": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "deliveryAddress.vatId": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "deliveryAddress.zip": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "documents": {
+          "read": "pass"
+        },
+        "documents.goodsReceipts": {
+          "read": "pass"
+        },
+        "documents.goodsReceipts.id": {
+          "read": "pass"
+        },
+        "documents.goodsReceipts.number": {
+          "read": "pass"
+        },
+        "documents.purchaseInvoices": {
+          "read": "pass"
+        },
+        "documents.purchaseInvoices.id": {
+          "read": "pass"
+        },
+        "documents.purchaseInvoices.number": {
+          "read": "pass"
+        },
+        "dropship": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "items": {
+          "read": "pass"
+        },
+        "items.fulfillment": {
+          "read": "pass"
+        },
+        "items.fulfillment.invoiced": {
+          "read": "pass"
+        },
+        "items.fulfillment.received": {
+          "read": "pass"
+        },
+        "items.id": {
+          "read": "pass"
+        },
+        "items.object": {
+          "read": "pass"
+        },
+        "items.position": {
+          "read": "pass"
+        },
+        "items.product": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass"
+        },
+        "items.quantity": {
+          "read": "pass"
+        },
+        "items.quantity.unit": {
+          "read": "pass"
+        },
+        "items.quantity.value": {
+          "read": "pass"
+        },
+        "items.supplierProductName": {
+          "read": "pass"
+        },
+        "items.supplierProductNumber": {
+          "read": "pass"
+        },
+        "items.taxRate": {
+          "read": "pass"
+        },
+        "items.unitPrice": {
+          "read": "pass"
+        },
+        "items.unitPrice.amount": {
+          "read": "pass"
+        },
+        "items.unitPrice.currency": {
+          "read": "pass"
+        },
+        "note": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "number": {
+          "filter": "pass",
+          "read": "pass",
+          "search": "pass",
+          "sort": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "payment": {
+          "read": "pass"
+        },
+        "payment.method": {
+          "read": "pass"
+        },
+        "payment.terms": {
+          "read": "pass"
+        },
+        "payment.terms.discountDays": {
+          "read": "pass"
+        },
+        "payment.terms.discountPercent": {
+          "read": "pass"
+        },
+        "payment.terms.dueDays": {
+          "read": "pass"
+        },
+        "printSettings": {
+          "read": "pass"
+        },
+        "printSettings.requestConfirmation": {
+          "read": "pass"
+        },
+        "printSettings.withoutPrices": {
+          "read": "pass"
+        },
+        "project": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "references": {
+          "read": "pass"
+        },
+        "references.ourCustomerNumber": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass"
+        },
+        "references.supplierOfferNumber": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass"
+        },
+        "status": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "supplier": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass"
+        },
+        "tags": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "totals": {
+          "read": "pass"
+        },
+        "totals.currency": {
+          "read": "pass"
+        },
+        "totals.gross": {
+          "read": "pass"
+        },
+        "totals.net": {
+          "read": "pass"
+        },
+        "updatedAt": {
+          "read": "pass",
+          "sort": "pass"
+        },
+        "warehouse": {
+          "read": "pass"
+        }
+      },
+      "processSteps": {
+        "cancel": "pass",
+        "close": "pass"
+      },
+      "processStepsNotes": {
+        "cancel": "reachable — 409: Resource status invalid for requested operation",
+        "close": "reachable — 409: Resource status invalid for requested operation"
+      }
+    },
+    "Quote": {
+      "actions": {
+        "addTag": "pass",
+        "removeTag": "pass",
+        "send": "pass"
+      },
+      "actionsNotes": {
+        "addTag": "reachable — 422: addTag requires a non-empty 'title'.",
+        "removeTag": "reachable — 422: removeTag requires a non-empty 'title'.",
+        "send": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma"
+      },
+      "fields": {
+        "billingAddress": {
+          "read": "pass"
+        },
+        "billingAddress.city": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.country": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.email": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.name": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.phone": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.street": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.vatId": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.zip": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "channel": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass"
+        },
+        "costCenter": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "createdAt": {
+          "read": "pass",
+          "sort": "pass"
+        },
+        "currency": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "customFields": {
+          "read": "pass"
+        },
+        "customer": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass"
+        },
+        "dates": {
+          "read": "pass"
+        },
+        "dates.expectedOrderDate": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass"
+        },
+        "dates.issued": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "sort": "pass",
+          "update": "pass"
+        },
+        "dates.requestedDelivery": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass"
+        },
+        "dates.validUntil": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "documents": {
+          "read": "pass"
+        },
+        "documents.salesOrders": {
+          "read": "pass"
+        },
+        "documents.salesOrders.id": {
+          "read": "pass"
+        },
+        "documents.salesOrders.number": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "items": {
+          "read": "pass"
+        },
+        "items.description": {
+          "read": "pass"
+        },
+        "items.discountPercent": {
+          "read": "pass"
+        },
+        "items.id": {
+          "read": "pass"
+        },
+        "items.isOptional": {
+          "read": "pass"
+        },
+        "items.object": {
+          "read": "pass"
+        },
+        "items.position": {
+          "read": "pass"
+        },
+        "items.priceSource": {
+          "read": "pass"
+        },
+        "items.product": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass"
+        },
+        "items.quantity": {
+          "read": "pass"
+        },
+        "items.quantity.unit": {
+          "read": "pass"
+        },
+        "items.quantity.value": {
+          "read": "pass"
+        },
+        "items.taxRate": {
+          "read": "pass"
+        },
+        "items.unitPrice": {
+          "read": "pass"
+        },
+        "items.unitPrice.amount": {
+          "read": "pass"
+        },
+        "items.unitPrice.currency": {
+          "read": "pass"
+        },
+        "note": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "number": {
+          "filter": "pass",
+          "read": "pass",
+          "search": "pass",
+          "sort": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "payment": {
+          "read": "pass"
+        },
+        "payment.method": {
+          "read": "pass"
+        },
+        "payment.terms": {
+          "read": "pass"
+        },
+        "payment.terms.discountDays": {
+          "read": "pass"
+        },
+        "payment.terms.discountPercent": {
+          "read": "pass"
+        },
+        "payment.terms.dueDays": {
+          "read": "pass"
+        },
+        "project": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "references": {
+          "read": "pass"
+        },
+        "references.customerInquiryNumber": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "shipping": {
+          "read": "pass"
+        },
+        "shipping.method": {
+          "read": "pass"
+        },
+        "shippingAddress": {
+          "read": "pass"
+        },
+        "shippingAddress.city": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "shippingAddress.country": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "shippingAddress.email": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "shippingAddress.name": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "shippingAddress.phone": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "shippingAddress.street": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "shippingAddress.vatId": {
+          "read": "pass"
+        },
+        "shippingAddress.zip": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "status": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "tags": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "texts": {
+          "read": "pass"
+        },
+        "texts.intro": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "texts.outro": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "totals": {
+          "read": "pass"
+        },
+        "totals.currency": {
+          "read": "pass"
+        },
+        "totals.gross": {
+          "read": "pass"
+        },
+        "totals.net": {
+          "read": "pass"
+        },
+        "updatedAt": {
+          "read": "pass",
+          "sort": "pass"
+        }
+      },
+      "processSteps": {
+        "cancel": "pass"
+      },
+      "processStepsNotes": {
+        "cancel": "reachable — 409: Resource status invalid for requested operation"
+      }
+    },
+    "Return": {
+      "actions": {
+        "addTag": "pass",
+        "removeTag": "pass"
+      },
+      "actionsNotes": {
+        "addTag": "reachable — 422: addTag requires a non-empty 'title'.",
+        "removeTag": "reachable — 422: removeTag requires a non-empty 'title'."
+      },
+      "fields": {
+        "billingAddress": {
+          "read": "pass"
+        },
+        "billingAddress.city": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.country": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.email": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.name": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.phone": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.street": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.vatId": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.zip": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "createdAt": {
+          "read": "pass",
+          "sort": "pass"
+        },
+        "customFields": {
+          "read": "pass"
+        },
+        "customer": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass"
+        },
+        "dates": {
+          "read": "pass"
+        },
+        "dates.received": {
+          "read": "pass"
+        },
+        "dates.requested": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "sort": "pass",
+          "update": "pass"
+        },
+        "dates.settled": {
+          "read": "pass"
+        },
+        "documents": {
+          "read": "pass"
+        },
+        "documents.deliveryNote": {
+          "read": "pass"
+        },
+        "documents.salesOrder": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "items": {
+          "read": "pass"
+        },
+        "items.action": {
+          "read": "pass"
+        },
+        "items.condition": {
+          "read": "pass"
+        },
+        "items.creditedQuantity": {
+          "read": "pass"
+        },
+        "items.deliveryNoteItem": {
+          "read": "pass"
+        },
+        "items.id": {
+          "read": "pass"
+        },
+        "items.object": {
+          "read": "pass"
+        },
+        "items.position": {
+          "read": "pass"
+        },
+        "items.product": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass"
+        },
+        "items.quantity": {
+          "read": "pass"
+        },
+        "items.quantity.unit": {
+          "read": "pass"
+        },
+        "items.quantity.value": {
+          "read": "pass"
+        },
+        "items.reason": {
+          "read": "pass"
+        },
+        "items.receivedQuantity": {
+          "read": "pass"
+        },
+        "note": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "number": {
+          "filter": "pass",
+          "read": "pass",
+          "search": "pass",
+          "sort": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "project": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "references": {
+          "read": "pass"
+        },
+        "references.customerOrderNumber": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass"
+        },
+        "references.rmaNumber": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass"
+        },
+        "resolution": {
+          "read": "pass"
+        },
+        "resolution.creditNote": {
+          "read": "pass"
+        },
+        "resolution.replacementOrder": {
+          "read": "pass"
+        },
+        "status": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "tags": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "updatedAt": {
+          "read": "pass",
+          "sort": "pass"
+        },
+        "warehouse": {
+          "read": "pass"
+        }
+      },
+      "processSteps": {
+        "cancel": "pass",
+        "settle": "pass"
+      },
+      "processStepsNotes": {
+        "cancel": "reachable — 409: Resource status invalid for requested operation",
+        "settle": "reachable — 409: Resource status invalid for requested operation"
+      }
+    },
+    "SalesInvoice": {
+      "actions": {
+        "addTag": "pass",
+        "removeTag": "pass",
+        "send": "pass"
+      },
+      "actionsNotes": {
+        "addTag": "reachable — 422: addTag requires a non-empty 'title'.",
+        "removeTag": "reachable — 422: removeTag requires a non-empty 'title'.",
+        "send": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma"
+      },
+      "fields": {
+        "billingAddress": {
+          "read": "pass"
+        },
+        "billingAddress.city": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.country": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.email": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.name": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.phone": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.street": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.vatId": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.zip": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "channel": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass"
+        },
+        "costCenter": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "createdAt": {
+          "read": "pass",
+          "sort": "pass"
+        },
+        "currency": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "customFields": {
+          "read": "pass"
+        },
+        "customer": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass"
+        },
+        "dates": {
+          "read": "pass"
+        },
+        "dates.issued": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "sort": "pass",
+          "update": "pass"
+        },
+        "dates.serviceDate": {
+          "read": "pass"
+        },
+        "dates.servicePeriod": {
+          "read": "pass"
+        },
+        "documents": {
+          "read": "pass"
+        },
+        "documents.creditNotes": {
+          "read": "pass"
+        },
+        "documents.creditNotes.id": {
+          "read": "pass"
+        },
+        "documents.creditNotes.number": {
+          "read": "pass"
+        },
+        "documents.deliveryNotes": {
+          "read": "pass"
+        },
+        "documents.deliveryNotes.id": {
+          "read": "pass"
+        },
+        "documents.deliveryNotes.number": {
+          "read": "pass"
+        },
+        "documents.salesOrder": {
+          "read": "pass"
+        },
+        "dunning": {
+          "read": "pass"
+        },
+        "dunning.blocked": {
+          "read": "pass"
+        },
+        "dunning.lastReminderAt": {
+          "read": "pass"
+        },
+        "dunning.level": {
+          "read": "pass"
+        },
+        "dunning.note": {
+          "read": "pass"
+        },
+        "eInvoice": {
+          "read": "pass"
+        },
+        "eInvoice.buyerReference": {
+          "read": "pass"
+        },
+        "eInvoice.downloadUrl": {
+          "read": "pass"
+        },
+        "eInvoice.format": {
+          "read": "pass"
+        },
+        "eInvoice.status": {
+          "read": "pass"
+        },
+        "fixedAt": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "items": {
+          "read": "pass"
+        },
+        "items.description": {
+          "read": "pass"
+        },
+        "items.discountPercent": {
+          "read": "pass"
+        },
+        "items.id": {
+          "read": "pass"
+        },
+        "items.object": {
+          "read": "pass"
+        },
+        "items.orderItem": {
+          "read": "pass"
+        },
+        "items.position": {
+          "read": "pass"
+        },
+        "items.product": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass"
+        },
+        "items.quantity": {
+          "read": "pass"
+        },
+        "items.quantity.unit": {
+          "read": "pass"
+        },
+        "items.quantity.value": {
+          "read": "pass"
+        },
+        "items.taxRate": {
+          "read": "pass"
+        },
+        "items.totals": {
+          "read": "pass"
+        },
+        "items.totals.gross": {
+          "read": "pass"
+        },
+        "items.totals.net": {
+          "read": "pass"
+        },
+        "items.totals.tax": {
+          "read": "pass"
+        },
+        "items.unitPrice": {
+          "read": "pass"
+        },
+        "items.unitPrice.amount": {
+          "read": "pass"
+        },
+        "items.unitPrice.currency": {
+          "read": "pass"
+        },
+        "note": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "number": {
+          "filter": "pass",
+          "read": "pass",
+          "search": "pass",
+          "sort": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "payment": {
+          "read": "pass"
+        },
+        "payment.discountDate": {
+          "read": "pass"
+        },
+        "payment.dueDate": {
+          "read": "pass"
+        },
+        "payment.method": {
+          "read": "pass"
+        },
+        "payment.payments": {
+          "read": "pass"
+        },
+        "payment.payments.id": {
+          "read": "pass"
+        },
+        "payment.payments.number": {
+          "read": "pass"
+        },
+        "payment.status": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "payment.terms": {
+          "read": "pass"
+        },
+        "payment.terms.discountDays": {
+          "read": "pass"
+        },
+        "payment.terms.discountPercent": {
+          "read": "pass"
+        },
+        "payment.terms.dueDays": {
+          "read": "pass"
+        },
+        "project": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass",
+          "updateNote": "only one project on the instance — write accepted, change not provable"
+        },
+        "references": {
+          "read": "pass"
+        },
+        "references.customerOrderNumber": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass",
+          "update": "pass"
+        },
+        "references.debtorAccountNumber": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass"
+        },
+        "status": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "tags": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "taxation": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "totals": {
+          "read": "pass"
+        },
+        "totals.currency": {
+          "read": "pass"
+        },
+        "totals.gross": {
+          "read": "pass"
+        },
+        "totals.net": {
+          "read": "pass"
+        },
+        "totals.outstanding": {
+          "read": "pass"
+        },
+        "totals.paid": {
+          "read": "pass"
+        },
+        "updatedAt": {
+          "read": "pass",
+          "sort": "pass"
+        }
+      },
+      "processSteps": {
+        "cancel": "fail",
+        "issue": "pass"
+      },
+      "processStepsNotes": {
+        "cancel": "route not available (404): error",
+        "issue": "reachable — 409: Resource status invalid for requested operation"
+      }
+    },
+    "SalesOrder": {
+      "actions": {
+        "addTag": "pass",
+        "createSalesInvoice": "pass",
+        "removeTag": "pass",
+        "sendConfirmation": "pass",
+        "split": "pass"
+      },
+      "actionsNotes": {
+        "addTag": "reachable — 422: addTag requires a non-empty 'title'.",
+        "createSalesInvoice": "EXECUTED on the sampled record (200) — created/changed data",
+        "removeTag": "reachable — 422: removeTag requires a non-empty 'title'.",
+        "sendConfirmation": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma",
+        "split": "reachable — 400: Generic request validation failed."
+      },
+      "fields": {
+        "billingAddress": {
+          "read": "pass"
+        },
+        "billingAddress.city": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.country": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.email": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.name": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.phone": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.street": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.vatId": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "billingAddress.zip": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "channel": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass"
+        },
+        "costCenter": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "createdAt": {
+          "read": "pass",
+          "sort": "pass"
+        },
+        "currency": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "customFields": {
+          "read": "pass"
+        },
+        "customer": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass"
+        },
+        "dates": {
+          "read": "pass"
+        },
+        "dates.confirmedDelivery": {
+          "read": "pass"
+        },
+        "dates.earliestFulfillment": {
+          "create": "pass",
+          "read": "pass",
+          "updateNote": "no sample date value — not probed (a null date cannot be restored)"
+        },
+        "dates.issued": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "sort": "pass",
+          "update": "pass"
+        },
+        "dates.requestedDelivery": {
+          "create": "pass",
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass",
+          "updateNote": "no sample date value — not probed (a null date cannot be restored)"
+        },
+        "dates.reservation": {
+          "create": "pass",
+          "read": "pass",
+          "updateNote": "no sample date value — not probed (a null date cannot be restored)"
+        },
+        "discounts": {
+          "read": "pass"
+        },
+        "discounts.amount": {
+          "read": "pass"
+        },
+        "discounts.description": {
+          "read": "pass"
+        },
+        "discounts.kind": {
+          "read": "pass"
+        },
+        "documents": {
+          "read": "pass"
+        },
+        "documents.deliveryNotes": {
+          "read": "pass"
+        },
+        "documents.deliveryNotes.id": {
+          "read": "pass"
+        },
+        "documents.deliveryNotes.number": {
+          "read": "pass"
+        },
+        "documents.quote": {
+          "read": "pass"
+        },
+        "documents.salesInvoices": {
+          "read": "pass"
+        },
+        "documents.salesInvoices.id": {
+          "read": "pass"
+        },
+        "documents.salesInvoices.number": {
+          "read": "pass"
+        },
+        "fulfillmentPolicy": {
+          "read": "pass"
+        },
+        "fulfillmentPolicy.auto": {
+          "read": "pass"
+        },
+        "fulfillmentPolicy.partialShipping": {
+          "read": "pass"
+        },
+        "fulfillmentPolicy.priority": {
+          "read": "pass"
+        },
+        "holds": {
+          "read": "pass"
+        },
+        "holds.state": {
+          "read": "pass"
+        },
+        "holds.type": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "items": {
+          "read": "pass"
+        },
+        "items.description": {
+          "read": "pass"
+        },
+        "items.discountPercent": {
+          "read": "pass"
+        },
+        "items.fulfillment": {
+          "read": "pass"
+        },
+        "items.fulfillment.invoiced": {
+          "read": "pass"
+        },
+        "items.fulfillment.returned": {
+          "read": "pass"
+        },
+        "items.fulfillment.shipped": {
+          "read": "pass"
+        },
+        "items.id": {
+          "read": "pass"
+        },
+        "items.object": {
+          "read": "pass"
+        },
+        "items.position": {
+          "read": "pass"
+        },
+        "items.priceSource": {
+          "read": "pass"
+        },
+        "items.product": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass"
+        },
+        "items.quantity": {
+          "read": "pass"
+        },
+        "items.quantity.unit": {
+          "read": "pass"
+        },
+        "items.quantity.value": {
+          "read": "pass"
+        },
+        "items.taxRate": {
+          "read": "pass"
+        },
+        "items.totals": {
+          "read": "pass"
+        },
+        "items.totals.gross": {
+          "read": "pass"
+        },
+        "items.totals.net": {
+          "read": "pass"
+        },
+        "items.totals.tax": {
+          "read": "pass"
+        },
+        "items.unitPrice": {
+          "read": "pass"
+        },
+        "items.unitPrice.amount": {
+          "read": "pass"
+        },
+        "items.unitPrice.currency": {
+          "read": "pass"
+        },
+        "items.warehouse": {
+          "read": "pass"
+        },
+        "note": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "number": {
+          "filter": "pass",
+          "read": "pass",
+          "search": "pass",
+          "sort": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "payment": {
+          "read": "pass"
+        },
+        "payment.method": {
+          "read": "pass"
+        },
+        "payment.status": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass"
+        },
+        "payment.terms": {
+          "read": "pass"
+        },
+        "payment.terms.discountDays": {
+          "read": "pass"
+        },
+        "payment.terms.discountPercent": {
+          "read": "pass"
+        },
+        "payment.terms.dueDays": {
+          "read": "pass"
+        },
+        "project": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass",
+          "updateNote": "only one project on the instance — write accepted, change not provable"
+        },
+        "references": {
+          "read": "pass"
+        },
+        "references.customerOrderNumber": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass",
+          "update": "pass"
+        },
+        "references.externalId": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass"
+        },
+        "references.externalNumber": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass"
+        },
+        "references.paymentTransactionId": {
+          "read": "pass"
+        },
+        "shipping": {
+          "read": "pass"
+        },
+        "shipping.cost": {
+          "read": "pass"
+        },
+        "shipping.cost.amount": {
+          "read": "pass"
+        },
+        "shipping.cost.currency": {
+          "read": "pass"
+        },
+        "shipping.method": {
+          "read": "pass"
+        },
+        "shipping.status": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass"
+        },
+        "shippingAddress": {
+          "read": "pass"
+        },
+        "shippingAddress.city": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "shippingAddress.country": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "shippingAddress.email": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "shippingAddress.name": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "shippingAddress.phone": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "shippingAddress.street": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "shippingAddress.vatId": {
+          "read": "pass"
+        },
+        "shippingAddress.zip": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "status": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "tags": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "texts": {
+          "read": "pass"
+        },
+        "texts.intro": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "texts.outro": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "totals": {
+          "read": "pass"
+        },
+        "totals.currency": {
+          "read": "pass"
+        },
+        "totals.gross": {
+          "read": "pass"
+        },
+        "totals.net": {
+          "read": "pass"
+        },
+        "totals.taxes": {
+          "read": "pass"
+        },
+        "totals.taxes.amount": {
+          "read": "pass"
+        },
+        "totals.taxes.base": {
+          "read": "pass"
+        },
+        "totals.taxes.percent": {
+          "read": "pass"
+        },
+        "totals.taxes.rate": {
+          "read": "pass"
+        },
+        "updatedAt": {
+          "read": "pass",
+          "sort": "pass"
+        }
+      },
+      "processSteps": {
+        "cancel": "pass",
+        "close": "pass",
+        "confirm": "pass"
+      },
+      "processStepsNotes": {
+        "cancel": "reachable — 409: Resource status invalid for requested operation",
+        "close": "reachable — 409: Resource status invalid for requested operation",
+        "confirm": "reachable — 409: Resource status invalid for requested operation"
+      }
+    },
+    "Shipment": {
+      "fields": {
+        "additionalPackages": {
+          "read": "pass"
+        },
+        "additionalPackages.trackingNumber": {
+          "read": "pass"
+        },
+        "carrier": {
+          "read": "pass"
+        },
+        "createdAt": {
+          "read": "pass"
+        },
+        "dates": {
+          "read": "pass"
+        },
+        "dates.sentAt": {
+          "read": "pass"
+        },
+        "documents": {
+          "read": "pass"
+        },
+        "documents.deliveryNote": {
+          "read": "pass"
+        },
+        "documents.salesOrder": {
+          "read": "pass"
+        },
+        "events": {
+          "read": "pass"
+        },
+        "events.at": {
+          "read": "pass"
+        },
+        "events.location": {
+          "read": "pass"
+        },
+        "events.status": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "labelUrl": {
+          "read": "pass"
+        },
+        "number": {
+          "read": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "packages": {
+          "read": "pass"
+        },
+        "packages.trackingNumber": {
+          "read": "pass"
+        },
+        "shippingMethod": {
+          "read": "pass"
+        },
+        "status": {
+          "read": "pass"
+        },
+        "tracking": {
+          "read": "pass"
+        },
+        "tracking.carrier": {
+          "read": "pass"
+        },
+        "tracking.link": {
+          "read": "pass"
+        },
+        "tracking.number": {
+          "read": "pass"
+        },
+        "trackingNumber": {
+          "read": "pass"
+        },
+        "trackingUrl": {
+          "read": "pass"
+        },
+        "updatedAt": {
+          "read": "pass"
+        },
+        "weight": {
+          "read": "pass"
+        },
+        "weight.unit": {
+          "read": "pass"
+        },
+        "weight.value": {
+          "read": "pass"
+        }
+      }
+    },
+    "StockTake": {
+      "fields": {
+        "createdAt": {
+          "read": "pass"
+        },
+        "dates": {
+          "read": "pass"
+        },
+        "dates.keyDate": {
+          "read": "pass"
+        },
+        "dates.posted": {
+          "read": "pass"
+        },
+        "dates.started": {
+          "read": "pass"
+        },
+        "documents": {
+          "read": "pass"
+        },
+        "documents.stockMovements": {
+          "read": "pass"
+        },
+        "documents.stockMovements.id": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "name": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "people": {
+          "read": "pass"
+        },
+        "people.controller": {
+          "read": "pass"
+        },
+        "people.counter": {
+          "read": "pass"
+        },
+        "positions": {
+          "read": "pass"
+        },
+        "positions.counted": {
+          "read": "pass"
+        },
+        "positions.counted.unit": {
+          "read": "pass"
+        },
+        "positions.counted.value": {
+          "read": "pass"
+        },
+        "positions.difference": {
+          "read": "pass"
+        },
+        "positions.difference.unit": {
+          "read": "pass"
+        },
+        "positions.difference.value": {
+          "read": "pass"
+        },
+        "positions.expected": {
+          "read": "pass"
+        },
+        "positions.expected.unit": {
+          "read": "pass"
+        },
+        "positions.expected.value": {
+          "read": "pass"
+        },
+        "positions.product": {
+          "read": "pass"
+        },
+        "positions.storageLocation": {
+          "read": "pass"
+        },
+        "scope": {
+          "read": "pass"
+        },
+        "scope.storageLocations": {
+          "read": "pass"
+        },
+        "status": {
+          "read": "pass"
+        },
+        "totals": {
+          "read": "pass"
+        },
+        "totals.differences": {
+          "read": "pass"
+        },
+        "totals.positions": {
+          "read": "pass"
+        },
+        "updatedAt": {
+          "read": "pass"
+        },
+        "warehouse": {
+          "read": "pass"
+        }
+      }
+    },
+    "StorageLocation": {
+      "fields": {
+        "capacity": {
+          "read": "pass"
+        },
+        "capacity.maxWeight": {
+          "read": "pass"
+        },
+        "capacity.maxWeight.unit": {
+          "read": "pass"
+        },
+        "capacity.maxWeight.value": {
+          "read": "pass"
+        },
+        "capacity.note": {
+          "read": "pass"
+        },
+        "contents": {
+          "read": "pass"
+        },
+        "contents.batch": {
+          "read": "pass"
+        },
+        "contents.product": {
+          "read": "pass"
+        },
+        "contents.quantity": {
+          "read": "pass"
+        },
+        "contents.quantity.unit": {
+          "read": "pass"
+        },
+        "contents.quantity.value": {
+          "read": "pass"
+        },
+        "contents.reserved": {
+          "read": "pass"
+        },
+        "contents.reserved.unit": {
+          "read": "pass"
+        },
+        "contents.reserved.value": {
+          "read": "pass"
+        },
+        "createdAt": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "kind": {
+          "read": "pass"
+        },
+        "name": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "pickingOrder": {
+          "read": "pass"
+        },
+        "status": {
+          "read": "pass"
+        },
+        "updatedAt": {
+          "read": "pass"
+        },
+        "warehouse": {
+          "read": "pass"
+        }
+      }
+    },
+    "Supplier": {
+      "actions": {
+        "addTag": "pass",
+        "removeTag": "pass"
+      },
+      "actionsNotes": {
+        "addTag": "reachable — 422: addTag requires a non-empty 'title'.",
+        "removeTag": "reachable — 422: removeTag requires a non-empty 'title'."
+      },
+      "fields": {
+        "addresses": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "addresses.city": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass",
+          "searchNote": "no sample text value — search not probed",
+          "sort": "pass"
+        },
+        "addresses.contactPerson": {
+          "read": "pass"
+        },
+        "addresses.country": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass",
+          "searchNote": "no sample text value — search not probed",
+          "sort": "pass"
+        },
+        "addresses.email": {
+          "read": "pass"
+        },
+        "addresses.gln": {
+          "read": "pass"
+        },
+        "addresses.id": {
+          "read": "pass"
+        },
+        "addresses.isDefault": {
+          "read": "pass"
+        },
+        "addresses.label": {
+          "read": "pass"
+        },
+        "addresses.name": {
+          "read": "pass"
+        },
+        "addresses.phone": {
+          "read": "pass"
+        },
+        "addresses.state": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass",
+          "searchNote": "no sample text value — search not probed",
+          "sort": "pass"
+        },
+        "addresses.street": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass",
+          "searchNote": "no sample text value — search not probed",
+          "sort": "pass"
+        },
+        "addresses.type": {
+          "read": "pass"
+        },
+        "addresses.zip": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass",
+          "searchNote": "no sample text value — search not probed",
+          "sort": "pass"
+        },
+        "billTo": {
+          "read": "pass"
+        },
+        "channels": {
+          "read": "pass"
+        },
+        "channels.channel": {
+          "read": "pass"
+        },
+        "channels.externalId": {
+          "read": "pass"
+        },
+        "contacts": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "contacts.email": {
+          "read": "pass"
+        },
+        "contacts.id": {
+          "read": "pass"
+        },
+        "contacts.mobile": {
+          "read": "pass"
+        },
+        "contacts.name": {
+          "read": "pass"
+        },
+        "contacts.phone": {
+          "read": "pass"
+        },
+        "contacts.role": {
+          "read": "pass"
+        },
+        "contacts.title": {
+          "read": "pass"
+        },
+        "contacts.type": {
+          "read": "pass"
+        },
+        "createdAt": {
+          "filter": "pass",
+          "read": "pass",
+          "sort": "pass"
+        },
+        "customFields": {
+          "read": "pass"
+        },
+        "defaults": {
+          "read": "pass"
+        },
+        "defaults.currency": {
+          "read": "pass"
+        },
+        "defaults.language": {
+          "read": "pass"
+        },
+        "defaults.partialShipping": {
+          "read": "pass"
+        },
+        "defaults.paymentMethod": {
+          "read": "pass"
+        },
+        "defaults.paymentTerms": {
+          "read": "pass"
+        },
+        "defaults.paymentTerms.discountDays": {
+          "read": "pass"
+        },
+        "defaults.paymentTerms.discountPercent": {
+          "read": "pass"
+        },
+        "defaults.paymentTerms.dueDays": {
+          "read": "pass"
+        },
+        "defaults.priceList": {
+          "read": "pass"
+        },
+        "defaults.shippingMethod": {
+          "read": "pass"
+        },
+        "email": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "search": "pass",
+          "update": "pass"
+        },
+        "finance": {
+          "read": "pass"
+        },
+        "finance.creditorAccountNumber": {
+          "read": "pass"
+        },
+        "finance.openAmount": {
+          "read": "pass"
+        },
+        "finance.openAmount.amount": {
+          "read": "pass"
+        },
+        "finance.openAmount.currency": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "language": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "name": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "search": "pass",
+          "sort": "pass",
+          "update": "pass"
+        },
+        "number": {
+          "filter": "pass",
+          "read": "pass",
+          "search": "pass",
+          "sort": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "parent": {
+          "read": "pass"
+        },
+        "phone": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "project": {
+          "read": "pass",
+          "update": "pass",
+          "updateNote": "only one project on the instance — write accepted, change not provable"
+        },
+        "purchasing": {
+          "read": "pass"
+        },
+        "purchasing.confirmationRequired": {
+          "read": "pass"
+        },
+        "purchasing.deliveryDays": {
+          "read": "pass"
+        },
+        "purchasing.minimumOrderValue": {
+          "read": "pass"
+        },
+        "purchasing.minimumOrderValue.amount": {
+          "read": "pass"
+        },
+        "purchasing.minimumOrderValue.currency": {
+          "read": "pass"
+        },
+        "purchasing.ourCustomerNumber": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "purchasing.sendOrdersVia": {
+          "read": "pass"
+        },
+        "status": {
+          "read": "pass"
+        },
+        "tags": {
+          "filter": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "type": {
+          "read": "pass"
+        },
+        "updatedAt": {
+          "filter": "pass",
+          "read": "pass",
+          "sort": "pass"
+        },
+        "vatId": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "website": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        }
+      }
+    },
+    "Tag": {
+      "fields": {
+        "color": {
+          "read": "pass"
+        },
+        "createdAt": {
+          "read": "pass",
+          "sort": "pass"
+        },
+        "group": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "label": {
+          "filter": "pass",
+          "read": "pass",
+          "search": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "slug": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "updatedAt": {
+          "read": "pass",
+          "sort": "pass"
+        }
+      }
+    }
+  },
+  "generatedAt": null,
+  "instance": "a2ad4180-0d41-4360-8044-9dca0c35608a"
+}

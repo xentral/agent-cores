@@ -1,0 +1,18 @@
+# Mirrors the agent-hub-labs backend ruff config so vendored core code passes the
+# same lint gate here as it does in the backend. Keep in sync with
+# agent-hub-labs/pyproject.toml [tool.ruff].
+target-version = "py312"
+line-length = 100
+
+[lint]
+select = ["F", "B", "S", "ASYNC", "UP"]
+ignore = [
+    "E501", # line length is enforced by the formatter, not the linter
+    "S101", # allow 'assert'
+]
+
+[lint.per-file-ignores]
+"tests/**" = ["S105", "S106", "S107", "S311", "S112"]
+
+[format]
+quote-style = "preserve"
