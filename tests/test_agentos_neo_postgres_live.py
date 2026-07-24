@@ -155,13 +155,25 @@ def _call_action(adapter, key, rec_id, command):
     return resp.status_code, json.loads(resp.content or b"{}")
 
 
-def test_undeclared_write_is_405_and_leaves_no_row():
-    victim = ADAPTERS["Tag"]  # list/read only in the model
+def test_unknown_field_write_is_409_and_leaves_no_row():
+    victim = ADAPTERS["Tag"]  # its field is `label` — `title` is unknown
     before = _sql(lambda pool: pool.fetchval(f"SELECT count(*) FROM {victim._table}"))
     st, body = _call(victim, method="POST", body=json.dumps({"title": "x"}).encode())
-    assert st == 405, body
+    assert st == 409 and "title" in body["fields"], body
     after = _sql(lambda pool: pool.fetchval(f"SELECT count(*) FROM {victim._table}"))
     assert before == after
+
+
+def test_create_and_delete_roundtrip():
+    """Standalone opens delete — prove the full lifecycle on Tag."""
+    tag = ADAPTERS["Tag"]
+    st, created = _call(tag, method="POST", body=json.dumps({"label": "live-tmp"}).encode())
+    assert st == 201, created
+    rec_id = created["data"]["id"]
+    st, _ = _call(tag, method="DELETE", handle=rec_id)
+    assert st == 200
+    st, _ = _call(tag, method="GET", handle=rec_id)
+    assert st == 404
 
 
 def test_search_answers_with_total():

@@ -83,6 +83,35 @@ def _strip(node: Any) -> Any:
     return node
 
 
+# Standalone semantics: the facade marks fields/entities read-only wherever
+# TODAY'S Xentral API lacks a write path — a gap of that upstream, not of the
+# model. With our own persistence there is no upstream feeding data in, so a
+# read-only entity would stay empty forever. The snapshot therefore opens every
+# entity to full CRUD and every field to create+update, EXCEPT what is
+# structurally computed (identity, stamps, derived subtrees).
+_COMPUTED_FIELDS = frozenset({"id", "object", "number", "createdAt", "updatedAt"})
+_COMPUTED_SUBTREES = frozenset(
+    {"totals", "documents", "fulfillment", "holds", "discounts", "priceSource", "cost"}
+)
+STANDALONE_OPERATIONS = ["list", "read", "create", "update", "delete"]
+
+
+def _open_writability(props: dict[str, Any]) -> None:
+    """Make every non-computed field creatable+updatable, in place."""
+    for name, spec in props.items():
+        if not isinstance(spec, dict):
+            continue
+        if name in _COMPUTED_FIELDS or name in _COMPUTED_SUBTREES:
+            continue  # keep the facade's readOnly marking (and skip the subtree)
+        sub = spec.get("properties") or (spec.get("node") or {}).get("properties")
+        if isinstance(sub, dict):
+            _open_writability(sub)
+            continue
+        spec.pop("access", None)
+        spec["creatable"] = True
+        spec["updatable"] = True
+
+
 def main() -> int:
     _register_namespace()
     from xentral_entity_cores.agentos_neo_xentral.manifest import CORE
@@ -104,14 +133,17 @@ def main() -> int:
             meta["actions"] = actions
         else:
             meta.pop("actions", None)
+        meta = _strip(meta)
+        _open_writability(meta["rootNode"]["properties"])
+        meta["operations"] = list(STANDALONE_OPERATIONS)
         entities.append(
             {
                 "key": key,
                 "label": adapter.manifest.label_en,
                 "category": adapter.manifest.category,
-                "operations": list(adapter.manifest.operations),
+                "operations": list(STANDALONE_OPERATIONS),
                 "idPrefix": prefix,
-                "metadata": _strip(meta),
+                "metadata": meta,
             }
         )
 

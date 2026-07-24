@@ -164,3 +164,15 @@ def test_writable_containers_are_accepted():
     assert {"customer", "items", "billingAddress", "shippingAddress", "dates"} <= writable
     assert "totals" not in writable
     assert "documents" not in writable
+
+
+def test_standalone_semantics_open_crud():
+    """Standalone: every entity is fully CRUD (a read-only entity would stay
+    empty forever without an upstream); computed fields stay readOnly."""
+    for a in ADAPTERS.values():
+        assert set(a.manifest.operations) == {"list", "read", "create", "update", "delete"}
+    product = ADAPTERS["Product"]
+    assert "name" in product._writable_paths(creating=True)
+    props = product._props
+    assert props["id"].get("access") == "readOnly"
+    assert props["number"].get("access") == "readOnly"
