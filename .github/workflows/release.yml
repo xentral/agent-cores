@@ -1,0 +1,101 @@
+name: release
+
+# Auto-release on every merge to main. The backend (xentral/agent-hub-labs) pins
+# an explicit tag via CORES_VERSION and downloads that tag's tarball, so a core
+# change only reaches staging/prod once a NEW tag exists and the backend is bumped
+# (make bump-cores). This removes the "remember to cut a tag" step.
+#
+# TAG-ONLY: main is review-protected, so we never push a commit there. The workflow
+# bumps manifest.json's version, commits locally, tags it, and pushes ONLY the tag
+# (+ a GitHub Release). main's copy of the version field lags cosmetically — the
+# consumer reads the tag tarball, which carries the correct version.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Opt-out check (commit SUBJECT only)
+        id: guard
+        run: |
+          set -euo pipefail
+          subject="$(git log -1 --format=%s)"
+          if printf '%s' "$subject" | grep -q '\[skip release\]'; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compute next version
+        if: steps.guard.outputs.skip != 'true'
+        id: ver
+        run: |
+          set -euo pipefail
+          ym="$(date -u +%Y.%m)"
+          latest="$(git tag --list "${ym}.*" --sort=-version:refname | head -1)"
+          if [ -n "$latest" ]; then
+            next="${ym}.$(( ${latest##*.} + 1 ))"
+          else
+            next="${ym}.1"
+          fi
+          echo "version=$next" >> "$GITHUB_OUTPUT"
+          echo "Next version: $next"
+
+      - name: Tag and release (tag-only)
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          v="${{ steps.ver.outputs.version }}"
+          python3 - "$v" <<'PY'
+          import json, sys
+          v = sys.argv[1]
+          with open("manifest.json") as f:
+              d = json.load(f)
+          d["version"] = v
+          with open("manifest.json", "w") as f:
+              json.dump(d, f, indent=2)
+              f.write("\n")
+          PY
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add manifest.json
+          git commit -m "chore(release): ${v}"
+          git tag "$v"
+          git push origin "$v"
+          gh release create "$v" --title "$v" --generate-notes
+
+      - name: Notify consumer to bump CORES_VERSION
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          # Cross-repo dispatch needs a token with access to the (private)
+          # consumer repo — the default GITHUB_TOKEN is scoped to this repo only.
+          # Set AGENT_HUB_DISPATCH_TOKEN (org PAT / GitHub-App) as a secret.
+          GH_TOKEN: ${{ secrets.AGENT_HUB_DISPATCH_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "AGENT_HUB_DISPATCH_TOKEN not set — skipping cross-repo dispatch."
+            echo "Tag ${{ steps.ver.outputs.version }} is published; run 'make bump-cores' in agent-hub-labs."
+            exit 0
+          fi
+          printf '{"event_type":"agent-cores-release","client_payload":{"version":"%s"}}' \
+            "${{ steps.ver.outputs.version }}" \
+            | gh api repos/xentral/agent-hub-labs/dispatches --method POST --input -
+          echo "Dispatched agent-cores-release (${{ steps.ver.outputs.version }}) to agent-hub-labs."

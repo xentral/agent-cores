@@ -1,0 +1,57 @@
+name: validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: JSON is well-formed
+        run: python3 -c "import json; json.load(open('manifest.json'))"
+
+      - name: Structure + manifest consistency
+        run: python3 scripts/validate_cores.py
+
+      - name: Lint cores (ruff)
+        run: |
+          pip install ruff
+          # No cores yet is fine — ruff on an empty tree is a no-op.
+          ruff check cores/ || exit 1
+
+      - name: Secret scan (no secrets / no tenant data)
+        run: |
+          VER=8.18.4
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${VER}/gitleaks_${VER}_linux_x64.tar.gz" \
+            | tar -xz gitleaks
+          ./gitleaks detect --source . --no-git --redact --exit-code 1
+
+  # Import-smoke: cores import the backend contract (entity_registry.core_sdk),
+  # so this job checks out agent-hub-labs at a pin, makes the package importable,
+  # imports every core and validates its CORE against the contract + declared
+  # CONTRACT_VERSION. Enabled once the first core lands (needs a read-only PAT
+  # for the private backend repo as `AGENT_HUB_READ_TOKEN`).
+  #
+  # import-smoke:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         repository: xentral/agent-hub-labs
+  #         ref: <pinned-sha>
+  #         token: ${{ secrets.AGENT_HUB_READ_TOKEN }}
+  #         path: agent-hub-labs
+  #     - uses: actions/setup-python@v5
+  #       with: { python-version: "3.12" }
+  #     - run: |
+  #         pip install -e agent-hub-labs/backend  # exposes entity_registry.core_sdk
+  #         PYTHONPATH=. python3 scripts/import_smoke.py
