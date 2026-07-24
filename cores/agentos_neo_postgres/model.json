@@ -1,5 +1,5 @@
 {
-  "modelVersion": "3a4e285f604e",
+  "modelVersion": "5f59a91e171d",
   "source": "agentos_neo_xentral",
   "entities": [
     {
@@ -5792,6 +5792,50 @@
               }
             ]
           }
+        ],
+        "actions": [
+          {
+            "key": "addTag",
+            "label": "Add tag",
+            "bulk": false,
+            "method": "PATCH",
+            "path": "/api/entity/PurchaseInvoice/actions/addTag",
+            "destructive": false,
+            "description": "Add a tag to this record (created automatically if new).",
+            "command": {
+              "type": "object",
+              "required": [
+                "title"
+              ],
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "label": "Tag"
+                }
+              }
+            }
+          },
+          {
+            "key": "removeTag",
+            "label": "Remove tag",
+            "bulk": false,
+            "method": "PATCH",
+            "path": "/api/entity/PurchaseInvoice/actions/removeTag",
+            "destructive": false,
+            "description": "Remove a tag from this record.",
+            "command": {
+              "type": "object",
+              "required": [
+                "title"
+              ],
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "label": "Tag"
+                }
+              }
+            }
+          }
         ]
       }
     },
@@ -8163,6 +8207,50 @@
                 "wish": "Archiving is not exposed; v3 products is read-only."
               }
             ]
+          }
+        ],
+        "actions": [
+          {
+            "key": "addTag",
+            "label": "Add tag",
+            "bulk": false,
+            "method": "PATCH",
+            "path": "/api/entity/Product/actions/addTag",
+            "destructive": false,
+            "description": "Add a tag to this record (created automatically if new).",
+            "command": {
+              "type": "object",
+              "required": [
+                "title"
+              ],
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "label": "Tag"
+                }
+              }
+            }
+          },
+          {
+            "key": "removeTag",
+            "label": "Remove tag",
+            "bulk": false,
+            "method": "PATCH",
+            "path": "/api/entity/Product/actions/removeTag",
+            "destructive": false,
+            "description": "Remove a tag from this record.",
+            "command": {
+              "type": "object",
+              "required": [
+                "title"
+              ],
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "label": "Tag"
+                }
+              }
+            }
           }
         ]
       }

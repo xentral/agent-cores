@@ -126,6 +126,40 @@ def _open_writability(props: dict[str, Any], depth: int = 0) -> None:
         spec["updatable"] = True
 
 
+def _ensure_tag_actions(key: str, meta: dict[str, Any]) -> None:
+    """Writable tags ⇒ addTag/removeTag are declared — the same rule the facade
+    applies at metadata time. Opening tag writability for standalone (Product,
+    PurchaseInvoice) must therefore also add the actions the facade withheld."""
+    tags = meta["rootNode"]["properties"].get("tags")
+    if not (isinstance(tags, dict) and (tags.get("creatable") or tags.get("updatable"))):
+        return
+    actions = meta.get("actions") or []
+    present = {a.get("key") for a in actions}
+    command = {
+        "type": "object",
+        "required": ["title"],
+        "properties": {"title": {"type": "string", "label": "Tag"}},
+    }
+    for action_key, label, desc in (
+        ("addTag", "Add tag", "Add a tag to this record (created automatically if new)."),
+        ("removeTag", "Remove tag", "Remove a tag from this record."),
+    ):
+        if action_key not in present:
+            actions.append(
+                {
+                    "key": action_key,
+                    "label": label,
+                    "bulk": False,
+                    "method": "PATCH",
+                    "path": f"/api/entity/{key}/actions/{action_key}",
+                    "destructive": False,
+                    "description": desc,
+                    "command": command,
+                }
+            )
+    meta["actions"] = actions
+
+
 def main() -> int:
     _register_namespace()
     from xentral_entity_cores.agentos_neo_xentral.manifest import CORE
@@ -150,6 +184,7 @@ def main() -> int:
         meta = _strip(meta)
         _open_writability(meta["rootNode"]["properties"])
         meta["operations"] = list(STANDALONE_OPERATIONS)
+        _ensure_tag_actions(key, meta)
         entities.append(
             {
                 "key": key,
