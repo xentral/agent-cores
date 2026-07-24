@@ -1,0 +1,1095 @@
+{
+  "entities": {
+    "DeliveryNote": {
+      "actions": {
+        "addTag": "pass",
+        "removeTag": "pass"
+      },
+      "fields": {
+        "bodyIntroduction": {
+          "read": "pass"
+        },
+        "bodyOutroduction": {
+          "read": "pass"
+        },
+        "businessPartnerId": {
+          "read": "pass"
+        },
+        "commissionConsignmentWarehouseId": {
+          "read": "pass"
+        },
+        "costCenter": {
+          "read": "pass"
+        },
+        "country": {
+          "read": "pass"
+        },
+        "createdAt": {
+          "read": "pass"
+        },
+        "customFields": {
+          "read": "pass"
+        },
+        "customerNumber": {
+          "read": "pass"
+        },
+        "customerOrderNumber": {
+          "read": "pass"
+        },
+        "deliveryTerms": {
+          "read": "pass"
+        },
+        "documentAddress": {
+          "read": "pass"
+        },
+        "documentAddress.additionalAddressInformation": {
+          "read": "pass"
+        },
+        "documentAddress.city": {
+          "read": "pass"
+        },
+        "documentAddress.contactPerson": {
+          "read": "pass"
+        },
+        "documentAddress.country": {
+          "read": "pass"
+        },
+        "documentAddress.department": {
+          "read": "pass"
+        },
+        "documentAddress.name": {
+          "read": "pass",
+          "write": "pass"
+        },
+        "documentAddress.postalCode": {
+          "read": "pass"
+        },
+        "documentAddress.street": {
+          "read": "pass",
+          "write": "pass"
+        },
+        "documentAddress.subDepartment": {
+          "read": "pass"
+        },
+        "documentAddress.vatId": {
+          "read": "pass"
+        },
+        "documentAddressName": {
+          "read": "pass"
+        },
+        "documentDate": {
+          "read": "pass"
+        },
+        "documentNumber": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "internalComment": {
+          "read": "pass",
+          "write": "pass"
+        },
+        "internalDesignation": {
+          "read": "pass"
+        },
+        "invoiceId": {
+          "read": "pass"
+        },
+        "isDeliveryNoteToSupplier": {
+          "read": "pass"
+        },
+        "isDocumentSent": {
+          "read": "pass"
+        },
+        "isWriteProtected": {
+          "read": "pass"
+        },
+        "language": {
+          "read": "pass"
+        },
+        "lineItems": {
+          "read": "pass"
+        },
+        "masterReferenceNumber": {
+          "read": "pass"
+        },
+        "orderPickingId": {
+          "read": "pass"
+        },
+        "preferredWarehouseId": {
+          "read": "pass"
+        },
+        "printSettings": {
+          "read": "pass"
+        },
+        "projectId": {
+          "read": "pass"
+        },
+        "salesId": {
+          "read": "pass"
+        },
+        "salesOrderId": {
+          "read": "pass"
+        },
+        "shippingMethod": {
+          "read": "pass"
+        },
+        "shouldUseAlternativeDocumentTitle": {
+          "read": "pass"
+        },
+        "status": {
+          "read": "pass"
+        },
+        "supplierNumber": {
+          "read": "pass"
+        },
+        "tags": {
+          "read": "pass"
+        },
+        "updatedAt": {
+          "read": "pass"
+        },
+        "uuid": {
+          "read": "pass"
+        }
+      },
+      "operations": {
+        "read": "pass",
+        "update": "pass"
+      },
+      "processSteps": {
+        "removeWriteProtection": "pass",
+        "setWriteProtection": "pass"
+      }
+    },
+    "Product": {
+      "fields": {
+        "abcCategory": {
+          "read": "pass"
+        },
+        "ageRating": {
+          "read": "pass"
+        },
+        "allowPurchaseFromAllSuppliers": {
+          "read": "pass"
+        },
+        "batches": {
+          "read": "pass"
+        },
+        "bestBeforeDates": {
+          "read": "pass"
+        },
+        "calculatedPurchasePrice": {
+          "read": "pass"
+        },
+        "calculatedPurchasePrice.hasCalculatedPurchasePrice": {
+          "read": "pass"
+        },
+        "calculatedPurchasePrice.price": {
+          "read": "pass"
+        },
+        "calculationItems": {
+          "read": "pass"
+        },
+        "calculatoryPurchasePriceSettings": {
+          "read": "pass"
+        },
+        "calculatoryPurchasePriceSettings.addPurchasePriceToCalculationTriggers": {
+          "read": "pass"
+        },
+        "calculatoryPurchasePriceSettings.calculatoryPurchasePriceRecalculationMethod": {
+          "read": "pass"
+        },
+        "calculatoryPurchasePriceSettings.calculatoryPurchasePriceRecalculationTriggers": {
+          "read": "pass"
+        },
+        "categories": {
+          "read": "pass"
+        },
+        "certificates": {
+          "read": "pass"
+        },
+        "commissions": {
+          "read": "pass"
+        },
+        "countryOfOrigin": {
+          "read": "pass"
+        },
+        "createdAt": {
+          "read": "pass"
+        },
+        "crossSelling": {
+          "read": "pass"
+        },
+        "customerApprovalRule": {
+          "read": "pass"
+        },
+        "customsTariffNumber": {
+          "read": "pass"
+        },
+        "defaultStorageLocation": {
+          "read": "pass"
+        },
+        "deliveryThresholds": {
+          "read": "pass"
+        },
+        "description": {
+          "read": "pass"
+        },
+        "disabledReason": {
+          "read": "pass"
+        },
+        "discount": {
+          "read": "pass"
+        },
+        "discount.discountPercentage": {
+          "read": "pass"
+        },
+        "discount.isDiscountProduct": {
+          "read": "pass"
+        },
+        "documentPriceFormula": {
+          "read": "pass"
+        },
+        "documentQuantityFormula": {
+          "read": "pass"
+        },
+        "ean": {
+          "read": "pass"
+        },
+        "externalReferences": {
+          "read": "pass"
+        },
+        "freeFields": {
+          "read": "pass"
+        },
+        "functionProtocols": {
+          "read": "pass"
+        },
+        "hasBatches": {
+          "read": "pass"
+        },
+        "hasBestBeforeDate": {
+          "read": "pass"
+        },
+        "hasBillOfMaterials": {
+          "read": "pass"
+        },
+        "hasDailyPrices": {
+          "read": "pass"
+        },
+        "hasRawMaterialList": {
+          "read": "pass"
+        },
+        "hideJustInTimeItemsOnDocuments": {
+          "read": "pass"
+        },
+        "hidePriceOnDocuments": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "individualTaxRate": {
+          "read": "pass"
+        },
+        "internalComment": {
+          "read": "pass"
+        },
+        "isAssembledJustInTime": {
+          "read": "pass"
+        },
+        "isCommissionBlocked": {
+          "read": "pass"
+        },
+        "isCustomProduct": {
+          "read": "pass"
+        },
+        "isDeleted": {
+          "read": "pass"
+        },
+        "isDevice": {
+          "read": "pass"
+        },
+        "isDisabled": {
+          "read": "pass"
+        },
+        "isExternallyProduced": {
+          "read": "pass"
+        },
+        "isFee": {
+          "read": "pass"
+        },
+        "isMatrixProduct": {
+          "read": "pass"
+        },
+        "isProductionProduct": {
+          "read": "pass"
+        },
+        "isService": {
+          "read": "pass"
+        },
+        "isServiceProduct": {
+          "read": "pass"
+        },
+        "isShippingCostsProduct": {
+          "read": "pass"
+        },
+        "isStockItem": {
+          "read": "pass"
+        },
+        "isStockTakingDisabled": {
+          "read": "pass"
+        },
+        "isVariant": {
+          "read": "pass"
+        },
+        "manufacturer": {
+          "read": "pass"
+        },
+        "manufacturer.link": {
+          "read": "pass"
+        },
+        "manufacturer.name": {
+          "read": "pass"
+        },
+        "manufacturer.number": {
+          "read": "pass"
+        },
+        "manufacturerNumber": {
+          "read": "pass"
+        },
+        "measurements": {
+          "read": "pass"
+        },
+        "measurements.height": {
+          "read": "pass"
+        },
+        "measurements.length": {
+          "read": "pass"
+        },
+        "measurements.netWeight": {
+          "read": "pass"
+        },
+        "measurements.weight": {
+          "read": "pass"
+        },
+        "measurements.width": {
+          "read": "pass"
+        },
+        "media": {
+          "read": "pass"
+        },
+        "merchandiseGroup": {
+          "read": "pass"
+        },
+        "minimumOrderQuantity": {
+          "read": "pass"
+        },
+        "minimumStorageQuantity": {
+          "read": "pass"
+        },
+        "name": {
+          "read": "pass"
+        },
+        "noCashDiscountAllowed": {
+          "read": "pass"
+        },
+        "noDiscountAllowed": {
+          "read": "pass"
+        },
+        "noticeText": {
+          "read": "pass"
+        },
+        "number": {
+          "read": "pass"
+        },
+        "options": {
+          "read": "pass"
+        },
+        "packagingUnits": {
+          "read": "pass"
+        },
+        "parts": {
+          "read": "pass"
+        },
+        "project": {
+          "read": "pass"
+        },
+        "properties": {
+          "read": "pass"
+        },
+        "purchasePrices": {
+          "read": "pass"
+        },
+        "rawMaterials": {
+          "read": "pass"
+        },
+        "regionOfOrigin": {
+          "read": "pass"
+        },
+        "requiresCustomerApproval": {
+          "read": "pass"
+        },
+        "requiresIdentityCheck": {
+          "read": "pass"
+        },
+        "reservations": {
+          "read": "pass"
+        },
+        "salesChannels": {
+          "read": "pass"
+        },
+        "salesPrices": {
+          "read": "pass"
+        },
+        "salesTax": {
+          "read": "pass"
+        },
+        "serialNumbers": {
+          "read": "pass"
+        },
+        "serialNumbersMode": {
+          "read": "pass"
+        },
+        "standardSupplier": {
+          "read": "pass"
+        },
+        "stock": {
+          "read": "pass"
+        },
+        "stockTaking": {
+          "read": "pass"
+        },
+        "stockTaking.hasStockTakingValue": {
+          "read": "pass"
+        },
+        "stockTaking.stockTakingValue": {
+          "read": "pass"
+        },
+        "storageLocations": {
+          "read": "pass"
+        },
+        "suppressSalesPriceWarning": {
+          "read": "pass"
+        },
+        "tags": {
+          "read": "pass"
+        },
+        "taxAccounts": {
+          "read": "pass"
+        },
+        "taxAccounts.expense": {
+          "read": "pass"
+        },
+        "taxAccounts.revenue": {
+          "read": "pass"
+        },
+        "taxAccounts.taxGroup": {
+          "read": "pass"
+        },
+        "taxAccounts.taxType": {
+          "read": "pass"
+        },
+        "taxAccounts.taxTypeDownload": {
+          "read": "pass"
+        },
+        "taxAccounts.texts": {
+          "read": "pass"
+        },
+        "texts": {
+          "read": "pass"
+        },
+        "unit": {
+          "read": "pass"
+        },
+        "updatedAt": {
+          "read": "pass"
+        },
+        "usedIn": {
+          "read": "pass"
+        },
+        "uuid": {
+          "read": "pass"
+        },
+        "variantOf": {
+          "read": "pass"
+        },
+        "variants": {
+          "read": "pass"
+        },
+        "warehouseMinimums": {
+          "read": "pass"
+        },
+        "workInstructions": {
+          "read": "pass"
+        },
+        "xentralVolumePoints": {
+          "read": "pass"
+        }
+      },
+      "operations": {
+        "filter": "pass",
+        "list": "pass",
+        "read": "pass",
+        "sort": "pass"
+      }
+    },
+    "SalesCreditNote": {
+      "actions": {
+        "addTag": "pass",
+        "removeTag": "pass"
+      },
+      "fields": {
+        "bodyIntroduction": {
+          "read": "pass"
+        },
+        "bodyOutroduction": {
+          "read": "pass"
+        },
+        "businessPartnerId": {
+          "read": "pass"
+        },
+        "costCenter": {
+          "read": "pass"
+        },
+        "country": {
+          "read": "pass"
+        },
+        "createdAt": {
+          "read": "pass"
+        },
+        "customFields": {
+          "read": "pass"
+        },
+        "customerNumber": {
+          "read": "pass"
+        },
+        "customerOrderNumber": {
+          "read": "pass",
+          "write": "fail"
+        },
+        "debtStatus": {
+          "read": "pass"
+        },
+        "deliveryDate": {
+          "read": "pass"
+        },
+        "deliveryTerms": {
+          "read": "pass"
+        },
+        "deviatingDebtorAccountNumber": {
+          "read": "pass",
+          "write": "fail"
+        },
+        "documentAddress": {
+          "read": "pass"
+        },
+        "documentAddress.additionalAddressInformation": {
+          "read": "pass"
+        },
+        "documentAddress.city": {
+          "read": "pass"
+        },
+        "documentAddress.contactPerson": {
+          "read": "pass"
+        },
+        "documentAddress.country": {
+          "read": "pass"
+        },
+        "documentAddress.department": {
+          "read": "pass"
+        },
+        "documentAddress.name": {
+          "read": "pass",
+          "write": "fail"
+        },
+        "documentAddress.postalCode": {
+          "read": "pass"
+        },
+        "documentAddress.street": {
+          "read": "pass",
+          "write": "fail"
+        },
+        "documentAddress.subDepartment": {
+          "read": "pass"
+        },
+        "documentAddress.vatId": {
+          "read": "pass"
+        },
+        "documentAddressName": {
+          "read": "pass"
+        },
+        "documentDate": {
+          "read": "pass"
+        },
+        "documentNumber": {
+          "read": "pass"
+        },
+        "editor": {
+          "read": "pass"
+        },
+        "effectiveAddresses": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "internalComment": {
+          "read": "pass",
+          "write": "pass"
+        },
+        "internalDesignation": {
+          "read": "pass"
+        },
+        "invoiceId": {
+          "read": "pass"
+        },
+        "isCancellationInvoice": {
+          "read": "pass"
+        },
+        "isDocumentSent": {
+          "read": "pass"
+        },
+        "isWriteProtected": {
+          "read": "pass"
+        },
+        "language": {
+          "read": "pass"
+        },
+        "lineItems": {
+          "read": "pass"
+        },
+        "paymentStatus": {
+          "read": "pass"
+        },
+        "printSettings": {
+          "read": "pass"
+        },
+        "projectId": {
+          "read": "pass"
+        },
+        "salesId": {
+          "read": "pass"
+        },
+        "status": {
+          "read": "pass"
+        },
+        "tags": {
+          "read": "pass"
+        },
+        "updatedAt": {
+          "read": "pass"
+        },
+        "uuid": {
+          "read": "pass"
+        }
+      },
+      "operations": {
+        "read": "pass",
+        "update": "pass"
+      },
+      "processSteps": {
+        "removeWriteProtection": "pass",
+        "setWriteProtection": "pass"
+      }
+    },
+    "SalesInvoice": {
+      "actions": {
+        "addTag": "pass",
+        "removeTag": "pass"
+      },
+      "fields": {
+        "bodyIntroduction": {
+          "read": "pass"
+        },
+        "bodyOutroduction": {
+          "read": "pass"
+        },
+        "businessPartnerId": {
+          "read": "pass"
+        },
+        "costCenter": {
+          "read": "pass"
+        },
+        "country": {
+          "read": "pass"
+        },
+        "createdAt": {
+          "read": "pass"
+        },
+        "customFields": {
+          "read": "pass"
+        },
+        "customerNumber": {
+          "read": "pass"
+        },
+        "customerOrderNumber": {
+          "read": "pass",
+          "write": "fail"
+        },
+        "deliveryDate": {
+          "read": "pass"
+        },
+        "deliveryTerms": {
+          "read": "pass"
+        },
+        "deviatingDebtorAccountNumber": {
+          "read": "pass"
+        },
+        "documentAddress": {
+          "read": "pass"
+        },
+        "documentAddress.additionalAddressInformation": {
+          "read": "pass"
+        },
+        "documentAddress.city": {
+          "read": "pass"
+        },
+        "documentAddress.contactPerson": {
+          "read": "pass"
+        },
+        "documentAddress.country": {
+          "read": "pass"
+        },
+        "documentAddress.department": {
+          "read": "pass"
+        },
+        "documentAddress.name": {
+          "read": "pass",
+          "write": "pass"
+        },
+        "documentAddress.postalCode": {
+          "read": "pass"
+        },
+        "documentAddress.street": {
+          "read": "pass",
+          "write": "pass"
+        },
+        "documentAddress.subDepartment": {
+          "read": "pass"
+        },
+        "documentAddress.vatId": {
+          "read": "pass"
+        },
+        "documentAddressName": {
+          "read": "pass"
+        },
+        "documentDate": {
+          "read": "pass"
+        },
+        "documentNumber": {
+          "read": "pass"
+        },
+        "dunningManualSettings": {
+          "read": "pass"
+        },
+        "dunningSetManually": {
+          "read": "pass"
+        },
+        "dunningSettings": {
+          "read": "pass"
+        },
+        "editor": {
+          "read": "pass"
+        },
+        "effectiveAddresses": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "internalComment": {
+          "read": "pass",
+          "write": "pass"
+        },
+        "internalDesignation": {
+          "read": "pass"
+        },
+        "isDocumentSent": {
+          "read": "pass"
+        },
+        "isWriteProtected": {
+          "read": "pass"
+        },
+        "language": {
+          "read": "pass"
+        },
+        "lineItems": {
+          "read": "pass"
+        },
+        "masterReferenceNumber": {
+          "read": "pass"
+        },
+        "paymentStatus": {
+          "read": "pass"
+        },
+        "printSettings": {
+          "read": "pass"
+        },
+        "projectId": {
+          "read": "pass"
+        },
+        "salesId": {
+          "read": "pass"
+        },
+        "salesOrderId": {
+          "read": "pass"
+        },
+        "status": {
+          "read": "pass"
+        },
+        "tags": {
+          "read": "pass"
+        },
+        "updatedAt": {
+          "read": "pass"
+        },
+        "uuid": {
+          "read": "pass"
+        }
+      },
+      "operations": {
+        "read": "pass",
+        "update": "pass"
+      },
+      "processSteps": {
+        "removeWriteProtection": "pass",
+        "setWriteProtection": "pass"
+      }
+    },
+    "SalesOrder": {
+      "actions": {
+        "addTag": "pass",
+        "removeTag": "pass"
+      },
+      "fields": {
+        "bodyIntroduction": {
+          "read": "pass",
+          "write": "pass"
+        },
+        "bodyOutroduction": {
+          "read": "pass",
+          "write": "pass"
+        },
+        "businessPartnerId": {
+          "read": "pass"
+        },
+        "commissionConsignmentWarehouseId": {
+          "read": "pass"
+        },
+        "costCenter": {
+          "read": "pass",
+          "write": "fail"
+        },
+        "country": {
+          "read": "pass"
+        },
+        "createDocuments": {
+          "read": "pass"
+        },
+        "createdAt": {
+          "read": "pass"
+        },
+        "customFields": {
+          "read": "pass"
+        },
+        "customerNumber": {
+          "read": "pass"
+        },
+        "customerOrderNumber": {
+          "read": "pass",
+          "write": "fail"
+        },
+        "deliveryTerms": {
+          "read": "pass",
+          "write": "pass"
+        },
+        "deviatingDebtorAccountNumber": {
+          "read": "pass",
+          "write": "fail"
+        },
+        "deviatingShipToAddress": {
+          "read": "pass"
+        },
+        "directDebitDate": {
+          "read": "pass"
+        },
+        "documentAddress": {
+          "read": "pass"
+        },
+        "documentAddress.additionalAddressInformation": {
+          "read": "pass"
+        },
+        "documentAddress.city": {
+          "read": "pass"
+        },
+        "documentAddress.contactPerson": {
+          "read": "pass"
+        },
+        "documentAddress.country": {
+          "read": "pass"
+        },
+        "documentAddress.department": {
+          "read": "pass"
+        },
+        "documentAddress.name": {
+          "read": "pass",
+          "write": "pass"
+        },
+        "documentAddress.postalCode": {
+          "read": "pass"
+        },
+        "documentAddress.street": {
+          "read": "pass",
+          "write": "pass"
+        },
+        "documentAddress.subDepartment": {
+          "read": "pass"
+        },
+        "documentAddress.vatId": {
+          "read": "pass"
+        },
+        "documentAddressName": {
+          "read": "pass"
+        },
+        "documentDate": {
+          "read": "pass"
+        },
+        "documentNumber": {
+          "read": "pass"
+        },
+        "editor": {
+          "read": "pass"
+        },
+        "effectiveAddresses": {
+          "read": "pass"
+        },
+        "externalOrderId": {
+          "read": "pass",
+          "write": "fail"
+        },
+        "externalOrderNumber": {
+          "read": "pass",
+          "write": "fail"
+        },
+        "fastLane": {
+          "read": "pass",
+          "write": "fail"
+        },
+        "hasManualDeliveryBlockApproval": {
+          "read": "pass",
+          "write": "fail"
+        },
+        "hasManualPaymentApproval": {
+          "read": "pass",
+          "write": "fail"
+        },
+        "hasManualShippingCostApproval": {
+          "read": "pass",
+          "write": "fail"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "internalComment": {
+          "read": "pass",
+          "write": "pass"
+        },
+        "internalDesignation": {
+          "read": "pass",
+          "write": "pass"
+        },
+        "isDocumentSent": {
+          "read": "pass"
+        },
+        "isVatChecked": {
+          "read": "pass",
+          "write": "fail"
+        },
+        "isWriteProtected": {
+          "read": "pass"
+        },
+        "language": {
+          "read": "pass",
+          "write": "fail"
+        },
+        "lineItems": {
+          "read": "pass"
+        },
+        "masterReferenceNumber": {
+          "read": "pass",
+          "write": "fail"
+        },
+        "preferredWarehouseId": {
+          "read": "pass"
+        },
+        "printSettings": {
+          "read": "pass"
+        },
+        "projectId": {
+          "read": "pass"
+        },
+        "salesChannelId": {
+          "read": "pass"
+        },
+        "salesId": {
+          "read": "pass"
+        },
+        "shippingMethod": {
+          "read": "pass"
+        },
+        "shouldAutoDispatch": {
+          "read": "pass",
+          "write": "fail"
+        },
+        "shouldDisableCancellationEmail": {
+          "read": "pass",
+          "write": "fail"
+        },
+        "shouldDisablePaymentEmail": {
+          "read": "pass",
+          "write": "fail"
+        },
+        "shouldDisableTrackingEmail": {
+          "read": "pass",
+          "write": "fail"
+        },
+        "shouldUseAlternativeDocumentTitle": {
+          "read": "pass",
+          "write": "fail"
+        },
+        "status": {
+          "read": "pass"
+        },
+        "storageCountry": {
+          "read": "pass",
+          "write": "fail"
+        },
+        "tags": {
+          "read": "pass"
+        },
+        "trafficLights": {
+          "read": "pass"
+        },
+        "updatedAt": {
+          "read": "pass"
+        },
+        "uuid": {
+          "read": "pass"
+        }
+      },
+      "operations": {
+        "read": "pass",
+        "update": "pass"
+      },
+      "processSteps": {
+        "removeWriteProtection": "pass",
+        "setWriteProtection": "pass"
+      }
+    }
+  },
+  "generatedAt": "2026-07-17T08:45:54Z",
+  "instance": "a2ad4180-0d41-4360-8044-9dca0c35608a"
+}

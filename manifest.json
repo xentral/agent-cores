@@ -3,8 +3,8 @@
   "version": "0.0.0",
   "contractVersion": 1,
   "cores": {
-    "count": 1,
-    "ids": ["agentos_neo"]
+    "count": 5,
+    "ids": ["agentos_neo", "odoo_core", "phoenix", "xentral_api", "xentral_business_entities"]
   },
   "checksums": {}
 }
