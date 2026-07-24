@@ -40,7 +40,7 @@ import httpx
 
 from entity_registry.core_sdk import EmulationManifest
 
-from ...credentials import CoreCredentialsMissing
+from entity_registry.core_sdk import CoreCredentialsMissing
 from .base import (
     _METADATA_TTL_SECONDS,
     _QUERYABLE_TYPES,

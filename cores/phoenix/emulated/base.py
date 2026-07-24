@@ -39,7 +39,7 @@ import httpx
 
 from entity_registry.core_sdk import AdapterResponse, EmulationManifest
 
-from ...credentials import (
+from entity_registry.core_sdk import (
     CoreCredentialsMissing,
     CredentialField,
     error_payload as credentials_error_payload,
