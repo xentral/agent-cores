@@ -1,5 +1,5 @@
 {
-  "modelVersion": "dcca56902558",
+  "modelVersion": "3a4e285f604e",
   "source": "agentos_neo_xentral",
   "entities": [
     {
@@ -350,7 +350,8 @@
                   "id": {
                     "type": "string",
                     "label": "Item id",
-                    "access": "readOnly"
+                    "creatable": true,
+                    "updatable": true
                   },
                   "position": {
                     "type": "integer",
@@ -1090,7 +1091,8 @@
                   "id": {
                     "type": "string",
                     "label": "Item id",
-                    "access": "readOnly"
+                    "creatable": true,
+                    "updatable": true
                   },
                   "position": {
                     "type": "integer",
@@ -1990,7 +1992,8 @@
                   "id": {
                     "type": "string",
                     "label": "Item id",
-                    "access": "readOnly"
+                    "creatable": true,
+                    "updatable": true
                   },
                   "position": {
                     "type": "integer",
@@ -2246,12 +2249,14 @@
                       "id": {
                         "type": "string",
                         "label": "ID",
-                        "access": "readOnly"
+                        "creatable": true,
+                        "updatable": true
                       },
                       "number": {
                         "type": "string",
                         "label": "Number",
-                        "access": "readOnly"
+                        "creatable": true,
+                        "updatable": true
                       }
                     }
                   },
@@ -2779,7 +2784,8 @@
                   "id": {
                     "type": "string",
                     "label": "Item id",
-                    "access": "readOnly"
+                    "creatable": true,
+                    "updatable": true
                   },
                   "position": {
                     "type": "integer",
@@ -2876,7 +2882,8 @@
                         "number": {
                           "type": "string",
                           "label": "Number",
-                          "access": "readOnly"
+                          "creatable": true,
+                          "updatable": true
                         }
                       }
                     },
@@ -2895,13 +2902,15 @@
                   "id": {
                     "type": "string",
                     "label": "ID",
-                    "access": "readOnly"
+                    "creatable": true,
+                    "updatable": true
                   },
                   "number": {
                     "type": "string",
                     "label": "Tracking",
-                    "access": "readOnly",
-                    "description": "Tracking number of the shipment."
+                    "description": "Tracking number of the shipment.",
+                    "creatable": true,
+                    "updatable": true
                   },
                   "name": {
                     "type": "string",
@@ -3432,7 +3441,8 @@
                   "id": {
                     "type": "string",
                     "label": "Item id",
-                    "access": "readOnly"
+                    "creatable": true,
+                    "updatable": true
                   },
                   "position": {
                     "type": "integer",
@@ -3613,12 +3623,14 @@
                       "id": {
                         "type": "string",
                         "label": "ID",
-                        "access": "readOnly"
+                        "creatable": true,
+                        "updatable": true
                       },
                       "number": {
                         "type": "string",
                         "label": "Number",
-                        "access": "readOnly"
+                        "creatable": true,
+                        "updatable": true
                       }
                     }
                   },
@@ -4028,7 +4040,8 @@
                   "id": {
                     "type": "string",
                     "label": "Item id",
-                    "access": "readOnly"
+                    "creatable": true,
+                    "updatable": true
                   },
                   "position": {
                     "type": "integer",
@@ -4602,7 +4615,8 @@
                   "id": {
                     "type": "string",
                     "label": "Item id",
-                    "access": "readOnly"
+                    "creatable": true,
+                    "updatable": true
                   },
                   "position": {
                     "type": "integer",
@@ -5472,7 +5486,8 @@
                   "id": {
                     "type": "string",
                     "label": "Item id",
-                    "access": "readOnly"
+                    "creatable": true,
+                    "updatable": true
                   },
                   "product": {
                     "type": "reference",
@@ -5674,7 +5689,8 @@
                   "id": {
                     "type": "string",
                     "label": "ID",
-                    "access": "readOnly"
+                    "creatable": true,
+                    "updatable": true
                   },
                   "name": {
                     "type": "string",
@@ -5981,8 +5997,9 @@
                   "id": {
                     "type": "string",
                     "label": "ID",
-                    "access": "readOnly",
-                    "description": "Id of the address row. `adr_main` is the main address and `adr_billing` the deviating billing address (the two singletons); each further shipping address has its own id. Omit on create — it is assigned automatically; supply it to update or keep an existing row."
+                    "description": "Id of the address row. `adr_main` is the main address and `adr_billing` the deviating billing address (the two singletons); each further shipping address has its own id. Omit on create — it is assigned automatically; supply it to update or keep an existing row.",
+                    "creatable": true,
+                    "updatable": true
                   },
                   "type": {
                     "type": "select",
@@ -6119,8 +6136,9 @@
                   "id": {
                     "type": "string",
                     "label": "ID",
-                    "access": "readOnly",
-                    "description": "Id of the contact person (con_…). Assigned automatically on create — omit it to add a new contact, supply it to update or keep an existing one."
+                    "description": "Id of the contact person (con_…). Assigned automatically on create — omit it to add a new contact, supply it to update or keep an existing one.",
+                    "creatable": true,
+                    "updatable": true
                   },
                   "type": {
                     "type": "select",
@@ -6728,8 +6746,9 @@
                   "id": {
                     "type": "string",
                     "label": "ID",
-                    "access": "readOnly",
-                    "description": "Id of the address row. `adr_main` is the main address and `adr_billing` the deviating billing address (the two singletons); each further shipping address has its own id. Omit on create — it is assigned automatically; supply it to update or keep an existing row."
+                    "description": "Id of the address row. `adr_main` is the main address and `adr_billing` the deviating billing address (the two singletons); each further shipping address has its own id. Omit on create — it is assigned automatically; supply it to update or keep an existing row.",
+                    "creatable": true,
+                    "updatable": true
                   },
                   "type": {
                     "type": "select",
@@ -6866,8 +6885,9 @@
                   "id": {
                     "type": "string",
                     "label": "ID",
-                    "access": "readOnly",
-                    "description": "Id of the contact person (con_…). Assigned automatically on create — omit it to add a new contact, supply it to update or keep an existing one."
+                    "description": "Id of the contact person (con_…). Assigned automatically on create — omit it to add a new contact, supply it to update or keep an existing one.",
+                    "creatable": true,
+                    "updatable": true
                   },
                   "type": {
                     "type": "select",
@@ -7623,8 +7643,9 @@
                       "id": {
                         "type": "string",
                         "label": "External ID",
-                        "access": "readOnly",
-                        "description": "The product's id in that channel's external system."
+                        "description": "The product's id in that channel's external system.",
+                        "creatable": true,
+                        "updatable": true
                       }
                     }
                   },
@@ -8587,8 +8608,9 @@
                 "number": {
                   "type": "string",
                   "label": "Tracking number",
-                  "access": "readOnly",
-                  "description": "Primary parcel tracking number."
+                  "description": "Primary parcel tracking number.",
+                  "creatable": true,
+                  "updatable": true
                 },
                 "link": {
                   "type": "string",
@@ -9804,7 +9826,8 @@
                   "id": {
                     "type": "string",
                     "label": "ID",
-                    "access": "readOnly"
+                    "creatable": true,
+                    "updatable": true
                   }
                 }
               },
@@ -10221,7 +10244,8 @@
                       "id": {
                         "type": "string",
                         "label": "ID",
-                        "access": "readOnly"
+                        "creatable": true,
+                        "updatable": true
                       }
                     }
                   },
@@ -10235,7 +10259,8 @@
                       "id": {
                         "type": "string",
                         "label": "ID",
-                        "access": "readOnly"
+                        "creatable": true,
+                        "updatable": true
                       }
                     }
                   },
