@@ -4,7 +4,7 @@
   "contractVersion": 1,
   "cores": {
     "count": 5,
-    "ids": ["agentos_neo", "odoo_core", "phoenix", "xentral_api", "xentral_business_entities"]
+    "ids": ["agentos_neo_xentral", "odoo_core", "phoenix", "xentral_api", "xentral_business_entities"]
   },
   "checksums": {}
 }

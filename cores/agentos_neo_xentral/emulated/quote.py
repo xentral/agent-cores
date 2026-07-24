@@ -1,0 +1,576 @@
+"""Xentral V3 facade · quote — Angebot (docs/01-model.md §4.1).
+
+Reads Xentral v3 ``/api/v3/offers`` and maps into the new quote model. Structurally
+close to salesOrder. Per ADR-014 only upstream-writable fields are creatable/
+updatable; the rest are blue wishes.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from entity_registry.core_sdk import EmulationManifest
+
+from .base import (
+    FacadeAdapterBase,
+    line_price_net,
+    line_qty,
+    RO,
+    map_tags,
+    money,
+    prop,
+    ref,
+    status_map,
+    tags_prop,
+    tags_to_v3,
+)
+
+_STATUS = {
+    "draft": "draft",
+    "released": "sent",
+    "sent": "sent",
+    "accepted": "accepted",
+    "completed": "accepted",
+    "declined": "declined",
+    "expired": "expired",
+    "cancelled": "cancelled",
+}
+_STATUS_OPTIONS = [
+    {"value": v, "label": v.capitalize()}
+    for v in ("draft", "sent", "accepted", "declined", "expired", "cancelled")
+]
+_CU = {"creatable": True, "updatable": True}
+
+
+def _address_props(*, vat_writable: bool = True) -> dict[str, Any]:
+    s = lambda label: prop("string", label, **_CU)  # noqa: E731
+    return {
+        "name": s("Name"),
+        "street": s("Street"),
+        "zip": s("Zip"),
+        "city": s("City"),
+        "country": s("Country"),
+        "email": s("Email"),
+        "phone": s("Phone"),
+        # A document carries ONE VAT id (the billing/document address → top-level
+        # v3 `vatId`). The v3 deviating ship-to address has no vatId slot, so it is
+        # read-only there (writes were silently dropped).
+        "vatId": s("VAT id") if vat_writable else prop("string", "VAT id", **RO),
+    }
+
+
+class QuoteAdapter(FacadeAdapterBase):
+    manifest = EmulationManifest(
+        key="Quote",
+        label_en="Quote",
+        category="documents",
+        rollout_batch="agentos_neo_xentral",
+        adapter="agentos_neo_xentral.quote",
+        source_apis=("agentos_neo_xentral",),
+        operations=("list", "read", "create", "update"),
+    )
+    v3_path = "/api/v3/offers"
+    include = "lineItems,lineItems.product,project,address,tags"
+    preview_template = "{{number}}"
+    query_aliases = {
+        "number": "documentNumber",
+        "dates.issued": "documentDate",
+        "customer": "address.id",
+        "project": "project.id",
+        "references.customerInquiryNumber": "customerReference",
+        "dates.validUntil": "validUntilDate",
+        "tags": "tags",
+    }
+    filter_value_maps = {
+        "status": {
+            "sent": "released",
+            "accepted": "completed",
+            "declined": "cancelled",
+            "expired": "completed",
+        }
+    }
+    sections = {
+        "general": {"label": "General"},
+        "references": {"label": "References"},
+        "address": {"label": "Addresses"},
+        "items": {"label": "Items"},
+        "financials": {"label": "Financials"},
+        "shipping": {"label": "Shipping"},
+        "flow": {"label": "Document flow"},
+    }
+
+    action_map = {"cancel": ("PATCH", "cancel"), "send": ("PATCH", "send")}
+
+    def steps(self):
+        return [
+            {
+                "key": "documentStatus",
+                "label": "Document status",
+                "commands": [
+                    self.step_cmd(
+                        "accept",
+                        "Accept",
+                        wish="Quote acceptance has no upstream endpoint — the v3 offers API only offers send/release/cancel.",
+                    ),
+                    self.step_cmd(
+                        "decline", "Decline", wish="Quote decline has no upstream endpoint."
+                    ),
+                    self.step_cmd("cancel", "Cancel"),
+                ],
+            }
+        ]
+
+    def actions(self):
+        return [
+            self.action_def(
+                "send",
+                "Send",
+                destructive=True,
+                description="Send the quote to the customer (v3 send — mails the document).",
+            ),
+            self.action_def(
+                "convertToSalesOrder",
+                "Convert to sales order",
+                wish="No conversion endpoint in the public API — v1 salesOrders/import is a raw import, not a quote conversion.",
+            ),
+            self.action_def("duplicate", "Duplicate", wish="No duplicate endpoint upstream."),
+            self.action_def(
+                "downloadPdf",
+                "Download PDF",
+                wish="No public PDF render endpoint; the archived files at /api/v2/{type}/{id}/files are not yet composed.",
+            ),
+        ]
+
+    def fields(self) -> dict[str, dict[str, Any]]:
+        return {
+            "object": prop("string", "Object", **RO, section="general"),
+            "id": prop("string", "ID", **RO, section="general"),
+            "number": prop(
+                "string",
+                "Number",
+                **RO,
+                section="general",
+                filterable=True,
+                searchable=True,
+                sortable=True,
+                previewable=True,
+            ),
+            "status": prop(
+                "select",
+                "Status",
+                **RO,
+                section="general",
+                options=_STATUS_OPTIONS,
+                filterable=True,
+                previewable=True,
+            ),
+            "customer": prop(
+                "reference",
+                "Customer",
+                reference="Customer",
+                renderProperty="name",
+                section="general",
+                creatable=True,
+                filterable=True,
+                previewable=True,
+            ),
+            "channel": prop(
+                "reference",
+                "Channel",
+                reference="Channel",
+                renderProperty="name",
+                section="general",
+                filterable=True,
+            ),
+            "project": prop(
+                "reference",
+                "Project",
+                reference="Project",
+                renderProperty="name",
+                section="general",
+                **_CU,
+            ),
+            "costCenter": prop("string", "Cost center", section="general", **_CU),
+            "references": prop(
+                "embedded",
+                "References",
+                section="references",
+                properties={
+                    "customerInquiryNumber": prop(
+                        "string", "Customer inquiry number", filterable=True
+                    )
+                },
+            ),
+            "dates": prop(
+                "embedded",
+                "Dates",
+                section="general",
+                properties={
+                    "issued": prop("date", "Issued", **_CU, filterable=True, sortable=True),
+                    "validUntil": prop("date", "Valid until", filterable=True),
+                    "expectedOrderDate": prop("date", "Expected order date", filterable=True),
+                    "requestedDelivery": prop("date", "Requested delivery", filterable=True),
+                },
+            ),
+            "billingAddress": prop(
+                "embedded", "Billing address", section="address", properties=_address_props()
+            ),
+            "shippingAddress": prop(
+                "embedded",
+                "Shipping address",
+                section="address",
+                properties=_address_props(vat_writable=False),
+            ),
+            "items": prop(
+                "collection",
+                "Items",
+                section="items",
+                node={
+                    "properties": {
+                        "object": prop("string", "Object", **RO),
+                        "id": prop("string", "Item id", **RO),
+                        "position": prop("integer", "Position"),
+                        "product": prop(
+                            "reference",
+                            "Product",
+                            reference="Product",
+                            renderProperty="name",
+                            creatable=True,
+                            filterable=True,
+                        ),
+                        "description": prop("string", "Description", creatable=True),
+                        "quantity": prop(
+                            "embedded",
+                            "Quantity",
+                            creatable=True,
+                            properties={
+                                "value": prop("decimal", "Value"),
+                                "unit": prop("string", "Unit"),
+                            },
+                        ),
+                        "unitPrice": prop(
+                            "embedded",
+                            "Unit price",
+                            creatable=True,
+                            properties={
+                                "amount": prop("decimal", "Amount"),
+                                "currency": prop("string", "Currency"),
+                            },
+                        ),
+                        "priceSource": prop("string", "Price source", **RO),
+                        "discountPercent": prop("decimal", "Discount %", creatable=True),
+                        "taxRate": prop("string", "Tax rate", creatable=True),
+                        "isOptional": prop("boolean", "Optional"),
+                    }
+                },
+            ),
+            "currency": prop("string", "Currency", section="financials", **_CU),
+            "totals": prop(
+                "embedded",
+                "Totals",
+                **RO,
+                section="financials",
+                properties={
+                    "currency": prop("string", "Currency", **RO),
+                    "net": prop("string", "Net", **RO),
+                    "gross": prop("string", "Gross", **RO),
+                },
+            ),
+            "payment": prop(
+                "embedded",
+                "Payment",
+                section="financials",
+                properties={
+                    "method": prop(
+                        "reference", "Method", reference="PaymentMethod", renderProperty="name"
+                    ),
+                    "terms": prop(
+                        "embedded",
+                        "Terms",
+                        properties={
+                            "dueDays": prop("integer", "Due days"),
+                            "discountPercent": prop("decimal", "Discount %"),
+                            "discountDays": prop("integer", "Discount days"),
+                        },
+                    ),
+                },
+            ),
+            "shipping": prop(
+                "embedded",
+                "Shipping",
+                section="shipping",
+                properties={
+                    "method": prop(
+                        "reference",
+                        "Method",
+                        reference="ShippingMethod",
+                        renderProperty="name",
+                        **_CU,
+                    )
+                },
+            ),
+            "texts": prop(
+                "embedded",
+                "Texts",
+                section="general",
+                properties={
+                    "intro": prop("string", "Intro", **_CU),
+                    "outro": prop("string", "Outro", **_CU),
+                },
+            ),
+            "note": prop("string", "Note", section="general", **_CU),
+            "documents": prop(
+                "embedded",
+                "Documents",
+                **RO,
+                section="flow",
+                properties={
+                    "salesOrders": prop(
+                        "collection",
+                        "Sales orders",
+                        **RO,
+                        node={
+                            "properties": {
+                                "id": prop("string", "ID", **RO),
+                                "number": prop("string", "Number", **RO),
+                            }
+                        },
+                    )
+                },
+            ),
+            "tags": tags_prop(writable=True),
+            "customFields": prop("embedded", "Custom fields", section="general", properties={}),
+            "createdAt": prop("datetime", "Created at", **RO, sortable=True),
+            "updatedAt": prop("datetime", "Updated at", **RO, sortable=True),
+        }
+
+    def map_read(self, r: dict[str, Any]) -> dict[str, Any]:
+        def addr(a: dict[str, Any] | None, vat: Any = None) -> dict[str, Any] | None:
+            if not isinstance(a, dict):
+                return None
+            return {
+                "name": a.get("name"),
+                "street": a.get("street"),
+                "zip": a.get("zipCode"),
+                "city": a.get("city"),
+                "country": a.get("country"),
+                "email": a.get("email"),
+                "phone": a.get("phone"),
+                "vatId": vat,
+            }
+
+        fin = r.get("financials") or {}
+        tot = r.get("totals") or {}
+        cur = fin.get("currency") or (tot.get("net") or {}).get("currency") or "EUR"
+        terms = fin.get("paymentTerms") or {}
+        items = []
+        for li in r.get("lineItems") or []:
+            if not isinstance(li, dict) or li.get("type") == "text":
+                continue
+            p = li.get("product") or {}
+            price = (li.get("price") or {}).get("net") or {}
+            items.append(
+                {
+                    "object": "quoteItem",
+                    "id": str(li.get("id")) if li.get("id") else None,
+                    "position": li.get("order"),
+                    "product": ref(
+                        "prd_", p.get("id"), p.get("number"), li.get("name"), "products"
+                    ),
+                    "description": li.get("description"),
+                    "quantity": {"value": li.get("quantity"), "unit": li.get("unit") or "piece"},
+                    "unitPrice": money(price.get("amount"), price.get("currency") or cur),
+                    "priceSource": None,
+                    "discountPercent": li.get("discount"),
+                    "taxRate": li.get("taxRate"),
+                    "isOptional": False,
+                }
+            )
+        return {
+            "object": "quote",
+            "id": (f"quo_{r.get('id')}" if r.get("id") is not None else None),
+            "number": r.get("documentNumber"),
+            "status": status_map(_STATUS, r.get("status"), "draft"),
+            "customer": ref(
+                "cus_",
+                (r.get("address") or {}).get("id"),
+                r.get("customerNumber"),
+                (r.get("documentAddress") or {}).get("name"),
+                "customers",
+            ),
+            "channel": None,
+            "project": ref(
+                "prj_",
+                (r.get("project") or {}).get("id"),
+                None,
+                (r.get("project") or {}).get("name"),
+                "projects",
+            ),
+            "costCenter": r.get("costCenter"),
+            "references": {"customerInquiryNumber": r.get("customerReference")},
+            "dates": {
+                "issued": r.get("documentDate"),
+                "validUntil": r.get("validUntilDate"),
+                "expectedOrderDate": r.get("plannedOrderDate"),
+                "requestedDelivery": r.get("desiredDeliveryDate"),
+            },
+            "billingAddress": addr(r.get("documentAddress"), r.get("vatId")),
+            "shippingAddress": addr(r.get("deviatingShipToAddress")),
+            "items": items,
+            "currency": cur,
+            "totals": {
+                "currency": cur,
+                "net": (money((tot.get("net") or {}).get("amount"), cur) or {}).get("amount"),
+                "gross": (money((tot.get("gross") or {}).get("amount"), cur) or {}).get("amount"),
+            },
+            "payment": {
+                "method": ref(
+                    "paym_",
+                    (fin.get("paymentMethod") or {}).get("id"),
+                    None,
+                    None,
+                    "paymentMethods",
+                ),
+                "terms": {
+                    "dueDays": terms.get("paymentTargetDays"),
+                    "discountPercent": terms.get("paymentTargetDiscount"),
+                    "discountDays": terms.get("paymentTargetDiscountDays"),
+                },
+            },
+            "shipping": {
+                "method": ref(
+                    "ship_",
+                    (r.get("shippingMethod") or {}).get("id"),
+                    None,
+                    None,
+                    "shippingMethods",
+                )
+            },
+            "texts": {"intro": r.get("bodyIntroduction"), "outro": r.get("bodyOutroduction")},
+            "note": r.get("internalComment"),
+            "documents": {"salesOrders": []},
+            "tags": map_tags(r.get("tags")),
+            "customFields": r.get("customFields") or {},
+            "createdAt": r.get("createdAt"),
+            "updatedAt": r.get("updatedAt"),
+        }
+
+    _WRITABLE = {
+        "customer",
+        "project",
+        "costCenter",
+        "currency",
+        "note",
+        "texts",
+        "billingAddress",
+        "shippingAddress",
+        "items",
+        "dates",
+        "tags",
+        "shipping",
+    }
+    _IGNORE = {"object", "id", "number", "status", "totals", "documents", "createdAt", "updatedAt"}
+
+    @staticmethod
+    def _ref_id(v: Any) -> dict[str, Any] | None:
+        if isinstance(v, dict):
+            ident = v.get("id") or v.get("number")
+            return (
+                {"id": str(ident).split("_", 1)[1] if "_" in str(ident) else str(ident)}
+                if ident
+                else None
+            )
+        return (
+            {"id": str(v).split("_", 1)[1] if "_" in str(v) else str(v)}
+            if v not in (None, "")
+            else None
+        )
+
+    @staticmethod
+    def _addr_to_v3(a: dict[str, Any] | None) -> dict[str, Any]:
+        a = a or {}
+        return {
+            k: a.get(src)
+            for k, src in (
+                ("name", "name"),
+                ("street", "street"),
+                ("zipCode", "zip"),
+                ("city", "city"),
+                ("country", "country"),
+                ("email", "email"),
+                ("phone", "phone"),
+            )
+            if a.get(src) is not None
+        }
+
+    def map_write(
+        self, model: dict[str, Any], *, creating: bool
+    ) -> tuple[dict[str, Any], set[str]]:
+        v3: dict[str, Any] = {}
+        rejected: set[str] = set()
+        if "project" in model:
+            v3["project"] = self._ref_id(model["project"])
+        if "costCenter" in model:
+            v3["costCenter"] = model["costCenter"]
+        if "currency" in model:
+            v3.setdefault("financials", {})["currency"] = model["currency"]
+        if "note" in model:
+            v3["internalComment"] = model["note"]
+        if "texts" in model:
+            t = model["texts"] or {}
+            if "intro" in t:
+                v3["bodyIntroduction"] = t["intro"]
+            if "outro" in t:
+                v3["bodyOutroduction"] = t["outro"]
+        if "billingAddress" in model:
+            v3["documentAddress"] = self._addr_to_v3(model["billingAddress"])
+            if (model["billingAddress"] or {}).get("vatId"):
+                v3["vatId"] = model["billingAddress"]["vatId"]
+        if "shippingAddress" in model:
+            v3["deviatingShipToAddress"] = self._addr_to_v3(model["shippingAddress"])
+        if "dates" in model and (model["dates"] or {}).get("issued"):
+            v3["documentDate"] = model["dates"]["issued"]
+        if "customer" in model:
+            if creating:
+                v3["address"] = self._ref_id(model["customer"])
+            else:
+                rejected.add("customer")
+        if "items" in model:
+            if creating:
+                v3["lineItems"] = [
+                    self._item_to_v3(i) for i in model["items"] if isinstance(i, dict)
+                ]
+            else:
+                rejected.add("items")
+        if "tags" in model:
+            v3["tags"] = tags_to_v3(model["tags"])
+        if "shipping" in model:
+            sh = model["shipping"] or {}
+            if "method" in sh:  # v3 shippingMethod {id} (API-729 parity)
+                v3["shippingMethod"] = self._ref_id(sh["method"])
+        for k in model:
+            if k in self._WRITABLE or k in self._IGNORE:
+                continue
+            rejected.add(k)
+        return v3, rejected
+
+    @staticmethod
+    def _item_to_v3(i: dict[str, Any]) -> dict[str, Any]:
+        out: dict[str, Any] = {}
+        prod = i.get("product")
+        if prod is not None:
+            pid = prod.get("id") if isinstance(prod, dict) else prod
+            out["product"] = {"id": str(pid).split("_", 1)[1] if "_" in str(pid) else str(pid)}
+        qty_val = line_qty(i)
+        if qty_val is not None:
+            out["quantity"] = qty_val
+        if i.get("description") is not None:
+            out["description"] = i["description"]
+        if i.get("discountPercent") is not None:
+            out["discount"] = i["discountPercent"]
+        if i.get("taxRate") is not None:
+            out["taxRate"] = i["taxRate"]
+        price = line_price_net(i)
+        if price is not None:
+            out["price"] = price
+        return out
