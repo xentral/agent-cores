@@ -113,6 +113,17 @@ class StockMovementAdapter(FacadeAdapterBase):
                 section="general",
                 creatable=True,
             ),
+            "setQuantityTo": prop(
+                "decimal",
+                "Set quantity to",
+                section="general",
+                creatable=True,
+                description=(
+                    "Absolute correction (Inventur): sets the product's quantity on the "
+                    "given location to this value — the difference is booked as a delta "
+                    "movement. Use quantity for delta corrections instead."
+                ),
+            ),
             "batch": prop(
                 "reference",
                 "Batch",
@@ -257,6 +268,54 @@ class StockMovementAdapter(FacadeAdapterBase):
         except ValueError:
             return resp.status_code, {}
 
+    async def _location_quantity(
+        self, loc: tuple[str, str], sku: str, base_url, token, accept_language, client
+    ) -> float | None:
+        """Current quantity of a product on one storage location, via
+        ``GET /v2/warehouses/{wh}/storageLocations/{loc}/items`` (rows carry
+        top-level ``sku``/``productId``; paginated, no sku filter upstream —
+        pages are scanned until ``extra.totalCount`` is exhausted). ``None``
+        when the contents are unreadable."""
+        url = f"{base_url.rstrip('/')}/api/v2/warehouses/{loc[0]}/storageLocations/{loc[1]}/items"
+        headers = self._headers(token, accept_language)
+        total = 0.0
+        page = 1
+        seen = 0
+        while page <= 100:  # 5000 rows — far beyond any sane single location
+            params = [("page[number]", str(page)), ("page[size]", "50")]
+
+            async def _do(c: httpx.AsyncClient, p=tuple(params)) -> httpx.Response:
+                return await c.get(url, params=list(p), headers=headers)
+
+            if client is None:
+                async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
+                    resp = await _do(c)
+            else:
+                resp = await _do(client)
+            if resp.status_code >= 400:
+                return None
+            try:
+                body = resp.json()
+            except ValueError:
+                return None
+            rows = body.get("data") or []
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                row_sku = row.get("sku")
+                if row_sku is None or str(row_sku) != str(sku):
+                    continue  # strict match only — never sum unidentified rows
+                try:
+                    total += float(row.get("quantity"))
+                except (TypeError, ValueError):
+                    continue
+            seen += len(rows)
+            total_count = ((body.get("extra") or {}).get("totalCount")) or 0
+            if not rows or seen >= int(total_count):
+                break
+            page += 1
+        return total
+
     async def _create_movement(
         self, query, body, base_url, token, accept_language, client
     ) -> AdapterResponse:
@@ -270,6 +329,7 @@ class StockMovementAdapter(FacadeAdapterBase):
         mtype = model.get("type")
         qty = model.get("quantity")
         qty_value = qty.get("value") if isinstance(qty, dict) else qty
+        set_to = model.get("setQuantityTo")
         product_id = _ref_id(model.get("product"))
         from_id = _ref_id(model.get("from"))
         to_id = _ref_id(model.get("to"))
@@ -278,17 +338,29 @@ class StockMovementAdapter(FacadeAdapterBase):
             if isinstance(model.get("source"), dict)
             else None
         )
+        absolute = mtype == "correction" and set_to is not None
 
         problems: list[str] = []
         if mtype not in ("receipt", "issue", "transfer", "correction"):
             problems.append("type must be receipt|issue|transfer|correction")
-        try:
-            qty_num = float(qty_value)
-            if qty_num <= 0:
-                problems.append("quantity.value must be > 0")
-        except (TypeError, ValueError):
-            qty_num = 0.0
-            problems.append("quantity.value must be a number")
+        qty_num = 0.0
+        if absolute:
+            if qty_value is not None:
+                problems.append("correction takes quantity (delta) OR setQuantityTo, not both")
+            try:
+                set_to_num = float(set_to)
+                if set_to_num < 0:
+                    problems.append("setQuantityTo must be >= 0")
+            except (TypeError, ValueError):
+                set_to_num = 0.0
+                problems.append("setQuantityTo must be a number")
+        else:
+            try:
+                qty_num = float(qty_value)
+                if qty_num <= 0:
+                    problems.append("quantity.value must be > 0")
+            except (TypeError, ValueError):
+                problems.append("quantity.value must be a number")
         if not product_id:
             problems.append("product reference is required")
         if mtype == "receipt" and not to_id:
@@ -300,7 +372,10 @@ class StockMovementAdapter(FacadeAdapterBase):
         if mtype == "correction":
             if not reason:
                 problems.append("correction needs source.reason")
-            if bool(from_id) == bool(to_id):
+            if absolute:
+                if not (bool(from_id) ^ bool(to_id)):
+                    problems.append("setQuantityTo needs exactly ONE location (to or from)")
+            elif bool(from_id) == bool(to_id):
                 problems.append("correction needs exactly ONE of 'to' (+) or 'from' (-)")
         if problems:
             return self._json(
@@ -329,6 +404,23 @@ class StockMovementAdapter(FacadeAdapterBase):
         if to_id and dst is None:
             return self._json(422, {"title": f"location {to_id}: not resolvable (warehouse?)"})
 
+        # Absolute correction (setQuantityTo, Inventur): NOT via the upstream
+        # setTotalStock endpoint — that call REMOVES every other product/batch
+        # on the location that isn't repeated in its payload (spec CAUTION).
+        # Instead: read the location's current quantity and book the difference
+        # as a delta — same audit-friendly path, no wipe hazard.
+        current: float | None = None
+        if absolute:
+            loc_pair = dst or src
+            current = await self._location_quantity(
+                loc_pair, str(sku), base_url, token, accept_language, client
+            )
+            if current is None:
+                return self._json(
+                    502, {"title": "setQuantityTo: current location stock not readable"}
+                )
+            qty_num = abs(set_to_num - current)
+
         payload: dict[str, Any] = {"product": {"sku": str(sku)}, "quantity": qty_num}
         batch = model.get("batch")
         batch_number = batch.get("number") if isinstance(batch, dict) else batch
@@ -338,7 +430,11 @@ class StockMovementAdapter(FacadeAdapterBase):
             payload["reason"] = str(reason)
 
         steps: list[tuple[str, tuple[str, str]]] = []  # (http method, (wh, loc))
-        if mtype == "receipt" or (mtype == "correction" and dst):
+        if absolute:
+            if qty_num != 0:
+                loc_pair = dst or src
+                steps = [("POST" if set_to_num > (current or 0) else "PATCH", loc_pair)]  # type: ignore[list-item]
+        elif mtype == "receipt" or (mtype == "correction" and dst):
             steps = [("POST", dst)]  # type: ignore[list-item]
         elif mtype == "issue" or (mtype == "correction" and src):
             steps = [("PATCH", src)]  # type: ignore[list-item]
@@ -351,6 +447,11 @@ class StockMovementAdapter(FacadeAdapterBase):
                 {
                     "data": {
                         "dryRun": True,
+                        **(
+                            {"currentQuantity": current, "targetQuantity": set_to_num}
+                            if absolute
+                            else {}
+                        ),
                         "wouldBook": [
                             {
                                 "method": m,
