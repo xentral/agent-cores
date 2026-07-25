@@ -1367,13 +1367,6 @@
         "reason": "The stock ledger (Lagerprotokoll) has NO read API at all — the single biggest gap (docs/05 #1). GET /v3/stockMovements is the ask."
       },
       {
-        "field": "id",
-        "ops": [
-          "create"
-        ],
-        "reason": "Booking a movement (receipt/issue/transfer/correction with reason) is only possible via absolute setTotalStock or implicit document bookings — POST /v3/stockMovements per ADR-010 is the ask."
-      },
-      {
         "field": "unitCost",
         "ops": [
           "read"

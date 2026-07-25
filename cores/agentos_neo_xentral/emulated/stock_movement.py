@@ -1,24 +1,51 @@
 """Xentral V3 facade · stockMovement — Lagerbewegung (docs/01-model.md §7.4, ADR-010).
 
-Honest resource gap — the BIGGEST one (docs/05 #1): the upstream has NOTHING to
-read stock movements (no Lagerprotokoll API) and writing is only the absolute
-``setTotalStock`` + implicit document bookings. This adapter declares the target
-model (append-only movement with type/from/to/source/unitCost) so the entity and
-its shape are visible; every operation stays grey/blue until
-``GET+POST /v3/stockMovements`` ships upstream.
+READING stays the biggest honest resource gap (docs/05 #1): the upstream has no
+Lagerprotokoll API, so list/read remain grey until ``GET /v3/stockMovements``
+ships. WRITING works today: the v1 storage-item endpoints book DELTA movements
+(``POST/PATCH /v1/warehouses/{wh}/storageLocations/{loc}/items`` — add resp.
+retrieve, incl. batch/bestBefore/serialNumbers/reason), so ``create`` is a real
+write-orchestrator:
+
+    receipt    -> add item to `to`
+    issue      -> retrieve item from `from`
+    transfer   -> retrieve from `from`, then add to `to` (compensated on a
+                  partial failure — upstream has no atomic transfer)
+    correction -> delta with mandatory reason; `to` books +, `from` books -
+
+The model references product/location by our speaking ids; upstream wants
+``product.sku`` and warehouse+location numerics, so the orchestrator resolves
+both through this core's own Product/StorageLocation adapters. There is no
+read-back (no ledger API): a successful booking answers 201 with the echoed
+movement (id-less) — the effect is visible in Product.stock immediately.
 """
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
-from entity_registry.core_sdk import EmulationManifest
+import httpx
+
+from entity_registry.core_sdk import AdapterResponse, EmulationManifest
 
 from .base import RO, FacadeAdapterBase, prop
 
 _TYPE_OPTIONS = [
     {"value": v, "label": v.capitalize()} for v in ("receipt", "issue", "transfer", "correction")
 ]
+_TIMEOUT = 60.0
+
+
+def _ref_id(value: Any) -> str | None:
+    """Speaking id out of a reference value ({'id': 'loc_3'} or 'loc_3')."""
+    if isinstance(value, dict):
+        value = value.get("id")
+    return value if isinstance(value, str) and value else None
+
+
+def _numeric(speaking_id: str) -> str:
+    return speaking_id.split("_", 1)[1] if "_" in speaking_id else speaking_id
 
 
 class StockMovementAdapter(FacadeAdapterBase):
@@ -29,7 +56,7 @@ class StockMovementAdapter(FacadeAdapterBase):
         rollout_batch="agentos_neo_xentral",
         adapter="agentos_neo_xentral.stockMovement",
         source_apis=("agentos_neo_xentral",),
-        operations=("list", "read"),  # nothing upstream yet (docs/05 #1)
+        operations=("list", "read", "create"),  # read side still upstream-less (docs/05 #1)
     )
     v3_path = "/api/v3/stockMovements"  # proposed endpoint — 404 until built
     include = ""
@@ -44,11 +71,11 @@ class StockMovementAdapter(FacadeAdapterBase):
             "type": prop(
                 "select",
                 "Type",
-                **RO,
                 section="general",
                 options=_TYPE_OPTIONS,
                 filterable=True,
                 previewable=True,
+                creatable=True,
             ),
             "product": prop(
                 "reference",
@@ -58,15 +85,16 @@ class StockMovementAdapter(FacadeAdapterBase):
                 section="general",
                 filterable=True,
                 previewable=True,
+                creatable=True,
             ),
             "quantity": prop(
                 "embedded",
                 "Quantity",
-                **RO,
                 section="general",
+                creatable=True,
                 properties={
-                    "value": prop("decimal", "Value", **RO),
-                    "unit": prop("string", "Unit", **RO),
+                    "value": prop("decimal", "Value", creatable=True),
+                    "unit": prop("string", "Unit", creatable=True),
                 },
             ),
             "from": prop(
@@ -74,24 +102,24 @@ class StockMovementAdapter(FacadeAdapterBase):
                 "From location",
                 reference="StorageLocation",
                 renderProperty="name",
-                **RO,
                 section="general",
+                creatable=True,
             ),
             "to": prop(
                 "reference",
                 "To location",
                 reference="StorageLocation",
                 renderProperty="name",
-                **RO,
                 section="general",
+                creatable=True,
             ),
             "batch": prop(
                 "reference",
                 "Batch",
                 reference="Batch",
                 renderProperty="number",
-                **RO,
                 section="general",
+                creatable=True,
             ),
             "unitCost": prop(
                 "embedded",
@@ -106,14 +134,14 @@ class StockMovementAdapter(FacadeAdapterBase):
             "source": prop(
                 "embedded",
                 "Source",
-                **RO,
                 section="source",
+                creatable=True,
                 properties={
                     "document": prop("string", "Document", **RO),
                     "user": prop(
                         "reference", "User", reference="User", renderProperty="name", **RO
                     ),
-                    "reason": prop("string", "Reason", **RO),
+                    "reason": prop("string", "Reason", creatable=True),
                 },
             ),
             "bookedAt": prop("datetime", "Booked at", **RO, filterable=True, sortable=True),
@@ -128,7 +156,254 @@ class StockMovementAdapter(FacadeAdapterBase):
             **r,
         }
 
-    def map_write(
-        self, model: dict[str, Any], *, creating: bool
-    ) -> tuple[dict[str, Any], set[str]]:
-        return {}, {k for k in model if k != "object"}
+    # ---- write orchestration (v1 storage-item endpoints) -------------------
+    async def request(
+        self, *, method, handle, query, body, base_url, token, accept_language=None, client=None
+    ) -> AdapterResponse:
+        if method.upper() == "POST":
+            return await self._create_movement(
+                query, body, base_url, token, accept_language, client
+            )
+        return await super().request(
+            method=method,
+            handle=handle,
+            query=query,
+            body=body,
+            base_url=base_url,
+            token=token,
+            accept_language=accept_language,
+            client=client,
+        )
+
+    async def _lookup(self, adapter, handle, base_url, token, accept_language, client):
+        resp = await adapter.request(
+            method="GET",
+            handle=handle,
+            query=[],
+            body=None,
+            base_url=base_url,
+            token=token,
+            accept_language=accept_language,
+            client=client,
+        )
+        if resp.status_code >= 400:
+            return None
+        try:
+            return json.loads(resp.content or b"{}").get("data") or None
+        except ValueError:
+            return None
+
+    async def _resolve_location(
+        self, loc_id: str, base_url, token, accept_language, client
+    ) -> tuple[str, str] | None:
+        """``loc_…`` -> (warehouseId, storageLocationId) numerics. v1 has no
+        show route — the id filter on the list is the lookup."""
+        numeric = _numeric(loc_id)
+        url = f"{base_url.rstrip('/')}/api/v1/storageLocations"
+        params = [
+            ("page[number]", "1"),
+            ("page[size]", "10"),
+            ("filter[0][key]", "id"),
+            ("filter[0][op]", "equals"),
+            ("filter[0][value]", numeric),
+        ]
+        headers = self._headers(token, accept_language)
+
+        async def _do(c: httpx.AsyncClient) -> httpx.Response:
+            return await c.get(url, params=params, headers=headers)
+
+        if client is None:
+            async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
+                resp = await _do(c)
+        else:
+            resp = await _do(client)
+        if resp.status_code >= 400:
+            return None
+        try:
+            rows = resp.json().get("data") or []
+        except ValueError:
+            return None
+        wh = (rows[0].get("warehouse") or {}).get("id") if rows else None
+        return (str(wh), numeric) if wh else None
+
+    async def _items_call(
+        self,
+        base_url,
+        token,
+        accept_language,
+        client,
+        *,
+        method: str,
+        warehouse_id: str,
+        location_id: str,
+        payload: dict[str, Any],
+    ) -> tuple[int, Any]:
+        url = (
+            f"{base_url.rstrip('/')}/api/v1/warehouses/{warehouse_id}"
+            f"/storageLocations/{location_id}/items"
+        )
+        headers = self._headers(token, accept_language)
+
+        async def _do(c: httpx.AsyncClient) -> httpx.Response:
+            return await c.request(method, url, json=payload, headers=headers)
+
+        if client is None:
+            async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
+                resp = await _do(c)
+        else:
+            resp = await _do(client)
+        try:
+            return resp.status_code, resp.json()
+        except ValueError:
+            return resp.status_code, {}
+
+    async def _create_movement(
+        self, query, body, base_url, token, accept_language, client
+    ) -> AdapterResponse:
+        try:
+            model = json.loads(body or b"{}")
+        except (ValueError, TypeError):
+            return self._json(400, {"title": "invalid JSON body"})
+        if not isinstance(model, dict):
+            return self._json(400, {"title": "body must be a JSON object"})
+
+        mtype = model.get("type")
+        qty = model.get("quantity")
+        qty_value = qty.get("value") if isinstance(qty, dict) else qty
+        product_id = _ref_id(model.get("product"))
+        from_id = _ref_id(model.get("from"))
+        to_id = _ref_id(model.get("to"))
+        reason = (
+            (model.get("source") or {}).get("reason")
+            if isinstance(model.get("source"), dict)
+            else None
+        )
+
+        problems: list[str] = []
+        if mtype not in ("receipt", "issue", "transfer", "correction"):
+            problems.append("type must be receipt|issue|transfer|correction")
+        try:
+            qty_num = float(qty_value)
+            if qty_num <= 0:
+                problems.append("quantity.value must be > 0")
+        except (TypeError, ValueError):
+            qty_num = 0.0
+            problems.append("quantity.value must be a number")
+        if not product_id:
+            problems.append("product reference is required")
+        if mtype == "receipt" and not to_id:
+            problems.append("receipt needs a 'to' location")
+        if mtype == "issue" and not from_id:
+            problems.append("issue needs a 'from' location")
+        if mtype == "transfer" and not (from_id and to_id):
+            problems.append("transfer needs 'from' AND 'to' locations")
+        if mtype == "correction":
+            if not reason:
+                problems.append("correction needs source.reason")
+            if bool(from_id) == bool(to_id):
+                problems.append("correction needs exactly ONE of 'to' (+) or 'from' (-)")
+        if problems:
+            return self._json(
+                422, {"title": "stockMovement: invalid booking", "problems": problems}
+            )
+
+        # Resolve model references to the upstream's identifiers.
+        from .product import ProductAdapter
+
+        product = await self._lookup(
+            ProductAdapter(), product_id, base_url, token, accept_language, client
+        )
+        sku = (product or {}).get("number")
+        if not sku:
+            return self._json(422, {"title": f"product {product_id}: no SKU (number) resolvable"})
+
+        async def location(loc_id: str | None) -> tuple[str, str] | None:
+            if not loc_id:
+                return None
+            return await self._resolve_location(loc_id, base_url, token, accept_language, client)
+
+        src = await location(from_id)
+        dst = await location(to_id)
+        if from_id and src is None:
+            return self._json(422, {"title": f"location {from_id}: not resolvable (warehouse?)"})
+        if to_id and dst is None:
+            return self._json(422, {"title": f"location {to_id}: not resolvable (warehouse?)"})
+
+        payload: dict[str, Any] = {"product": {"sku": str(sku)}, "quantity": qty_num}
+        batch = model.get("batch")
+        batch_number = batch.get("number") if isinstance(batch, dict) else batch
+        if batch_number:
+            payload["batch"] = str(batch_number)
+        if reason:
+            payload["reason"] = str(reason)
+
+        steps: list[tuple[str, tuple[str, str]]] = []  # (http method, (wh, loc))
+        if mtype == "receipt" or (mtype == "correction" and dst):
+            steps = [("POST", dst)]  # type: ignore[list-item]
+        elif mtype == "issue" or (mtype == "correction" and src):
+            steps = [("PATCH", src)]  # type: ignore[list-item]
+        elif mtype == "transfer":
+            steps = [("PATCH", src), ("POST", dst)]  # type: ignore[list-item]
+
+        if any(k == "dryRun" and v in ("true", "1") for k, v in query):
+            return self._json(
+                200,
+                {
+                    "data": {
+                        "dryRun": True,
+                        "wouldBook": [
+                            {
+                                "method": m,
+                                "warehouseId": loc[0],
+                                "storageLocationId": loc[1],
+                                "payload": payload,
+                            }
+                            for m, loc in steps
+                        ],
+                    }
+                },
+            )
+
+        done: list[tuple[str, tuple[str, str]]] = []
+        for http_method, loc in steps:
+            st, resp = await self._items_call(
+                base_url,
+                token,
+                accept_language,
+                client,
+                method=http_method,
+                warehouse_id=loc[0],
+                location_id=loc[1],
+                payload=payload,
+            )
+            if st >= 400:
+                detail = resp if isinstance(resp, dict) else {}
+                # transfer: the retrieve succeeded but the add failed — put the
+                # units back so nothing is left "in the air" (best effort).
+                if done:
+                    prev_method, prev_loc = done[-1]
+                    comp_method = "POST" if prev_method == "PATCH" else "PATCH"
+                    comp_st, _ = await self._items_call(
+                        base_url,
+                        token,
+                        accept_language,
+                        client,
+                        method=comp_method,
+                        warehouse_id=prev_loc[0],
+                        location_id=prev_loc[1],
+                        payload=payload,
+                    )
+                    detail["compensation"] = (
+                        "reverted" if comp_st < 400 else "FAILED — check stock manually"
+                    )
+                return self._json(
+                    st,
+                    {
+                        "title": f"stockMovement: upstream booking failed ({http_method})",
+                        **detail,
+                    },
+                )
+            done.append((http_method, loc))
+
+        echo = {**model, "object": "stockMovement", "id": None}
+        return self._json(201, {"data": echo})

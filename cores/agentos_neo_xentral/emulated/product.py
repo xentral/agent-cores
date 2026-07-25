@@ -89,7 +89,7 @@ class ProductAdapter(FacadeAdapterBase):
         operations=("list", "read"),  # v3 products is read-only by design (PR #24325)
     )
     v3_path = "/api/v3/products"
-    include = "project,standardSupplier,merchandiseGroup,tags"
+    include = "project,defaultSupplier,merchandiseGroup,tags"
     preview_template = "{{name}}"
     sections = {
         "general": {"label": "General"},
@@ -586,16 +586,23 @@ class ProductAdapter(FacadeAdapterBase):
         m = r.get("measurements") or {}
 
         def dim(key: str) -> dict[str, Any] | None:
-            v = m.get(key) or {}
-            return (
-                {"value": v.get("value"), "unit": v.get("unit")}
-                if v.get("value") is not None
-                else None
-            )
+            # Two upstream generations: {value, unit} objects (pre-2026-07-25)
+            # and bare numbers (the reshipped v3 products; unit implicit).
+            v = m.get(key)
+            if isinstance(v, dict):
+                return (
+                    {"value": v.get("value"), "unit": v.get("unit")}
+                    if v.get("value") is not None
+                    else None
+                )
+            if isinstance(v, (int, float)) and v:
+                unit = "kg" if "eight" in key else "cm"  # weight/netWeight vs. dimensions
+                return {"value": v, "unit": unit}
+            return None
 
         cpp = r.get("calculatedPurchasePrice") or {}
         pp_price = cpp.get("price") or {}
-        supplier = r.get("standardSupplier")
+        supplier = r.get("defaultSupplier") or r.get("standardSupplier")
         manufacturer = r.get("manufacturer") or {}
         return {
             "object": "product",
