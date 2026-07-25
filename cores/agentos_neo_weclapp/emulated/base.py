@@ -224,14 +224,19 @@ class Embed:
 @dataclass(frozen=True)
 class Collection:
     """A repeating weclapp child list embedded on the record (e.g. ``orderItems``,
-    ``addresses``). Read-only in Phase 1. Some weclapp lists are only returned when
-    requested via ``additionalProperties`` — declare those on the entity."""
+    ``addresses``). ``writable`` sends the list on create/update. weclapp PUT
+    replaces the whole list — items with ``id`` update the existing item, items
+    without ``id`` are created, and items omitted from the list are DELETED — so
+    an update must supply the complete desired list, not a delta. Some weclapp
+    lists are only returned when requested via ``additionalProperties`` — declare
+    those on the entity."""
 
     wire: str
     label: str
     fields: tuple[Any, ...]
     section: str = "general"
     key: str = ""
+    writable: bool = False
 
     def out_key(self) -> str:
         return self.key or self.wire
@@ -444,10 +449,13 @@ def _iso_to_epoch_ms(value: Any) -> Any:
 
 
 def write_payload(entity: Entity, model: dict[str, Any]) -> dict[str, Any]:
-    """Our outward record -> a weclapp write payload. Only writable scalars and
-    references are sent (read-only fields, unknown keys, collections and embeds are
-    dropped): scalar out_key -> weclapp wire (epoch fields back to ms); a reference
-    value ``{"id": …}`` (or a bare id) -> the weclapp ``<name>Id`` string."""
+    """Our outward record -> a weclapp write payload. Only writable scalars,
+    references and collections are sent (read-only fields, unknown keys and embeds
+    are dropped): scalar out_key -> weclapp wire (epoch fields back to ms); a
+    reference value ``{"id": …}`` (or a bare id) -> the weclapp ``<name>Id``
+    string; a writable collection -> its items mapped the same way, with
+    ``id``/``version`` passed through so weclapp matches existing items on
+    update (see :class:`Collection` for the replace semantics)."""
     out: dict[str, Any] = {}
     for f in entity.scalars:
         if f.writable and f.out_key() in model:
@@ -457,6 +465,50 @@ def write_payload(entity: Entity, model: dict[str, Any]) -> dict[str, Any]:
         if ref.writable and ref.out_key() in model:
             val = model[ref.out_key()]
             out[ref.wire] = val.get("id") if isinstance(val, dict) else val
+    for col in entity.collections:
+        if col.writable and col.out_key() in model:
+            items = model[col.out_key()]
+            if isinstance(items, list):
+                out[col.wire] = [
+                    _sub_write_payload(col.fields, it) for it in items if isinstance(it, dict)
+                ]
+    return out
+
+
+def _merge_collection_items(current: Any, incoming: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Overlay incoming collection items onto the current raw list for a PUT.
+    weclapp replaces an item completely, so an incoming item with an ``id`` is
+    merged over its current raw item (partial item updates); an item without a
+    match/``id`` is created as sent. Items absent from ``incoming`` stay absent —
+    weclapp deletes them (the list IS the desired state)."""
+    by_id = (
+        {str(it["id"]): it for it in current if isinstance(it, dict) and it.get("id") is not None}
+        if isinstance(current, list)
+        else {}
+    )
+    out: list[dict[str, Any]] = []
+    for item in incoming:
+        cur = by_id.get(str(item.get("id"))) if item.get("id") is not None else None
+        out.append({**cur, **item} if cur else item)
+    return out
+
+
+def _sub_write_payload(fields: tuple[Any, ...], item: dict[str, Any]) -> dict[str, Any]:
+    """One collection item -> its weclapp wire payload: writable sub-fields via
+    the same mapping as the top level, plus ``id``/``version`` passthrough
+    (weclapp updates the item carrying an ``id``, creates one without)."""
+    out: dict[str, Any] = {}
+    for meta_key in ("id", "version"):
+        if item.get(meta_key) not in (None, ""):
+            out[meta_key] = item[meta_key]
+    for f in fields:
+        if isinstance(f, Reference):
+            if f.writable and f.out_key() in item:
+                val = item[f.out_key()]
+                out[f.wire] = val.get("id") if isinstance(val, dict) else val
+        elif isinstance(f, Field) and f.writable and f.out_key() in item:
+            val = item[f.out_key()]
+            out[f.wire] = _iso_to_epoch_ms(val) if f.epoch else val
     return out
 
 
@@ -555,13 +607,15 @@ class WeclappAdapterBase:
                 "properties": self._sub_properties(emb.fields),
             }
         for col in e.collections:
-            properties[col.out_key()] = {
+            col_prop: dict[str, Any] = {
                 "type": "collection",
                 "label": col.label,
                 "section": col.section,
-                "access": "readOnly",
                 "node": {"properties": self._sub_properties(col.fields)},
             }
+            if not col.writable:
+                col_prop["access"] = "readOnly"
+            properties[col.out_key()] = col_prop
         return {
             "key": e.key,
             "label": e.label_en,
@@ -620,15 +674,17 @@ class WeclappAdapterBase:
             if isinstance(f, Reference):
                 props[f.out_key()] = self._reference_prop(f)
             elif isinstance(f, Field):
-                props[f.out_key()] = {
+                sub_prop: dict[str, Any] = {
                     "type": f.type,
                     "label": f.label or f.wire,
                     "section": f.section,
-                    "access": "readOnly",
                     "filterable": False,
                     "sortable": False,
                     "searchable": False,
                 }
+                if not f.writable:
+                    sub_prop["access"] = "readOnly"
+                props[f.out_key()] = sub_prop
         return props
 
     def _previewable(self, f: Field) -> bool:
@@ -770,7 +826,14 @@ class WeclappAdapterBase:
             raise
         if not isinstance(current, dict) or current.get("id") is None:
             return self._status(404, f"Not found: {handle}")
-        updated = await wc.update(e.endpoint, handle, {**current, **changes})
+        merged = {**current, **changes}
+        # Collections replace item-by-item on PUT, so a supplied item carrying an
+        # ``id`` is overlaid onto its current raw item — callers send only the
+        # fields they change, not weclapp's full required item shape.
+        for col in e.collections:
+            if col.writable and col.wire in changes:
+                merged[col.wire] = _merge_collection_items(current.get(col.wire), changes[col.wire])
+        updated = await wc.update(e.endpoint, handle, merged)
         rec = transform_record(e, updated) if isinstance(updated, dict) else {}
         data = json.dumps({"data": rec}, ensure_ascii=False).encode("utf-8")
         return AdapterResponse(200, data, {"content-type": "application/json"})
@@ -798,7 +861,17 @@ class WeclappAdapterBase:
 
     def _error(self, exc: Exception) -> AdapterResponse:
         logger.warning("weclapp: request failed for %s: %s", self.entity.key, exc)
-        body = json.dumps({"title": f"weclapp backend error: {exc}"}).encode("utf-8")
+        payload: dict[str, Any] = {"title": f"weclapp backend error: {exc}"}
+        # Surface weclapp's own error body (validation messages etc.) — the tool
+        # contract is that a rejected write returns the backend's reason verbatim.
+        if isinstance(exc, httpx.HTTPStatusError) and exc.response is not None:
+            try:
+                payload["detail"] = exc.response.json()
+            except ValueError:
+                detail = exc.response.text
+                if detail:
+                    payload["detail"] = detail[:2000]
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         return AdapterResponse(502, body, {"content-type": "application/json"})
 
     @staticmethod

@@ -24,6 +24,7 @@
         "netAmount": { "type": "string", "format": "number" },
         "grossAmount": { "type": "string", "format": "number" },
         "orderItems": { "type": "array", "items": { "$ref": "#/definitions/salesOrderItem" } },
+        "tags": { "type": "array", "items": { "type": "string" } },
         "deliveryAddress": { "$ref": "#/definitions/recordAddress" }
       }
     },
