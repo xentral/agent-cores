@@ -1,0 +1,73 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "weclapp API (sample fragment)",
+    "version": "v1",
+    "description": "Demonstrative fragment so weclapp_core loads a native set and the generator is unit-tested. Replace with a real tenant export named openapi.json to generate the full mirror."
+  },
+  "components": {
+    "schemas": {
+      "SalesOrder": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "salesOrderNumber": { "type": "string" },
+          "orderDate": { "type": "integer", "format": "int64" },
+          "status": { "type": "string", "enum": ["ORDER_ENTRY_IN_PROGRESS", "ORDER_CONFIRMATION_PRINTED", "SHIPPING_STARTED", "COMPLETED"] },
+          "customerId": { "type": "string" },
+          "commissionNumber": { "type": "string" },
+          "netAmount": { "type": "number" },
+          "grossAmount": { "type": "number" },
+          "orderItems": { "type": "array", "items": { "$ref": "#/components/schemas/OrderItem" } },
+          "deliveryAddress": { "$ref": "#/components/schemas/Address" }
+        }
+      },
+      "OrderItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "positionNumber": { "type": "integer" },
+          "articleId": { "type": "string" },
+          "articleNumber": { "type": "string" },
+          "quantity": { "type": "number" },
+          "unitPrice": { "type": "number" }
+        }
+      },
+      "Party": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "company": { "type": "string" },
+          "firstName": { "type": "string" },
+          "lastName": { "type": "string" },
+          "partyType": { "type": "string", "enum": ["ORGANIZATION", "PERSON"] },
+          "customer": { "type": "boolean" },
+          "supplier": { "type": "boolean" },
+          "email": { "type": "string" },
+          "createdDate": { "type": "integer", "format": "int64" }
+        }
+      },
+      "Article": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "articleNumber": { "type": "string" },
+          "name": { "type": "string" },
+          "articleType": { "type": "string", "enum": ["STORABLE", "SERVICE"] },
+          "ean": { "type": "string" },
+          "active": { "type": "boolean" }
+        }
+      },
+      "Address": {
+        "type": "object",
+        "properties": {
+          "company": { "type": "string" },
+          "street1": { "type": "string" },
+          "zipcode": { "type": "string" },
+          "city": { "type": "string" },
+          "countryCode": { "type": "string" }
+        }
+      }
+    }
+  }
+}
