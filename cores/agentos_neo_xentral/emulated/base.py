@@ -789,7 +789,16 @@ class FacadeAdapterBase:
     ) -> AdapterResponse:
         """Generic addTag/removeTag: a v3 update REPLACES the whole tag list, so
         this is a read-modify-write through the adapter's own read/write mapping
-        (net effect: exactly one tag added or removed)."""
+        (net effect: exactly one tag added or removed).
+
+        Effect-checked: current Xentral builds auto-create an unknown title on
+        the v3 write (verified live on mvp for salesOrders/customers/suppliers/
+        deliveryNotes), but older builds answer 200 and silently DROP titles
+        missing from the tag catalogue. The action promises "created
+        automatically if new", so after the PATCH we verify the read-back; if
+        the tag did not stick we create it in the BF catalogue
+        (``POST /api/entity/tag``) and retry once — and answer an honest error
+        instead of a false success when it still does not persist."""
         title = str(command.get("title") or "").strip()
         if not title:
             return self._json(422, {"title": f"{action_key} requires a non-empty 'title'."})
@@ -818,16 +827,95 @@ class FacadeAdapterBase:
                 titles.append(title)
         else:
             titles = [t for t in titles if t != title]
-        return await self.request(
-            method="PATCH",
-            handle=handle,
-            query=[],
-            body=json.dumps({"tags": titles}).encode(),
-            base_url=base_url,
-            token=token,
-            accept_language=accept_language,
-            client=client,
+
+        async def _patch() -> AdapterResponse:
+            return await self.request(
+                method="PATCH",
+                handle=handle,
+                query=[],
+                body=json.dumps({"tags": titles}).encode(),
+                base_url=base_url,
+                token=token,
+                accept_language=accept_language,
+                client=client,
+            )
+
+        patched = await _patch()
+        if patched.status_code >= 400 or self._tag_effect_ok(patched, action_key, title):
+            return patched
+        create_error: str | None = None
+        if action_key == "addTag":
+            create_error = await self._create_catalogue_tag(
+                title, base_url, token, accept_language, client
+            )
+            if create_error is None:
+                retried = await _patch()
+                if retried.status_code >= 400 or self._tag_effect_ok(retried, action_key, title):
+                    return retried
+        verb = "attach" if action_key == "addTag" else "remove"
+        return self._json(
+            502,
+            {
+                "title": (
+                    f"{action_key}: the upstream accepted the write but did not "
+                    f"{verb} tag '{title}'."
+                ),
+                "detail": (
+                    "The Xentral v3 API answered 200 without persisting the tag "
+                    "change (older builds silently drop titles missing from the "
+                    "tag catalogue)."
+                    + (
+                        f" Creating the catalogue tag also failed — {create_error}"
+                        if create_error
+                        else ""
+                    )
+                ),
+            },
         )
+
+    @staticmethod
+    def _tag_effect_ok(response: AdapterResponse, action_key: str, title: str) -> bool:
+        """Did the tag change actually stick? Only a POSITIVE sighting of a tags
+        list in the wrong state counts as failure — an unparsable/tag-less
+        response is inconclusive and passes through unchanged."""
+        try:
+            data = json.loads(response.content or b"{}").get("data") or {}
+        except (ValueError, AttributeError):
+            return True
+        tags = data.get("tags") if isinstance(data, dict) else None
+        if not isinstance(tags, list):
+            return True
+        present = title in [t for t in tags if isinstance(t, str)]
+        return present if action_key == "addTag" else not present
+
+    async def _create_catalogue_tag(
+        self,
+        title: str,
+        base_url: str,
+        token: str,
+        accept_language: str | None,
+        client: httpx.AsyncClient | None,
+    ) -> str | None:
+        """Create ``title`` in the BF tag catalogue so a v3 tags write can match
+        it. ``POST /api/entity/tag`` requires label + slug (verified live: 201
+        with uuid; missing slug → 400 "slug is required"). Returns None on
+        success, an error detail string on failure."""
+        slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-") or title.lower()
+        url = f"{base_url.rstrip('/')}/api/entity/tag"
+        headers = self._headers(token, accept_language)
+        payload = {"label": title, "slug": slug}
+
+        async def _do(c: httpx.AsyncClient) -> httpx.Response:
+            return await c.post(url, json=payload, headers=headers)
+
+        if client is None:
+            async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
+                resp = await _do(c)
+        else:
+            resp = await _do(client)
+        if resp.status_code < 400:
+            return None
+        return f"POST /api/entity/tag → HTTP {resp.status_code}: {resp.text[:300]}"
 
     # {step/action key: upstream route}. Two forms:
     #   tuple ("PATCH", "cancel")   → {v3_path}/{id}/actions/cancel (v3 record action)
