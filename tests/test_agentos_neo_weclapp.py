@@ -18,10 +18,15 @@ from xentral_entity_cores.agentos_neo_weclapp.emulated import build_adapters
 from xentral_entity_cores.agentos_neo_weclapp.emulated import base as wc_base
 from xentral_entity_cores.agentos_neo_weclapp.emulated.base import (
     CoreCredentialsMissing,
+    Entity,
+    Field,
+    Reference,
+    WeclappAdapterBase,
     WECLAPP_FIELDS,
     build_list_params,
     parse_query,
     transform_record,
+    write_payload,
 )
 
 ADAPTERS = {a.manifest.key: a for a in build_adapters()}
@@ -179,7 +184,9 @@ def test_build_list_params_translates_ops_and_slice():
     assert params["supplier-eq"] == "false"  # boolean coerced to string
     assert params["sort"] == "-createdDate"
     assert params["page"] == "2" and params["pageSize"] == "10"
-    assert params["additionalProperties"] == "addresses"
+    # a list never requests additionalProperties (weclapp 400s on large sets);
+    # nested collections are fetched on the single-record read instead.
+    assert "additionalProperties" not in params
 
 
 def test_build_list_params_drops_unknown_and_nonsortable():
@@ -367,3 +374,120 @@ def test_write_is_405(monkeypatch):
 
     resp = asyncio.run(run())
     assert resp.status_code == 405
+
+
+# ---- write path (engine gains create/update/delete) -------------------------
+
+WRITABLE = Entity(
+    key="Thing",
+    label_en="Thing",
+    category="x",
+    endpoint="thing",
+    label_field="name",
+    sections=(("general", "General"),),
+    scalars=(
+        Field("name", type="string", writable=True),
+        Field("orderDate", type="datetime", epoch=True, writable=True),
+        Field("computed", type="string"),  # writable=False -> dropped on write
+    ),
+    references=(Reference("customerId", "Customer", reference="party", writable=True),),
+    operations=("list", "read", "create", "update", "delete"),
+)
+THING = WeclappAdapterBase(WRITABLE)
+
+
+def test_write_payload_reverse_transform():
+    wp = write_payload(
+        WRITABLE,
+        {
+            "name": "X",
+            "orderDate": "2023-11-14T00:00:00+00:00",  # ISO -> epoch ms
+            "computed": "ignore-me",  # read-only -> dropped
+            "customerId": {"id": "7"},  # reference -> bare id
+            "unknown": "drop",
+        },
+    )
+    assert wp["name"] == "X"
+    assert wp["customerId"] == "7"
+    assert isinstance(wp["orderDate"], int) and wp["orderDate"] == 1699920000000
+    assert "computed" not in wp and "unknown" not in wp
+
+
+def test_create_posts_write_payload(monkeypatch):
+    _fake_creds(monkeypatch)
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST" and request.url.path.endswith("/thing")
+        seen["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"result": {"id": "99", "name": "X"}})
+
+    async def run():
+        async with _mock_client(handler) as client:
+            return await THING.request(
+                method="POST",
+                handle=None,
+                body=json.dumps({"name": "X", "customerId": {"id": "7"}, "computed": "x"}).encode(),
+                query=[],
+                base_url="",
+                token="",
+                client=client,
+            )
+
+    resp = asyncio.run(run())
+    assert resp.status_code == 201
+    assert json.loads(resp.content)["data"]["id"] == "99"
+    assert seen["body"] == {"name": "X", "customerId": "7"}  # only writable fields sent
+
+
+def test_update_is_read_modify_write(monkeypatch):
+    _fake_creds(monkeypatch)
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "GET":
+            return httpx.Response(200, json={"result": {"id": "99", "name": "old", "version": 3}})
+        assert request.method == "PUT" and request.url.path.endswith("/thing/id/99")
+        seen["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"result": {"id": "99", "name": "X", "version": 4}})
+
+    async def run():
+        async with _mock_client(handler) as client:
+            return await THING.request(
+                method="PUT",
+                handle="99",
+                body=json.dumps({"name": "X"}).encode(),
+                query=[],
+                base_url="",
+                token="",
+                client=client,
+            )
+
+    resp = asyncio.run(run())
+    assert resp.status_code == 200
+    # the PUT carried the current version (optimistic locking) + the change
+    assert seen["body"]["version"] == 3 and seen["body"]["name"] == "X"
+
+
+def test_delete(monkeypatch):
+    _fake_creds(monkeypatch)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "DELETE"
+        return httpx.Response(200)
+
+    async def run():
+        async with _mock_client(handler) as client:
+            return await THING.request(
+                method="DELETE",
+                handle="99",
+                body=None,
+                query=[],
+                base_url="",
+                token="",
+                client=client,
+            )
+
+    resp = asyncio.run(run())
+    assert resp.status_code == 200
+    assert json.loads(resp.content)["data"]["id"] == "99"
