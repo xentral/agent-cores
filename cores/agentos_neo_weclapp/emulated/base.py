@@ -83,14 +83,18 @@ class WeclappClient:
     """Thin async REST client over a tenant's weclapp instance. Credentials are
     resolved lazily and raise :class:`CoreCredentialsMissing` when unconfigured."""
 
-    def __init__(self, client: httpx.AsyncClient | None = None) -> None:
+    def __init__(
+        self, client: httpx.AsyncClient | None = None, *, connector_id: str = CORE_ID
+    ) -> None:
         self._client = client
+        # Every core resolves its OWN connector — nothing shares a connection.
+        self._connector_id = connector_id
         self._base: str | None = None
         self._token: str | None = None
 
     def _resolve(self) -> tuple[str, str]:
         if self._base is None or self._token is None:
-            creds = resolve_core_credentials(CORE_ID, WECLAPP_FIELDS)
+            creds = resolve_core_credentials(self._connector_id, WECLAPP_FIELDS)
             self._base = _api_base(creds["weclapp_base_url"])
             self._token = creds["weclapp_api_token"]
         return self._base, self._token
@@ -517,8 +521,11 @@ class WeclappAdapterBase:
     manifest: EmulationManifest
     entity: Entity
 
-    def __init__(self, entity: Entity) -> None:
+    def __init__(self, entity: Entity, *, connector_id: str = CORE_ID) -> None:
         self.entity = entity
+        # The connector this adapter's credentials live under — weclapp_core
+        # passes its own id so the cores stay fully separate.
+        self.connector_id = connector_id
         self.manifest = EmulationManifest(
             key=entity.key,
             label_en=entity.label_en,
@@ -646,7 +653,7 @@ class WeclappAdapterBase:
         del base_url, token, accept_language  # weclapp has its own host + auth.
         method_u = method.upper()
         ops = self.entity.operations
-        wc = WeclappClient(client)
+        wc = WeclappClient(client, connector_id=self.connector_id)
         try:
             if method_u == "GET":
                 return await (self._read(wc, handle) if handle else self._list(wc, query))
