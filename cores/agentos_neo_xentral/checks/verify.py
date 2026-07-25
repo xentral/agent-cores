@@ -39,7 +39,10 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import secrets
 from typing import Any
+
+import httpx
 
 # Load backend/.env so a bare `uv run python -m …` picks up XENTRAL_API_KEY (the
 # Sanctum token) and friends without the caller pre-exporting them. Does not
@@ -369,6 +372,79 @@ async def _probe_action(
     # rejected our empty probe on validation (400/422) or the record's current
     # state (409). That means the endpoint works; it is NOT broken.
     return "pass", f"reachable — {st}: {_err(payload)}"
+
+
+async def _probe_tag_actions(
+    adapter: Any, sample_id: str, base_url: str, token: str
+) -> dict[str, tuple[str, str]]:
+    """Effect-checked addTag/removeTag probe with a BRAND-NEW title.
+
+    The generic empty-command probe only proves reachability, and the field
+    suite's tags roundtrip deliberately reuses an existing catalogue tag — that
+    combination masked the silent-drop bug (older builds answer 200 on a v3
+    tags write without attaching a title missing from the catalogue). This
+    probe exercises the actual contract ("created automatically if new"):
+    addTag <fresh title> → verify attached → removeTag → verify gone → delete
+    the auto-created catalogue tag. Net-zero; the catalogue stays unpolluted."""
+    title = f"verify-probe-{secrets.token_hex(3)}"
+
+    async def act(key: str) -> tuple[int, Any, list[str]]:
+        resp = await adapter.action(
+            action_key=key,
+            handle=sample_id,
+            body=json.dumps({"ids": [sample_id], "command": {"title": title}}).encode(),
+            base_url=base_url,
+            token=token,
+        )
+        try:
+            payload = json.loads(resp.content or b"{}")
+        except ValueError:
+            payload = {}
+        tags = (payload.get("data") or {}).get("tags") if isinstance(payload, dict) else None
+        return resp.status_code, payload, [t for t in (tags or []) if isinstance(t, str)]
+
+    out: dict[str, tuple[str, str]] = {}
+    st, pl, tags = await act("addTag")
+    if st >= 400:
+        out["addTag"] = ("fail", f"addTag with fresh title → {st}: {_err(pl)}")
+        return out
+    if title not in tags:
+        out["addTag"] = (
+            "fail",
+            f"200 but fresh title '{title}' is not on the record — unknown tags "
+            "are silently dropped instead of auto-created",
+        )
+        return out
+    out["addTag"] = ("pass", f"fresh title '{title}' attached — auto-create verified, net-zero")
+    st, pl, tags = await act("removeTag")
+    if st < 400 and title not in tags:
+        out["removeTag"] = ("pass", "fresh title removed again — effect verified, net-zero")
+    else:
+        out["removeTag"] = (
+            "fail",
+            f"removeTag → {st}, title still present: {_err(pl)}"
+            if st < 400
+            else f"removeTag with fresh title → {st}: {_err(pl)}",
+        )
+    await _delete_catalogue_tag(adapter, title, base_url, token)
+    return out
+
+
+async def _delete_catalogue_tag(adapter: Any, title: str, base_url: str, token: str) -> None:
+    """Remove the probe's auto-created tag from the BF catalogue (net-zero).
+    Scans the first 100 rows — real catalogues are small; a miss only leaves a
+    stray probe tag behind, it never fails the run."""
+    headers = adapter._headers(token, None)
+    url = f"{base_url.rstrip('/')}/api/entity/tag"
+    try:
+        async with httpx.AsyncClient(timeout=60) as c:
+            r = await c.get(url, params={"page[size]": "100"}, headers=headers)
+            for row in (r.json().get("data") or []) if r.status_code == 200 else []:
+                if row.get("label") == title and (row.get("uuid") or row.get("id")):
+                    await c.delete(f"{url}/{row.get('uuid') or row.get('id')}", headers=headers)
+                    return
+    except Exception as exc:  # noqa: BLE001 — cleanup is best-effort
+        print(f"    (catalogue cleanup for '{title}' failed: {exc})")
 
 
 class _Probe:
@@ -875,8 +951,20 @@ async def _verify_entity(
             for c in (g.get("commands") or [])
             if isinstance(c, dict) and c.get("key")
         ]
+        # addTag/removeTag get a REAL effect-checked roundtrip (fresh title +
+        # cleanup) instead of the generic reachability probe — see
+        # _probe_tag_actions. Falls back to the generic probe when the
+        # roundtrip could not cover the key (e.g. removeTag after a failed add).
+        tag_results: dict[str, tuple[str, str]] | None = None
         for akey, res_map, note_map in targets:
-            status, note = await _probe_action(adapter, akey, sample_id, base_url, token)
+            if akey in ("addTag", "removeTag") and sample_id:
+                if tag_results is None:
+                    tag_results = await _probe_tag_actions(adapter, sample_id, base_url, token)
+                status, note = tag_results.get(akey) or await _probe_action(
+                    adapter, akey, sample_id, base_url, token
+                )
+            else:
+                status, note = await _probe_action(adapter, akey, sample_id, base_url, token)
             if status is None:
                 continue
             res_map[akey] = status
