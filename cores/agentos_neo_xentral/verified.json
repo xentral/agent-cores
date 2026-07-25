@@ -1,5 +1,30 @@
 {
   "entities": {
+    "AddressCustomField": {
+      "fields": {
+        "allowedValues": {
+          "read": "pass"
+        },
+        "allowedValues.label": {
+          "read": "pass"
+        },
+        "allowedValues.value": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "name": {
+          "read": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "type": {
+          "read": "pass"
+        }
+      }
+    },
     "Channel": {
       "fields": {
         "active": {
@@ -816,6 +841,41 @@
         "markDelivered": "reachable — 409: Resource status invalid for requested operation"
       }
     },
+    "DeliveryTerm": {
+      "fields": {
+        "id": {
+          "read": "pass"
+        },
+        "name": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "object": {
+          "read": "pass"
+        }
+      }
+    },
+    "Employee": {
+      "fields": {
+        "email": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "name": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "number": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "object": {
+          "read": "pass"
+        }
+      }
+    },
     "GoodsReceipt": {
       "fields": {
         "createdAt": {
@@ -897,6 +957,89 @@
         "updatedAt": {
           "read": "pass",
           "sort": "pass"
+        }
+      }
+    },
+    "MerchandiseGroup": {
+      "fields": {
+        "id": {
+          "read": "pass"
+        },
+        "lastUsedProductNumber": {
+          "read": "pass"
+        },
+        "name": {
+          "read": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "project": {
+          "read": "pass"
+        },
+        "useMainProductNumberRange": {
+          "read": "pass"
+        }
+      }
+    },
+    "PaymentMethod": {
+      "fields": {
+        "id": {
+          "read": "pass"
+        },
+        "name": {
+          "read": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "project": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass"
+        },
+        "type": {
+          "filter": "pass",
+          "read": "pass"
+        }
+      }
+    },
+    "PaymentTermsGroup": {
+      "fields": {
+        "comment": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "isActive": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "key": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "name": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "paymentTerms": {
+          "read": "pass"
+        },
+        "paymentTerms.basicDiscount": {
+          "read": "pass"
+        },
+        "paymentTerms.earlyPaymentDiscount": {
+          "read": "pass"
+        },
+        "paymentTerms.paymentTargetDays": {
+          "read": "pass"
+        },
+        "paymentTerms.postageFreeFrom": {
+          "read": "pass"
         }
       }
     },
@@ -1071,6 +1214,115 @@
           "read": "pass"
         },
         "validUntil": {
+          "read": "pass"
+        }
+      }
+    },
+    "ProductCategory": {
+      "fields": {
+        "id": {
+          "read": "pass"
+        },
+        "name": {
+          "read": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "parent": {
+          "read": "pass"
+        }
+      }
+    },
+    "ProductFreeField": {
+      "fields": {
+        "id": {
+          "read": "pass"
+        },
+        "name": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "object": {
+          "read": "pass"
+        }
+      }
+    },
+    "ProductProperty": {
+      "fields": {
+        "id": {
+          "read": "pass"
+        },
+        "name": {
+          "read": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "project": {
+          "read": "pass"
+        }
+      }
+    },
+    "ProductTag": {
+      "fields": {
+        "color": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "name": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "object": {
+          "read": "pass"
+        }
+      }
+    },
+    "Project": {
+      "fields": {
+        "currency": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "defaultCustomerPaymentMethod": {
+          "read": "pass"
+        },
+        "defaultShippingMethod": {
+          "read": "pass"
+        },
+        "defaultSupplierPaymentMethod": {
+          "read": "pass"
+        },
+        "description": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "keyName": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "name": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "normalTaxRate": {
+          "read": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "pickingProcess": {
+          "read": "pass"
+        },
+        "reducedTaxRate": {
+          "read": "pass"
+        },
+        "storageProcess": {
           "read": "pass"
         }
       }
@@ -2043,6 +2295,28 @@
         "settle": "reachable — 409: Resource status invalid for requested operation"
       }
     },
+    "ReturnReason": {
+      "fields": {
+        "description": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "language": {
+          "read": "pass"
+        },
+        "name": {
+          "read": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "project": {
+          "read": "pass"
+        }
+      }
+    },
     "SalesInvoice": {
       "actions": {
         "addTag": "pass",
@@ -2905,6 +3179,37 @@
         }
       }
     },
+    "ShippingMethod": {
+      "fields": {
+        "id": {
+          "read": "pass"
+        },
+        "module": {
+          "read": "pass"
+        },
+        "name": {
+          "read": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "project": {
+          "read": "pass"
+        },
+        "shippingEmailBehaviour": {
+          "read": "pass"
+        },
+        "supportsDeliveries": {
+          "read": "pass"
+        },
+        "supportsReturns": {
+          "read": "pass"
+        },
+        "type": {
+          "read": "pass"
+        }
+      }
+    },
     "StockTake": {
       "fields": {
         "createdAt": {
@@ -3384,6 +3689,156 @@
         "updatedAt": {
           "read": "pass",
           "sort": "pass"
+        }
+      }
+    },
+    "TaxRate": {
+      "fields": {
+        "country": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "date": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "name": {
+          "read": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "product": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "pass"
+        },
+        "project": {
+          "read": "pass"
+        },
+        "rate": {
+          "read": "pass"
+        },
+        "source": {
+          "read": "pass"
+        },
+        "type": {
+          "filter": "pass",
+          "read": "pass"
+        }
+      }
+    },
+    "TextTemplate": {
+      "fields": {
+        "disableStationery": {
+          "read": "pass"
+        },
+        "documentType": {
+          "read": "pass"
+        },
+        "footer": {
+          "read": "pass"
+        },
+        "header": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "object": {
+          "read": "pass"
+        }
+      }
+    },
+    "User": {
+      "fields": {
+        "contactId": {
+          "read": "pass"
+        },
+        "createdAt": {
+          "read": "pass"
+        },
+        "email": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "globalUserId": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "isActive": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "isAdmin": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "locale": {
+          "read": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "username": {
+          "filter": "pass",
+          "read": "pass"
+        }
+      }
+    },
+    "Warehouse": {
+      "fields": {
+        "id": {
+          "read": "pass"
+        },
+        "name": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "project": {
+          "read": "pass"
+        }
+      }
+    },
+    "Webhook": {
+      "fields": {
+        "events": {
+          "read": "pass"
+        },
+        "events.id": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "name": {
+          "read": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "url": {
+          "read": "pass"
+        }
+      }
+    },
+    "WebhookEventType": {
+      "fields": {
+        "group": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "object": {
+          "read": "pass"
         }
       }
     }

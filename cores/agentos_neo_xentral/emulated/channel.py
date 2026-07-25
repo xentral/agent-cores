@@ -1,19 +1,24 @@
 """Xentral V3 facade · channel — Vertriebskanal (docs/01-model.md §6.4).
 
 SECOND UPSTREAM (docs/02-ist-analyse §2b): reads the BF entity API
-``GET /api/entity/salesChannel`` (verified live: id/uuid/name, full CRUD upstream)
-— docs/05 #17 revised: the entity list exists; still missing upstream are the
-channel TYPE, active flag, and the sync-run status (last run, success/failure),
-which stay blue wishes.
+``GET /api/entity/salesChannel`` (verified live: id/uuid/name, full CRUD
+upstream), ENRICHED per request from ``GET /api/v2/salesChannels`` (public
+OpenAPI: active, moduleName, …) — that fills ``active`` directly and derives
+``platform`` from the module name. Still missing upstream are the channel TYPE
+and the sync-run status (last run, success/failure), which stay blue wishes
+(docs/05 #17 revised).
 """
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
-from entity_registry.core_sdk import EmulationManifest
+import httpx
 
-from .base import RO, FacadeAdapterBase, prop
+from entity_registry.core_sdk import AdapterResponse, EmulationManifest
+
+from .base import _TIMEOUT, RO, FacadeAdapterBase, prop
 
 
 class ChannelAdapter(FacadeAdapterBase):
@@ -70,6 +75,98 @@ class ChannelAdapter(FacadeAdapterBase):
         if idx is None or h not in idx:  # cold cache or an unseen (new) channel
             idx = await self._build_uuid_index(base_url, token, accept_language, client)
         return idx.get(h, handle)
+
+    # moduleName → the model's platform enum; best-effort normalization
+    # ("shopimporter_shopify" / "shopify" → "shopify"), unknown modules stay null.
+    _PLATFORMS = ("shopify", "shopware", "amazon", "ebay", "otto", "pos", "api")
+
+    @classmethod
+    def _platform_from_module(cls, module_name: Any) -> str | None:
+        if not module_name:
+            return None
+        m = str(module_name).lower()
+        for p in cls._PLATFORMS:
+            if p in m:
+                return p
+        return None
+
+    async def _v2_rows(
+        self,
+        base_url: str,
+        token: str,
+        accept_language: str | None,
+        client: httpx.AsyncClient | None,
+    ) -> dict[str, dict[str, Any]]:
+        """Fresh ``/api/v2/salesChannels`` rows keyed by numeric id. Fetched per
+        request (no cache — the set is small and ``active`` toggles must show
+        immediately); an upstream failure degrades to no enrichment, not an error."""
+        url = f"{base_url.rstrip('/')}/api/v2/salesChannels"
+        params = [("page[number]", "1"), ("page[size]", "50")]
+        headers = self._headers(token, accept_language)
+
+        async def _do(c: httpx.AsyncClient) -> httpx.Response:
+            return await c.get(url, params=params, headers=headers)
+
+        try:
+            if client is None:
+                async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
+                    resp = await _do(c)
+            else:
+                resp = await _do(client)
+            rows = (resp.json().get("data") or []) if resp.status_code < 400 else []
+        except (httpx.HTTPError, ValueError):
+            return {}
+        return {str(r["id"]): r for r in rows if isinstance(r, dict) and r.get("id") is not None}
+
+    def _enrich(self, record: dict[str, Any], v2: dict[str, dict[str, Any]]) -> None:
+        rid = str(record.get("id") or "")
+        row = v2.get(rid.split("_", 1)[1]) if rid.startswith("ch_") else None
+        if not row:
+            return
+        record["active"] = row.get("active")
+        record["platform"] = self._platform_from_module(row.get("moduleName"))
+
+    async def request(
+        self,
+        *,
+        method: str,
+        handle: str | None,
+        query: list[tuple[str, str]],
+        body: bytes | None,
+        base_url: str,
+        token: str,
+        accept_language: str | None = None,
+        client: httpx.AsyncClient | None = None,
+    ) -> AdapterResponse:
+        resp = await super().request(
+            method=method,
+            handle=handle,
+            query=query,
+            body=body,
+            base_url=base_url,
+            token=token,
+            accept_language=accept_language,
+            client=client,
+        )
+        if method.upper() != "GET" or resp.status_code >= 400:
+            return resp
+        try:
+            payload = json.loads(resp.content or b"{}")
+        except ValueError:
+            return resp
+        if not isinstance(payload, dict):
+            return resp
+        data = payload.get("data")
+        v2 = await self._v2_rows(base_url, token, accept_language, client)
+        if not v2:
+            return resp
+        if isinstance(data, dict):
+            self._enrich(data, v2)
+        elif isinstance(data, list):
+            for rec in data:
+                if isinstance(rec, dict):
+                    self._enrich(rec, v2)
+        return self._json(resp.status_code, payload)
 
     def steps(self):
         return [

@@ -339,7 +339,9 @@ class ProductAdapter(FacadeAdapterBase):
             "category": prop(
                 "reference",
                 "Category",
-                reference="ProductCategory",
+                # The mapped upstream value is the merchandise group
+                # (Warengruppe), not the productsCategories tree.
+                reference="MerchandiseGroup",
                 renderProperty="name",
                 section="general",
             ),
@@ -614,12 +616,14 @@ class ProductAdapter(FacadeAdapterBase):
             "name": r.get("name"),
             "description": r.get("description"),
             "unit": r.get("unit"),
+            # The upstream value IS the merchandise group (Warengruppe) — emit
+            # the MerchandiseGroup entity's prefix so the reference resolves.
             "category": ref(
-                "cat_",
+                "mg_",
                 (r.get("merchandiseGroup") or {}).get("id"),
                 None,
                 (r.get("merchandiseGroup") or {}).get("name"),
-                "categories",
+                "productsMerchandiseGroups",
             ),
             "project": ref(
                 "prj_",
