@@ -192,39 +192,65 @@ def test_record_tags_upsert_tag_master_rows():
     try:
         # via create
         st, created = _call(
-            customer, method="POST",
+            customer,
+            method="POST",
             body=json.dumps({"name": f"tag-upsert-{marker}", "tags": [marker]}).encode(),
         )
         assert st == 201, created
         rec_id = created["data"]["id"]
-        st, tags = _call(tag_entity, method="GET", query=[
-            ("filter[0][key]", "label"), ("filter[0][op]", "equals"), ("filter[0][value]", marker),
-        ])
+        st, tags = _call(
+            tag_entity,
+            method="GET",
+            query=[
+                ("filter[0][key]", "label"),
+                ("filter[0][op]", "equals"),
+                ("filter[0][value]", marker),
+            ],
+        )
         assert st == 200 and tags["extra"]["total"] == 1, tags
 
         # via addTag action — and no duplicate for the existing title
         st, _ = _call_action(customer, "addTag", rec_id, {"title": marker + "-b"})
         assert st == 200
-        st, tags = _call(tag_entity, method="GET", query=[
-            ("filter[0][key]", "label"), ("filter[0][op]", "contains"), ("filter[0][value]", marker),
-        ])
+        st, tags = _call(
+            tag_entity,
+            method="GET",
+            query=[
+                ("filter[0][key]", "label"),
+                ("filter[0][op]", "contains"),
+                ("filter[0][value]", marker),
+            ],
+        )
         assert st == 200 and tags["extra"]["total"] == 2, tags
 
         # re-writing the same tags creates nothing new
-        st, _ = _call(customer, method="PATCH", handle=rec_id,
-                      body=json.dumps({"tags": [marker, marker + "-b"]}).encode())
+        st, _ = _call(
+            customer,
+            method="PATCH",
+            handle=rec_id,
+            body=json.dumps({"tags": [marker, marker + "-b"]}).encode(),
+        )
         assert st == 200
-        st, tags = _call(tag_entity, method="GET", query=[
-            ("filter[0][key]", "label"), ("filter[0][op]", "contains"), ("filter[0][value]", marker),
-        ])
+        st, tags = _call(
+            tag_entity,
+            method="GET",
+            query=[
+                ("filter[0][key]", "label"),
+                ("filter[0][op]", "contains"),
+                ("filter[0][value]", marker),
+            ],
+        )
         assert tags["extra"]["total"] == 2
     finally:
+
         def _cleanup(pool):
             async def go():
                 if rec_id:
                     await pool.execute("DELETE FROM neo_customer WHERE id = $1", rec_id)
                 await pool.execute("DELETE FROM neo_tag WHERE data->>'label' LIKE $1", "upsert-%")
+
             return go()
+
         _sql(_cleanup)
 
 
@@ -232,7 +258,11 @@ def test_stock_projection_from_movement_journal():
     """ADR-010: Product.stock / StorageLocation.contents derive live from the
     movement journal. receipt +, issue -, transfer neutral per product but
     shifting between locations, correction as delta."""
-    product_e, location_e, movement_e = ADAPTERS["Product"], ADAPTERS["StorageLocation"], ADAPTERS["StockMovement"]
+    product_e, location_e, movement_e = (
+        ADAPTERS["Product"],
+        ADAPTERS["StorageLocation"],
+        ADAPTERS["StockMovement"],
+    )
     marker = f"stock-{uuid.uuid4().hex[:8]}"
     created = {"Product": [], "StorageLocation": [], "StockMovement": []}
 
@@ -243,20 +273,27 @@ def test_stock_projection_from_movement_journal():
         return out["data"]
 
     try:
-        prod = make(product_e, "Product", {
-            "name": marker, "kind": "physical", "unit": "piece",
-            "logistics": {"minimumStockQuantity": 5},
-        })
+        prod = make(
+            product_e,
+            "Product",
+            {
+                "name": marker,
+                "kind": "physical",
+                "unit": "piece",
+                "logistics": {"minimumStockQuantity": 5},
+            },
+        )
         loc_a = make(location_e, "StorageLocation", {"name": f"{marker}-A", "kind": "picking"})
         loc_b = make(location_e, "StorageLocation", {"name": f"{marker}-B", "kind": "bulk"})
         pref = {"id": prod["id"], "name": prod["name"]}
 
         def move(type_, qty, **refs):
-            make(movement_e, "StockMovement", {
-                "type": type_, "product": pref,
-                "quantity": {"value": qty, "unit": "piece"},
-                "date": "2026-07-24T10:00:00+00:00", **refs,
-            })
+            body = {"type": type_, "product": pref, "date": "2026-07-24T10:00:00+00:00", **refs}
+            if qty is not None:
+                body["quantity"] = {"value": qty, "unit": "piece"}
+            if type_ == "correction":
+                body["source"] = {"reason": "live-verify"}
+            return make(movement_e, "StockMovement", body)
 
         move("receipt", 10, to={"id": loc_a["id"]})
         move("issue", 3, **{"from": {"id": loc_a["id"]}})
@@ -266,7 +303,9 @@ def test_stock_projection_from_movement_journal():
         # product: 10 - 3 + 2 = 9 (transfer neutral); above the minimum of 5
         st, read = _call(product_e, method="GET", handle=prod["id"])
         assert st == 200
-        assert read["data"]["stock"] == {"available": 9, "belowMinimum": False}, read["data"].get("stock")
+        assert read["data"]["stock"] == {"available": 9, "belowMinimum": False}, read["data"].get(
+            "stock"
+        )
 
         # location A: 10 - 3 - 4 + 2 = 5 ; location B: +4
         st, read_a = _call(location_e, method="GET", handle=loc_a["id"])
@@ -285,11 +324,63 @@ def test_stock_projection_from_movement_journal():
         assert read["data"]["stock"] == {"available": 3, "belowMinimum": True}
 
         # list projection works too (page containing our product)
-        st, listed = _call(product_e, method="GET", query=[
-            ("filter[0][key]", "name"), ("filter[0][op]", "equals"), ("filter[0][value]", marker),
-        ])
+        st, listed = _call(
+            product_e,
+            method="GET",
+            query=[
+                ("filter[0][key]", "name"),
+                ("filter[0][op]", "equals"),
+                ("filter[0][value]", marker),
+            ],
+        )
         assert st == 200 and listed["data"][0]["stock"]["available"] == 3
+
+        # ABSOLUTE correction (setQuantityTo): location A currently holds
+        # 10-3-4+2-6 = -1 for this product; set it to 10 -> +11 booked "to".
+        rec = move("correction", None, setQuantityTo=10, to={"id": loc_a["id"]})
+        assert rec["quantity"]["value"] == 11 and rec["to"]["id"] == loc_a["id"], rec
+        st, read = _call(product_e, method="GET", handle=prod["id"])
+        assert read["data"]["stock"]["available"] == 14, read["data"]["stock"]
+
+        # ... and downwards: set A to 2 -> -8 booked, side normalized to "from"
+        rec = move("correction", None, setQuantityTo=2, to={"id": loc_a["id"]})
+        assert rec["quantity"]["value"] == 8 and rec.get("from", {}).get("id") == loc_a["id"], rec
+        st, read = _call(product_e, method="GET", handle=prod["id"])
+        assert read["data"]["stock"]["available"] == 6, read["data"]["stock"]
+        st, read_a = _call(location_e, method="GET", handle=loc_a["id"])
+        assert read_a["data"]["contents"][0]["quantity"]["value"] == 2, read_a["data"]["contents"]
+
+        # guards: both quantities -> 422; correction without reason -> 422
+        st, out = _call(
+            movement_e,
+            method="POST",
+            body=json.dumps(
+                {
+                    "type": "correction",
+                    "product": pref,
+                    "setQuantityTo": 5,
+                    "quantity": {"value": 1, "unit": "piece"},
+                    "to": {"id": loc_a["id"]},
+                    "source": {"reason": "x"},
+                }
+            ).encode(),
+        )
+        assert st == 422, out
+        st, out = _call(
+            movement_e,
+            method="POST",
+            body=json.dumps(
+                {
+                    "type": "correction",
+                    "product": pref,
+                    "quantity": {"value": 1, "unit": "piece"},
+                    "to": {"id": loc_a["id"]},
+                }
+            ).encode(),
+        )
+        assert st == 422 and "reason" in out["title"], out
     finally:
+
         def _cleanup(pool):
             async def go():
                 for rid in created["StockMovement"]:
@@ -298,5 +389,7 @@ def test_stock_projection_from_movement_journal():
                     await pool.execute("DELETE FROM neo_storage_location WHERE id = $1", rid)
                 for rid in created["Product"]:
                     await pool.execute("DELETE FROM neo_product WHERE id = $1", rid)
+
             return go()
+
         _sql(_cleanup)

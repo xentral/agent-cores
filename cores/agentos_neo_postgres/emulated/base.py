@@ -475,11 +475,15 @@ class PostgresEntityAdapter:
 
     async def _project_product_stock(self, pool, records: list[dict[str, Any]]) -> None:
         ids = [r["id"] for r in records if r.get("id")]
+        # Sign per type; a correction signs by its side (to +, from -).
         rows = await pool.fetch(
             f"""SELECT data #>> '{{product,id}}' AS pid,
                        SUM(CASE data ->> 'type'
                              WHEN 'issue' THEN -{self._QTY}
                              WHEN 'transfer' THEN 0
+                             WHEN 'correction' THEN (
+                               CASE WHEN data #>> '{{from,id}}' IS NOT NULL
+                                    THEN -{self._QTY} ELSE {self._QTY} END)
                              ELSE {self._QTY} END) AS available
                 FROM neo_stock_movement
                 WHERE data #>> '{{product,id}}' = ANY($1)
@@ -682,10 +686,80 @@ class PostgresEntityAdapter:
                 )
         return payload, None
 
+    async def _prepare_stock_movement(self, pool, record: dict[str, Any]) -> AdapterResponse | None:
+        """StockMovement create hook (ADR-010). Validates the correction rules
+        and turns an ABSOLUTE correction (setQuantityTo, Inventur) into the
+        journal's delta form: read the product's current quantity on the
+        location from the journal itself, store the difference as quantity and
+        normalize the side (to = +, from = -). A zero difference is stored too —
+        'counted, no deviation' is a legitimate journal event."""
+
+        def loc_id(value: Any) -> str | None:
+            if isinstance(value, dict):
+                value = value.get("id")
+            return value if isinstance(value, str) and value else None
+
+        mtype = record.get("type")
+        if mtype != "correction":
+            return None
+        source = record.get("source") if isinstance(record.get("source"), dict) else {}
+        if not (source or {}).get("reason"):
+            return self._json(
+                422, {"title": "correction needs source.reason (ADR-010: audited corrections)"}
+            )
+        set_to = record.get("setQuantityTo")
+        if set_to is None:
+            return None  # delta correction — stored as given
+        qty = record.get("quantity")
+        if isinstance(qty, dict) and qty.get("value") is not None:
+            return self._json(
+                422, {"title": "correction takes quantity (delta) OR setQuantityTo, not both"}
+            )
+        try:
+            target = float(set_to)
+            if target < 0:
+                return self._json(422, {"title": "setQuantityTo must be >= 0"})
+        except (TypeError, ValueError):
+            return self._json(422, {"title": "setQuantityTo must be a number"})
+        location = loc_id(record.get("to")) or loc_id(record.get("from"))
+        if not location or (loc_id(record.get("to")) and loc_id(record.get("from"))):
+            return self._json(
+                422, {"title": "setQuantityTo needs exactly ONE location (to or from)"}
+            )
+        product = record.get("product")
+        pid = product.get("id") if isinstance(product, dict) else product
+        if not pid:
+            return self._json(422, {"title": "setQuantityTo needs a product reference"})
+        current = await pool.fetchval(
+            f"""SELECT COALESCE(SUM(
+                    CASE WHEN data #>> '{{to,id}}' = $2 THEN {self._QTY}
+                         WHEN data #>> '{{from,id}}' = $2 THEN -{self._QTY}
+                         ELSE 0 END), 0)
+                FROM neo_stock_movement
+                WHERE data #>> '{{product,id}}' = $1""",
+            pid,
+            location,
+        )
+        delta = target - float(current or 0)
+        unit = (qty or {}).get("unit") if isinstance(qty, dict) else None
+        record["quantity"] = {"value": abs(delta), "unit": unit or "piece"}
+        side = {"id": location}
+        if delta >= 0:
+            record.pop("from", None)
+            record["to"] = side
+        else:
+            record.pop("to", None)
+            record["from"] = side
+        return None
+
     async def _create(self, pool, body: bytes | None) -> AdapterResponse:
         payload, err = self._validate_write(body, creating=True)
         if err:
             return err
+        if self.manifest.key == "StockMovement":
+            err = await self._prepare_stock_movement(pool, payload or {})
+            if err:
+                return err
         n = await pool.fetchval(f"SELECT nextval('{self._seq}')")
         record = dict(payload or {})
         record["id"] = f"{self._prefix}{n}"

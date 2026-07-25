@@ -1,5 +1,5 @@
 {
-  "modelVersion": "5f59a91e171d",
+  "modelVersion": "4425ee321664",
   "source": "agentos_neo_xentral",
   "entities": [
     {
@@ -9103,8 +9103,8 @@
               ],
               "filterable": true,
               "previewable": true,
-              "description": "Kind of movement: receipt (goods in), issue (goods out), transfer (between locations), or correction.",
               "creatable": true,
+              "description": "Kind of movement: receipt (goods in), issue (goods out), transfer (between locations), or correction.",
               "updatable": true
             },
             "product": {
@@ -9115,27 +9115,28 @@
               "section": "general",
               "filterable": true,
               "previewable": true,
-              "description": "The product whose stock this movement changes.",
               "creatable": true,
+              "description": "The product whose stock this movement changes.",
               "updatable": true
             },
             "quantity": {
               "type": "embedded",
               "label": "Quantity",
               "section": "general",
+              "creatable": true,
               "properties": {
                 "value": {
                   "type": "decimal",
                   "label": "Value",
-                  "description": "Quantity moved (signed by type — positive in, negative out).",
                   "creatable": true,
+                  "description": "Quantity moved (signed by type — positive in, negative out).",
                   "updatable": true
                 },
                 "unit": {
                   "type": "string",
                   "label": "Unit",
-                  "description": "Unit of measure the quantity is expressed in.",
                   "creatable": true,
+                  "description": "Unit of measure the quantity is expressed in.",
                   "updatable": true
                 }
               }
@@ -9146,8 +9147,8 @@
               "reference": "StorageLocation",
               "renderProperty": "name",
               "section": "general",
-              "description": "Source storage location the stock left (empty for a pure receipt).",
               "creatable": true,
+              "description": "Source storage location the stock left (empty for a pure receipt).",
               "updatable": true
             },
             "to": {
@@ -9156,8 +9157,16 @@
               "reference": "StorageLocation",
               "renderProperty": "name",
               "section": "general",
-              "description": "Destination storage location the stock entered (empty for a pure issue).",
               "creatable": true,
+              "description": "Destination storage location the stock entered (empty for a pure issue).",
+              "updatable": true
+            },
+            "setQuantityTo": {
+              "type": "decimal",
+              "label": "Set quantity to",
+              "section": "general",
+              "creatable": true,
+              "description": "Absolute correction (Inventur): sets the product's quantity on the given location to this value — the difference is booked as a delta movement. Use quantity for delta corrections instead.",
               "updatable": true
             },
             "batch": {
@@ -9166,8 +9175,8 @@
               "reference": "Batch",
               "renderProperty": "number",
               "section": "general",
-              "description": "The batch / lot this movement applies to, for batch-managed products.",
               "creatable": true,
+              "description": "The batch / lot this movement applies to, for batch-managed products.",
               "updatable": true
             },
             "unitCost": {
@@ -9195,6 +9204,7 @@
               "type": "embedded",
               "label": "Source",
               "section": "source",
+              "creatable": true,
               "properties": {
                 "document": {
                   "type": "string",
@@ -9215,8 +9225,8 @@
                 "reason": {
                   "type": "string",
                   "label": "Reason",
-                  "description": "Free-text reason, mainly for manual corrections.",
                   "creatable": true,
+                  "description": "Free-text reason, mainly for manual corrections.",
                   "updatable": true
                 }
               }
