@@ -284,3 +284,25 @@ def test_settings_metadata_builds():
         meta = adapter.metadata()
         assert meta["key"] == adapter.manifest.key
         assert meta["rootNode"]["properties"]["id"]
+
+
+def _reference_targets(props: dict, found: set) -> None:
+    for spec in props.values():
+        if not isinstance(spec, dict):
+            continue
+        if spec.get("type") == "reference" and spec.get("reference"):
+            found.add(spec["reference"])
+        sub = spec.get("properties") or (spec.get("node") or {}).get("properties")
+        if isinstance(sub, dict):
+            _reference_targets(sub, found)
+
+
+def test_no_dangling_reference_targets():
+    """Every reference= target declared anywhere in the core must be a
+    registered entity — the settings entities exist precisely so that
+    PaymentMethod/ShippingMethod/Project/Warehouse/User/… references resolve."""
+    registered = {a.manifest.key for a in CORE.adapters}
+    targets: set = set()
+    for adapter in CORE.adapters:
+        _reference_targets(adapter.fields(), targets)
+    assert targets <= registered, f"dangling reference targets: {sorted(targets - registered)}"

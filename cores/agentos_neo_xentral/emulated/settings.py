@@ -146,7 +146,7 @@ class ShippingMethodAdapter(SettingsLookupBase):
     def map_read(self, r: dict[str, Any]) -> dict[str, Any]:
         return {
             "object": "shippingMethod",
-            "id": (f"shpm_{r.get('id')}" if r.get("id") is not None else None),
+            "id": (f"ship_{r.get('id')}" if r.get("id") is not None else None),
             "name": r.get("designation"),
             "module": r.get("module"),
             "type": r.get("type"),
@@ -175,7 +175,7 @@ class ReturnReasonAdapter(SettingsLookupBase):
     def map_read(self, r: dict[str, Any]) -> dict[str, Any]:
         return {
             "object": "returnReason",
-            "id": (f"rr_{r.get('id')}" if r.get("id") is not None else None),
+            "id": (f"rsn_{r.get('id')}" if r.get("id") is not None else None),
             "name": r.get("designation"),
             "description": r.get("description"),
             "language": r.get("language"),
@@ -346,7 +346,7 @@ class ProjectAdapter(SettingsLookupBase):
                 r.get("defaultSupplierPaymentMethod"), "paym_", "paymentMethods"
             ),
             "defaultShippingMethod": _method_ref(
-                r.get("defaultShippingMethod"), "shpm_", "shippingMethods"
+                r.get("defaultShippingMethod"), "ship_", "shippingMethods"
             ),
             "storageProcess": r.get("storageProcess"),
             "pickingProcess": r.get("pickingProcess"),
