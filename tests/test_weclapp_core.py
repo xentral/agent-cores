@@ -42,9 +42,13 @@ def test_operations_and_writability_from_paths():
     assert ENTITIES["article"].operations == ("list", "read")
     # a business field is writable; system-managed fields are not
     assert _field(so, "orderNumber").writable is True
-    # nested line-item fields stay non-writable in v1
+    # collections and their business sub-fields are writable (weclapp accepts
+    # nested items on the entity's own POST/PUT); system fields stay read-only
     items = next(c for c in so.collections if c.out_key() == "orderItems")
-    assert all(getattr(f, "writable", False) is False for f in items.fields)
+    assert items.writable is True
+    sub = {f.out_key(): f for f in items.fields}
+    assert sub["quantity"].writable is True
+    assert sub["articleId"].writable is True
 
 
 def test_native_names_verbatim():
@@ -99,9 +103,100 @@ def test_metadata_renders_through_shared_engine():
     assert props["orderItems"]["type"] == "collection"
     assert props["orderItems"]["node"]["properties"]["articleId"]["type"] == "reference"
     assert props["deliveryAddress"]["type"] == "embedded"
-    # writable business field carries no read-only access flag; collections do
+    # writable business fields and collections carry no read-only access flag
     assert "access" not in props["orderNumber"]
-    assert props["orderItems"]["access"] == "readOnly"
+    assert "access" not in props["orderItems"]
+    assert "access" not in props["orderItems"]["node"]["properties"]["quantity"]
+    # embeds stay read-only
+    assert props["deliveryAddress"]["access"] == "readOnly"
+
+
+def test_string_array_becomes_writable_tag_field():
+    tags = _field(ENTITIES["salesOrder"], "tags")
+    assert tags.type == "tag"
+    assert tags.writable is True
+
+
+def test_write_payload_serialises_collections_and_tags():
+    from xentral_entity_cores.agentos_neo_weclapp.emulated.base import write_payload
+
+    so = ENTITIES["salesOrder"]
+    wire = write_payload(
+        so,
+        {
+            "customerId": {"id": "4264"},
+            "tags": ["claude-fuchs-0725"],
+            "orderItems": [
+                # new item: no id — created by weclapp
+                {"articleId": {"id": "4269"}, "quantity": "7", "unitPrice": "19.75"},
+                # existing item: id/version pass through so weclapp updates it
+                {"id": "99", "version": "2", "quantity": "1"},
+            ],
+            "orderDate": "2026-07-25",  # epoch field — converted back to ms
+            "createdDate": "2026-07-25T00:00:00Z",  # system field — dropped
+            "unknown": "x",  # unknown key — dropped
+        },
+    )
+    assert wire["customerId"] == "4264"
+    assert wire["tags"] == ["claude-fuchs-0725"]
+    assert wire["orderItems"] == [
+        {"articleId": "4269", "quantity": "7", "unitPrice": "19.75"},
+        {"id": "99", "version": "2", "quantity": "1"},
+    ]
+    assert isinstance(wire["orderDate"], int)
+    assert "createdDate" not in wire
+    assert "unknown" not in wire
+
+
+def test_update_merges_collection_items_by_id():
+    from xentral_entity_cores.agentos_neo_weclapp.emulated.base import (
+        _merge_collection_items,
+    )
+
+    current = [
+        {"id": "4280", "version": "0", "quantity": "7", "itemType": "DEFAULT", "taxId": "3681"},
+        {"id": "4281", "version": "1", "quantity": "1", "itemType": "DEFAULT", "taxId": "3681"},
+    ]
+    merged = _merge_collection_items(
+        current,
+        [
+            # partial update: overlaid onto the current raw item (weclapp PUT
+            # replaces items completely, so the merge supplies the rest)
+            {"id": "4280", "manualUnitPrice": True, "unitPrice": "19.75"},
+            # new item: sent as-is
+            {"articleId": "9", "quantity": "2"},
+            # item 4281 omitted -> stays omitted (weclapp deletes it)
+        ],
+    )
+    assert merged == [
+        {
+            "id": "4280",
+            "version": "0",
+            "quantity": "7",
+            "itemType": "DEFAULT",
+            "taxId": "3681",
+            "manualUnitPrice": True,
+            "unitPrice": "19.75",
+        },
+        {"articleId": "9", "quantity": "2"},
+    ]
+
+
+def test_write_payload_drops_embeds_and_readonly_collections():
+    from xentral_entity_cores.agentos_neo_weclapp.emulated.base import (
+        Collection,
+        write_payload,
+    )
+
+    so = ENTITIES["salesOrder"]
+    # embeds are never written
+    assert "deliveryAddress" not in write_payload(so, {"deliveryAddress": {"city": "A"}})
+    # a non-writable collection is dropped even when supplied
+    import dataclasses
+
+    ro = Collection("orderItems", label="orderItems", fields=())
+    entity = dataclasses.replace(so, collections=(ro,))
+    assert "orderItems" not in write_payload(entity, {"orderItems": [{"quantity": "1"}]})
 
 
 # ---- smoke test over the full committed spec (openapi.json) ------------------

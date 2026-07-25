@@ -13,11 +13,14 @@ is guessed:
 - **money/decimals**: ``format: number`` (weclapp serialises these as strings)
 - **references**: ``x-relatedEntityName`` gives the exact target entity — this is
   how weclapp resolves the polymorphic party (``customerId`` → ``party``)
-- **collections**: array-of-``$ref`` (e.g. ``orderItems`` → ``salesOrderItem``)
+- **collections**: array-of-``$ref`` (e.g. ``orderItems`` → ``salesOrderItem``),
+  writable on entities that expose write verbs (weclapp accepts nested items on
+  the same POST/PUT; PUT replaces the whole list — see ``Collection``)
+- **tag lists**: array-of-string (e.g. ``tags``) → a writable ``tag`` field
 - **embeds**: a ``$ref`` to a non-listed schema (e.g. ``deliveryAddress`` →
-  ``recordAddress``)
+  ``recordAddress``); read-only
 
-Read-only v1 (operations are derivable from the paths' verbs later).
+Operations come from the paths' verbs (``POST /{name}`` → create, …).
 """
 
 from __future__ import annotations
@@ -133,7 +136,7 @@ def _scalar_field(name: str, prop: dict[str, Any], *, section: str, nested: bool
         options=options,
         filterable=queryable,
         sortable=queryable,
-        writable=(not nested) and _writable(name),
+        writable=_writable(name),
     )
 
 
@@ -159,7 +162,13 @@ def _sub_fields(spec: dict[str, Any], schema: dict[str, Any]) -> tuple[Any, ...]
         prop = _resolve(spec, raw)
         if _is_reference(name, prop):
             out.append(
-                Reference(name, label=name, reference=_ref_target(name, prop), section="items")
+                Reference(
+                    name,
+                    label=name,
+                    reference=_ref_target(name, prop),
+                    section="items",
+                    writable=_writable(name),
+                )
             )
         elif prop.get("type") in _TYPE_MAP or prop.get("enum"):
             out.append(_scalar_field(name, prop, section="items", nested=True))
@@ -189,9 +198,27 @@ def build_entity(spec: dict[str, Any], key: str, schema: dict[str, Any]) -> Enti
             item = _resolve(spec, prop.get("items") or {})
             if _properties(spec, item):
                 collections.append(
-                    Collection(name, label=name, fields=_sub_fields(spec, item), section="items")
+                    Collection(
+                        name,
+                        label=name,
+                        fields=_sub_fields(spec, item),
+                        section="items",
+                        writable=_writable(name),
+                    )
                 )
                 additional.append(name)
+            elif item.get("type") == "string" and not item.get("enum"):
+                # array of bare strings (weclapp's ``tags``) — a writable tag field;
+                # the list round-trips verbatim through write_payload/transform.
+                scalars.append(
+                    Field(
+                        name,
+                        label=name,
+                        type="tag",
+                        section="general",
+                        writable=_writable(name),
+                    )
+                )
         elif _is_reference(name, prop):
             references.append(
                 Reference(
