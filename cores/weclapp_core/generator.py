@@ -1,21 +1,31 @@
 """OpenAPI → Entity declarations for the native weclapp mirror.
 
-Pure, tenant-independent mapping: it turns a weclapp OpenAPI/Swagger spec into the
+Pure, tenant-independent mapping: turns a weclapp Swagger/OpenAPI spec into the
 ``Entity`` declarations the shared engine consumes. No network, no state — unit
 tested against ``openapi.sample.json``.
 
-weclapp property names and shapes are taken verbatim; the only interpretation is
-translating the spec's types into our render vocabulary and recognising weclapp's
-conventions (epoch-ms dates, ``<name>Id`` foreign keys, ``*Items`` collections).
-Tuning notes for the real spec live in ``docs/00-concept.md``.
+Everything is taken from authoritative signals in weclapp's own spec, so nothing
+is guessed:
+
+- **entities** = definitions that have a top-level ``GET /{name}`` list path
+  (this excludes item/nested schemas like ``salesOrderItem`` and ``recordAddress``)
+- **dates**: ``format: timestamp`` → epoch-ms ``datetime``
+- **money/decimals**: ``format: number`` (weclapp serialises these as strings)
+- **references**: ``x-relatedEntityName`` gives the exact target entity — this is
+  how weclapp resolves the polymorphic party (``customerId`` → ``party``)
+- **collections**: array-of-``$ref`` (e.g. ``orderItems`` → ``salesOrderItem``)
+- **embeds**: a ``$ref`` to a non-listed schema (e.g. ``deliveryAddress`` →
+  ``recordAddress``)
+
+Read-only v1 (operations are derivable from the paths' verbs later).
 """
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 # The declaration types + engine live in the curated core; reused, not duplicated.
-# (A later refactor can extract a shared ``weclapp/engine`` module.)
 from xentral_entity_cores.agentos_neo_weclapp.emulated.base import (
     Collection,
     Embed,
@@ -24,8 +34,7 @@ from xentral_entity_cores.agentos_neo_weclapp.emulated.base import (
     Reference,
 )
 
-# openapi scalar type -> our render type. ``integer`` date-like fields become
-# epoch datetimes (handled in _scalar_field); ``number`` is money/decimal.
+# openapi scalar type -> our render type (format is handled first, see _ptype).
 _TYPE_MAP: dict[str, str] = {
     "string": "string",
     "integer": "integer",
@@ -33,31 +42,14 @@ _TYPE_MAP: dict[str, str] = {
     "boolean": "boolean",
 }
 
-# ``<name>Id`` foreign keys whose target entity is not the literal name. weclapp's
-# polymorphic party is referenced under many role names. Extend against the spec.
-_REF_TARGET_ALIASES: dict[str, str] = {
-    "customer": "party",
-    "supplier": "party",
-    "recipient": "party",
-    "invoiceRecipient": "party",
-    "contact": "party",
-    "lead": "party",
-}
-
-# Schemas that only ever appear nested (line items, addresses, custom attributes),
-# never as a top-level entity. Matched by suffix.
-_NESTED_SUFFIXES = ("Item", "Address", "CustomAttribute", "Reference")
-
-# Scalar types we optimistically mark filter/sortable on a native mirror (weclapp
-# filters on most properties). Reconcile against 400s from the live API.
+_LIST_PATH = re.compile(r"^/([a-zA-Z][a-zA-Z0-9]*)$")
 _QUERYABLE = frozenset({"string", "integer", "decimal", "boolean", "date", "datetime", "select"})
 
 
 def _schemas(spec: dict[str, Any]) -> dict[str, Any]:
-    """The component schema map, tolerating OpenAPI 3 (components.schemas) and
-    Swagger 2 (definitions)."""
-    comps = (spec.get("components") or {}).get("schemas")
-    return comps or spec.get("definitions") or {}
+    """Component schemas, tolerating OpenAPI 3 (components.schemas) and Swagger 2
+    (definitions)."""
+    return (spec.get("components") or {}).get("schemas") or spec.get("definitions") or {}
 
 
 def _resolve(spec: dict[str, Any], node: dict[str, Any]) -> dict[str, Any]:
@@ -65,30 +57,43 @@ def _resolve(spec: dict[str, Any], node: dict[str, Any]) -> dict[str, Any]:
     ref = node.get("$ref")
     if not ref:
         return node
-    name = ref.rsplit("/", 1)[-1]
-    return _schemas(spec).get(name) or {}
+    return _schemas(spec).get(ref.rsplit("/", 1)[-1]) or {}
 
 
-def _is_epoch(name: str, otype: str) -> bool:
-    return otype == "integer" and ("date" in name.lower() or name.lower().endswith("time"))
+def _properties(spec: dict[str, Any], schema: dict[str, Any]) -> dict[str, Any]:
+    """A schema's properties, flattening ``allOf`` inheritance (weclapp uses it for
+    the shared ``abstractEntity`` base)."""
+    props: dict[str, Any] = dict(schema.get("properties") or {})
+    for member in schema.get("allOf") or []:
+        props.update(_properties(spec, _resolve(spec, member)))
+    return props
 
 
-def _ref_target(name: str) -> str:
-    base = name[:-2]  # strip trailing "Id"
-    return _REF_TARGET_ALIASES.get(base, base[:1].upper() + base[1:])
+def _entity_names(spec: dict[str, Any]) -> set[str]:
+    """Definitions reachable via a top-level ``GET /{name}`` list path — the real
+    entity set (nested item/address schemas have no such path)."""
+    out: set[str] = set()
+    for path, ops in (spec.get("paths") or {}).items():
+        m = _LIST_PATH.match(path)
+        if m and any(k.lower() == "get" for k in ops):
+            out.add(m.group(1))
+    return out
+
+
+def _ptype(prop: dict[str, Any]) -> tuple[str, bool]:
+    """(render type, is_epoch) for a scalar property."""
+    fmt = prop.get("format")
+    if fmt == "timestamp":
+        return "datetime", True  # weclapp epoch-ms
+    if prop.get("enum"):
+        return "select", False
+    if fmt == "number":
+        return "decimal", False  # weclapp sends decimals as type:string, format:number
+    return _TYPE_MAP.get(prop.get("type"), "string"), False
 
 
 def _scalar_field(name: str, prop: dict[str, Any], *, section: str, nested: bool) -> Field:
-    otype = prop.get("type", "string")
-    if _is_epoch(name, otype):
-        ptype = "datetime"  # weclapp epoch-ms; date-vs-datetime is tuned live
-        epoch = True
-    elif prop.get("enum"):
-        ptype = "select"
-        epoch = False
-    else:
-        ptype = _TYPE_MAP.get(otype, "string")
-        epoch = False
+    ptype, epoch = _ptype(prop)
     options = tuple((v, v) for v in (prop.get("enum") or []))
     queryable = (not nested) and ptype in _QUERYABLE
     return Field(
@@ -103,66 +108,79 @@ def _scalar_field(name: str, prop: dict[str, Any], *, section: str, nested: bool
     )
 
 
+def _ref_target(name: str, prop: dict[str, Any]) -> str:
+    """The target entity of a reference. weclapp states it explicitly via
+    ``x-relatedEntityName`` (authoritative, handles the polymorphic party); the
+    ``<name>Id`` fallback strips the suffix."""
+    return prop.get("x-relatedEntityName") or (name[:-2] if name.endswith("Id") else name)
+
+
+def _is_reference(name: str, prop: dict[str, Any]) -> bool:
+    if prop.get("x-relatedEntityName"):
+        return True
+    return name.endswith("Id") and prop.get("type") == "string"
+
+
 def _sub_fields(spec: dict[str, Any], schema: dict[str, Any]) -> tuple[Any, ...]:
-    """One level of a nested schema's fields (scalars + id references)."""
+    """One level of a nested schema's fields (scalars + references)."""
     out: list[Any] = []
-    for name, raw in (schema.get("properties") or {}).items():
+    for name, raw in _properties(spec, schema).items():
         if name == "id":
             continue  # the engine adds the item id itself
         prop = _resolve(spec, raw)
-        if name.endswith("Id") and prop.get("type", "string") == "string":
-            out.append(Reference(name, label=name, reference=_ref_target(name), section="items"))
+        if _is_reference(name, prop):
+            out.append(
+                Reference(name, label=name, reference=_ref_target(name, prop), section="items")
+            )
         elif prop.get("type") in _TYPE_MAP or prop.get("enum"):
             out.append(_scalar_field(name, prop, section="items", nested=True))
     return tuple(out)
 
 
 def _label_field(key: str, props: dict[str, Any]) -> str:
-    endpoint = key[:1].lower() + key[1:]
-    for cand in ("name", "company", f"{endpoint}Number", "number", "id"):
+    for cand in ("name", "company", f"{key}Number", "orderNumber", "number", "id"):
         if cand in props:
             return cand
     return "id"
 
 
 def build_entity(spec: dict[str, Any], key: str, schema: dict[str, Any]) -> Entity:
-    props = schema.get("properties") or {}
+    props = _properties(spec, schema)
     scalars: list[Field] = []
     references: list[Reference] = []
     embeds: list[Embed] = []
     collections: list[Collection] = []
     additional: list[str] = []
     for name, raw in props.items():
-        prop = _resolve(spec, raw)
-        otype = prop.get("type")
         if name == "id":
             continue
-        if name.endswith("Id") and otype == "string":
-            references.append(
-                Reference(name, label=name, reference=_ref_target(name), section="references")
-            )
-        elif otype == "array":
+        prop = _resolve(spec, raw)
+        otype = prop.get("type")
+        if otype == "array":
             item = _resolve(spec, prop.get("items") or {})
-            if item.get("properties"):
+            if _properties(spec, item):
                 collections.append(
                     Collection(name, label=name, fields=_sub_fields(spec, item), section="items")
                 )
                 additional.append(name)
-        elif otype == "object" or "$ref" in raw:
+        elif _is_reference(name, prop):
+            references.append(
+                Reference(name, label=name, reference=_ref_target(name, prop), section="references")
+            )
+        elif "$ref" in raw or otype == "object":
             sub = _resolve(spec, raw)
-            if sub.get("properties"):
+            if _properties(spec, sub):
                 embeds.append(
                     Embed(name, label=name, fields=_sub_fields(spec, sub), section="general")
                 )
         elif otype in _TYPE_MAP or prop.get("enum"):
             scalars.append(_scalar_field(name, prop, section="general", nested=False))
 
-    endpoint = key[:1].lower() + key[1:]
     return Entity(
         key=key,
         label_en=key,
         category="weclapp",
-        endpoint=endpoint,
+        endpoint=key,  # the definition name IS the weclapp resource path
         label_field=_label_field(key, props),
         sections=(
             ("general", "General"),
@@ -178,18 +196,8 @@ def build_entity(spec: dict[str, Any], key: str, schema: dict[str, Any]) -> Enti
     )
 
 
-def _is_entity(name: str, schema: dict[str, Any]) -> bool:
-    """A top-level entity has an ``id`` and is not a nested-only schema."""
-    if name.endswith(_NESTED_SUFFIXES):
-        return False
-    return "id" in (schema.get("properties") or {})
-
-
 def build_entities_from_openapi(spec: dict[str, Any]) -> tuple[Entity, ...]:
-    """Every top-level schema in the spec, as an Entity. Empty spec → empty."""
+    """Every listable weclapp entity, as an Entity. Empty spec → empty."""
     schemas = _schemas(spec)
-    return tuple(
-        build_entity(spec, name, schema)
-        for name, schema in sorted(schemas.items())
-        if _is_entity(name, schema)
-    )
+    names = _entity_names(spec) & set(schemas)
+    return tuple(build_entity(spec, name, schemas[name]) for name in sorted(names))

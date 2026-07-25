@@ -1,18 +1,21 @@
 """weclapp_core — OpenAPI→Entity generator + adapter build (no tenant).
 
-Exercises the generator mapping against the committed sample spec and confirms the
-generated entities plug into the shared engine (metadata renders).
+The mapping is tested deterministically against the committed sample fragment
+(weclapp's real spec shape); a smoke test then runs the generator over the full
+committed spec (openapi.json) to confirm it produces the native mirror.
 """
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from xentral_entity_cores.weclapp_core.entities import build_adapters
+from xentral_entity_cores.weclapp_core.generator import build_entities_from_openapi
 
-ADAPTERS = {a.manifest.key: a for a in build_adapters()}
-
-
-def _entity(key):
-    return ADAPTERS[key].entity
+_PKG = Path(__file__).resolve().parents[1] / "cores" / "weclapp_core"
+_SAMPLE = json.loads((_PKG / "openapi.sample.json").read_text())
+ENTITIES = {e.key: e for e in build_entities_from_openapi(_SAMPLE)}
 
 
 def _field(entity, out_key):
@@ -22,80 +25,81 @@ def _field(entity, out_key):
     raise KeyError(out_key)
 
 
-def test_roster_is_top_level_entities_only():
-    # SalesOrder / Party / Article are entities; OrderItem / Address are nested-only.
-    assert set(ADAPTERS) == {"SalesOrder", "Party", "Article"}
-    assert _entity("SalesOrder").endpoint == "salesOrder"
-    assert _entity("Party").endpoint == "party"
-    assert _entity("Article").endpoint == "article"
-    for a in ADAPTERS.values():
-        assert a.manifest.operations == ("list", "read")  # read-only v1
+# ---- generator mapping (deterministic, against the sample) ------------------
 
 
-def test_native_names_are_verbatim():
-    so = _entity("SalesOrder")
-    # weclapp's own names, not the curated documentNumber/documentDate/party
-    assert _field(so, "salesOrderNumber").type == "string"
-    assert {f.out_key() for f in so.scalars} >= {
-        "salesOrderNumber",
-        "commissionNumber",
-        "netAmount",
-    }
+def test_entities_from_list_paths_only():
+    # salesOrder/party/article have GET /{name} paths; salesOrderItem/recordAddress
+    # are nested-only and must not become entities. Keys are weclapp names verbatim.
+    assert set(ENTITIES) == {"salesOrder", "party", "article"}
+    assert ENTITIES["salesOrder"].endpoint == "salesOrder"
 
 
-def test_epoch_dates_and_enums():
-    so = _entity("SalesOrder")
-    order_date = _field(so, "orderDate")
-    assert order_date.type == "datetime" and order_date.epoch is True
-    status = _field(so, "status")
+def test_native_names_verbatim():
+    so = ENTITIES["salesOrder"]
+    assert _field(so, "orderNumber").type == "string"  # not the curated "documentNumber"
+
+
+def test_timestamp_dates_and_number_decimals():
+    so = ENTITIES["salesOrder"]
+    od = _field(so, "orderDate")
+    assert od.type == "datetime" and od.epoch is True  # format: timestamp
+    assert _field(so, "netAmount").type == "decimal"  # type:string, format:number
+
+
+def test_enum_becomes_select():
+    status = _field(ENTITIES["salesOrder"], "status")
     assert status.type == "select"
     assert {v for v, _ in status.options} == {
         "ORDER_ENTRY_IN_PROGRESS",
         "ORDER_CONFIRMATION_PRINTED",
-        "SHIPPING_STARTED",
-        "COMPLETED",
+        "CLOSED",
+        "CANCELLED",
     }
 
 
-def test_foreign_key_references_with_party_alias():
-    so = _entity("SalesOrder")
-    # customerId -> reference; the polymorphic party alias maps it to "party"
+def test_x_related_entity_name_reference():
+    so = ENTITIES["salesOrder"]
     cust = next(r for r in so.references if r.out_key() == "customerId")
-    assert cust.reference == "party"
+    assert cust.reference == "party"  # from x-relatedEntityName (polymorphic party)
 
 
-def test_order_items_collection():
-    so = _entity("SalesOrder")
+def test_collection_and_nested_reference():
+    so = ENTITIES["salesOrder"]
     items = next(c for c in so.collections if c.out_key() == "orderItems")
     sub = {f.out_key(): f for f in items.fields}
-    assert "id" not in sub  # engine adds the item id itself
+    assert "id" not in sub
     assert sub["quantity"].type == "decimal"
-    # articleId inside the line item is a reference to Article
-    assert sub["articleId"].reference == "Article"
+    assert sub["articleId"].reference == "article"
 
 
 def test_embedded_address():
-    so = _entity("SalesOrder")
-    addr = next(e for e in so.embeds if e.out_key() == "deliveryAddress")
+    addr = next(e for e in ENTITIES["salesOrder"].embeds if e.out_key() == "deliveryAddress")
     assert {f.out_key() for f in addr.fields} >= {"city", "countryCode", "street1"}
 
 
 def test_metadata_renders_through_shared_engine():
-    meta = ADAPTERS["SalesOrder"].metadata()
-    assert meta["key"] == "SalesOrder"
-    assert meta["origin"] == "emulated"
-    props = meta["rootNode"]["properties"]
+    # render via an adapter built from the sample entity + the shared engine
+    from xentral_entity_cores.agentos_neo_weclapp.emulated.base import WeclappAdapterBase
+
+    props = WeclappAdapterBase(ENTITIES["salesOrder"]).metadata()["rootNode"]["properties"]
     assert props["customerId"]["type"] == "reference"
     assert props["orderItems"]["type"] == "collection"
     assert props["orderItems"]["node"]["properties"]["articleId"]["type"] == "reference"
     assert props["deliveryAddress"]["type"] == "embedded"
-    # read-only mirror: scalars carry no write access
-    assert props["salesOrderNumber"].get("access") == "readOnly"
+    assert props["orderNumber"].get("access") == "readOnly"
 
 
-def test_party_shape():
-    party = _entity("Party")
-    assert _field(party, "partyType").type == "select"
-    assert _field(party, "customer").type == "boolean"
-    created = _field(party, "createdDate")
-    assert created.type == "datetime" and created.epoch is True
+# ---- smoke test over the full committed spec (openapi.json) ------------------
+
+
+def test_full_spec_generates_the_native_mirror():
+    adapters = {a.manifest.key: a for a in build_adapters()}
+    # the real weclapp spec exposes well over 100 listable entities
+    assert len(adapters) > 100
+    assert {"salesOrder", "party", "article", "salesInvoice", "shipment"} <= set(adapters)
+    so = adapters["salesOrder"].entity
+    assert _field(so, "orderNumber").type == "string"
+    cust = next(r for r in so.references if r.out_key() == "customerId")
+    assert cust.reference == "party"
+    assert any(c.out_key() == "orderItems" for c in so.collections)

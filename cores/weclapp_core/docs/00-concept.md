@@ -60,12 +60,20 @@ Credentials resolve under the connector id `agentos_neo_weclapp` (the shared
 the curated core already uses — the tenant connects once (base URL + API token),
 both cores work. No separate connect card or credential registration.
 
+## Status
+
+The real public weclapp spec (`https://www.weclapp.com/api/swagger.json`,
+Swagger 2.0) is committed as **`openapi.json`** — the generator produces the full
+native mirror (**119 listable entities**, verified) with weclapp's own names
+(`salesOrder.orderNumber`, `customerId` → `party`, `orderItems` collection, …).
+`openapi.sample.json` stays as the small deterministic fixture the generator is
+unit-tested against.
+
 ## Not done yet (needs a live tenant / key)
 
-- **Point the generator at a real spec.** This package ships a small
-  `openapi.sample.json` (SalesOrder, Party, Article) so the core loads a
-  demonstrative set and the mapping is unit-tested. Drop the tenant's exported
-  `openapi.json` next to it (it takes precedence) to generate the full mirror.
+- **Per-tenant refinement.** The committed spec is the public base schema. A
+  tenant-exported `openapi.json` (dropped in, it takes precedence) picks up that
+  tenant's specifics; `customAttributes` still need a runtime merge.
 - **Write paths.** v1 is read-only. weclapp's spec marks `readOnly` properties and
   which entities expose POST/PUT/DELETE — a later phase derives `operations` and
   per-field `writable` from that, plus a 429 backoff.
