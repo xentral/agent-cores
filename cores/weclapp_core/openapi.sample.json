@@ -1,0 +1,78 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "weclapp API (sample fragment)",
+    "version": "v1",
+    "description": "Demonstrative fragment in weclapp's real spec shape (Swagger 2.0: paths + definitions, format:timestamp dates, x-relatedEntityName references, format:number string decimals). It lets weclapp_core load a native set and unit-tests the generator. The committed openapi.json (the real public spec) takes precedence at runtime."
+  },
+  "paths": {
+    "/salesOrder": { "get": {}, "post": {} },
+    "/salesOrder/id/{id}": { "get": {}, "put": {}, "delete": {} },
+    "/salesOrder/count": { "get": {} },
+    "/party": { "get": {} },
+    "/article": { "get": {} }
+  },
+  "definitions": {
+    "salesOrder": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "orderNumber": { "type": "string" },
+        "orderDate": { "type": "integer", "format": "timestamp" },
+        "status": { "type": "string", "enum": ["ORDER_ENTRY_IN_PROGRESS", "ORDER_CONFIRMATION_PRINTED", "CLOSED", "CANCELLED"] },
+        "customerId": { "type": "string", "x-relatedEntityName": "party" },
+        "netAmount": { "type": "string", "format": "number" },
+        "grossAmount": { "type": "string", "format": "number" },
+        "orderItems": { "type": "array", "items": { "$ref": "#/definitions/salesOrderItem" } },
+        "deliveryAddress": { "$ref": "#/definitions/recordAddress" }
+      }
+    },
+    "salesOrderItem": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "positionNumber": { "type": "integer" },
+        "articleId": { "type": "string", "x-relatedEntityName": "article" },
+        "articleNumber": { "type": "string" },
+        "quantity": { "type": "string", "format": "number" },
+        "unitPrice": { "type": "string", "format": "number" }
+      }
+    },
+    "party": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "customerNumber": { "type": "string" },
+        "company": { "type": "string" },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "partyType": { "type": "string", "enum": ["ORGANIZATION", "PERSON"] },
+        "customer": { "type": "boolean" },
+        "supplier": { "type": "boolean" },
+        "currencyId": { "type": "string", "x-relatedEntityName": "currency" },
+        "createdDate": { "type": "integer", "format": "timestamp" }
+      }
+    },
+    "article": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "articleNumber": { "type": "string" },
+        "name": { "type": "string" },
+        "articleType": { "type": "string", "enum": ["STORABLE", "SERVICE"] },
+        "active": { "type": "boolean" },
+        "unitId": { "type": "string", "x-relatedEntityName": "unit" }
+      }
+    },
+    "recordAddress": {
+      "type": "object",
+      "properties": {
+        "company": { "type": "string" },
+        "street1": { "type": "string" },
+        "zipcode": { "type": "string" },
+        "city": { "type": "string" },
+        "countryCode": { "type": "string" }
+      }
+    }
+  }
+}
