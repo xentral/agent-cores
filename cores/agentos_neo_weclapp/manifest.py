@@ -28,6 +28,9 @@ CORE = CoreManifest(
     # After agentos_neo_xentral (8) but before the raw passthrough cores (odoo 20).
     order=9,
     native_policy=EmulatedOnly(),
+    # Experimental: grouped under the selector's collapsed "Labs" section until the
+    # weclapp property names are verified against a live tenant (docs/00-concept.md).
+    labs=True,
     # Read-only core: every entity is list/read only (v1). The selector marks it
     # as a pure read core; the adapters' ``operations`` are the real gate.
     read_only=True,
