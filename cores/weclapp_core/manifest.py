@@ -22,18 +22,21 @@ CORE = CoreManifest(
     native_policy=EmulatedOnly(),
     # Experimental generated mirror — grouped under the selector's "Labs" section.
     labs=True,
-    # Read-only v1: generated entities expose list/read only.
-    read_only=True,
+    # Read + write: create/update/delete are enabled per entity from the spec's path
+    # verbs (see generator._operations). Not read-only, so no "read-only" marking.
+    read_only=False,
     # Generated from the OpenAPI spec at request time (static file, no tenant).
     adapters_factory=build_adapters,
     description_de=(
         "Roh-Spiegel deiner weclapp-Instanz: Entitäten und Felder mit weclapp-"
-        "eigenen Namen, generiert aus der OpenAPI-Spec. Teilt sich die weclapp-"
-        "Verbindung mit „AgentOS Neo (based on weclapp)“. Read-only."
+        "eigenen Namen, generiert aus der OpenAPI-Spec. Anlegen/Bearbeiten/Löschen "
+        "je Entität gemäß weclapp. Teilt sich die weclapp-Verbindung mit „AgentOS "
+        "Neo (based on weclapp)“."
     ),
     description_en=(
         "Faithful mirror of your weclapp instance: entities and fields with "
-        "weclapp's own names, generated from the OpenAPI spec. Shares the weclapp "
-        "connection with 'AgentOS Neo (based on weclapp)'. Read-only."
+        "weclapp's own names, generated from the OpenAPI spec. Create/update/delete "
+        "per entity as weclapp allows. Shares the weclapp connection with 'AgentOS "
+        "Neo (based on weclapp)'."
     ),
 )

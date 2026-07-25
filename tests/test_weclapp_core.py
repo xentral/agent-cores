@@ -35,6 +35,18 @@ def test_entities_from_list_paths_only():
     assert ENTITIES["salesOrder"].endpoint == "salesOrder"
 
 
+def test_operations_and_writability_from_paths():
+    so = ENTITIES["salesOrder"]  # sample paths give it post/put/delete
+    assert so.operations == ("list", "read", "create", "update", "delete")
+    # article/party sample paths are GET-only -> read-only
+    assert ENTITIES["article"].operations == ("list", "read")
+    # a business field is writable; system-managed fields are not
+    assert _field(so, "orderNumber").writable is True
+    # nested line-item fields stay non-writable in v1
+    items = next(c for c in so.collections if c.out_key() == "orderItems")
+    assert all(getattr(f, "writable", False) is False for f in items.fields)
+
+
 def test_native_names_verbatim():
     so = ENTITIES["salesOrder"]
     assert _field(so, "orderNumber").type == "string"  # not the curated "documentNumber"
@@ -87,7 +99,9 @@ def test_metadata_renders_through_shared_engine():
     assert props["orderItems"]["type"] == "collection"
     assert props["orderItems"]["node"]["properties"]["articleId"]["type"] == "reference"
     assert props["deliveryAddress"]["type"] == "embedded"
-    assert props["orderNumber"].get("access") == "readOnly"
+    # writable business field carries no read-only access flag; collections do
+    assert "access" not in props["orderNumber"]
+    assert props["orderItems"]["access"] == "readOnly"
 
 
 # ---- smoke test over the full committed spec (openapi.json) ------------------
@@ -103,3 +117,6 @@ def test_full_spec_generates_the_native_mirror():
     cust = next(r for r in so.references if r.out_key() == "customerId")
     assert cust.reference == "party"
     assert any(c.out_key() == "orderItems" for c in so.collections)
+    # the real spec exposes writes on salesOrder (get/post/put/delete)
+    assert set(so.operations) >= {"list", "read", "create", "update", "delete"}
+    assert _field(so, "orderNumber").writable is True

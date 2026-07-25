@@ -74,9 +74,14 @@ unit-tested against.
 - **Per-tenant refinement.** The committed spec is the public base schema. A
   tenant-exported `openapi.json` (dropped in, it takes precedence) picks up that
   tenant's specifics; `customAttributes` still need a runtime merge.
-- **Write paths.** v1 is read-only. weclapp's spec marks `readOnly` properties and
-  which entities expose POST/PUT/DELETE — a later phase derives `operations` and
-  per-field `writable` from that, plus a 429 backoff.
+- **Write paths — done, generically.** `operations` are derived from each entity's
+  path verbs (POST→create, PUT→update, DELETE→delete: 91/119 entities are
+  writable); every field is `writable` except system-managed ones (`id`, `version`,
+  `createdDate`, `lastModifiedDate`, `*InCompanyCurrency`) — the spec has no
+  `readOnly` markers, so weclapp stays the final authority, and updates are
+  read-modify-write (the shared engine handles the write path + optimistic-locking
+  version). Still open: collection (line-item) writes, `customAttributes`, and a
+  429 backoff.
 - **customAttributes.** Per-tenant custom fields are not in the OpenAPI; they need
   a runtime merge (a sample record or the custom-attribute-definition endpoint).
 - **Filter/sort capabilities** are currently marked optimistically on scalars;

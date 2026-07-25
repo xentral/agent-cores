@@ -6,7 +6,8 @@
     "description": "Demonstrative fragment in weclapp's real spec shape (Swagger 2.0: paths + definitions, format:timestamp dates, x-relatedEntityName references, format:number string decimals). It lets weclapp_core load a native set and unit-tests the generator. The committed openapi.json (the real public spec) takes precedence at runtime."
   },
   "paths": {
-    "/salesOrder": { "get": {} },
+    "/salesOrder": { "get": {}, "post": {} },
+    "/salesOrder/id/{id}": { "get": {}, "put": {}, "delete": {} },
     "/salesOrder/count": { "get": {} },
     "/party": { "get": {} },
     "/article": { "get": {} }

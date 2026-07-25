@@ -80,6 +80,34 @@ def _entity_names(spec: dict[str, Any]) -> set[str]:
     return out
 
 
+# System-managed fields weclapp assigns/computes — never writable. The spec has no
+# ``readOnly`` markers, so this is a heuristic: everything else is writable and
+# weclapp stays the final authority (it ignores/rejects what it won't accept, and
+# updates are read-modify-write so the full object round-trips safely).
+_READONLY_FIELDS = frozenset({"id", "version", "createdDate", "lastModifiedDate"})
+
+
+def _writable(name: str) -> bool:
+    return name not in _READONLY_FIELDS and not name.endswith("InCompanyCurrency")
+
+
+def _operations(spec: dict[str, Any], name: str) -> tuple[str, ...]:
+    """list/read plus the writes weclapp exposes for the entity (from the path
+    verbs): ``POST /{name}`` → create, ``PUT /{name}/id/{id}`` → update,
+    ``DELETE /{name}/id/{id}`` → delete."""
+    paths = spec.get("paths") or {}
+    coll = {k.lower() for k in paths.get(f"/{name}", {})}
+    item = {k.lower() for k in paths.get(f"/{name}/id/{{id}}", {})}
+    ops = ["list", "read"]
+    if "post" in coll:
+        ops.append("create")
+    if "put" in item:
+        ops.append("update")
+    if "delete" in item:
+        ops.append("delete")
+    return tuple(ops)
+
+
 def _ptype(prop: dict[str, Any]) -> tuple[str, bool]:
     """(render type, is_epoch) for a scalar property."""
     fmt = prop.get("format")
@@ -105,6 +133,7 @@ def _scalar_field(name: str, prop: dict[str, Any], *, section: str, nested: bool
         options=options,
         filterable=queryable,
         sortable=queryable,
+        writable=(not nested) and _writable(name),
     )
 
 
@@ -165,7 +194,13 @@ def build_entity(spec: dict[str, Any], key: str, schema: dict[str, Any]) -> Enti
                 additional.append(name)
         elif _is_reference(name, prop):
             references.append(
-                Reference(name, label=name, reference=_ref_target(name, prop), section="references")
+                Reference(
+                    name,
+                    label=name,
+                    reference=_ref_target(name, prop),
+                    section="references",
+                    writable=_writable(name),
+                )
             )
         elif "$ref" in raw or otype == "object":
             sub = _resolve(spec, raw)
@@ -191,7 +226,7 @@ def build_entity(spec: dict[str, Any], key: str, schema: dict[str, Any]) -> Enti
         references=tuple(references),
         embeds=tuple(embeds),
         collections=tuple(collections),
-        operations=("list", "read"),  # read-only v1
+        operations=_operations(spec, key),  # list/read + create/update/delete per paths
         additional_properties=tuple(additional),
     )
 
