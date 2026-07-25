@@ -34,6 +34,7 @@ from .emulated.quote import QuoteAdapter
 from .emulated.return_order import ReturnAdapter
 from .emulated.sales_invoice import SalesInvoiceAdapter
 from .emulated.sales_order import SalesOrderAdapter
+from .emulated.settings import SETTINGS_ADAPTERS
 from .emulated.shipment import ShipmentAdapter
 from .emulated.stock_movement import StockMovementAdapter
 from .emulated.stock_take import StockTakeAdapter
@@ -71,6 +72,10 @@ CORE = CoreManifest(
         PickingRunAdapter(),
         BatchAdapter(),
         TagAdapter(),
+        # Read-only settings/configuration lookups (category "settings") — the
+        # instance's setup catalogue as entities, folding the standalone
+        # xentral_erp_settings tool's resources into the core.
+        *SETTINGS_ADAPTERS,
     ),  # facade adapters added per entity as we build
     description_de=(
         "Das agentenfreundliche Modell der nächsten Generation: ein neu "

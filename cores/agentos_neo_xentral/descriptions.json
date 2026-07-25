@@ -855,5 +855,80 @@
     "slug": "Machine-safe identifier of the tag (URL / key form of the label).",
     "color": "Display color of the tag badge.",
     "group": "The tag group / category this tag belongs to."
+  },
+  "PaymentMethod": {
+    "type": "Technical payment type (e.g. amazon, paypal, prepayment) — the value documents reference.",
+    "project": "Project/client the payment method is bound to; null = instance-wide."
+  },
+  "ShippingMethod": {
+    "module": "Shipping module handling this method (e.g. dhl, ups).",
+    "shippingEmailBehaviour": "When the shipping confirmation email is sent for this method.",
+    "supportsDeliveries": "Whether this method can be used on outbound deliveries.",
+    "supportsReturns": "Whether this method can be used for returns."
+  },
+  "ReturnReason": {
+    "language": "2-letter ISO language code this reason's wording is maintained in."
+  },
+  "PaymentTermsGroup": {
+    "key": "Stable machine key of the group — the value documents reference.",
+    "paymentTerms.basicDiscount": "Base discount in percent.",
+    "paymentTerms.paymentTargetDays": "Payment target in days.",
+    "paymentTerms.earlyPaymentDiscount": "Early-payment (skonto) discount in percent.",
+    "paymentTerms.postageFreeFrom": "Order value from which postage is free."
+  },
+  "TaxRate": {
+    "country": "ISO-2 country the rates apply to. Filter with equals; default DE. The upstream keys rates by country, so cross-country listing needs one query per country.",
+    "id": "Positional per listing (no upstream id) — do not persist across calls.",
+    "date": "Date the rate is valid on; filter to query historical rates.",
+    "product": "Product-specific rate override; null = the country-wide rate."
+  },
+  "Warehouse": {
+    "project": "Project/client the warehouse belongs to; null = instance-wide."
+  },
+  "Project": {
+    "keyName": "Stable machine key of the project (number-range prefix).",
+    "normalTaxRate": "Default standard tax rate in percent for documents in this project.",
+    "reducedTaxRate": "Default reduced tax rate in percent for documents in this project.",
+    "storageProcess": "Warehouse process this project runs (e.g. standard, expressPicking).",
+    "pickingProcess": "Picking process this project runs."
+  },
+  "User": {
+    "contactId": "Address/contact record linked to this login, if any.",
+    "globalUserId": "Cross-instance UUID of the user account.",
+    "isAdmin": "Whether the user has instance-admin rights."
+  },
+  "Employee": {
+    "number": "Employee number from the HR master data."
+  },
+  "ProductCategory": {
+    "parent": "Parent category; null for a root category (the tree is built from these links)."
+  },
+  "MerchandiseGroup": {
+    "lastUsedProductNumber": "Most recently assigned product number in this group's own number range.",
+    "useMainProductNumberRange": "true = products in this group draw from the main number range instead of a group-specific one."
+  },
+  "ProductTag": {
+    "color": "Display color of the tag badge. Distinct from the document Tag catalogue."
+  },
+  "ProductFreeField": {
+    "name": "Free-field name as it appears on the product form; values live on each product."
+  },
+  "AddressCustomField": {
+    "type": "Input type of the custom field (single_line, multi_line, date, checkbox, select).",
+    "allowedValues": "For select fields: the permitted label/value pairs."
+  },
+  "Webhook": {
+    "url": "Receiver endpoint Xentral POSTs the event payloads to.",
+    "events": "Event types this webhook is subscribed to (see WebhookEventType for the catalogue)."
+  },
+  "WebhookEventType": {
+    "id": "Fully-qualified event name (e.g. com.xentral.salesOrder.created.v1) — the value Webhook.events references.",
+    "group": "Business object the event belongs to (salesOrder, product, …)."
+  },
+  "TextTemplate": {
+    "documentType": "Document type the template applies to; the record id is tpl_<documentType>.",
+    "header": "Text above the item table (HTML, may contain placeholder variables).",
+    "footer": "Text at the document end (HTML, may contain placeholder variables).",
+    "disableStationery": "true = the letterhead/stationery PDF background is suppressed for this type."
   }
 }
