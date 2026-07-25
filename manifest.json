@@ -3,9 +3,10 @@
   "version": "0.0.0",
   "contractVersion": 1,
   "cores": {
-    "count": 6,
+    "count": 7,
     "ids": [
       "agentos_neo_postgres",
+      "agentos_neo_weclapp",
       "agentos_neo_xentral",
       "odoo_core",
       "phoenix",
