@@ -681,17 +681,12 @@ class TaxRateAdapter(SettingsLookupBase):
                 description="Country the rate applies to; filter with equals, default DE.",
             ),
             "rate": prop("decimal", "Rate (%)", **RO, section="general", previewable=True),
-            "type": prop(
-                "select",
-                "Type",
-                **RO,
-                section="general",
-                filterable=True,
-                options=[
-                    {"value": v, "label": v.capitalize()} for v in ("standard", "reduced", "custom")
-                ],
-            ),
+            # Live values ("normal", "reduced", "") diverge from the OpenAPI
+            # description ("standard, reduced or custom") — a plain string keeps
+            # the contract honest.
+            "type": prop("string", "Type", **RO, section="general", filterable=True),
             "name": prop("string", "Name", **RO, section="general", previewable=True),
+            "source": prop("string", "Source", **RO, section="general"),
             "date": prop("date", "Valid on", **RO, section="general", filterable=True),
             "product": prop(
                 "reference",
@@ -740,11 +735,22 @@ class TaxRateAdapter(SettingsLookupBase):
             for k, v in query
             if k.startswith("filter[") and k.endswith("][key]")
         }
+        # The upstream page param requires number AND size together (a lone
+        # page[size] is a 400) — normalize to always send both, size 10..50.
+        q = dict(query)
+        try:
+            page_number = max(1, int(q.get("page[number]") or "1"))
+        except ValueError:
+            page_number = 1
+        try:
+            page_size = max(10, min(50, int(q.get("page[size]") or "25")))
+        except ValueError:
+            page_size = 25
+        params += [("page[number]", str(page_number)), ("page[size]", str(page_size))]
         out_idx = 0
         emitted: dict[str, int] = {}
         for k, v in query:
             if k.startswith("page["):
-                params.append((k, v))
                 continue
             if not k.startswith("filter["):
                 continue
@@ -805,6 +811,7 @@ class TaxRateAdapter(SettingsLookupBase):
                     "rate": r.get("rate"),
                     "type": r.get("type"),
                     "name": r.get("name"),
+                    "source": r.get("source"),
                     "date": r.get("date"),
                     "product": ref(
                         "prd_",
