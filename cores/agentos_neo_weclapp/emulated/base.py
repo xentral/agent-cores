@@ -31,7 +31,7 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime, UTC
+from datetime import UTC, date, datetime
 from typing import Any
 
 import httpx
@@ -121,8 +121,10 @@ class WeclappClient:
     async def list(self, entity: str, *, params: dict | None = None) -> Any:
         return _unwrap((await self._request("GET", entity, params=params)).json())
 
-    async def get(self, entity: str, record_id: str) -> Any:
-        return _unwrap((await self._request("GET", f"{entity}/id/{record_id}")).json())
+    async def get(self, entity: str, record_id: str, *, params: dict | None = None) -> Any:
+        return _unwrap(
+            (await self._request("GET", f"{entity}/id/{record_id}", params=params)).json()
+        )
 
     async def count(self, entity: str, *, params: dict | None = None) -> int:
         data = _unwrap((await self._request("GET", f"{entity}/count", params=params)).json())
@@ -130,6 +132,17 @@ class WeclappClient:
             return int(data)
         except (TypeError, ValueError):
             return 0
+
+    async def create(self, entity: str, payload: dict) -> Any:
+        return _unwrap((await self._request("POST", entity, json_body=payload)).json())
+
+    async def update(self, entity: str, record_id: str, payload: dict) -> Any:
+        return _unwrap(
+            (await self._request("PUT", f"{entity}/id/{record_id}", json_body=payload)).json()
+        )
+
+    async def delete(self, entity: str, record_id: str) -> None:
+        await self._request("DELETE", f"{entity}/id/{record_id}")
 
 
 def _unwrap(payload: Any) -> Any:
@@ -345,7 +358,7 @@ def build_list_params(
     entity: Entity, parsed: ParsedQuery, *, for_count: bool = False
 ) -> dict[str, str]:
     """weclapp querystring params for a list/count call: base slice + translated
-    filters (+ sort/pagination/additionalProperties for a list)."""
+    filters (+ sort/pagination for a list)."""
     params: dict[str, str] = dict(entity.base_params)
     index = _query_index(entity)
     for key, op, value in parsed.filters:
@@ -366,8 +379,9 @@ def build_list_params(
         params["sort"] = order
     params["page"] = str(parsed.page)
     params["pageSize"] = str(parsed.page_size)
-    if entity.additional_properties:
-        params["additionalProperties"] = ",".join(entity.additional_properties)
+    # NOTE: no ``additionalProperties`` on a list. weclapp 400s when asked for many
+    # (or non-requestable) nested properties at once, and a grid does not need the
+    # collections/embeds — they are requested on the single-record read instead.
     return params
 
 
@@ -402,6 +416,44 @@ def _epoch_ms_to_iso(value: Any, *, as_datetime: bool) -> Any:
     except (TypeError, ValueError, OverflowError, OSError):
         return value
     return dt.isoformat() if as_datetime else dt.date().isoformat()
+
+
+def _iso_to_epoch_ms(value: Any) -> Any:
+    """The inverse of :func:`_epoch_ms_to_iso` for the write path: ISO date/datetime
+    string -> weclapp Unix-epoch-milliseconds. Numbers and unparseable values pass
+    through unchanged."""
+    if value is None or isinstance(value, (int, float)):
+        return value
+    text = str(value).strip()
+    for parse in (
+        lambda s: datetime.fromisoformat(s.replace("Z", "+00:00")),
+        lambda s: datetime.combine(date.fromisoformat(s), datetime.min.time(), tzinfo=UTC),
+    ):
+        try:
+            dt = parse(text)
+        except (TypeError, ValueError):
+            continue
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=UTC)
+        return int(dt.timestamp() * 1000)
+    return value
+
+
+def write_payload(entity: Entity, model: dict[str, Any]) -> dict[str, Any]:
+    """Our outward record -> a weclapp write payload. Only writable scalars and
+    references are sent (read-only fields, unknown keys, collections and embeds are
+    dropped): scalar out_key -> weclapp wire (epoch fields back to ms); a reference
+    value ``{"id": …}`` (or a bare id) -> the weclapp ``<name>Id`` string."""
+    out: dict[str, Any] = {}
+    for f in entity.scalars:
+        if f.writable and f.out_key() in model:
+            val = model[f.out_key()]
+            out[f.wire] = _iso_to_epoch_ms(val) if f.epoch else val
+    for ref in entity.references:
+        if ref.writable and ref.out_key() in model:
+            val = model[ref.out_key()]
+            out[ref.wire] = val.get("id") if isinstance(val, dict) else val
+    return out
 
 
 def transform_record(entity: Entity, raw: dict[str, Any]) -> dict[str, Any]:
@@ -591,20 +643,20 @@ class WeclappAdapterBase:
         accept_language: str | None = None,
         client: Any | None = None,
     ) -> AdapterResponse:
-        del (
-            base_url,
-            token,
-            accept_language,
-            body,
-        )  # weclapp has its own host + auth; no writes yet.
+        del base_url, token, accept_language  # weclapp has its own host + auth.
         method_u = method.upper()
-        if method_u != "GET":
-            return self._status(405, "Write not permitted on this entity (read-only in Phase 1)")
+        ops = self.entity.operations
         wc = WeclappClient(client)
         try:
-            if handle:
-                return await self._read(wc, handle)
-            return await self._list(wc, query)
+            if method_u == "GET":
+                return await (self._read(wc, handle) if handle else self._list(wc, query))
+            if method_u == "POST" and handle is None and "create" in ops:
+                return await self._create(wc, body)
+            if method_u in ("PUT", "PATCH") and handle and "update" in ops:
+                return await self._update(wc, handle, body)
+            if method_u == "DELETE" and handle and "delete" in ops:
+                return await self._delete(wc, handle)
+            return self._status(405, "Operation not permitted on this entity")
         except CoreCredentialsMissing as exc:
             return self._credentials_missing_response(exc)
         except httpx.HTTPError as exc:
@@ -645,16 +697,87 @@ class WeclappAdapterBase:
 
     async def _read(self, wc: WeclappClient, handle: str) -> AdapterResponse:
         e = self.entity
+        # The single-record read is where we DO want the nested collections/embeds,
+        # so request them via ``additionalProperties`` — but weclapp 400s if any name
+        # in the set isn't requestable, so fall back to a plain read on a 400.
+        params = (
+            {"additionalProperties": ",".join(e.additional_properties)}
+            if e.additional_properties
+            else None
+        )
         try:
-            raw = await wc.get(e.endpoint, handle)
+            raw = await wc.get(e.endpoint, handle, params=params)
         except httpx.HTTPStatusError as exc:
-            if exc.response is not None and exc.response.status_code == 404:
+            code = exc.response.status_code if exc.response is not None else None
+            if code == 404:
                 return self._status(404, f"Not found: {handle}")
-            raise
+            if code == 400 and params:
+                raw = await wc.get(e.endpoint, handle)  # retry without additionalProperties
+            else:
+                raise
         if not isinstance(raw, dict) or raw.get("id") is None:
             return self._status(404, f"Not found: {handle}")
         body = json.dumps({"data": transform_record(e, raw)}, ensure_ascii=False).encode("utf-8")
         return AdapterResponse(200, body, {"content-type": "application/json"})
+
+    # ---- writes (only on an entity whose ``operations`` opt in) --------------
+
+    @staticmethod
+    def _parse_body(body: bytes | None) -> tuple[dict[str, Any] | None, AdapterResponse | None]:
+        try:
+            payload = json.loads(body.decode("utf-8")) if body else {}
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            return None, WeclappAdapterBase._status(400, f"Invalid JSON body: {exc}")
+        if not isinstance(payload, dict):
+            return None, WeclappAdapterBase._status(400, "Body must be a JSON object")
+        return payload, None
+
+    async def _create(self, wc: WeclappClient, body: bytes | None) -> AdapterResponse:
+        e = self.entity
+        payload, error = self._parse_body(body)
+        if error is not None:
+            return error
+        wire = write_payload(e, payload)
+        if not wire:
+            return self._status(400, "No writable fields supplied")
+        created = await wc.create(e.endpoint, wire)
+        rec = transform_record(e, created) if isinstance(created, dict) else {}
+        data = json.dumps({"data": rec}, ensure_ascii=False).encode("utf-8")
+        return AdapterResponse(201, data, {"content-type": "application/json"})
+
+    async def _update(self, wc: WeclappClient, handle: str, body: bytes | None) -> AdapterResponse:
+        e = self.entity
+        payload, error = self._parse_body(body)
+        if error is not None:
+            return error
+        changes = write_payload(e, payload)
+        if not changes:
+            return self._status(400, "No writable fields supplied")
+        # weclapp PUT is a full-object replacement with optimistic locking (version),
+        # so read-modify-write: fetch current, overlay the changes, put it back.
+        try:
+            current = await wc.get(e.endpoint, handle)
+        except httpx.HTTPStatusError as exc:
+            if exc.response is not None and exc.response.status_code == 404:
+                return self._status(404, f"Not found: {handle}")
+            raise
+        if not isinstance(current, dict) or current.get("id") is None:
+            return self._status(404, f"Not found: {handle}")
+        updated = await wc.update(e.endpoint, handle, {**current, **changes})
+        rec = transform_record(e, updated) if isinstance(updated, dict) else {}
+        data = json.dumps({"data": rec}, ensure_ascii=False).encode("utf-8")
+        return AdapterResponse(200, data, {"content-type": "application/json"})
+
+    async def _delete(self, wc: WeclappClient, handle: str) -> AdapterResponse:
+        e = self.entity
+        try:
+            await wc.delete(e.endpoint, handle)
+        except httpx.HTTPStatusError as exc:
+            if exc.response is not None and exc.response.status_code == 404:
+                return self._status(404, f"Not found: {handle}")
+            raise
+        data = json.dumps({"data": {"id": handle}}, ensure_ascii=False).encode("utf-8")
+        return AdapterResponse(200, data, {"content-type": "application/json"})
 
     # ---- responses ---------------------------------------------------------
 
@@ -690,5 +813,6 @@ __all__ = [
     "parse_query",
     "build_list_params",
     "transform_record",
+    "write_payload",
     "WeclappAdapterBase",
 ]
