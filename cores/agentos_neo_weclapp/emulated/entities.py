@@ -4,20 +4,22 @@ Covers the important ERP core entities across the sales + purchase cycle plus
 master data, all read-only:
 
     Customer · Supplier · Article · Quotation · SalesOrder · SalesInvoice ·
-    CreditNote · PurchaseOrder · Shipment
+    PurchaseOrder · Shipment
 
 They share the same engine (``WeclappAdapterBase``) and are built from reusable
 field bundles + two small factories (``_party_entity`` for the polymorphic
 ``/party`` roles, ``_business_document`` for line-item documents) so the shape is
 consistent and the varying bits stay explicit.
 
-weclapp property names below are PROVISIONAL and must be reconciled against the
-tenant's live OpenAPI/Swagger before an entity is "done" (see
-``../docs/00-concept.md``). The engine's translation logic is what the unit tests
-pin down; live verification against a weclapp tenant is a separate, required step.
-Statuses are modelled as plain strings (not ``select``) on purpose — the exact
-per-document status enums are only known from the live tenant, and a wrong option
-list is worse than none.
+weclapp property names below are reconciled against the real weclapp OpenAPI spec
+(``https://www.weclapp.com/api/swagger.json``): the document number is
+``orderNumber`` (not ``salesOrderNumber``), line-item lists are
+``salesInvoiceItems`` / ``purchaseOrderItems``, currency is ``recordCurrencyId``,
+a shipment links its party via ``recipientPartyId`` and tracks via
+``packageTrackingNumber``. weclapp has no ``creditNote`` entity, so there is none
+here. Statuses stay plain strings (not ``select``) — the per-document status
+enums differ and a wrong option list is worse than none. The native
+``weclapp_core`` mirrors the whole spec verbatim; this core is the curated view.
 """
 
 from __future__ import annotations
@@ -44,8 +46,8 @@ _ADDRESS_FIELDS: tuple[Field, ...] = (
 _LINE_ITEM_FIELDS: tuple[object, ...] = (
     Field("positionNumber", "Pos.", type="integer", section="items"),
     Reference("articleId", "Article", reference="Article", section="items"),
-    Field("articleNumber", "Article no.", section="items"),
-    Field("title", "Description", section="items"),
+    Field("title", "Title", section="items"),
+    Field("description", "Description", section="items"),
     Field("quantity", "Qty", type="decimal", section="items"),
     Field("unitPrice", "Unit price", type="decimal", section="items"),
     Field("netAmount", "Net", type="decimal", section="items"),
@@ -97,7 +99,7 @@ def _party_entity(*, key: str, label: str, category: str, role: str) -> Entity:
             Field("email", "Email", section="contact", filterable=True, preview=2),
             Field("phone", "Phone", section="contact"),
             Field("website", "Website", section="contact"),
-            Field("vatRegistrationNumber", "VAT no.", section="classification", filterable=True),
+            Field("vatIdentificationNumber", "VAT ID", section="classification", filterable=True),
             Field(
                 "customer", "Is customer", type="boolean", section="classification", filterable=True
             ),
@@ -163,7 +165,7 @@ ARTICLE = Entity(
         Field("ean", "EAN", section="general", filterable=True),
         Field("active", "Active", type="boolean", section="general", filterable=True),
         Field("description", "Description", section="descriptions"),
-        Field("note", "Note", section="descriptions"),
+        Field("internalNote", "Internal note", section="descriptions"),
         Field(
             "createdDate", "Created", type="datetime", section="system", sortable=True, epoch=True
         ),
@@ -280,7 +282,13 @@ def _business_document(
     ]
     if include_financials:
         references.append(
-            Reference("currencyId", "Currency", reference="Currency", section="financials")
+            Reference(
+                "recordCurrencyId",
+                "Currency",
+                reference="Currency",
+                key="currencyId",
+                section="financials",
+            )
         )
     sections = [
         ("general", "General"),
@@ -314,6 +322,7 @@ def _address_embed(wire: str, label: str) -> Embed:
 
 _DELIVERY = _address_embed("deliveryAddress", "Delivery address")
 _INVOICE = _address_embed("invoiceAddress", "Invoice address")
+_RECIPIENT = _address_embed("recipientAddress", "Recipient address")
 
 QUOTATION = _business_document(
     key="Quotation",
@@ -335,7 +344,7 @@ SALES_ORDER = _business_document(
     label="Sales order",
     category="sales",
     endpoint="salesOrder",
-    number_wire="salesOrderNumber",
+    number_wire="orderNumber",
     date_wire="orderDate",
     items_wire="orderItems",
     items_label="Order items",
@@ -343,7 +352,7 @@ SALES_ORDER = _business_document(
     party_label="Customer",
     party_target="Customer",
     extra_scalars=(
-        Field("commissionNumber", "Commission", section="general", filterable=True),
+        Field("commission", "Commission", section="general", filterable=True),
         Field(
             "plannedDeliveryDate", "Planned delivery", type="date", section="general", epoch=True
         ),
@@ -358,31 +367,16 @@ SALES_INVOICE = _business_document(
     endpoint="salesInvoice",
     number_wire="invoiceNumber",
     date_wire="invoiceDate",
-    items_wire="invoiceItems",
+    items_wire="salesInvoiceItems",
     items_label="Invoice items",
     party_wire="customerId",
     party_label="Customer",
     party_target="Customer",
     extra_scalars=(
         Field("dueDate", "Due", type="date", section="general", sortable=True, epoch=True),
-        Field("paidAmount", "Paid", type="decimal", section="financials"),
+        Field("paid", "Paid", type="boolean", section="financials", filterable=True),
         Field("paymentStatus", "Payment status", section="general", filterable=True),
     ),
-    address_embeds=(_INVOICE,),
-)
-
-CREDIT_NOTE = _business_document(
-    key="CreditNote",
-    label="Credit note",
-    category="accounting",
-    endpoint="creditNote",
-    number_wire="creditNoteNumber",
-    date_wire="creditNoteDate",
-    items_wire="creditNoteItems",
-    items_label="Credit note items",
-    party_wire="customerId",
-    party_label="Customer",
-    party_target="Customer",
     address_embeds=(_INVOICE,),
 )
 
@@ -393,7 +387,7 @@ PURCHASE_ORDER = _business_document(
     endpoint="purchaseOrder",
     number_wire="purchaseOrderNumber",
     date_wire="orderDate",
-    items_wire="orderItems",
+    items_wire="purchaseOrderItems",
     items_label="Order items",
     party_wire="supplierId",
     party_label="Supplier",
@@ -401,22 +395,22 @@ PURCHASE_ORDER = _business_document(
     address_embeds=(_DELIVERY,),
 )
 
-# Shipment: a document but without financial totals; carries tracking + a link to
-# its originating sales order.
+# Shipment: a document without financial totals. weclapp links it to a party via
+# ``recipientPartyId`` (not ``customerId``) and tracks via ``packageTrackingNumber``.
 SHIPMENT = _business_document(
     key="Shipment",
     label="Shipment",
     category="logistics",
     endpoint="shipment",
     number_wire="shipmentNumber",
-    date_wire="shipmentDate",
+    date_wire="shippingDate",
     items_wire="shipmentItems",
     items_label="Shipment items",
-    party_wire="customerId",
-    party_label="Customer",
+    party_wire="recipientPartyId",
+    party_label="Recipient",
     party_target="Customer",
-    extra_scalars=(Field("trackingNumber", "Tracking", section="general", filterable=True),),
-    address_embeds=(_DELIVERY,),
+    extra_scalars=(Field("packageTrackingNumber", "Tracking", section="general", filterable=True),),
+    address_embeds=(_RECIPIENT,),
     include_financials=False,
 )
 
@@ -428,7 +422,6 @@ _ENTITIES: tuple[Entity, ...] = (
     QUOTATION,
     SALES_ORDER,
     SALES_INVOICE,
-    CREDIT_NOTE,
     PURCHASE_ORDER,
     SHIPMENT,
 )

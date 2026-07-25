@@ -41,7 +41,6 @@ _EXPECTED_ROSTER = {
     "Quotation",
     "SalesOrder",
     "SalesInvoice",
-    "CreditNote",
     "PurchaseOrder",
     "Shipment",
 }
@@ -98,7 +97,7 @@ def test_sales_order_transform_with_order_items():
     e = SALES_ORDER.entity
     raw = {
         "id": 900,
-        "salesOrderNumber": "SO-42",
+        "orderNumber": "SO-42",
         "status": "OPEN",
         "orderDate": 1_700_000_000_000,
         "customerId": 4711,
