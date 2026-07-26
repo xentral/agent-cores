@@ -602,10 +602,21 @@ class ProductAdapter(FacadeAdapterBase):
                 return {"value": v, "unit": unit}
             return None
 
-        cpp = r.get("calculatedPurchasePrice") or {}
-        pp_price = cpp.get("price") or {}
+        cpp = r.get("calculatedPurchasePrice")
+        if not isinstance(cpp, dict):
+            cpp = {}
+        pp_price = cpp.get("price")
+        if not isinstance(pp_price, dict):
+            pp_price = {}
         supplier = r.get("defaultSupplier") or r.get("standardSupplier")
-        manufacturer = r.get("manufacturer") or {}
+        # v1 frequently carries the manufacturer as a bare name string (it is
+        # a free-text field there); the {name, link} object shape is not
+        # guaranteed per record.
+        manufacturer = r.get("manufacturer")
+        if isinstance(manufacturer, str):
+            manufacturer = {"name": manufacturer or None}
+        elif not isinstance(manufacturer, dict):
+            manufacturer = {}
         return {
             "object": "product",
             "id": (f"prd_{r.get('id')}" if r.get("id") is not None else None),
