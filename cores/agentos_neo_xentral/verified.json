@@ -75,6 +75,40 @@
         }
       }
     },
+    "Correspondence": {
+      "fields": {
+        "content": {
+          "read": "pass"
+        },
+        "customer": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "date": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "isSent": {
+          "read": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "subject": {
+          "read": "pass"
+        },
+        "time": {
+          "read": "pass"
+        },
+        "type": {
+          "filter": "pass",
+          "read": "pass"
+        }
+      }
+    },
     "CreditNote": {
       "actions": {
         "addTag": "pass",

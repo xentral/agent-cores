@@ -930,5 +930,12 @@
     "header": "Text above the item table (HTML, may contain placeholder variables).",
     "footer": "Text at the document end (HTML, may contain placeholder variables).",
     "disableStationery": "true = the letterhead/stationery PDF background is suppressed for this type."
+  },
+  "Correspondence": {
+    "type": "Entry kind. email here is a LOG entry only — a real send goes through the email tool; ticket/document come from their integrations and are read-only.",
+    "customer": "Customer whose CRM tab the entry appears on (upstream recipientAddress).",
+    "date": "Filterable with equals/notEquals only (upstream rejects range ops). Defaults to today on create.",
+    "time": "Defaults to now (Europe/Berlin) on create; HH:MM is padded to HH:MM:SS.",
+    "isSent": "Whether an email entry was actually dispatched (set by the send pipeline)."
   }
 }
