@@ -28,6 +28,12 @@ import httpx
 
 from entity_registry.core_sdk import AdapterResponse, EmulationManifest
 
+# Shared consolidated-`search` machinery (OR fan-out over per-field contains
+# filters, verified live against the same v3 endpoints) — the xentral_api core
+# owns the implementation; reusing it keeps ONE search behavior across cores
+# (weclapp_core → agentos_neo_weclapp precedent for cross-core imports).
+from xentral_entity_cores.xentral_api.emulated._search import extract_search, fan_out_search
+
 _TIMEOUT = 60.0
 _UA = "xentral-ai-agent"
 # A speaking id — ``<prefix>_<numeric>`` (eid(); e.g. ``cus_20423``, ``prd_61617``).
@@ -337,6 +343,21 @@ class FacadeAdapterBase:
             if isinstance(spec, dict) and not spec.get("description"):
                 spec["description"] = text
 
+    def search_fields(self) -> tuple[str, ...]:
+        """MODEL fields flagged ``searchable`` in the entity's schema — the
+        consolidated ``search`` filter fans out over exactly these, so the
+        search contract lives next to the field declarations."""
+        cached = type(self).__dict__.get("_search_fields_cache")
+        if cached is not None:
+            return cached
+        fields = tuple(
+            name
+            for name, spec in self.fields().items()
+            if isinstance(spec, dict) and spec.get("searchable")
+        )
+        type(self)._search_fields_cache = fields
+        return fields
+
     def metadata(self, accept_language: str | None = None) -> dict[str, Any]:
         properties = self.fields()
         self._apply_priorities(properties)
@@ -352,6 +373,11 @@ class FacadeAdapterBase:
             "origin": "emulated",
             "emulation": self.manifest.marker(),
         }
+        # Advertise the consolidated `search` filter only when the schema
+        # actually flags fields — consumers (record pickers, list search) key
+        # their server-search affordance off this list.
+        if self.search_fields():
+            meta["searchFields"] = list(self.search_fields())
         actions = list(self.actions())
         # Every entity with writable tags automatically gets the addTag/removeTag
         # actions — the base implements them generically (read-modify-write on the
@@ -646,6 +672,28 @@ class FacadeAdapterBase:
             return await self._write(
                 method, handle, query, body, base_url, token, accept_language, client
             )
+        # Consolidated `search` — the upstream has no cross-field search key
+        # (it would 400 as "filter `search` not allowed"), so fan out over the
+        # schema's `searchable` fields and merge. Only intercepts when the
+        # entity declares fields; the metadata advertises `searchFields`, so
+        # well-behaved consumers never send `search` to an entity without them.
+        if handle is None:
+            hit = extract_search(query)
+            if hit is not None and self.search_fields():
+                value, op = hit
+                if value:
+                    resp = await fan_out_search(
+                        self,
+                        query=query,
+                        value=value,
+                        op=op,
+                        search_fields=self.search_fields(),
+                        base_url=base_url,
+                        token=token,
+                        accept_language=accept_language,
+                        client=client,
+                    )
+                    return self._searched_envelope(resp, query)
         status, payload = await self._get(
             base_url,
             token,
@@ -665,23 +713,78 @@ class FacadeAdapterBase:
             return self._json(200, {"data": self.map_read(rec)})
         rows = (payload.get("data") if isinstance(payload, dict) else None) or []
         mapped = [self.map_read(r) for r in rows if isinstance(r, dict)]
+        return self._json(200, self._list_envelope(mapped, payload, query))
+
+    def _searched_envelope(
+        self, resp: AdapterResponse, query: list[tuple[str, str]]
+    ) -> AdapterResponse:
+        """Re-shape a fan-out search result into the shared list envelope.
+
+        The rows are already model-mapped (the fan-out calls back into this
+        adapter's ``request``); only the totals convention needs aligning."""
+        if resp.status_code >= 400:
+            return resp
+        try:
+            body = json.loads(resp.content or b"{}")
+        except (ValueError, TypeError):
+            return resp
+        mapped = body.get("data") if isinstance(body, dict) else None
+        return self._json(
+            200,
+            self._list_envelope(
+                mapped if isinstance(mapped, list) else [],
+                {"meta": body.get("meta") if isinstance(body, dict) else None},
+                query,
+            ),
+        )
+
+    @staticmethod
+    def _query_paging(query: list[tuple[str, str]]) -> tuple[int, int]:
+        q = dict(query)
+        try:
+            page = max(1, int(q.get("page[number]") or "1"))
+        except (TypeError, ValueError):
+            page = 1
+        try:
+            per_page = max(1, int(q.get("page[size]") or "25"))
+        except (TypeError, ValueError):
+            per_page = 25
+        return page, per_page
+
+    def _list_envelope(
+        self,
+        mapped: list[dict[str, Any]],
+        payload: Any,
+        query: list[tuple[str, str]],
+    ) -> dict[str, Any]:
+        """Compose the list envelope with ONE total in both places.
+
+        Consumers grew up on two conventions — ``extra.total`` (EntitySteckbrief,
+        the Phoenix/Odoo cores) and ``meta.total`` (the v3 table envelope generic
+        lists read for count + paging) — while the upstream reports the number in
+        either place depending on the API generation (v3 → ``meta.total``, v1 →
+        ``extra.totalCount``; some endpoints report none at all). Emitting both
+        from the same source ends the overview-says-27-table-says-25 class of
+        mismatches, and the ``page/perPage/lastPage`` block keeps "load more"
+        paging working without consumers guessing from the row count.
+        """
         extra = payload.get("extra") if isinstance(payload, dict) else None
         extra = dict(extra) if isinstance(extra, dict) else {}
-        # Surface the upstream record total so consumers can show a count, as
-        # ``extra.total`` — the convention the FE reads (EntitySteckbrief) and the
-        # other cores emit (Phoenix, Odoo). Two upstream shapes, both requested
-        # via the ``X-Pagination: table`` header ``_headers`` always sends:
-        #   v3 REST endpoints  → ``meta.total``
-        #   v1 endpoints       → ``extra.totalCount`` (page[number]/page[size])
-        # (Some endpoints, e.g. /api/v3/customers, report no total at all — the
-        # card then simply renders without a count.)
-        if "total" not in extra:
-            meta = payload.get("meta") if isinstance(payload, dict) else None
-            if isinstance(meta, dict) and isinstance(meta.get("total"), int):
-                extra["total"] = meta["total"]
-            elif isinstance(extra.get("totalCount"), int):
-                extra["total"] = extra["totalCount"]
-        return self._json(200, {"data": mapped, "extra": extra})
+        up_meta = payload.get("meta") if isinstance(payload, dict) else None
+        total: int | None = None
+        if isinstance(extra.get("total"), int):
+            total = extra["total"]
+        elif isinstance(up_meta, dict) and isinstance(up_meta.get("total"), int):
+            total = up_meta["total"]
+        elif isinstance(extra.get("totalCount"), int):
+            total = extra["totalCount"]
+        page, per_page = self._query_paging(query)
+        meta: dict[str, Any] = {"page": page, "perPage": per_page}
+        if total is not None:
+            extra["total"] = total
+            meta["total"] = total
+            meta["lastPage"] = max(1, -(-total // per_page))
+        return {"data": mapped, "meta": meta, "extra": extra}
 
     # ---- write orchestration --------------------------------------------
     def map_write(

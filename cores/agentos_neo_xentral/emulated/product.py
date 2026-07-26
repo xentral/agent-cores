@@ -331,6 +331,7 @@ class ProductAdapter(FacadeAdapterBase):
                 "Name",
                 section="general",
                 filterable=True,
+                sortable=True,
                 searchable=True,
                 previewable=True,
             ),
