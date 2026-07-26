@@ -20,6 +20,7 @@ from __future__ import annotations
 from entity_registry.core_sdk import CoreManifest, EmulatedOnly
 from .emulated.channel import ChannelAdapter
 from .emulated.correspondence import CorrespondenceAdapter
+from .emulated.email_account import EmailAccountAdapter
 from .emulated.credit_note import CreditNoteAdapter
 from .emulated.customer import CustomerAdapter
 from .emulated.delivery_note import DeliveryNoteAdapter
@@ -28,6 +29,7 @@ from .emulated.batch import BatchAdapter
 from .emulated.payment import PaymentAdapter
 from .emulated.picking_run import PickingRunAdapter
 from .emulated.price_list import PriceListAdapter
+from .emulated.printer import PrinterAdapter
 from .emulated.product import ProductAdapter
 from .emulated.purchase_invoice import PurchaseInvoiceAdapter
 from .emulated.purchase_order import PurchaseOrderAdapter
@@ -75,6 +77,10 @@ CORE = CoreManifest(
         TagAdapter(),
         # CRM tab on the customer record (replaces the xentral_crm MCP tool).
         CorrespondenceAdapter(),
+        # Real-world device/communication surfaces (replace the xentral_email
+        # MCP tool; printing ported from the xentral_api core).
+        PrinterAdapter(),
+        EmailAccountAdapter(),
         # Read-only settings/configuration lookups (category "settings") — the
         # instance's setup catalogue as entities, folding the standalone
         # xentral_erp_settings tool's resources into the core.

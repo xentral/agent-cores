@@ -889,6 +889,34 @@
         }
       }
     },
+    "EmailAccount": {
+      "fields": {
+        "email": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "isSystemDefault": {
+          "read": "pass"
+        },
+        "name": {
+          "read": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "projects": {
+          "read": "pass"
+        },
+        "projects.name": {
+          "read": "pass"
+        },
+        "type": {
+          "read": "pass"
+        }
+      }
+    },
     "Employee": {
       "fields": {
         "email": {
@@ -1248,6 +1276,46 @@
           "read": "pass"
         },
         "validUntil": {
+          "read": "pass"
+        }
+      }
+    },
+    "Printer": {
+      "fields": {
+        "active": {
+          "read": "pass"
+        },
+        "connection": {
+          "read": "pass"
+        },
+        "createdAt": {
+          "read": "pass"
+        },
+        "designation": {
+          "read": "pass"
+        },
+        "deviceId": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "name": {
+          "read": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "printMethod": {
+          "read": "pass"
+        },
+        "spooler": {
+          "read": "pass"
+        },
+        "updatedAt": {
+          "read": "pass"
+        },
+        "useCase": {
           "read": "pass"
         }
       }
