@@ -937,5 +937,17 @@
     "date": "Filterable with equals/notEquals only (upstream rejects range ops). Defaults to today on create.",
     "time": "Defaults to now (Europe/Berlin) on create; HH:MM is padded to HH:MM:SS.",
     "isSent": "Whether an email entry was actually dispatched (set by the send pipeline)."
+  },
+  "Printer": {
+    "connection": "How the printer is reached (cups, download, spooler, adapterbox, …).",
+    "useCase": "What the printer is routed for (shipping labels, shipping documents, other).",
+    "deviceId": "Device-gateway id for spooler-connected printers.",
+    "id": "Target for the printDocument action — a run creates a REAL print job."
+  },
+  "EmailAccount": {
+    "email": "Sender address of this account — the sendEmail action sends from it.",
+    "isSystemDefault": "The account Xentral uses when no explicit sender is picked — prefer it when the user names no account.",
+    "type": "Mailbox type (google, basic, …).",
+    "projects": "Projects/clients this account is bound to."
   }
 }
