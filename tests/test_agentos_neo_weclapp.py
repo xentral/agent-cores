@@ -42,7 +42,19 @@ _EXPECTED_ROSTER = {
     "SalesOrder",
     "SalesInvoice",
     "PurchaseOrder",
+    "PurchaseInvoice",
+    "GoodsReceipt",
     "Shipment",
+    # master-data lookups + stock
+    "Unit",
+    "Currency",
+    "PaymentMethod",
+    "ProductCategory",
+    "Warehouse",
+    "StorageLocation",
+    "Batch",
+    "SerialNumber",
+    "StockLevel",
 }
 
 
@@ -63,6 +75,28 @@ def test_all_entities_metadata_renders():
         assert meta["operations"] == ["list", "read"]
         assert isinstance(meta["rootNode"]["properties"], dict)
         assert meta["rootNode"]["properties"]  # non-empty
+
+
+def test_no_dangling_reference_targets():
+    """Every reference (top-level or nested) points at an entity in the roster —
+    so the folded-in lookups (Unit, Currency, Warehouse, …) actually resolve."""
+    keys = set(ADAPTERS)
+    targets: set[str] = set()
+
+    def walk(props: dict) -> None:
+        for spec in props.values():
+            if not isinstance(spec, dict):
+                continue
+            if spec.get("type") == "reference":
+                targets.add(spec["reference"])
+            sub = spec.get("properties") or (spec.get("node") or {}).get("properties")
+            if isinstance(sub, dict):
+                walk(sub)
+
+    for ad in ADAPTERS.values():
+        walk(ad.metadata()["rootNode"]["properties"])
+    assert targets, "expected at least one reference across the roster"
+    assert targets <= keys, f"dangling reference targets: {sorted(targets - keys)}"
 
 
 def test_supplier_slices_party_by_role():
