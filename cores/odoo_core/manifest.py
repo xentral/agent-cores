@@ -17,8 +17,8 @@ from .emulated import build_adapters
 
 CORE = CoreManifest(
     id="odoo_core",
-    label_de="Odoo",
-    label_en="Odoo",
+    label_de="Odoo Adapter",
+    label_en="Odoo Adapter",
     order=20,
     # No badge: it only echoed the card title (see the other cores — a badge is
     # for status like WIP/DEMO, not for repeating the name).
