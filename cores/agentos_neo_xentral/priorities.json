@@ -1175,36 +1175,19 @@
     ],
     "Product": [
       {
-        "field": "name",
-        "ops": [
-          "update"
-        ],
-        "reason": "v3 products is read-only by design (the PR ships list+show only); update needs a separate write endpoint or a verified v2 mapping — not built yet."
-      },
-      {
-        "field": "identifiers.ean",
-        "ops": [
-          "create",
-          "update"
-        ],
-        "reason": "EAN is core product data entered at creation/onboarding — needs a verified write path (v2 or a future v3 write endpoint)."
-      },
-      {
         "field": "kind",
         "ops": [
           "create",
           "update"
         ],
-        "reason": "The consolidated product kind (ADR-011) should be settable directly instead of juggling isServiceProduct/isFee/isShippingCostsProduct booleans — no direct upstream field for the enum."
+        "reason": "The consolidated product kind (ADR-011) should be settable directly instead of juggling isServiceProduct/isFee/isShippingCostsProduct booleans — the v2 create body only exposes isShippingCostsProduct, so service/digital cannot be expressed."
       },
       {
         "field": "prices.sale",
         "ops": [
-          "create",
-          "read",
-          "update"
+          "read"
         ],
-        "reason": "The default sale price needs the salesPrices include parsed (a SalesPrice sub-resource) — not yet mapped; today only the calculated purchase price is read."
+        "reason": "WRITE works — the sale price is composed as a separate salesPrices write on create/update. READ is still blue: the v3 read model does not carry the sale price (needs the salesPrices include parsed), so a written price is not read back."
       },
       {
         "field": "tax.profile",
@@ -1245,7 +1228,7 @@
           "create",
           "update"
         ],
-        "reason": "Multi-supplier sourcing (beyond the single standardSupplier) needs a suppliers include/relation not yet mapped, plus a write path."
+        "reason": "The default supplier IS writable (mapped to v2 standardSupplier); multi-supplier sourcing (several suppliers with per-supplier price/number) needs a suppliers include/relation not yet mapped, plus a write path."
       },
       {
         "field": "customFields",
@@ -1262,7 +1245,7 @@
           "create",
           "update"
         ],
-        "reason": "Tagging products (assortment curation, campaigns) — the v3 products API is read-only; tag writes need the v2 write path or a future v3 write endpoint."
+        "reason": "Tagging products (assortment curation, campaigns) — product writes now go through v2, but the v2 tags shape ({id,key,name,color}) is not yet mapped/verified, so tag writes stay blue."
       }
     ],
     "PriceList": [

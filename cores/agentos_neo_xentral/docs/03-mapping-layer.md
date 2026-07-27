@@ -43,9 +43,9 @@ flowchart LR
 | purchaseOrder | v3 (confirmation-Felder ✓ lesend) | v3 (Beta; AB-Felder nicht schreibbar → Backlog) | Lesen gut · Schreiben dünn |
 | goodsReceipt | `GET /v1/goodsReceipts/{id}` — kein List! | `POST /v1/goodsReceipts` (+PO/Return-Action) | create/view · list/storno fehlen |
 | purchaseInvoice | `GET /v1/liabilities` + SupplierInvoice-Files | teils v1; approve/match nur intern | lückig — Match im Layer nachbauen |
-| product | v3 products (PR API-710; Flag→Enum im Layer) | v2 products + v2 purchasePrices | Lesen stark · v2-Feldabgleich nötig |
+| product | v3 products (PR API-710; Flag→Enum im Layer) | **v2 products (write_path) — POST/PATCH gebaut**; VK-Preis via salesPrices komponiert | Lesen stark · create/update+VK-Preis live; BOM/Bestand/Media = Follow-up |
 | customer / supplier | v1 (+Kontakte/Lieferadressen); finance berechnet aus offenen Rechnungen | v1 create/update | ok · creditLimit/onHold-Write prüfen |
-| priceList | `GET /v1/salesPrices` (list) | Write nicht gefunden | halb |
+| priceList | `GET /v1/salesPrices` (list) | **CRUD vorhanden**: POST/PATCH/DELETE /v1/salesPrices (+ v3 salesPrices) | Schreiben da · nur aggregierte Preislisten-Sicht fehlt |
 | channel | SalesChannelConfiguration + Importer-Settings | teils | halb · sync-Status offen |
 | warehouse/storageLocation/stockLevel | v1 CRUD + v2 items + v1 product-stocks (Fan-in) | v1 CRUD; Korrektur nur setTotalStock | ok · stockLevel = Layer-Projektion |
 | stockMovement | **kein Read gefunden** | nur setTotalStock/Belege | größte Lücke |

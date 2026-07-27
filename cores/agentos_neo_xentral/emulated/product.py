@@ -24,15 +24,26 @@ default) — handled in ``_get`` override below, same translation the xentral_ap
 adapter performs.
 
 The v3 products endpoint is **read-only by design** (per the PR). Write (create/
-update) is expected to go through v2 products (docs/03-mapping-layer.md), but that
-payload is not yet field-verified here — every write is a blue wish until that
-mapping is built and proven.
+update) therefore goes through **v2 products** (``POST/PATCH /api/v2/products`` —
+``product.createV2`` / ``product.updateV2``), targeted via ``write_path`` while
+reads stay on v3. ``map_write`` below maps the new model onto the v2 create body
+(field names grounded in the v2 OpenAPI request schema). Fields the v2 body does
+not accept (manufacturerNumber, packaging units, custom fields, BOM parts, stock)
+stay read-only and surface as blue wishes (ADR-014).
+
+**Sale price** is not part of the product body upstream — it is a separate
+resource (``POST /api/v3/salesPrices``, v1 fallback). ``_write`` composes it on
+top of a successful create/update: the product is created first, then the sale
+price is posted against the new product id. A price failure after a successful
+product create is reported honestly as a partial success (never a false 201).
 """
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
+import httpx
 
 from entity_registry.core_sdk import EmulationManifest
 
@@ -48,6 +59,28 @@ _KIND_OPTIONS = [
 _PRODUCTION_OPTIONS = [
     {"value": v, "label": v.capitalize()} for v in ("none", "inHouse", "external", "justInTime")
 ]
+
+# Field-flag shorthands (mirror customer.py's _CU): created+updated vs create-only.
+_CU: dict[str, Any] = {"creatable": True, "updatable": True}
+_C: dict[str, Any] = {"creatable": True}
+
+# v2 products REQUIRES a project on create; the model's project is optional, so an
+# unset project falls back to the standard project (id 1 in every Xentral tenant).
+_DEFAULT_PROJECT_ID = "1"
+
+# Sale price is written to a separate resource. Primary is v3 salesPrices (aligned
+# with the model); v1 salesPrices is the documented fallback (same field shape).
+_SALES_PRICE_PATH = "/api/v3/salesPrices"
+_SALES_PRICE_PATH_FALLBACK = "/api/v1/salesPrices"
+
+# model tax.rate → v2 salesTax enum (model 'exempt' is upstream 'free').
+_TAX_TO_V2 = {"standard": "standard", "reduced": "reduced", "exempt": "free"}
+# upstream taxRate/salesTax → model tax.rate (the reverse; unknowns pass through).
+_TAX_FROM_UPSTREAM = {"standard": "standard", "reduced": "reduced", "free": "exempt"}
+# model tracking.serialNumbers → v2 serialNumbersMode enum. The model read passes
+# the upstream value straight through, so canonical modes round-trip; 'none' (the
+# model's "off") maps to the v2 'disabled'.
+_SN_MODES = {"disabled", "user", "product", "productAndWarehouse"}
 
 
 def _kind(r: dict[str, Any]) -> str:
@@ -78,6 +111,13 @@ def _production_mode(r: dict[str, Any]) -> str:
     return "none"
 
 
+def _tax_rate(r: dict[str, Any]) -> str | None:
+    # v3 read exposes the rate as ``taxRate``; the v2 view calls it ``salesTax``.
+    # Upstream "free" is the model's "exempt"; unknown values pass through.
+    v = r.get("taxRate") or r.get("salesTax")
+    return _TAX_FROM_UPSTREAM.get(v, v)
+
+
 class ProductAdapter(FacadeAdapterBase):
     manifest = EmulationManifest(
         key="Product",
@@ -86,9 +126,15 @@ class ProductAdapter(FacadeAdapterBase):
         rollout_batch="agentos_neo_xentral",
         adapter="agentos_neo_xentral.product",
         source_apis=("agentos_neo_xentral",),
-        operations=("list", "read"),  # v3 products is read-only by design (PR #24325)
+        # Read via v3 (PR #24325, read-only by design); WRITE via v2 products
+        # (POST/PATCH /api/v2/products — see write_path). Sale price is a separate
+        # resource composed on top of the create (see _write).
+        operations=("list", "read", "create", "update"),
     )
     v3_path = "/api/v3/products"
+    # v3 products is read-only; create/update go to v2 products (product.createV2 /
+    # product.updateV2). The base's _send targets this for POST/PATCH; reads stay v3.
+    write_path = "/api/v2/products"
     include = "project,defaultSupplier,merchandiseGroup,tags"
     preview_template = "{{name}}"
     sections = {
@@ -102,6 +148,40 @@ class ProductAdapter(FacadeAdapterBase):
         "production": {"label": "Production"},
         "variant": {"label": "Variant"},
     }
+
+    # v2 products create/update answers 201/204 with an EMPTY body and puts the
+    # new id in the ``Location`` header (``…/api/v2/products/{id}``) — unlike the
+    # v3 writes the base assumes, which echo ``{"data":{"id":…}}``. Override _send
+    # to surface that id as a synthetic body so the base write flow (read-back,
+    # sale-price composition) can find it. Mirrors base._send but keeps headers.
+    async def _send(  # noqa: ANN001
+        self, base_url, token, method, up_handle, payload, accept_language, client
+    ):
+        path = (self.write_path or self.v3_path) + (f"/{up_handle}" if up_handle else "")
+        url = f"{base_url.rstrip('/')}{path}"
+        headers = self._headers(token, accept_language)
+
+        async def _do(c):  # noqa: ANN001
+            return await c.request(method, url, json=payload, headers=headers)
+
+        if client is None:
+            async with httpx.AsyncClient(timeout=60.0) as c:
+                resp = await _do(c)
+        else:
+            resp = await _do(client)
+        try:
+            body = resp.json()
+        except ValueError:
+            body = {}
+        if resp.status_code < 400 and not (
+            isinstance(body, dict) and (body.get("data") or {}).get("id")
+        ):
+            loc = resp.headers.get("Location") or resp.headers.get("location")
+            if loc:
+                new_id = loc.rstrip("/").rsplit("/", 1)[-1]
+                if new_id:
+                    body = {"data": {"id": new_id}}
+        return resp.status_code, body
 
     # v3 products uses page/perPage (not page[number]/page[size]) and needs no
     # default include (unlike the documents) — same quirk as xentral_api's
@@ -322,16 +402,20 @@ class ProductAdapter(FacadeAdapterBase):
         return {
             "object": prop("string", "Object", **RO, section="general"),
             "id": prop("string", "ID", **RO, section="general"),
+            # Number/SKU can be set on create; changing it afterwards is a
+            # sensitive identity change we don't expose (create-only).
             "number": prop(
                 "string",
                 "Number",
-                **RO,
+                **_C,
                 section="general",
                 filterable=True,
                 searchable=True,
                 sortable=True,
                 previewable=True,
             ),
+            # Status transitions run through the deactivate/activate steps, not a
+            # free field write; archived is not settable via v2 → read-only here.
             "status": prop(
                 "select",
                 "Status",
@@ -341,21 +425,25 @@ class ProductAdapter(FacadeAdapterBase):
                 previewable=True,
             ),
             "statusReason": prop("string", "Status reason", **RO, section="general"),
+            # v2 create only exposes isShippingCostsProduct/isFee flags, not a
+            # free "kind" — service/digital cannot be expressed → read-only wish.
             "kind": prop("select", "Kind", **RO, section="general", options=_KIND_OPTIONS),
             "name": prop(
                 "string",
                 "Name",
+                **_CU,
                 section="general",
                 filterable=True,
                 sortable=True,
                 searchable=True,
                 previewable=True,
             ),
-            "description": prop("string", "Description", section="general"),
-            "unit": prop("string", "Unit", **RO, section="general"),
+            "description": prop("string", "Description", **_CU, section="general"),
+            "unit": prop("string", "Unit", **_CU, section="general"),
             "category": prop(
                 "reference",
                 "Category",
+                **_CU,
                 # The mapped upstream value is the merchandise group
                 # (Warengruppe), not the productsCategories tree.
                 reference="MerchandiseGroup",
@@ -365,6 +453,7 @@ class ProductAdapter(FacadeAdapterBase):
             "project": prop(
                 "reference",
                 "Project",
+                **_CU,
                 reference="Project",
                 renderProperty="name",
                 section="general",
@@ -375,10 +464,11 @@ class ProductAdapter(FacadeAdapterBase):
                 "Identifiers",
                 section="identifiers",
                 properties={
-                    "ean": prop("string", "EAN", **RO, filterable=True, searchable=True),
+                    "ean": prop("string", "EAN", **_CU, filterable=True, searchable=True),
+                    # manufacturerNumber has no slot in the v2 create body → wish.
                     "manufacturerNumber": prop("string", "Manufacturer number", **RO),
-                    "hsCode": prop("string", "HS code", **RO),
-                    "countryOfOrigin": prop("string", "Country of origin", **RO),
+                    "hsCode": prop("string", "HS code", **_CU),
+                    "countryOfOrigin": prop("string", "Country of origin", **_CU),
                     "external": prop(
                         "collection",
                         "External references",
@@ -401,11 +491,10 @@ class ProductAdapter(FacadeAdapterBase):
             "manufacturer": prop(
                 "embedded",
                 "Manufacturer",
-                **RO,
                 section="general",
                 properties={
-                    "name": prop("string", "Name", **RO),
-                    "website": prop("string", "Website", **RO),
+                    "name": prop("string", "Name", **_CU),
+                    "website": prop("string", "Website", **_CU),
                 },
             ),
             "prices": prop(
@@ -413,22 +502,21 @@ class ProductAdapter(FacadeAdapterBase):
                 "Prices",
                 section="prices",
                 properties={
+                    # Sale price is composed as a separate salesPrices write (_write).
                     "sale": prop(
                         "embedded",
                         "Sale price",
-                        **RO,
                         properties={
-                            "amount": prop("string", "Amount", **RO),
-                            "currency": prop("string", "Currency", **RO),
+                            "amount": prop("string", "Amount", **_CU),
+                            "currency": prop("string", "Currency", **_CU),
                         },
                     ),
                     "purchase": prop(
                         "embedded",
                         "Purchase price",
-                        **RO,
                         properties={
-                            "amount": prop("string", "Amount", **RO),
-                            "currency": prop("string", "Currency", **RO),
+                            "amount": prop("string", "Amount", **_CU),
+                            "currency": prop("string", "Currency", **_CU),
                             "source": prop("string", "Source", **RO),
                         },
                     ),
@@ -442,6 +530,7 @@ class ProductAdapter(FacadeAdapterBase):
                     "rate": prop(
                         "select",
                         "Rate",
+                        **_CU,
                         options=[
                             {"value": v, "label": v.capitalize()}
                             for v in ("standard", "reduced", "exempt")
@@ -458,34 +547,31 @@ class ProductAdapter(FacadeAdapterBase):
                     "weight": prop(
                         "embedded",
                         "Weight",
-                        **RO,
                         properties={
-                            "value": prop("decimal", "Value", **RO),
-                            "unit": prop("string", "Unit", **RO),
+                            "value": prop("decimal", "Value", **_CU),
+                            "unit": prop("string", "Unit", **_CU),
                         },
                     ),
                     "netWeight": prop(
                         "embedded",
                         "Net weight",
-                        **RO,
                         properties={
-                            "value": prop("decimal", "Value", **RO),
-                            "unit": prop("string", "Unit", **RO),
+                            "value": prop("decimal", "Value", **_CU),
+                            "unit": prop("string", "Unit", **_CU),
                         },
                     ),
                     "dimensions": prop(
                         "embedded",
                         "Dimensions",
-                        **RO,
                         properties={
-                            "length": prop("decimal", "Length", **RO),
-                            "width": prop("decimal", "Width", **RO),
-                            "height": prop("decimal", "Height", **RO),
-                            "unit": prop("string", "Unit", **RO),
+                            "length": prop("decimal", "Length", **_CU),
+                            "width": prop("decimal", "Width", **_CU),
+                            "height": prop("decimal", "Height", **_CU),
+                            "unit": prop("string", "Unit", **_CU),
                         },
                     ),
-                    "minimumOrderQuantity": prop("integer", "Minimum order quantity", **RO),
-                    "minimumStockQuantity": prop("integer", "Minimum stock quantity", **RO),
+                    "minimumOrderQuantity": prop("integer", "Minimum order quantity", **_CU),
+                    "minimumStockQuantity": prop("integer", "Minimum stock quantity", **_CU),
                     "packagingUnits": prop(
                         "collection",
                         "Packaging units",
@@ -502,13 +588,12 @@ class ProductAdapter(FacadeAdapterBase):
             "tracking": prop(
                 "embedded",
                 "Tracking",
-                **RO,
                 section="tracking",
                 properties={
-                    "stock": prop("boolean", "Stock item", **RO),
-                    "batches": prop("boolean", "Batches", **RO),
-                    "serialNumbers": prop("string", "Serial numbers mode", **RO),
-                    "bestBefore": prop("boolean", "Best before", **RO),
+                    "stock": prop("boolean", "Stock item", **_CU),
+                    "batches": prop("boolean", "Batches", **_CU),
+                    "serialNumbers": prop("string", "Serial numbers mode", **_CU),
+                    "bestBefore": prop("boolean", "Best before", **_CU),
                 },
             ),
             "stock": prop(
@@ -526,11 +611,10 @@ class ProductAdapter(FacadeAdapterBase):
             "production": prop(
                 "embedded",
                 "Production",
-                **RO,
                 section="production",
                 properties={
-                    "mode": prop("select", "Mode", **RO, options=_PRODUCTION_OPTIONS),
-                    "hasBillOfMaterials": prop("boolean", "Has bill of materials", **RO),
+                    "mode": prop("select", "Mode", **_CU, options=_PRODUCTION_OPTIONS),
+                    "hasBillOfMaterials": prop("boolean", "Has bill of materials", **_CU),
                 },
             ),
             "documentDefaults": prop(
@@ -538,19 +622,21 @@ class ProductAdapter(FacadeAdapterBase):
                 "Document defaults",
                 section="general",
                 properties={
-                    "hidePrice": prop("boolean", "Hide price"),
-                    "noticeText": prop("string", "Notice text"),
-                    "requiresCustomerApproval": prop("boolean", "Requires customer approval"),
+                    "hidePrice": prop("boolean", "Hide price", **_CU),
+                    # Not in the v2 create body → read-only wishes.
+                    "noticeText": prop("string", "Notice text", **RO),
+                    "requiresCustomerApproval": prop("boolean", "Requires customer approval", **RO),
                 },
             ),
             "variant": prop(
                 "embedded",
                 "Variant",
-                **RO,
                 section="variant",
                 properties={
-                    "of": prop("reference", "Of", reference="Product", renderProperty="name", **RO),
-                    "isMatrix": prop("boolean", "Is matrix", **RO),
+                    "of": prop(
+                        "reference", "Of", **_CU, reference="Product", renderProperty="name"
+                    ),
+                    "isMatrix": prop("boolean", "Is matrix", **_CU),
                 },
             ),
             "bom": prop(
@@ -584,15 +670,17 @@ class ProductAdapter(FacadeAdapterBase):
                 section="general",
                 node={
                     "properties": {
+                        # Only the default supplier round-trips to v2's
+                        # standardSupplier; per-supplier price/number is a wish.
                         "supplier": prop(
                             "reference",
                             "Supplier",
+                            **_CU,
                             reference="Supplier",
                             renderProperty="name",
-                            **RO,
                         ),
                         "supplierProductNumber": prop("string", "Supplier product number", **RO),
-                        "isDefault": prop("boolean", "Default", **RO),
+                        "isDefault": prop("boolean", "Default", **_CU),
                     }
                 },
             ),
@@ -677,7 +765,10 @@ class ProductAdapter(FacadeAdapterBase):
                 "sale": None,
                 "purchase": money(pp_price.get("amount"), pp_price.get("currency") or "EUR"),
             },
-            "tax": {"rate": r.get("salesTax"), "profile": None},
+            "tax": {
+                "rate": _tax_rate(r),
+                "profile": None,
+            },
             "logistics": {
                 "weight": dim("weight"),
                 "netWeight": dim("netWeight"),
@@ -732,33 +823,307 @@ class ProductAdapter(FacadeAdapterBase):
             "updatedAt": r.get("updatedAt"),
         }
 
-    # Write (create/update) goes through v2 products upstream (docs/03-mapping),
-    # not yet field-verified here — everything is a blue wish until that mapping
-    # is built and proven against a live instance.
+    # Top-level model keys we actively map onto the v2 create/update body.
+    _WRITABLE = {
+        "name",
+        "number",
+        "description",
+        "unit",
+        "category",
+        "project",
+        "identifiers",
+        "manufacturer",
+        "prices",
+        "tax",
+        "logistics",
+        "tracking",
+        "production",
+        "documentDefaults",
+        "variant",
+        "suppliers",
+    }
+    # Keys the read emits (so round-trip writes carry them) but that are
+    # system/computed or schema read-only — accepted silently, never sent. The
+    # field schema (creatable/updatable) is the contract; unknown keys still 409.
+    _IGNORE = {
+        "object",
+        "id",
+        "status",
+        "statusReason",
+        "kind",
+        "stock",
+        "bom",
+        "customFields",
+        "tags",
+        "createdAt",
+        "updatedAt",
+    }
+
+    @staticmethod
+    def _ref_id(value: Any) -> str | None:
+        """A model reference ({id: "mg_7"} or a bare id) → the bare numeric
+        upstream id (speaking prefix stripped, ADR-002). None clears it."""
+        ident = value.get("id") if isinstance(value, dict) else value
+        if ident in (None, ""):
+            return None
+        ident = str(ident)
+        return ident.split("_", 1)[1] if "_" in ident else ident
+
+    @staticmethod
+    def _measure(obj: Any, default_unit: str) -> dict[str, Any] | None:
+        """A model {value, unit} → the v2 measurements shape {value, unit}.
+        Tolerates a bare number. None when there is no value to send."""
+        if isinstance(obj, dict):
+            v, u = obj.get("value"), obj.get("unit")
+        elif isinstance(obj, (int, float)):
+            v, u = obj, None
+        else:
+            return None
+        if v in (None, ""):
+            return None
+        return {"value": v, "unit": u or default_unit}
+
     def map_write(
         self, model: dict[str, Any], *, creating: bool
     ) -> tuple[dict[str, Any], set[str]]:
-        return {}, {
-            k
-            for k in model
-            if k
-            not in {
-                "object",
-                "id",
-                "number",
-                "status",
-                "statusReason",
-                "kind",
-                "stock",
-                "production",
-                "variant",
-                "bom",
-                "suppliers",
-                "identifiers",
-                "manufacturer",
-                "prices",
-                "tracking",
-                "createdAt",
-                "updatedAt",
+        """Map the new model onto the v2 products create/update body (field names
+        grounded in the v2 OpenAPI request schema). Sale price is NOT part of the
+        body — it is composed as a separate salesPrices write in ``_write`` — so
+        ``prices.sale`` is intentionally not mapped here. Fields the v2 body cannot
+        accept stay schema read-only; unknown top-level keys are rejected (409)."""
+        v2: dict[str, Any] = {}
+        rejected: set[str] = set()
+
+        # --- scalars / references -----------------------------------------
+        for key in ("name", "number", "description", "unit"):
+            if model.get(key) is not None:
+                v2[key] = model[key]
+        if "category" in model:  # model category == merchandise group (Warengruppe)
+            mg = self._ref_id(model["category"])
+            if mg is not None:
+                v2["merchandiseGroup"] = {"id": mg}
+        # v2 REQUIRES a project on create; fall back to the standard project.
+        proj = self._ref_id(model.get("project")) if "project" in model else None
+        if proj is not None:
+            v2["project"] = {"id": proj}
+        elif creating:
+            v2["project"] = {"id": _DEFAULT_PROJECT_ID}
+
+        # --- identifiers ---------------------------------------------------
+        idents = model.get("identifiers") or {}
+        if isinstance(idents, dict):
+            if idents.get("ean") is not None:
+                v2["ean"] = idents["ean"]
+            if idents.get("hsCode") is not None:
+                v2["customsTariffNumber"] = idents["hsCode"]
+            if idents.get("countryOfOrigin") is not None:
+                v2["countryOfOrigin"] = idents["countryOfOrigin"]
+
+        # --- manufacturer (name + website→link) ----------------------------
+        man = model.get("manufacturer") or {}
+        if isinstance(man, dict):
+            mv: dict[str, Any] = {}
+            if man.get("name") is not None:
+                mv["name"] = man["name"]
+            if man.get("website") is not None:
+                mv["link"] = man["website"]
+            if mv:
+                v2["manufacturer"] = mv
+
+        # --- purchase price (sale price is composed separately) ------------
+        prices = model.get("prices") or {}
+        purchase = prices.get("purchase") if isinstance(prices, dict) else None
+        if isinstance(purchase, dict) and purchase.get("amount") is not None:
+            v2["calculatedPurchasePrice"] = {
+                # source == "calculated" → auto-calculated; otherwise a manual price.
+                "hasCalculatedPurchasePrice": purchase.get("source") == "calculated",
+                "price": {
+                    "amount": str(purchase["amount"]),
+                    "currency": purchase.get("currency") or "EUR",
+                },
             }
+
+        # --- tax -----------------------------------------------------------
+        tax = model.get("tax") or {}
+        if isinstance(tax, dict) and tax.get("rate") is not None:
+            mapped = _TAX_TO_V2.get(tax["rate"])
+            if mapped is not None:
+                v2["salesTax"] = mapped
+
+        # --- logistics -----------------------------------------------------
+        log = model.get("logistics") or {}
+        if isinstance(log, dict):
+            measurements: dict[str, Any] = {}
+            w = self._measure(log.get("weight"), "kg")
+            if w:
+                measurements["weight"] = w
+            nw = self._measure(log.get("netWeight"), "kg")
+            if nw:
+                measurements["netWeight"] = nw
+            dims = log.get("dimensions") or {}
+            if isinstance(dims, dict):
+                unit = dims.get("unit") or "cm"
+                for axis in ("length", "width", "height"):
+                    if dims.get(axis) is not None:
+                        measurements[axis] = {"value": dims[axis], "unit": unit}
+            if measurements:
+                v2["measurements"] = measurements
+            if log.get("minimumOrderQuantity") is not None:
+                v2["minimumOrderQuantity"] = log["minimumOrderQuantity"]
+            if log.get("minimumStockQuantity") is not None:
+                v2["minimumStorageQuantity"] = log["minimumStockQuantity"]
+
+        # --- tracking flags ------------------------------------------------
+        tr = model.get("tracking") or {}
+        if isinstance(tr, dict):
+            if tr.get("stock") is not None:
+                v2["isStockItem"] = bool(tr["stock"])
+            if tr.get("batches") is not None:
+                v2["hasBatches"] = bool(tr["batches"])
+            if tr.get("bestBefore") is not None:
+                v2["hasBestBeforeDate"] = bool(tr["bestBefore"])
+            sn = tr.get("serialNumbers")
+            if sn is not None:
+                v2["serialNumbersMode"] = sn if sn in _SN_MODES else "disabled"
+
+        # --- production ----------------------------------------------------
+        prod = model.get("production") or {}
+        if isinstance(prod, dict):
+            if prod.get("hasBillOfMaterials") is not None:
+                v2["hasBillOfMaterials"] = bool(prod["hasBillOfMaterials"])
+            mode = prod.get("mode")
+            if mode is not None:
+                v2["isAssembledJustInTime"] = mode == "justInTime"
+                v2["isExternallyProduced"] = mode == "external"
+                v2["isProductionProduct"] = mode == "inHouse"
+
+        # --- kind → shipping-cost flag (the only kind v2 create exposes) ----
+        if model.get("kind") == "shippingCost":
+            v2["isShippingCostsProduct"] = True
+
+        # --- document defaults (only hidePrice round-trips) ----------------
+        dd = model.get("documentDefaults") or {}
+        if isinstance(dd, dict) and dd.get("hidePrice") is not None:
+            v2["hidePriceOnDocuments"] = bool(dd["hidePrice"])
+
+        # --- variant -------------------------------------------------------
+        variant = model.get("variant") or {}
+        if isinstance(variant, dict):
+            if variant.get("isMatrix") is not None:
+                v2["isMatrixProduct"] = bool(variant["isMatrix"])
+            vof = self._ref_id(variant.get("of"))
+            if vof is not None:
+                v2["variantOf"] = {"id": vof}
+
+        # --- default supplier (only the isDefault entry → standardSupplier) -
+        suppliers = model.get("suppliers")
+        if isinstance(suppliers, list):
+            default = next(
+                (s for s in suppliers if isinstance(s, dict) and s.get("isDefault")),
+                None,
+            ) or (suppliers[0] if suppliers and isinstance(suppliers[0], dict) else None)
+            sup_id = self._ref_id(default.get("supplier")) if isinstance(default, dict) else None
+            if sup_id is not None:
+                v2["standardSupplier"] = {"id": sup_id}
+
+        # --- reject genuinely unknown top-level keys -----------------------
+        for k in model:
+            if k not in self._WRITABLE and k not in self._IGNORE:
+                rejected.add(k)
+        return v2, rejected
+
+    # ---- sale-price composition -----------------------------------------
+    # Sale price is a separate resource. v1 salesPrices is field-verified here
+    # (product + amount [quantity tier] + price); v3 salesPrices exists too and is
+    # the model-aligned target once its body is verified live.
+    _sale_price_path = _SALES_PRICE_PATH_FALLBACK
+
+    def _sale_price_payload(self, up_id: str, sale: Any) -> dict[str, Any] | None:
+        """v1 salesPrices create body for the product's base (quantity-1) price.
+        None when there is no amount to write."""
+        if not isinstance(sale, dict) or sale.get("amount") in (None, ""):
+            return None
+        return {
+            "product": {"id": str(up_id)},
+            "amount": 1,  # quantity tier — 1 = the base sale price
+            "price": {
+                "amount": str(sale["amount"]),
+                "currency": sale.get("currency") or "EUR",
+            },
         }
+
+    async def _post_sale_price(
+        self,
+        payload: dict[str, Any],
+        base_url: str,
+        token: str,
+        accept_language: str | None,
+        client,  # noqa: ANN001
+    ) -> tuple[int, Any]:
+        url = f"{base_url.rstrip('/')}{self._sale_price_path}"
+        headers = self._headers(token, accept_language)
+
+        async def _do(c):  # noqa: ANN001
+            return await c.post(url, json=payload, headers=headers)
+
+        if client is None:
+            async with httpx.AsyncClient(timeout=60.0) as c:
+                resp = await _do(c)
+        else:
+            resp = await _do(client)
+        try:
+            return resp.status_code, resp.json()
+        except ValueError:
+            return resp.status_code, {}
+
+    async def _write(  # noqa: ANN001
+        self, method, handle, query, body, base_url, token, accept_language, client
+    ):
+        """Create/update the product via v2 (base ``_write`` → ``write_path``),
+        then compose the sale price as a separate salesPrices write. A price
+        failure AFTER a successful product write is reported as a partial success
+        (the product exists) — never a silent drop and never a false error."""
+        try:
+            model = json.loads(body or b"{}")
+        except (ValueError, TypeError):
+            model = {}
+        sale = (model.get("prices") or {}).get("sale") if isinstance(model, dict) else None
+
+        resp = await super()._write(
+            method, handle, query, body, base_url, token, accept_language, client
+        )
+        is_dry = any(k == "dryRun" and v in ("true", "1") for k, v in query)
+        payload = self._sale_price_payload("0", sale) if sale else None
+        if resp.status_code >= 400 or is_dry or payload is None:
+            return resp
+
+        try:
+            data = json.loads(resp.content or b"{}").get("data") or {}
+        except (ValueError, TypeError):
+            data = {}
+        up_id = self._ref_id(data.get("id"))
+        if not up_id:
+            return resp  # no id to attach a price to — leave the product response as is
+        payload["product"]["id"] = str(up_id)
+
+        st, pr = await self._post_sale_price(payload, base_url, token, accept_language, client)
+        if st >= 400:
+            data["_warnings"] = {
+                "salePrice": {
+                    "message": (
+                        "Product was created/updated, but setting the sale price failed. "
+                        "Retry the sale price via the salesPrices resource."
+                    ),
+                    "status": st,
+                    "error": pr if isinstance(pr, dict) else {"raw": str(pr)[:300]},
+                }
+            }
+            return self._json(resp.status_code, {"data": data})
+
+        # The v3 read does not surface the sale price (map_read leaves it null), so
+        # stamp the value we just persisted onto the returned record.
+        data.setdefault("prices", {})["sale"] = {
+            "amount": str(sale["amount"]),
+            "currency": sale.get("currency") or "EUR",
+        }
+        return self._json(resp.status_code, {"data": data})
