@@ -57,3 +57,61 @@ def test_list_envelope_without_total_keeps_paging_only():
     assert "total" not in body["extra"]
     assert body["meta"]["page"] == 1
     assert body["meta"]["perPage"] == 25
+
+
+def test_clamped_page_size_is_reported_not_the_request():
+    """v1 caps perPage at 50 — lastPage must follow what was served.
+
+    The mvp tenant's sales prices: asking for 100 got 50, and reporting the
+    request made lastPage 613 instead of 1226, hiding half the rows behind a
+    number that looks authoritative.
+    """
+    body = CreditNoteAdapter()._list_envelope(
+        [],
+        {"extra": {"totalCount": 61256, "page": {"number": 1, "size": 50}}},
+        [("page[number]", "1"), ("page[size]", "100")],
+    )
+    assert body["meta"]["perPage"] == 50
+    assert body["meta"]["lastPage"] == 1226
+
+
+def test_v3_meta_per_page_echo_wins_over_request():
+    body = CreditNoteAdapter()._list_envelope(
+        [],
+        {"meta": {"total": 300, "perPage": 50}},
+        [("page[number]", "1"), ("page[size]", "100")],
+    )
+    assert body["meta"]["perPage"] == 50
+    assert body["meta"]["lastPage"] == 6
+
+
+def test_unclamped_echo_leaves_the_request_intact():
+    body = CreditNoteAdapter()._list_envelope(
+        [],
+        {"extra": {"totalCount": 300, "page": {"number": 1, "size": 25}}},
+        [("page[number]", "1"), ("page[size]", "25")],
+    )
+    assert body["meta"]["perPage"] == 25
+    assert body["meta"]["lastPage"] == 12
+
+
+def test_absent_echo_falls_back_to_the_request():
+    """No echo is not evidence of a clamp — a short final page is normal."""
+    body = CreditNoteAdapter()._list_envelope(
+        [{"id": "cn_1"}],
+        {"meta": {"total": 27}},
+        [("page[number]", "2"), ("page[size]", "25")],
+    )
+    assert body["meta"]["perPage"] == 25
+    assert body["meta"]["lastPage"] == 2
+
+
+def test_malformed_echo_is_ignored():
+    for bogus in ({"size": 0}, {"size": "50"}, {"size": None}, {"size": True}, "nonsense"):
+        body = CreditNoteAdapter()._list_envelope(
+            [],
+            {"extra": {"totalCount": 100, "page": bogus}},
+            [("page[number]", "1"), ("page[size]", "25")],
+        )
+        assert body["meta"]["perPage"] == 25, bogus
+        assert body["meta"]["lastPage"] == 4, bogus
