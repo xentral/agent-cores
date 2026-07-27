@@ -244,7 +244,7 @@ class ProductAdapter(FacadeAdapterBase):
         else:
             truncated = True
         start = (page - 1) * size
-        extra = {
+        extra: dict[str, Any] = {
             "emulatedFilter": {
                 "field": "tags",
                 "scannedRows": scanned,
@@ -252,7 +252,23 @@ class ProductAdapter(FacadeAdapterBase):
                 "truncated": truncated,
             }
         }
-        return self._json(200, {"data": matched[start : start + size], "extra": extra})
+        # Same envelope the generic list path emits (see base._list_envelope):
+        # consumers read the count from meta.total or extra.total depending on
+        # their generation, and page through meta.lastPage. Returning data
+        # without it left tag-filtered lists unpaginable — a caller asking for
+        # 2 of 4 matches got 2 rows and no way to learn there were more.
+        meta: dict[str, Any] = {"page": page, "perPage": size}
+        if not truncated:
+            # Only a completed scan knows the real total. A truncated one has
+            # merely counted what it reached, and publishing that as `total`
+            # would understate it exactly the way a clamped perPage understates
+            # lastPage — extra.emulatedFilter.truncated is the honest signal.
+            extra["total"] = len(matched)
+            meta["total"] = len(matched)
+            meta["lastPage"] = max(1, -(-len(matched) // size))
+        return self._json(
+            200, {"data": matched[start : start + size], "meta": meta, "extra": extra}
+        )
 
     def steps(self):
         return [
