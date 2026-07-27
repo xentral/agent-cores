@@ -603,6 +603,10 @@ class ProductAdapter(FacadeAdapterBase):
                 return {"value": v, "unit": unit}
             return None
 
+        # Dimensions carry the same two upstream generations as weight —
+        # resolve them through dim() so a bare number cannot crash the record.
+        length, width, height = dim("length"), dim("width"), dim("height")
+
         cpp = r.get("calculatedPurchasePrice")
         if not isinstance(cpp, dict):
             cpp = {}
@@ -663,12 +667,12 @@ class ProductAdapter(FacadeAdapterBase):
                 "netWeight": dim("netWeight"),
                 "dimensions": (
                     {
-                        "length": (m.get("length") or {}).get("value"),
-                        "width": (m.get("width") or {}).get("value"),
-                        "height": (m.get("height") or {}).get("value"),
-                        "unit": (m.get("length") or {}).get("unit"),
+                        "length": length["value"],
+                        "width": (width or {}).get("value"),
+                        "height": (height or {}).get("value"),
+                        "unit": length["unit"],
                     }
-                    if m.get("length")
+                    if length
                     else None
                 ),
                 "minimumOrderQuantity": r.get("minimumOrderQuantity"),
