@@ -55,12 +55,15 @@ _EXPECTED_ROSTER = {
     "Batch",
     "SerialNumber",
     "StockLevel",
+    "StockMovement",
     "StockTake",
+    "MerchandiseGroup",
     # configuration lookups
     "Tag",
     "ShippingMethod",
     "PaymentTermsGroup",
     "TaxRate",
+    "TextTemplate",
     "Webhook",
     "User",
 }

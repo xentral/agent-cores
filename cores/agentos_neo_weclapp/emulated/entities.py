@@ -6,8 +6,9 @@ master data, stock and configuration lookups, all read-only:
     Customer · Supplier · Article · Quotation · SalesOrder · SalesInvoice ·
     PurchaseOrder · PurchaseInvoice · GoodsReceipt · Shipment · Unit ·
     Currency · PaymentMethod · ProductCategory · Warehouse · StorageLocation ·
-    Batch · SerialNumber · StockLevel · StockTake · Tag · ShippingMethod ·
-    PaymentTermsGroup · TaxRate · Webhook · User
+    Batch · SerialNumber · StockLevel · StockMovement · StockTake ·
+    MerchandiseGroup · Tag · ShippingMethod · PaymentTermsGroup · TaxRate ·
+    TextTemplate · Webhook · User
 
 They share the same engine (``WeclappAdapterBase``) and are built from reusable
 field bundles + two small factories (``_party_entity`` for the polymorphic
@@ -827,6 +828,91 @@ USER = Entity(
 )
 
 
+# The stock LEDGER (append-only movements) — weclapp `warehouseStockMovement`,
+# complementing StockLevel (the on-hand projection). weclapp records one
+# storage place + a movement type per row; the Neo model's richer from/to split
+# is not represented upstream, so this maps the flat weclapp shape faithfully
+# (type stays a plain string — weclapp's enum differs from ours).
+STOCK_MOVEMENT = Entity(
+    key="StockMovement",
+    label_en="Stock movement",
+    category="logistics",
+    endpoint="warehouseStockMovement",
+    label_field="number",
+    sections=(("general", "General"), ("system", "System")),
+    scalars=(
+        Field(
+            "movementNumber",
+            "Number",
+            key="number",
+            section="general",
+            filterable=True,
+            sortable=True,
+            preview=0,
+        ),
+        Field(
+            "stockMovementType", "Type", key="type", section="general", filterable=True, preview=2
+        ),
+        Field(
+            "postingDate",
+            "Date",
+            key="date",
+            type="date",
+            section="general",
+            sortable=True,
+            epoch=True,
+            preview=1,
+        ),
+        Field("quantity", "Quantity", type="decimal", section="general", sortable=True),
+        Field(
+            "valuationPrice", "Valuation price", key="unitCost", type="decimal", section="general"
+        ),
+        Field("movementNote", "Note", key="note", section="general"),
+        *_SYSTEM_STAMPS,
+    ),
+    references=(
+        Reference("articleId", "Article", reference="Article", section="general", preview=3),
+        Reference(
+            "storagePlaceId", "Storage location", reference="StorageLocation", section="general"
+        ),
+        Reference("batchNumberId", "Batch", reference="Batch", section="general"),
+        Reference("userId", "User", reference="User", section="general"),
+    ),
+    operations=("list", "read"),
+)
+
+MERCHANDISE_GROUP = Entity(
+    key="MerchandiseGroup",
+    label_en="Merchandise group",
+    category="products",
+    endpoint="articleItemGroup",
+    label_field="name",
+    sections=_LOOKUP_SECTIONS,
+    scalars=(
+        Field("name", "Name", section="general", filterable=True, sortable=True, preview=0),
+        *_SYSTEM_STAMPS,
+    ),
+    operations=("list", "read"),
+)
+
+TEXT_TEMPLATE = Entity(
+    key="TextTemplate",
+    label_en="Text template",
+    category="crm",
+    endpoint="mailTemplate",
+    label_field="name",
+    sections=_LOOKUP_SECTIONS,
+    scalars=(
+        Field("name", "Name", section="general", filterable=True, sortable=True, preview=0),
+        Field("type", "Type", section="general", filterable=True, preview=1),
+        Field("subject", "Subject", section="general"),
+        Field("useAsDefault", "Default", type="boolean", section="general", filterable=True),
+        *_SYSTEM_STAMPS,
+    ),
+    operations=("list", "read"),
+)
+
+
 _ENTITIES: tuple[Entity, ...] = (
     CUSTOMER,
     SUPPLIER,
@@ -843,17 +929,20 @@ _ENTITIES: tuple[Entity, ...] = (
     CURRENCY,
     PAYMENT_METHOD,
     PRODUCT_CATEGORY,
+    MERCHANDISE_GROUP,
     WAREHOUSE,
     STORAGE_LOCATION,
     BATCH,
     SERIAL_NUMBER,
     STOCK_LEVEL,
+    STOCK_MOVEMENT,
     STOCK_TAKE,
     # configuration lookups
     TAG,
     SHIPPING_METHOD,
     PAYMENT_TERMS_GROUP,
     TAX_RATE,
+    TEXT_TEMPLATE,
     WEBHOOK,
     USER,
 )
