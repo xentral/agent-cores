@@ -55,11 +55,44 @@ ID_PREFIXES: dict[str, str] = {
     "Payment": "paym_",
     "StockMovement": "sm_",
     "StorageLocation": "loc_",
+    "StockLevel": "slv_",
     "StockTake": "stk_",
     "PickingRun": "pick_",
     "Batch": "bat_",
+    "SerialNumber": "sn_",
     "Tag": "tag_",
+    # CRM + settings/configuration lookups (folded into the core). Standalone
+    # keeps them as real tables so document references resolve; prefixes mirror
+    # the facade's emitted vocabulary (WebhookEventType emits bare upstream
+    # slugs, so it gets a core-local prefix). EmailAccount/Printer are excluded
+    # via _FACADE_ONLY below — device surfaces have no standalone meaning.
+    "Correspondence": "cor_",
+    "PaymentMethod": "paym_",
+    "ShippingMethod": "ship_",
+    "ReturnReason": "rsn_",
+    "DeliveryTerm": "dt_",
+    "PaymentTermsGroup": "ptg_",
+    "TaxRate": "tax_",
+    "Warehouse": "wh_",
+    "Project": "prj_",
+    "User": "usr_",
+    "Employee": "emp_",
+    "ProductCategory": "pcat_",
+    "MerchandiseGroup": "mg_",
+    "ProductProperty": "pprop_",
+    "ProductTag": "ptag_",
+    "ProductFreeField": "pff_",
+    "AddressCustomField": "acf_",
+    "Webhook": "wbh_",
+    "WebhookEventType": "wet_",
+    "TextTemplate": "tpl_",
 }
+
+# Facade-only adapters excluded from the standalone snapshot: device /
+# communication surfaces whose actions target live Xentral endpoints (send
+# email, print job) that do not exist behind a tenant-owned Postgres. They stay
+# in the Xentral facade; the standalone model simply omits them.
+_FACADE_ONLY = frozenset({"EmailAccount", "Printer"})
 
 
 def _register_namespace() -> None:
@@ -168,6 +201,8 @@ def main() -> int:
     for adapter in CORE.adapters:
         meta = adapter.metadata(None)
         key = meta["key"]
+        if key in _FACADE_ONLY:
+            continue  # device/communication surface — omitted from standalone
         prefix = ID_PREFIXES.get(key)
         if not prefix:
             print(f"::error::no ID_PREFIX for entity {key} — add it to the generator")

@@ -1,5 +1,5 @@
 {
-  "modelVersion": "4425ee321664",
+  "modelVersion": "61d2b51734bc",
   "source": "agentos_neo_xentral",
   "entities": [
     {
@@ -642,6 +642,9 @@
             }
           }
         },
+        "searchFields": [
+          "number"
+        ],
         "actions": [
           {
             "key": "send",
@@ -1609,6 +1612,9 @@
             }
           }
         },
+        "searchFields": [
+          "number"
+        ],
         "actions": [
           {
             "key": "createSalesInvoice",
@@ -2436,6 +2442,9 @@
             }
           }
         },
+        "searchFields": [
+          "number"
+        ],
         "actions": [
           {
             "key": "send",
@@ -3065,6 +3074,9 @@
             }
           }
         },
+        "searchFields": [
+          "number"
+        ],
         "actions": [
           {
             "key": "createReturn",
@@ -3706,6 +3718,9 @@
             }
           }
         },
+        "searchFields": [
+          "number"
+        ],
         "actions": [
           {
             "key": "send",
@@ -4225,6 +4240,9 @@
             }
           }
         },
+        "searchFields": [
+          "number"
+        ],
         "actions": [
           {
             "key": "addTag",
@@ -4926,6 +4944,9 @@
             }
           }
         },
+        "searchFields": [
+          "number"
+        ],
         "actions": [
           {
             "key": "send",
@@ -5251,6 +5272,9 @@
             }
           }
         },
+        "searchFields": [
+          "number"
+        ],
         "processSteps": [
           {
             "key": "documentStatus",
@@ -6466,6 +6490,11 @@
             }
           }
         },
+        "searchFields": [
+          "number",
+          "name",
+          "email"
+        ],
         "actions": [
           {
             "key": "addTag",
@@ -7159,6 +7188,11 @@
             }
           }
         },
+        "searchFields": [
+          "number",
+          "name",
+          "email"
+        ],
         "actions": [
           {
             "key": "addTag",
@@ -7420,6 +7454,9 @@
             }
           }
         },
+        "searchFields": [
+          "name"
+        ],
         "processSteps": [
           {
             "key": "documentStatus",
@@ -7584,6 +7621,7 @@
               "label": "Name",
               "section": "general",
               "filterable": true,
+              "sortable": true,
               "searchable": true,
               "previewable": true,
               "description": "Product name shown on documents and in the shop.",
@@ -7609,7 +7647,7 @@
             "category": {
               "type": "reference",
               "label": "Category",
-              "reference": "ProductCategory",
+              "reference": "MerchandiseGroup",
               "renderProperty": "name",
               "section": "general",
               "description": "Merchandise group the product belongs to.",
@@ -8186,6 +8224,10 @@
             }
           }
         },
+        "searchFields": [
+          "number",
+          "name"
+        ],
         "processSteps": [
           {
             "key": "documentStatus",
@@ -9020,7 +9062,10 @@
               "description": "Links matching this payment to the invoices it settles."
             }
           }
-        }
+        },
+        "searchFields": [
+          "reference"
+        ]
       }
     },
     {
@@ -9501,6 +9546,152 @@
             ]
           }
         ]
+      }
+    },
+    {
+      "key": "StockLevel",
+      "label": "Stock level",
+      "category": "masterdata",
+      "operations": [
+        "list",
+        "read",
+        "create",
+        "update",
+        "delete"
+      ],
+      "idPrefix": "slv_",
+      "metadata": {
+        "key": "StockLevel",
+        "label": "Stock level",
+        "operations": [
+          "list",
+          "read",
+          "create",
+          "update",
+          "delete"
+        ],
+        "previewTemplateString": "{{product.name}}",
+        "sections": {
+          "general": {
+            "label": "General"
+          }
+        },
+        "rootNode": {
+          "properties": {
+            "object": {
+              "type": "string",
+              "label": "Object",
+              "access": "readOnly",
+              "section": "general",
+              "description": "Type discriminator of the record (its entity name)."
+            },
+            "id": {
+              "type": "string",
+              "label": "ID",
+              "access": "readOnly",
+              "section": "general",
+              "description": "The record's stable, unique identifier — use it to read, link (references) and write this record. A typed 'speaking' id (e.g. cus_4711); assigned automatically when the record is created."
+            },
+            "product": {
+              "type": "reference",
+              "label": "Product",
+              "reference": "Product",
+              "renderProperty": "name",
+              "section": "general",
+              "filterable": true,
+              "previewable": true,
+              "creatable": true,
+              "updatable": true
+            },
+            "warehouse": {
+              "type": "reference",
+              "label": "Warehouse",
+              "reference": "Warehouse",
+              "renderProperty": "name",
+              "section": "general",
+              "filterable": true,
+              "creatable": true,
+              "updatable": true
+            },
+            "storageLocation": {
+              "type": "reference",
+              "label": "Storage location",
+              "reference": "StorageLocation",
+              "renderProperty": "name",
+              "section": "general",
+              "filterable": true,
+              "creatable": true,
+              "updatable": true
+            },
+            "batch": {
+              "type": "reference",
+              "label": "Batch",
+              "reference": "Batch",
+              "renderProperty": "number",
+              "section": "general",
+              "filterable": true,
+              "creatable": true,
+              "updatable": true
+            },
+            "quantity": {
+              "type": "embedded",
+              "label": "Quantity",
+              "section": "general",
+              "properties": {
+                "value": {
+                  "type": "decimal",
+                  "label": "Value",
+                  "creatable": true,
+                  "updatable": true
+                },
+                "unit": {
+                  "type": "string",
+                  "label": "Unit",
+                  "creatable": true,
+                  "updatable": true
+                }
+              }
+            },
+            "reserved": {
+              "type": "embedded",
+              "label": "Reserved",
+              "section": "general",
+              "properties": {
+                "value": {
+                  "type": "decimal",
+                  "label": "Value",
+                  "creatable": true,
+                  "updatable": true
+                },
+                "unit": {
+                  "type": "string",
+                  "label": "Unit",
+                  "creatable": true,
+                  "updatable": true
+                }
+              }
+            },
+            "available": {
+              "type": "embedded",
+              "label": "Available",
+              "section": "general",
+              "properties": {
+                "value": {
+                  "type": "decimal",
+                  "label": "Value",
+                  "creatable": true,
+                  "updatable": true
+                },
+                "unit": {
+                  "type": "string",
+                  "label": "Unit",
+                  "creatable": true,
+                  "updatable": true
+                }
+              }
+            }
+          }
+        }
       }
     },
     {
@@ -10368,6 +10559,9 @@
             }
           }
         },
+        "searchFields": [
+          "number"
+        ],
         "processSteps": [
           {
             "key": "documentStatus",
@@ -10382,6 +10576,165 @@
                 "key": "release",
                 "label": "Release",
                 "wish": "The batch API itself is missing upstream (the entity is blocked)."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "key": "SerialNumber",
+      "label": "Serial number",
+      "category": "masterdata",
+      "operations": [
+        "list",
+        "read",
+        "create",
+        "update",
+        "delete"
+      ],
+      "idPrefix": "sn_",
+      "metadata": {
+        "key": "SerialNumber",
+        "label": "Serial number",
+        "operations": [
+          "list",
+          "read",
+          "create",
+          "update",
+          "delete"
+        ],
+        "previewTemplateString": "{{number}}",
+        "sections": {
+          "general": {
+            "label": "General"
+          },
+          "trace": {
+            "label": "Trace"
+          }
+        },
+        "rootNode": {
+          "properties": {
+            "object": {
+              "type": "string",
+              "label": "Object",
+              "access": "readOnly",
+              "section": "general",
+              "description": "Type discriminator of the record (its entity name)."
+            },
+            "id": {
+              "type": "string",
+              "label": "ID",
+              "access": "readOnly",
+              "section": "general",
+              "description": "The record's stable, unique identifier — use it to read, link (references) and write this record. A typed 'speaking' id (e.g. cus_4711); assigned automatically when the record is created."
+            },
+            "number": {
+              "type": "string",
+              "label": "Number",
+              "access": "readOnly",
+              "section": "general",
+              "filterable": true,
+              "searchable": true,
+              "previewable": true
+            },
+            "product": {
+              "type": "reference",
+              "label": "Product",
+              "reference": "Product",
+              "renderProperty": "name",
+              "section": "general",
+              "filterable": true,
+              "previewable": true,
+              "creatable": true,
+              "updatable": true
+            },
+            "status": {
+              "type": "select",
+              "label": "Status",
+              "section": "general",
+              "options": [
+                {
+                  "value": "inStock",
+                  "label": "In stock"
+                },
+                {
+                  "value": "delivered",
+                  "label": "Delivered"
+                },
+                {
+                  "value": "returned",
+                  "label": "Returned"
+                }
+              ],
+              "filterable": true,
+              "creatable": true,
+              "updatable": true
+            },
+            "customer": {
+              "type": "reference",
+              "label": "Customer",
+              "reference": "Customer",
+              "renderProperty": "name",
+              "section": "general",
+              "filterable": true,
+              "creatable": true,
+              "updatable": true
+            },
+            "trace": {
+              "type": "embedded",
+              "label": "Trace",
+              "section": "trace",
+              "properties": {
+                "goodsReceipts": {
+                  "type": "collection",
+                  "label": "Goods receipts",
+                  "node": {
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "label": "ID",
+                        "creatable": true,
+                        "updatable": true
+                      }
+                    }
+                  }
+                },
+                "deliveryNotes": {
+                  "type": "collection",
+                  "label": "Delivery notes",
+                  "node": {
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "label": "ID",
+                        "creatable": true,
+                        "updatable": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "searchFields": [
+          "number"
+        ],
+        "processSteps": [
+          {
+            "key": "documentStatus",
+            "label": "Status",
+            "commands": [
+              {
+                "key": "block",
+                "label": "Block",
+                "wish": "The serial-number API itself is missing upstream (the entity is blocked)."
+              },
+              {
+                "key": "release",
+                "label": "Release",
+                "wish": "The serial-number API itself is missing upstream (the entity is blocked)."
               }
             ]
           }
@@ -10483,6 +10836,1793 @@
               "access": "readOnly",
               "sortable": true,
               "description": "Timestamp the record was last changed."
+            }
+          }
+        },
+        "searchFields": [
+          "label"
+        ]
+      }
+    },
+    {
+      "key": "Correspondence",
+      "label": "Correspondence",
+      "category": "crm",
+      "operations": [
+        "list",
+        "read",
+        "create",
+        "update",
+        "delete"
+      ],
+      "idPrefix": "cor_",
+      "metadata": {
+        "key": "Correspondence",
+        "label": "Correspondence",
+        "operations": [
+          "list",
+          "read",
+          "create",
+          "update",
+          "delete"
+        ],
+        "previewTemplateString": "{{subject}}",
+        "sections": {
+          "general": {
+            "label": "General"
+          }
+        },
+        "rootNode": {
+          "properties": {
+            "object": {
+              "type": "string",
+              "label": "Object",
+              "access": "readOnly",
+              "section": "general",
+              "description": "Type discriminator of the record (its entity name)."
+            },
+            "id": {
+              "type": "string",
+              "label": "ID",
+              "access": "readOnly",
+              "section": "general",
+              "description": "The record's stable, unique identifier — use it to read, link (references) and write this record. A typed 'speaking' id (e.g. cus_4711); assigned automatically when the record is created."
+            },
+            "type": {
+              "type": "select",
+              "label": "Type",
+              "section": "general",
+              "creatable": true,
+              "filterable": true,
+              "previewable": true,
+              "options": [
+                {
+                  "value": "email",
+                  "label": "Email"
+                },
+                {
+                  "value": "phone",
+                  "label": "Phone"
+                },
+                {
+                  "value": "letter",
+                  "label": "Letter"
+                },
+                {
+                  "value": "note",
+                  "label": "Note"
+                },
+                {
+                  "value": "follow_up",
+                  "label": "Follow up"
+                },
+                {
+                  "value": "appointment",
+                  "label": "Appointment"
+                },
+                {
+                  "value": "ticket",
+                  "label": "Ticket"
+                },
+                {
+                  "value": "document",
+                  "label": "Document"
+                }
+              ],
+              "description": "Entry kind. email here is a LOG entry only — a real send goes through the email tool; ticket/document come from their integrations and are read-only.",
+              "updatable": true
+            },
+            "customer": {
+              "type": "reference",
+              "label": "Customer",
+              "reference": "Customer",
+              "renderProperty": "name",
+              "section": "general",
+              "creatable": true,
+              "filterable": true,
+              "description": "Customer whose CRM tab the entry appears on (upstream recipientAddress).",
+              "updatable": true
+            },
+            "subject": {
+              "type": "string",
+              "label": "Subject",
+              "section": "general",
+              "creatable": true,
+              "previewable": true,
+              "updatable": true
+            },
+            "content": {
+              "type": "string",
+              "label": "Content",
+              "section": "general",
+              "creatable": true,
+              "updatable": true
+            },
+            "date": {
+              "type": "date",
+              "label": "Date",
+              "section": "general",
+              "creatable": true,
+              "filterable": true,
+              "description": "Filterable with equals/notEquals only — the upstream rejects range operators on date. Defaults to today on create.",
+              "updatable": true
+            },
+            "time": {
+              "type": "string",
+              "label": "Time",
+              "section": "general",
+              "creatable": true,
+              "description": "Defaults to now (Europe/Berlin) on create; HH:MM is padded to HH:MM:SS.",
+              "updatable": true
+            },
+            "isSent": {
+              "type": "boolean",
+              "label": "Sent",
+              "section": "general",
+              "description": "Whether an email entry was actually dispatched (set by the send pipeline).",
+              "creatable": true,
+              "updatable": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "PaymentMethod",
+      "label": "Payment method",
+      "category": "settings",
+      "operations": [
+        "list",
+        "read",
+        "create",
+        "update",
+        "delete"
+      ],
+      "idPrefix": "paym_",
+      "metadata": {
+        "key": "PaymentMethod",
+        "label": "Payment method",
+        "operations": [
+          "list",
+          "read",
+          "create",
+          "update",
+          "delete"
+        ],
+        "previewTemplateString": "{{name}}",
+        "sections": {
+          "general": {
+            "label": "General"
+          }
+        },
+        "rootNode": {
+          "properties": {
+            "object": {
+              "type": "string",
+              "label": "Object",
+              "access": "readOnly",
+              "section": "general",
+              "description": "Type discriminator of the record (its entity name)."
+            },
+            "id": {
+              "type": "string",
+              "label": "ID",
+              "access": "readOnly",
+              "section": "general",
+              "description": "The record's stable, unique identifier — use it to read, link (references) and write this record. A typed 'speaking' id (e.g. cus_4711); assigned automatically when the record is created."
+            },
+            "name": {
+              "type": "string",
+              "label": "Name",
+              "section": "general",
+              "previewable": true,
+              "creatable": true,
+              "updatable": true
+            },
+            "type": {
+              "type": "string",
+              "label": "Type",
+              "section": "general",
+              "filterable": true,
+              "description": "Technical payment type (e.g. amazon, paypal, prepayment) — the value documents reference.",
+              "creatable": true,
+              "updatable": true
+            },
+            "project": {
+              "type": "reference",
+              "label": "Project",
+              "reference": "Project",
+              "renderProperty": "name",
+              "section": "general",
+              "filterable": true,
+              "description": "Project/client the payment method is bound to; null = instance-wide.",
+              "creatable": true,
+              "updatable": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "ShippingMethod",
+      "label": "Shipping method",
+      "category": "settings",
+      "operations": [
+        "list",
+        "read",
+        "create",
+        "update",
+        "delete"
+      ],
+      "idPrefix": "ship_",
+      "metadata": {
+        "key": "ShippingMethod",
+        "label": "Shipping method",
+        "operations": [
+          "list",
+          "read",
+          "create",
+          "update",
+          "delete"
+        ],
+        "previewTemplateString": "{{name}}",
+        "sections": {
+          "general": {
+            "label": "General"
+          }
+        },
+        "rootNode": {
+          "properties": {
+            "object": {
+              "type": "string",
+              "label": "Object",
+              "access": "readOnly",
+              "section": "general",
+              "description": "Type discriminator of the record (its entity name)."
+            },
+            "id": {
+              "type": "string",
+              "label": "ID",
+              "access": "readOnly",
+              "section": "general",
+              "description": "The record's stable, unique identifier — use it to read, link (references) and write this record. A typed 'speaking' id (e.g. cus_4711); assigned automatically when the record is created."
+            },
+            "name": {
+              "type": "string",
+              "label": "Name",
+              "section": "general",
+              "previewable": true,
+              "creatable": true,
+              "updatable": true
+            },
+            "module": {
+              "type": "string",
+              "label": "Module",
+              "section": "general",
+              "description": "Shipping module handling this method (e.g. dhl, ups).",
+              "creatable": true,
+              "updatable": true
+            },
+            "type": {
+              "type": "string",
+              "label": "Type",
+              "section": "general",
+              "creatable": true,
+              "updatable": true
+            },
+            "project": {
+              "type": "reference",
+              "label": "Project",
+              "reference": "Project",
+              "renderProperty": "name",
+              "section": "general",
+              "creatable": true,
+              "updatable": true
+            },
+            "supportsDeliveries": {
+              "type": "boolean",
+              "label": "Supports deliveries",
+              "section": "general",
+              "description": "Whether this method can be used on outbound deliveries.",
+              "creatable": true,
+              "updatable": true
+            },
+            "supportsReturns": {
+              "type": "boolean",
+              "label": "Supports returns",
+              "section": "general",
+              "description": "Whether this method can be used for returns.",
+              "creatable": true,
+              "updatable": true
+            },
+            "shippingEmailBehaviour": {
+              "type": "string",
+              "label": "Shipping email behaviour",
+              "section": "general",
+              "description": "When the shipping confirmation email is sent for this method.",
+              "creatable": true,
+              "updatable": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "ReturnReason",
+      "label": "Return reason",
+      "category": "settings",
+      "operations": [
+        "list",
+        "read",
+        "create",
+        "update",
+        "delete"
+      ],
+      "idPrefix": "rsn_",
+      "metadata": {
+        "key": "ReturnReason",
+        "label": "Return reason",
+        "operations": [
+          "list",
+          "read",
+          "create",
+          "update",
+          "delete"
+        ],
+        "previewTemplateString": "{{name}}",
+        "sections": {
+          "general": {
+            "label": "General"
+          }
+        },
+        "rootNode": {
+          "properties": {
+            "object": {
+              "type": "string",
+              "label": "Object",
+              "access": "readOnly",
+              "section": "general",
+              "description": "Type discriminator of the record (its entity name)."
+            },
+            "id": {
+              "type": "string",
+              "label": "ID",
+              "access": "readOnly",
+              "section": "general",
+              "description": "The record's stable, unique identifier — use it to read, link (references) and write this record. A typed 'speaking' id (e.g. cus_4711); assigned automatically when the record is created."
+            },
+            "name": {
+              "type": "string",
+              "label": "Name",
+              "section": "general",
+              "previewable": true,
+              "creatable": true,
+              "updatable": true
+            },
+            "description": {
+              "type": "string",
+              "label": "Description",
+              "section": "general",
+              "creatable": true,
+              "updatable": true
+            },
+            "language": {
+              "type": "string",
+              "label": "Language",
+              "section": "general",
+              "description": "2-letter ISO language code this reason's wording is maintained in.",
+              "creatable": true,
+              "updatable": true
+            },
+            "project": {
+              "type": "reference",
+              "label": "Project",
+              "reference": "Project",
+              "renderProperty": "name",
+              "section": "general",
+              "creatable": true,
+              "updatable": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "DeliveryTerm",
+      "label": "Delivery term",
+      "category": "settings",
+      "operations": [
+        "list",
+        "read",
+        "create",
+        "update",
+        "delete"
+      ],
+      "idPrefix": "dt_",
+      "metadata": {
+        "key": "DeliveryTerm",
+        "label": "Delivery term",
+        "operations": [
+          "list",
+          "read",
+          "create",
+          "update",
+          "delete"
+        ],
+        "previewTemplateString": "{{name}}",
+        "sections": {
+          "general": {
+            "label": "General"
+          }
+        },
+        "rootNode": {
+          "properties": {
+            "object": {
+              "type": "string",
+              "label": "Object",
+              "access": "readOnly",
+              "section": "general",
+              "description": "Type discriminator of the record (its entity name)."
+            },
+            "id": {
+              "type": "string",
+              "label": "ID",
+              "access": "readOnly",
+              "section": "general",
+              "description": "The record's stable, unique identifier — use it to read, link (references) and write this record. A typed 'speaking' id (e.g. cus_4711); assigned automatically when the record is created."
+            },
+            "name": {
+              "type": "string",
+              "label": "Name",
+              "section": "general",
+              "filterable": true,
+              "previewable": true,
+              "creatable": true,
+              "updatable": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "PaymentTermsGroup",
+      "label": "Payment terms group",
+      "category": "settings",
+      "operations": [
+        "list",
+        "read",
+        "create",
+        "update",
+        "delete"
+      ],
+      "idPrefix": "ptg_",
+      "metadata": {
+        "key": "PaymentTermsGroup",
+        "label": "Payment terms group",
+        "operations": [
+          "list",
+          "read",
+          "create",
+          "update",
+          "delete"
+        ],
+        "previewTemplateString": "{{name}}",
+        "sections": {
+          "general": {
+            "label": "General"
+          }
+        },
+        "rootNode": {
+          "properties": {
+            "object": {
+              "type": "string",
+              "label": "Object",
+              "access": "readOnly",
+              "section": "general",
+              "description": "Type discriminator of the record (its entity name)."
+            },
+            "id": {
+              "type": "string",
+              "label": "ID",
+              "access": "readOnly",
+              "section": "general",
+              "description": "The record's stable, unique identifier — use it to read, link (references) and write this record. A typed 'speaking' id (e.g. cus_4711); assigned automatically when the record is created."
+            },
+            "key": {
+              "type": "string",
+              "label": "Key",
+              "section": "general",
+              "filterable": true,
+              "description": "Stable machine key of the group — the value documents reference.",
+              "creatable": true,
+              "updatable": true
+            },
+            "name": {
+              "type": "string",
+              "label": "Name",
+              "section": "general",
+              "filterable": true,
+              "previewable": true,
+              "creatable": true,
+              "updatable": true
+            },
+            "isActive": {
+              "type": "boolean",
+              "label": "Active",
+              "section": "general",
+              "filterable": true,
+              "creatable": true,
+              "updatable": true
+            },
+            "comment": {
+              "type": "string",
+              "label": "Comment",
+              "section": "general",
+              "creatable": true,
+              "updatable": true
+            },
+            "paymentTerms": {
+              "type": "embedded",
+              "label": "Payment terms",
+              "section": "general",
+              "properties": {
+                "basicDiscount": {
+                  "type": "decimal",
+                  "label": "Basic discount (%)",
+                  "description": "Base discount in percent.",
+                  "creatable": true,
+                  "updatable": true
+                },
+                "paymentTargetDays": {
+                  "type": "integer",
+                  "label": "Payment target (days)",
+                  "description": "Payment target in days.",
+                  "creatable": true,
+                  "updatable": true
+                },
+                "earlyPaymentDiscount": {
+                  "type": "decimal",
+                  "label": "Early payment discount (%)",
+                  "description": "Early-payment (skonto) discount in percent.",
+                  "creatable": true,
+                  "updatable": true
+                },
+                "postageFreeFrom": {
+                  "type": "decimal",
+                  "label": "Postage free from",
+                  "description": "Order value from which postage is free.",
+                  "creatable": true,
+                  "updatable": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "TaxRate",
+      "label": "Tax rate",
+      "category": "settings",
+      "operations": [
+        "list",
+        "read",
+        "create",
+        "update",
+        "delete"
+      ],
+      "idPrefix": "tax_",
+      "metadata": {
+        "key": "TaxRate",
+        "label": "Tax rate",
+        "operations": [
+          "list",
+          "read",
+          "create",
+          "update",
+          "delete"
+        ],
+        "previewTemplateString": "{{name}}",
+        "sections": {
+          "general": {
+            "label": "General"
+          }
+        },
+        "rootNode": {
+          "properties": {
+            "object": {
+              "type": "string",
+              "label": "Object",
+              "access": "readOnly",
+              "section": "general",
+              "description": "Type discriminator of the record (its entity name)."
+            },
+            "id": {
+              "type": "string",
+              "label": "ID",
+              "access": "readOnly",
+              "section": "general",
+              "description": "Positional per listing (no upstream id) — do not persist across calls."
+            },
+            "country": {
+              "type": "string",
+              "label": "Country (ISO-2)",
+              "section": "general",
+              "filterable": true,
+              "description": "Country the rate applies to; filter with equals, default DE.",
+              "creatable": true,
+              "updatable": true
+            },
+            "rate": {
+              "type": "decimal",
+              "label": "Rate (%)",
+              "section": "general",
+              "previewable": true,
+              "creatable": true,
+              "updatable": true
+            },
+            "type": {
+              "type": "string",
+              "label": "Type",
+              "section": "general",
+              "filterable": true,
+              "creatable": true,
+              "updatable": true
+            },
+            "name": {
+              "type": "string",
+              "label": "Name",
+              "section": "general",
+              "previewable": true,
+              "creatable": true,
+              "updatable": true
+            },
+            "source": {
+              "type": "string",
+              "label": "Source",
+              "section": "general",
+              "creatable": true,
+              "updatable": true
+            },
+            "date": {
+              "type": "date",
+              "label": "Valid on",
+              "section": "general",
+              "filterable": true,
+              "description": "Date the rate is valid on; filter to query historical rates.",
+              "creatable": true,
+              "updatable": true
+            },
+            "product": {
+              "type": "reference",
+              "label": "Product",
+              "reference": "Product",
+              "renderProperty": "name",
+              "section": "general",
+              "filterable": true,
+              "description": "Product-specific rate override; null = the country-wide rate.",
+              "creatable": true,
+              "updatable": true
+            },
+            "project": {
+              "type": "reference",
+              "label": "Project",
+              "reference": "Project",
+              "renderProperty": "name",
+              "section": "general",
+              "creatable": true,
+              "updatable": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "Warehouse",
+      "label": "Warehouse",
+      "category": "settings",
+      "operations": [
+        "list",
+        "read",
+        "create",
+        "update",
+        "delete"
+      ],
+      "idPrefix": "wh_",
+      "metadata": {
+        "key": "Warehouse",
+        "label": "Warehouse",
+        "operations": [
+          "list",
+          "read",
+          "create",
+          "update",
+          "delete"
+        ],
+        "previewTemplateString": "{{name}}",
+        "sections": {
+          "general": {
+            "label": "General"
+          }
+        },
+        "rootNode": {
+          "properties": {
+            "object": {
+              "type": "string",
+              "label": "Object",
+              "access": "readOnly",
+              "section": "general",
+              "description": "Type discriminator of the record (its entity name)."
+            },
+            "id": {
+              "type": "string",
+              "label": "ID",
+              "access": "readOnly",
+              "section": "general",
+              "description": "The record's stable, unique identifier — use it to read, link (references) and write this record. A typed 'speaking' id (e.g. cus_4711); assigned automatically when the record is created."
+            },
+            "name": {
+              "type": "string",
+              "label": "Name",
+              "section": "general",
+              "filterable": true,
+              "previewable": true,
+              "creatable": true,
+              "updatable": true
+            },
+            "project": {
+              "type": "reference",
+              "label": "Project",
+              "reference": "Project",
+              "renderProperty": "name",
+              "section": "general",
+              "description": "Project/client the warehouse belongs to; null = instance-wide.",
+              "creatable": true,
+              "updatable": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "Project",
+      "label": "Project",
+      "category": "settings",
+      "operations": [
+        "list",
+        "read",
+        "create",
+        "update",
+        "delete"
+      ],
+      "idPrefix": "prj_",
+      "metadata": {
+        "key": "Project",
+        "label": "Project",
+        "operations": [
+          "list",
+          "read",
+          "create",
+          "update",
+          "delete"
+        ],
+        "previewTemplateString": "{{name}}",
+        "sections": {
+          "general": {
+            "label": "General"
+          }
+        },
+        "rootNode": {
+          "properties": {
+            "object": {
+              "type": "string",
+              "label": "Object",
+              "access": "readOnly",
+              "section": "general",
+              "description": "Type discriminator of the record (its entity name)."
+            },
+            "id": {
+              "type": "string",
+              "label": "ID",
+              "access": "readOnly",
+              "section": "general",
+              "description": "The record's stable, unique identifier — use it to read, link (references) and write this record. A typed 'speaking' id (e.g. cus_4711); assigned automatically when the record is created."
+            },
+            "name": {
+              "type": "string",
+              "label": "Name",
+              "section": "general",
+              "filterable": true,
+              "previewable": true,
+              "creatable": true,
+              "updatable": true
+            },
+            "keyName": {
+              "type": "string",
+              "label": "Key name",
+              "section": "general",
+              "filterable": true,
+              "description": "Stable machine key of the project (number-range prefix).",
+              "creatable": true,
+              "updatable": true
+            },
+            "description": {
+              "type": "string",
+              "label": "Description",
+              "section": "general",
+              "creatable": true,
+              "updatable": true
+            },
+            "currency": {
+              "type": "string",
+              "label": "Currency",
+              "section": "general",
+              "filterable": true,
+              "creatable": true,
+              "updatable": true
+            },
+            "normalTaxRate": {
+              "type": "decimal",
+              "label": "Normal tax rate (%)",
+              "section": "general",
+              "description": "Default standard tax rate in percent for documents in this project.",
+              "creatable": true,
+              "updatable": true
+            },
+            "reducedTaxRate": {
+              "type": "decimal",
+              "label": "Reduced tax rate (%)",
+              "section": "general",
+              "description": "Default reduced tax rate in percent for documents in this project.",
+              "creatable": true,
+              "updatable": true
+            },
+            "defaultCustomerPaymentMethod": {
+              "type": "reference",
+              "label": "Default customer payment method",
+              "reference": "PaymentMethod",
+              "renderProperty": "name",
+              "section": "general",
+              "creatable": true,
+              "updatable": true
+            },
+            "defaultSupplierPaymentMethod": {
+              "type": "reference",
+              "label": "Default supplier payment method",
+              "reference": "PaymentMethod",
+              "renderProperty": "name",
+              "section": "general",
+              "creatable": true,
+              "updatable": true
+            },
+            "defaultShippingMethod": {
+              "type": "reference",
+              "label": "Default shipping method",
+              "reference": "ShippingMethod",
+              "renderProperty": "name",
+              "section": "general",
+              "creatable": true,
+              "updatable": true
+            },
+            "storageProcess": {
+              "type": "string",
+              "label": "Storage process",
+              "section": "general",
+              "description": "Warehouse process this project runs (e.g. standard, expressPicking).",
+              "creatable": true,
+              "updatable": true
+            },
+            "pickingProcess": {
+              "type": "string",
+              "label": "Picking process",
+              "section": "general",
+              "description": "Picking process this project runs.",
+              "creatable": true,
+              "updatable": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "User",
+      "label": "User",
+      "category": "settings",
+      "operations": [
+        "list",
+        "read",
+        "create",
+        "update",
+        "delete"
+      ],
+      "idPrefix": "usr_",
+      "metadata": {
+        "key": "User",
+        "label": "User",
+        "operations": [
+          "list",
+          "read",
+          "create",
+          "update",
+          "delete"
+        ],
+        "previewTemplateString": "{{username}}",
+        "sections": {
+          "general": {
+            "label": "General"
+          }
+        },
+        "rootNode": {
+          "properties": {
+            "object": {
+              "type": "string",
+              "label": "Object",
+              "access": "readOnly",
+              "section": "general",
+              "description": "Type discriminator of the record (its entity name)."
+            },
+            "id": {
+              "type": "string",
+              "label": "ID",
+              "access": "readOnly",
+              "section": "general",
+              "description": "The record's stable, unique identifier — use it to read, link (references) and write this record. A typed 'speaking' id (e.g. cus_4711); assigned automatically when the record is created."
+            },
+            "username": {
+              "type": "string",
+              "label": "Username",
+              "section": "general",
+              "filterable": true,
+              "previewable": true,
+              "creatable": true,
+              "updatable": true
+            },
+            "email": {
+              "type": "string",
+              "label": "Email",
+              "section": "general",
+              "filterable": true,
+              "creatable": true,
+              "updatable": true
+            },
+            "isActive": {
+              "type": "boolean",
+              "label": "Active",
+              "section": "general",
+              "filterable": true,
+              "creatable": true,
+              "updatable": true
+            },
+            "isAdmin": {
+              "type": "boolean",
+              "label": "Admin",
+              "section": "general",
+              "filterable": true,
+              "description": "Whether the user has instance-admin rights.",
+              "creatable": true,
+              "updatable": true
+            },
+            "locale": {
+              "type": "string",
+              "label": "Locale",
+              "section": "general",
+              "creatable": true,
+              "updatable": true
+            },
+            "contactId": {
+              "type": "string",
+              "label": "Contact ID",
+              "section": "general",
+              "description": "Address/contact record linked to this login, if any.",
+              "creatable": true,
+              "updatable": true
+            },
+            "globalUserId": {
+              "type": "string",
+              "label": "Global user ID",
+              "section": "general",
+              "description": "Cross-instance UUID of the user account.",
+              "creatable": true,
+              "updatable": true
+            },
+            "createdAt": {
+              "type": "datetime",
+              "label": "Created at",
+              "access": "readOnly",
+              "section": "general",
+              "description": "Timestamp the record was created."
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "Employee",
+      "label": "Employee",
+      "category": "settings",
+      "operations": [
+        "list",
+        "read",
+        "create",
+        "update",
+        "delete"
+      ],
+      "idPrefix": "emp_",
+      "metadata": {
+        "key": "Employee",
+        "label": "Employee",
+        "operations": [
+          "list",
+          "read",
+          "create",
+          "update",
+          "delete"
+        ],
+        "previewTemplateString": "{{name}}",
+        "sections": {
+          "general": {
+            "label": "General"
+          }
+        },
+        "rootNode": {
+          "properties": {
+            "object": {
+              "type": "string",
+              "label": "Object",
+              "access": "readOnly",
+              "section": "general",
+              "description": "Type discriminator of the record (its entity name)."
+            },
+            "id": {
+              "type": "string",
+              "label": "ID",
+              "access": "readOnly",
+              "section": "general",
+              "description": "The record's stable, unique identifier — use it to read, link (references) and write this record. A typed 'speaking' id (e.g. cus_4711); assigned automatically when the record is created."
+            },
+            "name": {
+              "type": "string",
+              "label": "Name",
+              "section": "general",
+              "filterable": true,
+              "previewable": true,
+              "creatable": true,
+              "updatable": true
+            },
+            "number": {
+              "type": "string",
+              "label": "Number",
+              "access": "readOnly",
+              "section": "general",
+              "filterable": true,
+              "description": "Employee number from the HR master data."
+            },
+            "email": {
+              "type": "string",
+              "label": "Email",
+              "section": "general",
+              "creatable": true,
+              "updatable": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "ProductCategory",
+      "label": "Product category",
+      "category": "settings",
+      "operations": [
+        "list",
+        "read",
+        "create",
+        "update",
+        "delete"
+      ],
+      "idPrefix": "pcat_",
+      "metadata": {
+        "key": "ProductCategory",
+        "label": "Product category",
+        "operations": [
+          "list",
+          "read",
+          "create",
+          "update",
+          "delete"
+        ],
+        "previewTemplateString": "{{name}}",
+        "sections": {
+          "general": {
+            "label": "General"
+          }
+        },
+        "rootNode": {
+          "properties": {
+            "object": {
+              "type": "string",
+              "label": "Object",
+              "access": "readOnly",
+              "section": "general",
+              "description": "Type discriminator of the record (its entity name)."
+            },
+            "id": {
+              "type": "string",
+              "label": "ID",
+              "access": "readOnly",
+              "section": "general",
+              "description": "The record's stable, unique identifier — use it to read, link (references) and write this record. A typed 'speaking' id (e.g. cus_4711); assigned automatically when the record is created."
+            },
+            "name": {
+              "type": "string",
+              "label": "Name",
+              "section": "general",
+              "previewable": true,
+              "creatable": true,
+              "updatable": true
+            },
+            "parent": {
+              "type": "reference",
+              "label": "Parent category",
+              "reference": "ProductCategory",
+              "renderProperty": "name",
+              "section": "general",
+              "description": "Parent category; null for a root category (the tree is built from these links).",
+              "creatable": true,
+              "updatable": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "MerchandiseGroup",
+      "label": "Merchandise group",
+      "category": "settings",
+      "operations": [
+        "list",
+        "read",
+        "create",
+        "update",
+        "delete"
+      ],
+      "idPrefix": "mg_",
+      "metadata": {
+        "key": "MerchandiseGroup",
+        "label": "Merchandise group",
+        "operations": [
+          "list",
+          "read",
+          "create",
+          "update",
+          "delete"
+        ],
+        "previewTemplateString": "{{name}}",
+        "sections": {
+          "general": {
+            "label": "General"
+          }
+        },
+        "rootNode": {
+          "properties": {
+            "object": {
+              "type": "string",
+              "label": "Object",
+              "access": "readOnly",
+              "section": "general",
+              "description": "Type discriminator of the record (its entity name)."
+            },
+            "id": {
+              "type": "string",
+              "label": "ID",
+              "access": "readOnly",
+              "section": "general",
+              "description": "The record's stable, unique identifier — use it to read, link (references) and write this record. A typed 'speaking' id (e.g. cus_4711); assigned automatically when the record is created."
+            },
+            "name": {
+              "type": "string",
+              "label": "Name",
+              "section": "general",
+              "previewable": true,
+              "creatable": true,
+              "updatable": true
+            },
+            "project": {
+              "type": "reference",
+              "label": "Project",
+              "reference": "Project",
+              "renderProperty": "name",
+              "section": "general",
+              "creatable": true,
+              "updatable": true
+            },
+            "lastUsedProductNumber": {
+              "type": "string",
+              "label": "Last used product number",
+              "section": "general",
+              "description": "Most recently assigned product number in this group's own number range.",
+              "creatable": true,
+              "updatable": true
+            },
+            "useMainProductNumberRange": {
+              "type": "boolean",
+              "label": "Uses main product number range",
+              "section": "general",
+              "description": "true = products in this group draw from the main number range instead of a group-specific one.",
+              "creatable": true,
+              "updatable": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "ProductProperty",
+      "label": "Product property",
+      "category": "settings",
+      "operations": [
+        "list",
+        "read",
+        "create",
+        "update",
+        "delete"
+      ],
+      "idPrefix": "pprop_",
+      "metadata": {
+        "key": "ProductProperty",
+        "label": "Product property",
+        "operations": [
+          "list",
+          "read",
+          "create",
+          "update",
+          "delete"
+        ],
+        "previewTemplateString": "{{name}}",
+        "sections": {
+          "general": {
+            "label": "General"
+          }
+        },
+        "rootNode": {
+          "properties": {
+            "object": {
+              "type": "string",
+              "label": "Object",
+              "access": "readOnly",
+              "section": "general",
+              "description": "Type discriminator of the record (its entity name)."
+            },
+            "id": {
+              "type": "string",
+              "label": "ID",
+              "access": "readOnly",
+              "section": "general",
+              "description": "The record's stable, unique identifier — use it to read, link (references) and write this record. A typed 'speaking' id (e.g. cus_4711); assigned automatically when the record is created."
+            },
+            "name": {
+              "type": "string",
+              "label": "Name",
+              "section": "general",
+              "previewable": true,
+              "creatable": true,
+              "updatable": true
+            },
+            "project": {
+              "type": "reference",
+              "label": "Project",
+              "reference": "Project",
+              "renderProperty": "name",
+              "section": "general",
+              "creatable": true,
+              "updatable": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "ProductTag",
+      "label": "Product tag",
+      "category": "settings",
+      "operations": [
+        "list",
+        "read",
+        "create",
+        "update",
+        "delete"
+      ],
+      "idPrefix": "ptag_",
+      "metadata": {
+        "key": "ProductTag",
+        "label": "Product tag",
+        "operations": [
+          "list",
+          "read",
+          "create",
+          "update",
+          "delete"
+        ],
+        "previewTemplateString": "{{name}}",
+        "sections": {
+          "general": {
+            "label": "General"
+          }
+        },
+        "rootNode": {
+          "properties": {
+            "object": {
+              "type": "string",
+              "label": "Object",
+              "access": "readOnly",
+              "section": "general",
+              "description": "Type discriminator of the record (its entity name)."
+            },
+            "id": {
+              "type": "string",
+              "label": "ID",
+              "access": "readOnly",
+              "section": "general",
+              "description": "The record's stable, unique identifier — use it to read, link (references) and write this record. A typed 'speaking' id (e.g. cus_4711); assigned automatically when the record is created."
+            },
+            "name": {
+              "type": "string",
+              "label": "Name",
+              "section": "general",
+              "filterable": true,
+              "previewable": true,
+              "creatable": true,
+              "updatable": true
+            },
+            "color": {
+              "type": "string",
+              "label": "Color",
+              "section": "general",
+              "previewable": true,
+              "description": "Display color of the tag badge. Distinct from the document Tag catalogue.",
+              "creatable": true,
+              "updatable": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "ProductFreeField",
+      "label": "Product free field",
+      "category": "settings",
+      "operations": [
+        "list",
+        "read",
+        "create",
+        "update",
+        "delete"
+      ],
+      "idPrefix": "pff_",
+      "metadata": {
+        "key": "ProductFreeField",
+        "label": "Product free field",
+        "operations": [
+          "list",
+          "read",
+          "create",
+          "update",
+          "delete"
+        ],
+        "previewTemplateString": "{{name}}",
+        "sections": {
+          "general": {
+            "label": "General"
+          }
+        },
+        "rootNode": {
+          "properties": {
+            "object": {
+              "type": "string",
+              "label": "Object",
+              "access": "readOnly",
+              "section": "general",
+              "description": "Type discriminator of the record (its entity name)."
+            },
+            "id": {
+              "type": "string",
+              "label": "ID",
+              "access": "readOnly",
+              "section": "general",
+              "description": "The record's stable, unique identifier — use it to read, link (references) and write this record. A typed 'speaking' id (e.g. cus_4711); assigned automatically when the record is created."
+            },
+            "name": {
+              "type": "string",
+              "label": "Name",
+              "section": "general",
+              "filterable": true,
+              "previewable": true,
+              "description": "Free-field name as it appears on the product form; values live on each product.",
+              "creatable": true,
+              "updatable": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "AddressCustomField",
+      "label": "Address custom field",
+      "category": "settings",
+      "operations": [
+        "list",
+        "read",
+        "create",
+        "update",
+        "delete"
+      ],
+      "idPrefix": "acf_",
+      "metadata": {
+        "key": "AddressCustomField",
+        "label": "Address custom field",
+        "operations": [
+          "list",
+          "read",
+          "create",
+          "update",
+          "delete"
+        ],
+        "previewTemplateString": "{{name}}",
+        "sections": {
+          "general": {
+            "label": "General"
+          }
+        },
+        "rootNode": {
+          "properties": {
+            "object": {
+              "type": "string",
+              "label": "Object",
+              "access": "readOnly",
+              "section": "general",
+              "description": "Type discriminator of the record (its entity name)."
+            },
+            "id": {
+              "type": "string",
+              "label": "ID",
+              "access": "readOnly",
+              "section": "general",
+              "description": "The record's stable, unique identifier — use it to read, link (references) and write this record. A typed 'speaking' id (e.g. cus_4711); assigned automatically when the record is created."
+            },
+            "name": {
+              "type": "string",
+              "label": "Name",
+              "section": "general",
+              "previewable": true,
+              "creatable": true,
+              "updatable": true
+            },
+            "type": {
+              "type": "select",
+              "label": "Type",
+              "section": "general",
+              "options": [
+                {
+                  "value": "single_line",
+                  "label": "Single line"
+                },
+                {
+                  "value": "multi_line",
+                  "label": "Multi line"
+                },
+                {
+                  "value": "date",
+                  "label": "Date"
+                },
+                {
+                  "value": "checkbox",
+                  "label": "Checkbox"
+                },
+                {
+                  "value": "select",
+                  "label": "Select"
+                }
+              ],
+              "description": "Input type of the custom field (single_line, multi_line, date, checkbox, select).",
+              "creatable": true,
+              "updatable": true
+            },
+            "allowedValues": {
+              "type": "collection",
+              "label": "Allowed values",
+              "section": "general",
+              "node": {
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "label": "Label",
+                    "creatable": true,
+                    "updatable": true
+                  },
+                  "value": {
+                    "type": "string",
+                    "label": "Value",
+                    "creatable": true,
+                    "updatable": true
+                  }
+                }
+              },
+              "description": "For select fields: the permitted label/value pairs."
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "Webhook",
+      "label": "Webhook",
+      "category": "settings",
+      "operations": [
+        "list",
+        "read",
+        "create",
+        "update",
+        "delete"
+      ],
+      "idPrefix": "wbh_",
+      "metadata": {
+        "key": "Webhook",
+        "label": "Webhook",
+        "operations": [
+          "list",
+          "read",
+          "create",
+          "update",
+          "delete"
+        ],
+        "previewTemplateString": "{{name}}",
+        "sections": {
+          "general": {
+            "label": "General"
+          }
+        },
+        "rootNode": {
+          "properties": {
+            "object": {
+              "type": "string",
+              "label": "Object",
+              "access": "readOnly",
+              "section": "general",
+              "description": "Type discriminator of the record (its entity name)."
+            },
+            "id": {
+              "type": "string",
+              "label": "ID",
+              "access": "readOnly",
+              "section": "general",
+              "description": "The record's stable, unique identifier — use it to read, link (references) and write this record. A typed 'speaking' id (e.g. cus_4711); assigned automatically when the record is created."
+            },
+            "name": {
+              "type": "string",
+              "label": "Name",
+              "section": "general",
+              "previewable": true,
+              "creatable": true,
+              "updatable": true
+            },
+            "url": {
+              "type": "string",
+              "label": "URL",
+              "section": "general",
+              "description": "Receiver endpoint Xentral POSTs the event payloads to.",
+              "creatable": true,
+              "updatable": true
+            },
+            "events": {
+              "type": "collection",
+              "label": "Subscribed events",
+              "section": "general",
+              "node": {
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "label": "Event type",
+                    "creatable": true,
+                    "updatable": true
+                  }
+                }
+              },
+              "description": "Event types this webhook is subscribed to (see WebhookEventType for the catalogue)."
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "WebhookEventType",
+      "label": "Webhook event type",
+      "category": "settings",
+      "operations": [
+        "list",
+        "read",
+        "create",
+        "update",
+        "delete"
+      ],
+      "idPrefix": "wet_",
+      "metadata": {
+        "key": "WebhookEventType",
+        "label": "Webhook event type",
+        "operations": [
+          "list",
+          "read",
+          "create",
+          "update",
+          "delete"
+        ],
+        "previewTemplateString": "{{id}}",
+        "sections": {
+          "general": {
+            "label": "General"
+          }
+        },
+        "rootNode": {
+          "properties": {
+            "object": {
+              "type": "string",
+              "label": "Object",
+              "access": "readOnly",
+              "section": "general",
+              "description": "Type discriminator of the record (its entity name)."
+            },
+            "id": {
+              "type": "string",
+              "label": "Event type",
+              "access": "readOnly",
+              "section": "general",
+              "previewable": true,
+              "description": "Fully-qualified event name (e.g. com.xentral.salesOrder.created.v1) — the value Webhook.events references."
+            },
+            "group": {
+              "type": "string",
+              "label": "Group",
+              "section": "general",
+              "description": "Business object the event belongs to (salesOrder, product, …).",
+              "creatable": true,
+              "updatable": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "TextTemplate",
+      "label": "Text template",
+      "category": "settings",
+      "operations": [
+        "list",
+        "read",
+        "create",
+        "update",
+        "delete"
+      ],
+      "idPrefix": "tpl_",
+      "metadata": {
+        "key": "TextTemplate",
+        "label": "Text template",
+        "operations": [
+          "list",
+          "read",
+          "create",
+          "update",
+          "delete"
+        ],
+        "previewTemplateString": "{{documentType}}",
+        "sections": {
+          "general": {
+            "label": "General"
+          }
+        },
+        "rootNode": {
+          "properties": {
+            "object": {
+              "type": "string",
+              "label": "Object",
+              "access": "readOnly",
+              "section": "general",
+              "description": "Type discriminator of the record (its entity name)."
+            },
+            "id": {
+              "type": "string",
+              "label": "ID",
+              "access": "readOnly",
+              "section": "general",
+              "description": "The record's stable, unique identifier — use it to read, link (references) and write this record. A typed 'speaking' id (e.g. cus_4711); assigned automatically when the record is created."
+            },
+            "documentType": {
+              "type": "select",
+              "label": "Document type",
+              "section": "general",
+              "previewable": true,
+              "options": [
+                {
+                  "value": "offer",
+                  "label": "offer"
+                },
+                {
+                  "value": "order",
+                  "label": "order"
+                },
+                {
+                  "value": "invoice",
+                  "label": "invoice"
+                },
+                {
+                  "value": "delivery_note",
+                  "label": "delivery note"
+                },
+                {
+                  "value": "credit_note",
+                  "label": "credit note"
+                },
+                {
+                  "value": "purchase_order",
+                  "label": "purchase order"
+                },
+                {
+                  "value": "work_report",
+                  "label": "work report"
+                },
+                {
+                  "value": "commission_credit_note",
+                  "label": "commission credit note"
+                },
+                {
+                  "value": "proforma_invoice",
+                  "label": "proforma invoice"
+                }
+              ],
+              "description": "Document type the template applies to; the record id is tpl_<documentType>.",
+              "creatable": true,
+              "updatable": true
+            },
+            "header": {
+              "type": "string",
+              "label": "Header text (HTML)",
+              "section": "general",
+              "description": "Text above the item table (HTML, may contain placeholder variables).",
+              "creatable": true,
+              "updatable": true
+            },
+            "footer": {
+              "type": "string",
+              "label": "Footer text (HTML)",
+              "section": "general",
+              "description": "Text at the document end (HTML, may contain placeholder variables).",
+              "creatable": true,
+              "updatable": true
+            },
+            "disableStationery": {
+              "type": "boolean",
+              "label": "Stationery disabled",
+              "section": "general",
+              "description": "true = the letterhead/stationery PDF background is suppressed for this type.",
+              "creatable": true,
+              "updatable": true
             }
           }
         }

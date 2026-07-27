@@ -37,8 +37,10 @@ from .emulated.quote import QuoteAdapter
 from .emulated.return_order import ReturnAdapter
 from .emulated.sales_invoice import SalesInvoiceAdapter
 from .emulated.sales_order import SalesOrderAdapter
+from .emulated.serial_number import SerialNumberAdapter
 from .emulated.settings import SETTINGS_ADAPTERS
 from .emulated.shipment import ShipmentAdapter
+from .emulated.stock_level import StockLevelAdapter
 from .emulated.stock_movement import StockMovementAdapter
 from .emulated.stock_take import StockTakeAdapter
 from .emulated.storage_location import StorageLocationAdapter
@@ -71,9 +73,11 @@ CORE = CoreManifest(
         PaymentAdapter(),
         StockMovementAdapter(),
         StorageLocationAdapter(),
+        StockLevelAdapter(),
         StockTakeAdapter(),
         PickingRunAdapter(),
         BatchAdapter(),
+        SerialNumberAdapter(),
         TagAdapter(),
         # CRM tab on the customer record (replaces the xentral_crm MCP tool).
         CorrespondenceAdapter(),
