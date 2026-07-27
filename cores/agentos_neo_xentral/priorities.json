@@ -133,20 +133,12 @@
         "reason": "Edit order positions (quantities, add/remove articles) after creation — the v3 update DTO carries no line-item write path."
       },
       {
-        "field": "fulfillmentPolicy.auto",
+        "field": "fulfillmentPolicy.partialShipping",
         "ops": [
           "create",
           "update"
         ],
-        "reason": "Auto-dispatch flag — controls whether the order ships automatically once ready."
-      },
-      {
-        "field": "fulfillmentPolicy.priority",
-        "ops": [
-          "create",
-          "update"
-        ],
-        "reason": "Fulfilment priority (FastLane) — lets a clerk prioritise an order through the warehouse."
+        "reason": "Partial-shipping policy has no upstream slot — the read reports a hardcoded \"allowed\". Needs a real v3 field before it can be written or trusted."
       },
       {
         "field": "billingAddress.zip",
