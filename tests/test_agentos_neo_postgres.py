@@ -16,11 +16,21 @@ ADAPTERS = {a.manifest.key: a for a in build_adapters()}
 
 
 def test_all_model_entities_synthesize():
-    assert len(ADAPTERS) == 22
+    # 22 documents/masterdata + StockLevel + SerialNumber + Correspondence +
+    # 19 settings lookups; EmailAccount/Printer are facade-only (excluded).
+    assert len(ADAPTERS) == 44
     so = ADAPTERS["SalesOrder"]
     assert so._table == "neo_sales_order"
     assert so._prefix == "so_"
     assert set(so.manifest.operations) >= {"list", "read"}
+    # newly folded-in entities synthesize with their own table + prefix
+    assert ADAPTERS["StockLevel"]._table == "neo_stock_level"
+    assert ADAPTERS["StockLevel"]._prefix == "slv_"
+    assert ADAPTERS["SerialNumber"]._prefix == "sn_"
+    assert ADAPTERS["PaymentMethod"]._prefix == "paym_"
+    # facade-only device surfaces stay out of the standalone model
+    assert "EmailAccount" not in ADAPTERS
+    assert "Printer" not in ADAPTERS
 
 
 def test_metadata_matches_contract_shape():
