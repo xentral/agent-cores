@@ -209,6 +209,13 @@ class FacadeAdapterBase:
 
     manifest: EmulationManifest
     v3_path: str = ""  # e.g. "/api/v3/salesOrders"
+    # Upstream collection for WRITES when it differs from the read path. Most
+    # entities read and write the same v3 collection (write_path stays ""); a few
+    # read a purpose-built v3 read model but must write through an older
+    # generation (Product: reads /api/v3/products, writes /api/v2/products).
+    # ``_send`` (POST/PATCH/PUT/DELETE) targets ``write_path or v3_path``; reads
+    # (_get) always use v3_path.
+    write_path: str = ""
     include: str = ""
     sections: dict[str, dict[str, str]] = {}
     preview_template: str = "{{number}}"
@@ -751,6 +758,30 @@ class FacadeAdapterBase:
             per_page = 25
         return page, per_page
 
+    @staticmethod
+    def _served_per_page(extra: dict[str, Any], up_meta: Any, requested: int) -> int:
+        """The page size the upstream actually served, not the one we asked for.
+
+        Asking is not getting: v1 caps ``perPage`` at 50 and quietly returns a
+        short page. Echoing the *requested* size back makes ``lastPage`` too
+        small by the same factor, and a consumer that pages to ``lastPage`` —
+        the whole reason it is emitted — stops early with no error to notice.
+        On the mvp tenant's 61,256 sales prices, ``perPage=100`` claimed 613
+        pages instead of 1226, hiding half the data behind a number that looks
+        authoritative.
+
+        Upstream reports the size it used (v1 ``extra.page.size``, v3
+        ``meta.perPage``), so take it from there and fall back to the request
+        only when nothing is echoed.
+        """
+        echo = extra.get("page")
+        echo = echo.get("size") if isinstance(echo, dict) else None
+        if echo is None and isinstance(up_meta, dict):
+            echo = up_meta.get("perPage")
+        if isinstance(echo, int) and not isinstance(echo, bool) and echo > 0:
+            return echo
+        return requested
+
     def _list_envelope(
         self,
         mapped: list[dict[str, Any]],
@@ -778,7 +809,8 @@ class FacadeAdapterBase:
             total = up_meta["total"]
         elif isinstance(extra.get("totalCount"), int):
             total = extra["totalCount"]
-        page, per_page = self._query_paging(query)
+        page, requested = self._query_paging(query)
+        per_page = self._served_per_page(extra, up_meta, requested)
         meta: dict[str, Any] = {"page": page, "perPage": per_page}
         if total is not None:
             extra["total"] = total
@@ -806,7 +838,9 @@ class FacadeAdapterBase:
         accept_language: str | None,
         client: httpx.AsyncClient | None,
     ) -> tuple[int, Any]:
-        path = self.v3_path + (f"/{up_handle}" if up_handle else "")
+        # Writes go to write_path when the adapter reads and writes different
+        # upstream generations (Product); everyone else falls back to v3_path.
+        path = (self.write_path or self.v3_path) + (f"/{up_handle}" if up_handle else "")
         url = f"{base_url.rstrip('/')}{path}"
         headers = self._headers(token, accept_language)
 
