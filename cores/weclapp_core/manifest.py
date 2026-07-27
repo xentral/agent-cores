@@ -1,10 +1,11 @@
-"""weclapp (native) — a generated 1:1 mirror of weclapp's own API (mode C2).
+"""weclapp Adapter — a generated 1:1 mirror of weclapp's own API (mode C2).
 
 Unlike ``agentos_neo_weclapp`` (a curated AgentOS-Neo shape), this core mirrors
 weclapp verbatim: entity and field names as weclapp names them, generated from the
 OpenAPI spec (see ``generator.py`` + ``docs/00-concept.md``). It reuses the curated
 core's engine and its weclapp connection — the tenant connects once, both cores
-work. Read-only v1; grouped under Labs until verified against a live tenant.
+work. Offered as a regular core (no longer behind the selector's Labs
+disclosure); read and write, with the verbs generated per entity from the spec.
 """
 
 from __future__ import annotations
@@ -15,13 +16,11 @@ from .entities import build_adapters
 
 CORE = CoreManifest(
     id="weclapp_core",
-    label_de="weclapp (nativ)",
-    label_en="weclapp (native)",
+    label_de="weclapp Adapter",
+    label_en="weclapp Adapter",
     # After the raw passthrough cores (odoo 20); a native mirror is the same family.
     order=21,
     native_policy=EmulatedOnly(),
-    # Experimental generated mirror — grouped under the selector's "Labs" section.
-    labs=True,
     # Read + write: create/update/delete are enabled per entity from the spec's path
     # verbs (see generator._operations). Not read-only, so no "read-only" marking.
     read_only=False,

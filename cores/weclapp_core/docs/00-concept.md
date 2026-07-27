@@ -89,4 +89,5 @@ unit-tested against.
 - **Roster hygiene.** 150+ entities want categories/an allowlist so the selector
   isn't a wall of names.
 
-Marked `labs=True` + `read_only=True` until verified against a live tenant.
+Offered as a regular core: neither `labs` nor `read_only` — the generated verbs
+are the gate, per entity (see `generator._operations`).
