@@ -40,14 +40,136 @@ product create is reported honestly as a partial success (never a false 201).
 
 from __future__ import annotations
 
+import asyncio
 import json
+from datetime import date
 from typing import Any
 
 import httpx
 
 from entity_registry.core_sdk import EmulationManifest
 
-from .base import RO, FacadeAdapterBase, map_tags, money, prop, ref, tags_prop
+from .base import _TIMEOUT, RO, FacadeAdapterBase, map_tags, money, prop, ref, tags_prop
+
+# ---- detail hydration (issue #23) -----------------------------------------
+# `describe` advertises stock, bom and prices.sale, but the v3 product payload
+# carries none of them, so map_read could only ever emit empty ones. Each has
+# its own v1 sub-resource keyed by product id; a single-record read fetches all
+# three concurrently. List reads deliberately do NOT — a 25-row page would cost
+# 75 extra round trips, and lists are the hot path. That summary-vs-detail
+# asymmetry is the usual trade; `get` is where a product is actually inspected.
+#
+# customFields stays empty on purpose: free-field *definitions* are exposed
+# (/api/v1/productsFreeFields → the ProductFreeField entity) but no upstream
+# endpoint returns per-product free-field VALUES.
+_SUB_STOCKS = "stocks"
+_SUB_PARTS = "parts"
+_SUB_SALES_PRICES = "salesPrices"
+
+
+def _num(value: Any) -> Any:
+    """Upstream sends stock counts as floats; emit ints when they are whole."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return value
+    return int(value) if float(value).is_integer() else value
+
+
+def _day(value: Any) -> date | None:
+    if not isinstance(value, str) or len(value) < 10:
+        return None
+    try:
+        return date.fromisoformat(value[:10])
+    except ValueError:
+        return None
+
+
+def _valid_on(row: dict[str, Any], today: date) -> bool:
+    start, end = _day(row.get("validFrom")), _day(row.get("expiresAt"))
+    if start and today < start:
+        return False
+    return not (end and today > end)
+
+
+def map_stock(payload: Any, minimum: Any) -> dict[str, Any] | None:
+    """``/products/{id}/stocks`` totals → the model's stock block.
+
+    ``incoming`` has no counterpart upstream — the totals cover physical,
+    sellable, reserved, correction, pseudo, openSalesOrders, calculated and
+    producible — so it stays None instead of borrowing an approximate field.
+    ``belowMinimum`` is derived against the product's own minimum stock, and is
+    None when either side is unknown rather than defaulting to False.
+    """
+    data = payload.get("data") if isinstance(payload, dict) else None
+    totals = data.get("totals") if isinstance(data, dict) else None
+    if not isinstance(totals, dict):
+        return None
+    available = totals.get("sellable")
+    below = None
+    if isinstance(available, (int, float)) and isinstance(minimum, (int, float)):
+        below = bool(available < minimum)
+    return {
+        "available": _num(available),
+        "reserved": _num(totals.get("reserved")),
+        "incoming": None,
+        "belowMinimum": below,
+    }
+
+
+def map_bom_items(payload: Any) -> list[dict[str, Any]]:
+    """``/products/{id}/parts`` rows → ``bom.items``. One level only.
+
+    Each part is itself a product, so a full explosion means recursing per
+    child. That is a per-node round trip with no upstream roll-up, so the
+    facade emits the direct children and leaves recursion to the caller.
+    """
+    rows = payload.get("data") if isinstance(payload, dict) else None
+    items: list[dict[str, Any]] = []
+    for r in rows or []:
+        if not isinstance(r, dict):
+            continue
+        p = r.get("product") if isinstance(r.get("product"), dict) else {}
+        quantity = r.get("amount")
+        try:
+            quantity = float(quantity)
+        except (TypeError, ValueError):
+            pass
+        items.append(
+            {
+                "product": ref("prd_", p.get("id"), p.get("number"), p.get("name"), "products"),
+                "quantity": _num(quantity),
+            }
+        )
+    return items
+
+
+def pick_sale_price(payload: Any, today: date) -> dict[str, Any] | None:
+    """The product's own list price from ``/products/{id}/salesPrices``.
+
+    "The" sale price is the unscoped base tier: no customer and no customer
+    group (those are negotiated prices, not the product's), the lowest quantity
+    threshold, and valid today. An entirely expired scale yields None rather
+    than a stale number — mvp's prd_1 carries twenty tiers that all lapsed in
+    2023, and reporting 1.00 EUR for it would be worse than reporting nothing.
+    """
+    rows = payload.get("data") if isinstance(payload, dict) else None
+    best_qty: float | None = None
+    best: dict[str, Any] | None = None
+    for r in rows or []:
+        if not isinstance(r, dict) or r.get("customer") or r.get("customerGroup"):
+            continue
+        if not _valid_on(r, today):
+            continue
+        try:
+            qty = float(r.get("amount"))
+        except (TypeError, ValueError):
+            qty = 1.0
+        if best_qty is None or qty < best_qty:
+            best_qty, best = qty, r
+    if best is None:
+        return None
+    price = best.get("price") if isinstance(best.get("price"), dict) else {}
+    return money(price.get("amount"), price.get("currency") or "EUR")
+
 
 _STATUS_OPTIONS = [
     {"value": v, "label": v.capitalize()} for v in ("active", "inactive", "archived")
@@ -234,7 +356,7 @@ class ProductAdapter(FacadeAdapterBase):
                 return await self._list_by_tags(
                     terms, rest, page, size, base_url, token, accept_language, client
                 )
-        return await super().request(
+        resp = await super().request(
             method=method,
             handle=handle,
             query=query,
@@ -244,6 +366,79 @@ class ProductAdapter(FacadeAdapterBase):
             accept_language=accept_language,
             client=client,
         )
+        if method.upper() == "GET" and handle:
+            return await self._hydrate_detail(resp, base_url, token, accept_language, client)
+        return resp
+
+    async def _fetch_sub(  # noqa: ANN001
+        self, suffix, up_id, base_url, token, accept_language, client
+    ):
+        """GET one v1 product sub-resource. None on any failure.
+
+        Sub-resources are additive detail, so a failing one must not take the
+        product read down with it — the caller reports which sections could not
+        be loaded instead of guessing an empty value for them.
+        """
+        url = f"{base_url.rstrip('/')}/api/v1/products/{up_id}/{suffix}"
+        try:
+            resp = await client.get(url, headers=self._headers(token, accept_language))
+            if resp.status_code >= 400:
+                return None
+            return resp.json()
+        except (httpx.HTTPError, ValueError):
+            return None
+
+    async def _hydrate_detail(  # noqa: ANN001
+        self, resp, base_url, token, accept_language, client
+    ):
+        if resp.status_code != 200:
+            return resp
+        try:
+            body = json.loads(resp.content or b"{}")
+        except (ValueError, TypeError):
+            return resp
+        rec = body.get("data") if isinstance(body, dict) else None
+        if not isinstance(rec, dict):
+            return resp
+        up_id = str(rec.get("id") or "").removeprefix("prd_")
+        if not up_id:
+            return resp
+
+        async def _gather(c):  # noqa: ANN001, ANN202
+            return await asyncio.gather(
+                self._fetch_sub(_SUB_STOCKS, up_id, base_url, token, accept_language, c),
+                self._fetch_sub(_SUB_PARTS, up_id, base_url, token, accept_language, c),
+                self._fetch_sub(_SUB_SALES_PRICES, up_id, base_url, token, accept_language, c),
+            )
+
+        if client is None:
+            async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
+                stocks, parts, prices = await _gather(c)
+        else:
+            stocks, parts, prices = await _gather(client)
+
+        unavailable: list[str] = []
+        if stocks is None:
+            unavailable.append("stock")
+        else:
+            minimum = (rec.get("logistics") or {}).get("minimumStockQuantity")
+            mapped = map_stock(stocks, minimum)
+            if mapped is not None:
+                rec["stock"] = mapped
+        if parts is None:
+            unavailable.append("bom")
+        else:
+            rec["bom"] = {"items": map_bom_items(parts)}
+        if prices is None:
+            unavailable.append("prices.sale")
+        else:
+            rec.setdefault("prices", {})["sale"] = pick_sale_price(prices, date.today())
+
+        out: dict[str, Any] = {"data": rec}
+        if unavailable:
+            # An empty section and an unreachable one are not the same answer.
+            out["extra"] = {"unavailableSections": unavailable}
+        return self._json(200, out)
 
     @staticmethod
     def _split_tags_filter(
