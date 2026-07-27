@@ -1,10 +1,13 @@
 """weclapp entity roster (curated, static) — read-only v1.
 
 Covers the important ERP core entities across the sales + purchase cycle plus
-master data, all read-only:
+master data, stock and configuration lookups, all read-only:
 
     Customer · Supplier · Article · Quotation · SalesOrder · SalesInvoice ·
-    PurchaseOrder · Shipment
+    PurchaseOrder · PurchaseInvoice · GoodsReceipt · Shipment · Unit ·
+    Currency · PaymentMethod · ProductCategory · Warehouse · StorageLocation ·
+    Batch · SerialNumber · StockLevel · StockTake · Tag · ShippingMethod ·
+    PaymentTermsGroup · TaxRate · Webhook · User
 
 They share the same engine (``WeclappAdapterBase``) and are built from reusable
 field bundles + two small factories (``_party_entity`` for the polymorphic
@@ -415,6 +418,415 @@ SHIPMENT = _business_document(
 )
 
 
+# --- master-data lookups + stock (read-only) ---------------------------------
+#
+# weclapp property names reconciled against the OpenAPI spec vendored in the
+# native ``weclapp_core`` (cores/weclapp_core/openapi.json). Keys lean on the
+# Neo model's vocabulary (StockLevel/StorageLocation/Batch/SerialNumber/Unit/…)
+# so this facade converges with ``agentos_neo_xentral`` — and, incidentally,
+# resolves the ``Unit``/``Currency`` references Article and the documents
+# already emit.
+
+_SYSTEM_STAMPS: tuple[Field, ...] = (
+    Field("createdDate", "Created", type="datetime", section="system", sortable=True, epoch=True),
+    Field(
+        "lastModifiedDate", "Updated", type="datetime", section="system", sortable=True, epoch=True
+    ),
+)
+_LOOKUP_SECTIONS = (("general", "General"), ("system", "System"))
+
+UNIT = Entity(
+    key="Unit",
+    label_en="Unit",
+    category="products",
+    endpoint="unit",
+    label_field="name",
+    sections=_LOOKUP_SECTIONS,
+    scalars=(
+        Field("name", "Name", section="general", filterable=True, sortable=True, preview=0),
+        Field("description", "Description", section="general"),
+        *_SYSTEM_STAMPS,
+    ),
+    operations=("list", "read"),
+)
+
+CURRENCY = Entity(
+    key="Currency",
+    label_en="Currency",
+    category="accounting",
+    endpoint="currency",
+    label_field="name",
+    sections=_LOOKUP_SECTIONS,
+    scalars=(
+        Field("name", "Name", section="general", filterable=True, sortable=True, preview=0),
+        Field("currencySymbol", "Symbol", section="general", preview=1),
+        *_SYSTEM_STAMPS,
+    ),
+    operations=("list", "read"),
+)
+
+PAYMENT_METHOD = Entity(
+    key="PaymentMethod",
+    label_en="Payment method",
+    category="accounting",
+    endpoint="paymentMethod",
+    label_field="name",
+    sections=_LOOKUP_SECTIONS,
+    scalars=(
+        Field("name", "Name", section="general", filterable=True, sortable=True, preview=0),
+        Field("type", "Type", section="general", filterable=True, preview=1),
+        *_SYSTEM_STAMPS,
+    ),
+    operations=("list", "read"),
+)
+
+PRODUCT_CATEGORY = Entity(
+    key="ProductCategory",
+    label_en="Product category",
+    category="products",
+    endpoint="articleCategory",
+    label_field="name",
+    sections=_LOOKUP_SECTIONS,
+    scalars=(
+        Field("name", "Name", section="general", filterable=True, sortable=True, preview=0),
+        Field("description", "Description", section="general"),
+        *_SYSTEM_STAMPS,
+    ),
+    references=(
+        Reference("parentCategoryId", "Parent", reference="ProductCategory", section="general"),
+    ),
+    operations=("list", "read"),
+)
+
+WAREHOUSE = Entity(
+    key="Warehouse",
+    label_en="Warehouse",
+    category="logistics",
+    endpoint="warehouse",
+    label_field="name",
+    sections=_LOOKUP_SECTIONS,
+    scalars=(
+        Field("name", "Name", section="general", filterable=True, sortable=True, preview=0),
+        Field("shortIdentifier", "Short id", section="general", filterable=True, preview=1),
+        Field("warehouseType", "Type", section="general", filterable=True),
+        Field("active", "Active", type="boolean", section="general", filterable=True),
+        *_SYSTEM_STAMPS,
+    ),
+    operations=("list", "read"),
+)
+
+STORAGE_LOCATION = Entity(
+    key="StorageLocation",
+    label_en="Storage location",
+    category="logistics",
+    endpoint="storagePlace",
+    label_field="name",
+    sections=_LOOKUP_SECTIONS,
+    scalars=(
+        Field("name", "Name", section="general", filterable=True, sortable=True, preview=0),
+        Field("barcode", "Barcode", section="general", filterable=True, preview=1),
+        Field("storagePlaceType", "Type", section="general", filterable=True),
+        Field("active", "Active", type="boolean", section="general", filterable=True),
+        *_SYSTEM_STAMPS,
+    ),
+    references=(
+        Reference("warehouseId", "Warehouse", reference="Warehouse", section="general", preview=2),
+    ),
+    operations=("list", "read"),
+)
+
+BATCH = Entity(
+    key="Batch",
+    label_en="Batch",
+    category="logistics",
+    endpoint="batchNumber",
+    label_field="batchNumber",
+    sections=_LOOKUP_SECTIONS,
+    scalars=(
+        Field(
+            "batchNumber", "Number", section="general", filterable=True, sortable=True, preview=0
+        ),
+        Field("expirationDate", "Best before", type="date", section="general", epoch=True),
+        Field("ddsNumber", "DDS number", section="general"),
+        *_SYSTEM_STAMPS,
+    ),
+    references=(
+        Reference("articleId", "Article", reference="Article", section="general", preview=1),
+    ),
+    operations=("list", "read"),
+)
+
+SERIAL_NUMBER = Entity(
+    key="SerialNumber",
+    label_en="Serial number",
+    category="logistics",
+    endpoint="serialNumber",
+    label_field="serialNumber",
+    sections=_LOOKUP_SECTIONS,
+    scalars=(
+        Field(
+            "serialNumber", "Number", section="general", filterable=True, sortable=True, preview=0
+        ),
+        *_SYSTEM_STAMPS,
+    ),
+    references=(
+        Reference("articleId", "Article", reference="Article", section="general", preview=1),
+    ),
+    operations=("list", "read"),
+)
+
+# The stock query: weclapp ``warehouseStock`` is the product × warehouse ×
+# storage place × batch projection with an on-hand quantity.
+STOCK_LEVEL = Entity(
+    key="StockLevel",
+    label_en="Stock level",
+    category="logistics",
+    endpoint="warehouseStock",
+    label_field="quantity",
+    sections=(("general", "General"), ("system", "System")),
+    scalars=(
+        Field("quantity", "Quantity", type="decimal", section="general", sortable=True, preview=0),
+        Field("inboundDate", "Inbound", type="date", section="general", epoch=True),
+        *_SYSTEM_STAMPS,
+    ),
+    references=(
+        Reference("articleId", "Article", reference="Article", section="general", preview=1),
+        Reference("warehouseId", "Warehouse", reference="Warehouse", section="general", preview=2),
+        Reference(
+            "storagePlaceId", "Storage location", reference="StorageLocation", section="general"
+        ),
+        Reference("batchNumberId", "Batch", reference="Batch", section="general"),
+    ),
+    operations=("list", "read"),
+)
+
+
+# --- more business documents --------------------------------------------------
+
+PURCHASE_INVOICE = _business_document(
+    key="PurchaseInvoice",
+    label="Purchase invoice",
+    category="accounting",
+    endpoint="purchaseInvoice",
+    number_wire="invoiceNumber",
+    date_wire="invoiceDate",
+    items_wire="purchaseInvoiceItems",
+    items_label="Invoice items",
+    party_wire="supplierId",
+    party_label="Supplier",
+    party_target="Supplier",
+    extra_scalars=(
+        Field("dueDate", "Due", type="date", section="general", sortable=True, epoch=True),
+        Field("paymentStatus", "Payment status", section="general", filterable=True),
+    ),
+    address_embeds=(_INVOICE,),
+)
+
+# Goods receipt (weclapp ``incomingGoods``) built directly: it has no document
+# date field (only createdDate) and carries a warehouse reference the document
+# factory does not model, so it is declared explicitly.
+GOODS_RECEIPT = Entity(
+    key="GoodsReceipt",
+    label_en="Goods receipt",
+    category="logistics",
+    endpoint="incomingGoods",
+    label_field="documentNumber",
+    sections=(
+        ("general", "General"),
+        ("references", "References"),
+        ("items", "Line items"),
+        ("system", "System"),
+    ),
+    scalars=(
+        Field(
+            "incomingGoodsNumber",
+            "Goods receipt no.",
+            key="documentNumber",
+            section="general",
+            filterable=True,
+            sortable=True,
+            preview=0,
+        ),
+        Field("status", "Status", section="general", filterable=True, sortable=True, preview=2),
+        Field("deliveryNoteNumber", "Delivery note no.", section="general", filterable=True),
+        Field(
+            "createdDate",
+            "Created",
+            key="documentDate",
+            type="datetime",
+            section="general",
+            sortable=True,
+            epoch=True,
+            preview=1,
+        ),
+        Field(
+            "lastModifiedDate",
+            "Updated",
+            type="datetime",
+            section="system",
+            sortable=True,
+            epoch=True,
+        ),
+    ),
+    references=(
+        Reference(
+            "senderPartyId",
+            "Supplier",
+            reference="Supplier",
+            key="party",
+            section="references",
+            preview=3,
+        ),
+        Reference("warehouseId", "Warehouse", reference="Warehouse", section="references"),
+    ),
+    collections=(
+        Collection(
+            "incomingGoodsItems", "Receipt items", fields=_LINE_ITEM_FIELDS, section="items"
+        ),
+    ),
+    operations=("list", "read"),
+    additional_properties=("incomingGoodsItems",),
+)
+
+
+# --- inventory document + more configuration lookups -------------------------
+#
+# weclapp entities without a faithful Neo counterpart are deliberately NOT
+# mapped: ``pick`` is task-level (weclapp has no picking-*run* grouping),
+# ``shipmentReturnReason`` has no component schema to reconcile, and weclapp has
+# no ``deliveryNote`` / ``creditNote`` / ``priceList`` / standalone ``payment``
+# entity at all (see the native ``weclapp_core`` mirror for the raw surface).
+
+STOCK_TAKE = Entity(
+    key="StockTake",
+    label_en="Stock take",
+    category="logistics",
+    endpoint="inventory",
+    label_field="number",
+    sections=(("general", "General"), ("system", "System")),
+    scalars=(
+        Field(
+            "inventoryNumber",
+            "Number",
+            key="number",
+            section="general",
+            filterable=True,
+            sortable=True,
+            preview=0,
+        ),
+        Field("status", "Status", section="general", filterable=True, sortable=True, preview=2),
+        Field("description", "Description", section="general", preview=1),
+        Field("startDate", "Started", type="date", section="general", sortable=True, epoch=True),
+        Field("endDate", "Ended", type="date", section="general", sortable=True, epoch=True),
+        *_SYSTEM_STAMPS,
+    ),
+    references=(
+        Reference("warehouseId", "Warehouse", reference="Warehouse", section="general", preview=3),
+    ),
+    operations=("list", "read"),
+)
+
+TAG = Entity(
+    key="Tag",
+    label_en="Tag",
+    category="crm",
+    endpoint="tag",
+    label_field="name",
+    sections=_LOOKUP_SECTIONS,
+    scalars=(
+        Field("name", "Name", section="general", filterable=True, sortable=True, preview=0),
+        *_SYSTEM_STAMPS,
+    ),
+    operations=("list", "read"),
+)
+
+SHIPPING_METHOD = Entity(
+    key="ShippingMethod",
+    label_en="Shipping method",
+    category="logistics",
+    endpoint="shipmentMethod",
+    label_field="name",
+    sections=_LOOKUP_SECTIONS,
+    scalars=(
+        Field("name", "Name", section="general", filterable=True, sortable=True, preview=0),
+        Field("description", "Description", section="general", preview=1),
+        Field("active", "Active", type="boolean", section="general", filterable=True),
+        *_SYSTEM_STAMPS,
+    ),
+    operations=("list", "read"),
+)
+
+PAYMENT_TERMS_GROUP = Entity(
+    key="PaymentTermsGroup",
+    label_en="Payment terms",
+    category="accounting",
+    endpoint="termOfPayment",
+    label_field="name",
+    sections=_LOOKUP_SECTIONS,
+    scalars=(
+        Field("name", "Name", section="general", filterable=True, sortable=True, preview=0),
+        Field("description", "Description", section="general", preview=1),
+        Field("numberOfDays", "Days", type="integer", section="general"),
+        *_SYSTEM_STAMPS,
+    ),
+    operations=("list", "read"),
+)
+
+TAX_RATE = Entity(
+    key="TaxRate",
+    label_en="Tax rate",
+    category="accounting",
+    endpoint="tax",
+    label_field="name",
+    sections=_LOOKUP_SECTIONS,
+    scalars=(
+        Field("name", "Name", section="general", filterable=True, sortable=True, preview=0),
+        Field("taxValue", "Rate %", type="decimal", section="general", filterable=True, preview=1),
+        Field("taxKey", "Tax key", section="general", filterable=True),
+        Field("taxType", "Type", section="general", filterable=True),
+        *_SYSTEM_STAMPS,
+    ),
+    operations=("list", "read"),
+)
+
+WEBHOOK = Entity(
+    key="Webhook",
+    label_en="Webhook",
+    category="integrations",
+    endpoint="webhook",
+    label_field="url",
+    sections=_LOOKUP_SECTIONS,
+    scalars=(
+        Field("url", "URL", section="general", filterable=True, preview=0),
+        Field("entityName", "Entity", section="general", filterable=True, preview=1),
+        Field("requestMethod", "Method", section="general", filterable=True),
+        Field("atCreate", "On create", type="boolean", section="general"),
+        Field("atUpdate", "On update", type="boolean", section="general"),
+        Field("atDelete", "On delete", type="boolean", section="general"),
+        *_SYSTEM_STAMPS,
+    ),
+    operations=("list", "read"),
+)
+
+USER = Entity(
+    key="User",
+    label_en="User",
+    category="organization",
+    endpoint="user",
+    label_field="username",
+    sections=_LOOKUP_SECTIONS,
+    scalars=(
+        Field("username", "Username", section="general", filterable=True, sortable=True, preview=0),
+        Field("email", "Email", section="general", filterable=True, preview=1),
+        Field("firstName", "First name", section="general", filterable=True),
+        Field("lastName", "Last name", section="general", filterable=True),
+        Field("status", "Status", section="general", filterable=True),
+        *_SYSTEM_STAMPS,
+    ),
+    operations=("list", "read"),
+)
+
+
 _ENTITIES: tuple[Entity, ...] = (
     CUSTOMER,
     SUPPLIER,
@@ -423,7 +835,27 @@ _ENTITIES: tuple[Entity, ...] = (
     SALES_ORDER,
     SALES_INVOICE,
     PURCHASE_ORDER,
+    PURCHASE_INVOICE,
+    GOODS_RECEIPT,
     SHIPMENT,
+    # master-data lookups + stock
+    UNIT,
+    CURRENCY,
+    PAYMENT_METHOD,
+    PRODUCT_CATEGORY,
+    WAREHOUSE,
+    STORAGE_LOCATION,
+    BATCH,
+    SERIAL_NUMBER,
+    STOCK_LEVEL,
+    STOCK_TAKE,
+    # configuration lookups
+    TAG,
+    SHIPPING_METHOD,
+    PAYMENT_TERMS_GROUP,
+    TAX_RATE,
+    WEBHOOK,
+    USER,
 )
 
 
