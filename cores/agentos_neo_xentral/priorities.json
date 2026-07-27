@@ -187,14 +187,6 @@
         "reason": "Deviating debtor account for the FiBu/DATEV export — settable when it differs from the customer default."
       },
       {
-        "field": "dates.serviceDate",
-        "ops": [
-          "create",
-          "update"
-        ],
-        "reason": "Leistungs-/Lieferdatum — a §14 UStG mandatory field; must be settable per invoice, not only read."
-      },
-      {
         "field": "taxation",
         "ops": [
           "update"

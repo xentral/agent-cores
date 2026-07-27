@@ -200,7 +200,10 @@ class CreditNoteAdapter(FacadeAdapterBase):
                 section="general",
                 properties={
                     "issued": prop("date", "Issued", **_CU, filterable=True, sortable=True),
-                    "serviceDate": prop("date", "Service date", filterable=True),
+                    # Unlike the invoice, the credit-note v3 DTOs still carry no
+                    # `deliveryDate` — the write drops this silently, so the schema must
+                    # not advertise it as writable (priorities.json keeps the wish).
+                    "serviceDate": prop("date", "Service date", **RO, filterable=True),
                 },
             ),
             "taxation": prop("select", "Taxation", section="financials", **_CU),

@@ -260,7 +260,7 @@ class SalesInvoiceAdapter(FacadeAdapterBase):
                 section="general",
                 properties={
                     "issued": prop("date", "Issued", **_CU, filterable=True, sortable=True),
-                    "serviceDate": prop("date", "Service date"),
+                    "serviceDate": prop("date", "Service date", **_CU),
                     "servicePeriod": prop("string", "Service period", **RO),
                 },
             ),
@@ -614,8 +614,11 @@ class SalesInvoiceAdapter(FacadeAdapterBase):
             d = model["dates"] or {}
             if d.get("issued"):
                 v3["documentDate"] = d["issued"]
+            # Leistungsdatum (§14 UStG): v3 gained `deliveryDate` on create AND update,
+            # so this is a real write now — it used to be a blue wish. Nullable upstream,
+            # hence `in d` rather than a truthiness check: clearing it is a valid edit.
             if "serviceDate" in d:
-                rejected.add("dates.serviceDate")
+                v3["deliveryDate"] = d["serviceDate"]
         if "customer" in model:
             if creating:
                 v3["address"] = self._ref_id(model["customer"])
