@@ -42,6 +42,11 @@ _STATUS_OPTIONS = [
     {"value": v, "label": v.capitalize()}
     for v in ("draft", "confirmed", "fulfilled", "closed", "cancelled")
 ]
+# Fulfilment priority is the neutral face of v3 `fastLane` (a boolean upstream).
+_PRIORITY_OPTIONS = [{"value": "normal", "label": "Normal"}, {"value": "high", "label": "High"}]
+# The only partial-shipping policy the upstream can represent today; the read
+# reports it unconditionally, so the write treats it as the no-op value.
+_PARTIAL_SHIPPING = "allowed"
 # trafficLights that represent an actual fulfilment BLOCK (→ holds); the rest are
 # informational signals, not holds. Polarity/`since`/`by` need product sign-off
 # (docs/00-decisions Offene Klärung #3) — kept minimal and honest until then.
@@ -409,9 +414,11 @@ class SalesOrderAdapter(FacadeAdapterBase):
                 "Fulfillment policy",
                 section="shipping",
                 properties={
-                    "auto": prop("boolean", "Auto dispatch"),
-                    "priority": prop("select", "Priority"),
-                    "partialShipping": prop("select", "Partial shipping"),
+                    "auto": prop("boolean", "Auto dispatch", **_CU),
+                    "priority": prop("select", "Priority", options=_PRIORITY_OPTIONS, **_CU),
+                    # No upstream slot: the read hardcodes "allowed". Read-only until
+                    # v3 exposes a partial-shipping policy (priorities.json wish).
+                    "partialShipping": prop("select", "Partial shipping", **RO),
                 },
             ),
             "holds": prop(
@@ -624,7 +631,7 @@ class SalesOrderAdapter(FacadeAdapterBase):
             "fulfillmentPolicy": {
                 "auto": r.get("autoDispatch"),
                 "priority": "high" if r.get("fastLane") else "normal",
-                "partialShipping": "allowed",
+                "partialShipping": _PARTIAL_SHIPPING,
             },
             "holds": holds,
             "texts": {"intro": r.get("bodyIntroduction"), "outro": r.get("bodyOutroduction")},
@@ -656,6 +663,7 @@ class SalesOrderAdapter(FacadeAdapterBase):
         "tags",
         "references",
         "shipping",
+        "fulfillmentPolicy",
     }
     _IGNORE = {
         "object",
@@ -750,6 +758,19 @@ class SalesOrderAdapter(FacadeAdapterBase):
             sh = model["shipping"] or {}
             if "method" in sh:  # v3 shippingMethod {id} (API-729 parity)
                 v3["shippingMethod"] = self._ref_id(sh["method"])
+        if "fulfillmentPolicy" in model:
+            # autoDispatch + fastLane are writable on v3 create AND update — verified
+            # live against mvp 2026-07-27 (write, read back, flip, read back again).
+            fp = model["fulfillmentPolicy"] or {}
+            if "auto" in fp:
+                v3["autoDispatch"] = fp["auto"]
+            if "priority" in fp:  # neutral select ↔ boolean fastLane upstream
+                v3["fastLane"] = fp["priority"] == "high"
+            # partialShipping has no upstream slot and the read hardcodes "allowed".
+            # Reject only a genuine CHANGE: echoing the value back (a read-modify-write
+            # round trip, which is how most clients PATCH) must stay a no-op, not a 409.
+            if fp.get("partialShipping", _PARTIAL_SHIPPING) != _PARTIAL_SHIPPING:
+                rejected.add("fulfillmentPolicy.partialShipping")
         # create-only upstream
         if "customer" in model:
             if creating:
