@@ -177,7 +177,7 @@ def test_detail_read_fills_all_three_sections():
             "salesPrices": _Resp(200, {"data": [{"amount": "1", "price": {"amount": "4.50"}}]}),
         }
     )
-    body = _read(_adapter({"id": 7, "name": "Widget", "minimumStorageQuantity": 20}), client)
+    body = _read(_adapter({"id": 7, "name": "Widget", "minimumStockLevel": 20}), client)
     rec = body["data"]
     assert rec["stock"] == {"available": 12, "reserved": 3, "incoming": None, "belowMinimum": True}
     assert rec["bom"]["items"][0]["product"]["id"] == "prd_9"

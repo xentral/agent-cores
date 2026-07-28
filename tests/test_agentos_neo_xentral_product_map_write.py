@@ -37,7 +37,7 @@ _FULL_MODEL: dict[str, Any] = {
         "ean": "4001234567890",
         "hsCode": "76129080",
         "countryOfOrigin": "DE",
-        "manufacturerNumber": "ALB-750-S",  # read-only: no v2 slot
+        "manufacturerNumber": "ALB-750-S",  # → v2 manufacturer.number
     },
     "manufacturer": {"name": "AluBottle Inc.", "website": "https://alu.example"},
     "prices": {
@@ -86,7 +86,12 @@ def test_map_write_full_model_to_v2_body():
     assert v2["ean"] == "4001234567890"
     assert v2["customsTariffNumber"] == "76129080"
     assert v2["countryOfOrigin"] == "DE"
-    assert v2["manufacturer"] == {"name": "AluBottle Inc.", "link": "https://alu.example"}
+    # manufacturer number nests under manufacturer.number (from identifiers.manufacturerNumber)
+    assert v2["manufacturer"] == {
+        "name": "AluBottle Inc.",
+        "link": "https://alu.example",
+        "number": "ALB-750-S",
+    }
     assert v2["salesTax"] == "reduced"
     assert v2["standardSupplier"] == {"id": "42"}
 
@@ -121,8 +126,9 @@ def test_sale_price_is_not_in_the_product_body():
     # price (6.20) belongs in the v2 body
     assert "12.90" not in json.dumps(v2)
     assert "6.20" in json.dumps(v2)
-    # manufacturerNumber has no v2 slot → silently skipped (schema marks it RO)
+    # manufacturerNumber is written NESTED (manufacturer.number), never as a top-level key
     assert "manufacturerNumber" not in v2
+    assert v2["manufacturer"]["number"] == "ALB-750-S"
 
 
 def test_default_project_only_on_create():
@@ -153,6 +159,38 @@ def test_tax_rate_reads_from_v3_taxrate_field():
     # v2 view field name still works as a fallback
     assert a.map_read({"id": 1, "salesTax": "reduced"})["tax"]["rate"] == "reduced"
     assert a.map_read({"id": 1})["tax"]["rate"] is None
+
+
+def test_map_read_uses_the_actual_v3_field_names():
+    # These leaves regressed to null because map_read read the v2 write-names, not
+    # the v3 read-names. Pin the correct v3 source fields (colleague-reported).
+    a = ProductAdapter()
+    rec = a.map_read(
+        {
+            "id": 1,
+            "manufacturer": "ACME",
+            "manufacturerUrl": "https://acme.example",
+            "manufacturerProductNumber": "MFR-77",
+            "minimumStockLevel": 25,
+            "serialNumberTracking": "stockGenerated",
+            "printSettings": {"withoutPrices": True},
+        }
+    )
+    assert rec["manufacturer"] == {"name": "ACME", "website": "https://acme.example"}
+    assert rec["identifiers"]["manufacturerNumber"] == "MFR-77"
+    assert rec["logistics"]["minimumStockQuantity"] == 25
+    assert rec["tracking"]["serialNumbers"] == "stockGenerated"
+    assert rec["documentDefaults"]["hidePrice"] is True
+
+
+def test_manufacturer_number_is_writable_and_nested():
+    f = ProductAdapter().fields()
+    assert f["identifiers"]["properties"]["manufacturerNumber"].get("creatable")
+    v2, rejected = ProductAdapter().map_write(
+        {"identifiers": {"manufacturerNumber": "MFR-77"}}, creating=False
+    )
+    assert rejected == set()
+    assert v2["manufacturer"] == {"number": "MFR-77"}
 
 
 def test_writable_fields_flagged_in_schema():

@@ -672,8 +672,9 @@ class ProductAdapter(FacadeAdapterBase):
                 section="identifiers",
                 properties={
                     "ean": prop("string", "EAN", **_CU, filterable=True, searchable=True),
-                    # manufacturerNumber has no slot in the v2 create body → wish.
-                    "manufacturerNumber": prop("string", "Manufacturer number", **RO),
+                    # v2 write slot is manufacturer.number; v3 read is
+                    # manufacturerProductNumber (see map_write / map_read).
+                    "manufacturerNumber": prop("string", "Manufacturer number", **_CU),
                     "hsCode": prop("string", "HS code", **_CU),
                     "countryOfOrigin": prop("string", "Country of origin", **_CU),
                     "external": prop(
@@ -933,14 +934,13 @@ class ProductAdapter(FacadeAdapterBase):
         if not isinstance(pp_price, dict):
             pp_price = {}
         supplier = r.get("defaultSupplier") or r.get("standardSupplier")
-        # v1 frequently carries the manufacturer as a bare name string (it is
-        # a free-text field there); the {name, link} object shape is not
-        # guaranteed per record.
-        manufacturer = r.get("manufacturer")
-        if isinstance(manufacturer, str):
-            manufacturer = {"name": manufacturer or None}
-        elif not isinstance(manufacturer, dict):
-            manufacturer = {}
+        # v3 carries the manufacturer NAME as a bare string (``manufacturer``); the
+        # website is a separate top-level field (``manufacturerUrl``) and the
+        # manufacturer's product number is ``manufacturerProductNumber``. (v1/v2
+        # nest name/link under a ``manufacturer`` object — tolerate that too.)
+        man = r.get("manufacturer")
+        man_name = man.get("name") if isinstance(man, dict) else man
+        man_url = r.get("manufacturerUrl") or (man.get("link") if isinstance(man, dict) else None)
         return {
             "object": "product",
             "id": (f"prd_{r.get('id')}" if r.get("id") is not None else None),
@@ -970,12 +970,12 @@ class ProductAdapter(FacadeAdapterBase):
             "tags": map_tags(r.get("tags")),
             "identifiers": {
                 "ean": r.get("ean"),
-                "manufacturerNumber": r.get("manufacturerNumber"),
+                "manufacturerNumber": r.get("manufacturerProductNumber"),
                 "hsCode": r.get("customsTariffNumber"),
                 "countryOfOrigin": r.get("countryOfOrigin"),
                 "external": [],
             },
-            "manufacturer": {"name": manufacturer.get("name"), "website": manufacturer.get("link")},
+            "manufacturer": {"name": man_name or None, "website": man_url},
             "prices": {
                 "sale": None,
                 "purchase": money(pp_price.get("amount"), pp_price.get("currency") or "EUR"),
@@ -998,13 +998,18 @@ class ProductAdapter(FacadeAdapterBase):
                     else None
                 ),
                 "minimumOrderQuantity": r.get("minimumOrderQuantity"),
-                "minimumStockQuantity": r.get("minimumStorageQuantity"),
+                # v3 read exposes it as ``minimumStockLevel``; v2 WRITE takes
+                # ``minimumStorageQuantity`` (see map_write) — different names.
+                "minimumStockQuantity": r.get("minimumStockLevel"),
                 "packagingUnits": [],
             },
             "tracking": {
                 "stock": r.get("isStockItem"),
                 "batches": r.get("hasBatches"),
-                "serialNumbers": r.get("serialNumbersMode"),
+                # v3 read: ``serialNumberTracking``; v2 write: ``serialNumbersMode``
+                # (different enums — see map_write; a value round-trips only for the
+                # names v3 also uses).
+                "serialNumbers": r.get("serialNumberTracking"),
                 "bestBefore": r.get("hasBestBeforeDate"),
             },
             "stock": {"available": None, "reserved": None, "incoming": None, "belowMinimum": None},
@@ -1013,7 +1018,9 @@ class ProductAdapter(FacadeAdapterBase):
                 "hasBillOfMaterials": r.get("hasBillOfMaterials"),
             },
             "documentDefaults": {
-                "hidePrice": r.get("hidePriceOnDocuments"),
+                # v3 read nests it under ``printSettings.withoutPrices``; v2 WRITE
+                # takes the flat ``hidePriceOnDocuments`` (see map_write).
+                "hidePrice": (r.get("printSettings") or {}).get("withoutPrices"),
                 "noticeText": r.get("noticeText"),
                 "requiresCustomerApproval": r.get("requiresCustomerApproval"),
             },
@@ -1137,16 +1144,22 @@ class ProductAdapter(FacadeAdapterBase):
             if idents.get("countryOfOrigin") is not None:
                 v2["countryOfOrigin"] = idents["countryOfOrigin"]
 
-        # --- manufacturer (name + website→link) ----------------------------
+        # --- manufacturer (name + website→link + number) -------------------
+        # The v2 body nests the manufacturer product number under manufacturer.number
+        # (the model exposes it as identifiers.manufacturerNumber, which v3 reads back
+        # as manufacturerProductNumber).
         man = model.get("manufacturer") or {}
+        mv: dict[str, Any] = {}
         if isinstance(man, dict):
-            mv: dict[str, Any] = {}
             if man.get("name") is not None:
                 mv["name"] = man["name"]
             if man.get("website") is not None:
                 mv["link"] = man["website"]
-            if mv:
-                v2["manufacturer"] = mv
+        mnum = idents.get("manufacturerNumber") if isinstance(idents, dict) else None
+        if mnum is not None:
+            mv["number"] = mnum
+        if mv:
+            v2["manufacturer"] = mv
 
         # --- purchase price (sale price is composed separately) ------------
         prices = model.get("prices") or {}
