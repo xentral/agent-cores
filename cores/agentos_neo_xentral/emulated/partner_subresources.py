@@ -90,6 +90,51 @@ def ship_addr_from_v3(a: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+# The v3 deliveryAddresses endpoint requires `state` (bundesstaat) as a 2-letter
+# uppercase code (e.g. "BY"), unlike primaryAddress which accepts full names. A
+# full name like "Bayern" fails validation and rejects the WHOLE address, so map
+# the German state names, pass a valid code through, and drop anything unknown
+# (state is optional — better a stateless address than a lost one).
+_DE_STATE_CODES = {
+    "baden-württemberg": "BW",
+    "baden-wuerttemberg": "BW",
+    "bayern": "BY",
+    "bavaria": "BY",
+    "berlin": "BE",
+    "brandenburg": "BB",
+    "bremen": "HB",
+    "hamburg": "HH",
+    "hessen": "HE",
+    "hesse": "HE",
+    "mecklenburg-vorpommern": "MV",
+    "niedersachsen": "NI",
+    "lower saxony": "NI",
+    "nordrhein-westfalen": "NW",
+    "north rhine-westphalia": "NW",
+    "rheinland-pfalz": "RP",
+    "saarland": "SL",
+    "sachsen": "SN",
+    "saxony": "SN",
+    "sachsen-anhalt": "ST",
+    "schleswig-holstein": "SH",
+    "thüringen": "TH",
+    "thueringen": "TH",
+    "thuringia": "TH",
+}
+
+
+def _delivery_state(value: Any) -> str | None:
+    """Coerce a model `state` to the 2-letter uppercase code the v3
+    deliveryAddresses endpoint requires. Already-valid codes pass through; known
+    German state names map to their code; anything else is dropped."""
+    if not isinstance(value, str):
+        return None
+    v = value.strip()
+    if len(v) == 2 and v.isalpha():
+        return v.upper()
+    return _DE_STATE_CODES.get(v.lower())
+
+
 def ship_addr_to_v3(m: dict[str, Any]) -> dict[str, Any]:
     return _clean(
         {
@@ -98,7 +143,7 @@ def ship_addr_to_v3(m: dict[str, Any]) -> dict[str, Any]:
             "street": m.get("street"),
             "zipCode": m.get("zip"),
             "city": m.get("city"),
-            "state": m.get("state"),
+            "state": _delivery_state(m.get("state")),
             "country": m.get("country"),
             "gln": m.get("gln"),
             "email": m.get("email"),
