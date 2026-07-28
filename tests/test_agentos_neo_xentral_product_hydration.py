@@ -96,7 +96,12 @@ def test_bom_items_carry_a_product_reference_and_quantity():
     got = map_bom_items(
         {
             "data": [
-                {"amount": "2.0000", "product": {"id": "1102", "name": "Fabric", "number": "346"}}
+                {
+                    "amount": "2.0000",
+                    "product": {"id": "1102", "name": "Fabric", "number": "346"},
+                    "type": "shopping part",
+                    "reference": "REF-1",
+                }
             ]
         }
     )
@@ -109,12 +114,16 @@ def test_bom_items_carry_a_product_reference_and_quantity():
                 "href": "/v1/products/prd_1102",
             },
             "quantity": 2,
+            "type": "shopping part",
+            "reference": "REF-1",
         }
     ]
 
 
 def test_bom_tolerates_junk_rows():
-    assert map_bom_items({"data": ["nope", None, {}]}) == [{"product": None, "quantity": None}]
+    assert map_bom_items({"data": ["nope", None, {}]}) == [
+        {"product": None, "quantity": None, "type": None, "reference": None}
+    ]
     assert map_bom_items({}) == []
 
 

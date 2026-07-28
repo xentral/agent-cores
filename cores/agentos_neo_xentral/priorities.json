@@ -1198,15 +1198,6 @@
         "reason": "Live stock (available/reserved/incoming/byWarehouse) needs the stock include parsed — not yet mapped; today the block is empty."
       },
       {
-        "field": "bom.items",
-        "ops": [
-          "create",
-          "read",
-          "update"
-        ],
-        "reason": "Bill-of-materials items need the parts include parsed and a write path — not yet mapped, core for hasBillOfMaterials products."
-      },
-      {
         "field": "suppliers",
         "ops": [
           "create",
@@ -1234,33 +1225,11 @@
     ],
     "PriceList": [
       {
-        "field": "id",
-        "ops": [
-          "create",
-          "update"
-        ],
-        "reason": "No sales-price write path found upstream (docs/05 #13) — managing prices via API is impossible today; GET+POST+PATCH /v3/priceLists(+entries) is the ask."
-      },
-      {
-        "field": "scope.customerGroup",
-        "ops": [
-          "read"
-        ],
-        "reason": "Named price-list containers with tier arrays (prl_b2b, per customer/channel, ADR-012) do not exist upstream — only flat rows; the facade exposes rows as entries until a real priceList resource ships."
-      },
-      {
-        "field": "unitPrice",
-        "ops": [
-          "update"
-        ],
-        "reason": "Changing a price via API — the most basic pricing operation — has no upstream endpoint today."
-      },
-      {
         "field": "entries",
         "ops": [
           "read"
         ],
-        "reason": "v1 salesPrices exposes flat price rows (this entity is one row); the grouped priceList with entries needs a composer (ADR-012)."
+        "reason": "v1 salesPrices exposes flat price rows (this entity is one row); the grouped priceList with a tier array needs a composer (ADR-012). Write each tier as its own entry (create/update/delete are live via v3/v1 salesPrices)."
       }
     ],
     "Shipment": [

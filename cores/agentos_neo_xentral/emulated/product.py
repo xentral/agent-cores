@@ -28,14 +28,16 @@ update) therefore goes through **v2 products** (``POST/PATCH /api/v2/products`` 
 ``product.createV2`` / ``product.updateV2``), targeted via ``write_path`` while
 reads stay on v3. ``map_write`` below maps the new model onto the v2 create body
 (field names grounded in the v2 OpenAPI request schema). Fields the v2 body does
-not accept (manufacturerNumber, packaging units, custom fields, BOM parts, stock)
-stay read-only and surface as blue wishes (ADR-014).
+not accept (manufacturerNumber, packaging units, custom fields, stock) stay
+read-only and surface as blue wishes (ADR-014).
 
-**Sale price** is not part of the product body upstream — it is a separate
-resource (``POST /api/v3/salesPrices``, v1 fallback). ``_write`` composes it on
-top of a successful create/update: the product is created first, then the sale
-price is posted against the new product id. A price failure after a successful
-product create is reported honestly as a partial success (never a false 201).
+**Sale price** and the **bill of materials** are not part of the product body
+upstream — each is a separate resource that ``_write`` composes on top of a
+successful create/update: the sale price via ``POST /api/v3/salesPrices`` (v1
+fallback), the BOM via the product's ``/parts`` sub-resource (POST v2 the desired
+parts, then DELETE v1 the previously existing lines — SET semantics, non-destructive
+on a failed POST). A composition failure after a successful product write is
+reported honestly as a partial success (never a false 201, never a silent drop).
 """
 
 from __future__ import annotations
@@ -137,6 +139,8 @@ def map_bom_items(payload: Any) -> list[dict[str, Any]]:
             {
                 "product": ref("prd_", p.get("id"), p.get("number"), p.get("name"), "products"),
                 "quantity": _num(quantity),
+                "type": r.get("type"),
+                "reference": r.get("reference") or None,
             }
         )
     return items
@@ -194,6 +198,14 @@ _DEFAULT_PROJECT_ID = "1"
 # with the model); v1 salesPrices is the documented fallback (same field shape).
 _SALES_PRICE_PATH = "/api/v3/salesPrices"
 _SALES_PRICE_PATH_FALLBACK = "/api/v1/salesPrices"
+
+# BOM parts are a separate sub-resource keyed by the parent product id. Writes go to
+# v2 (POST additive, PATCH by part-line id); DELETE is v1 (by part-line id). Reads
+# use v1 list (map_bom_items). Composed in _write like the sale price.
+_PARTS_V2 = "/api/v2/products/{id}/parts"
+_PARTS_V1 = "/api/v1/products/{id}/parts"
+# The v2 parts `type` enum (the model passes it straight through; default on create).
+_PART_TYPES = ("shopping part", "information part / service", "provision")
 
 # model tax.rate → v2 salesTax enum (model 'exempt' is upstream 'free').
 _TAX_TO_V2 = {"standard": "standard", "reduced": "reduced", "exempt": "free"}
@@ -837,13 +849,14 @@ class ProductAdapter(FacadeAdapterBase):
             "bom": prop(
                 "embedded",
                 "Bill of materials",
-                **RO,
                 section="production",
                 properties={
+                    # Providing bom.items on a create/update SETS the product's parts
+                    # (v2 /parts) — reconciled in _write. Read hydrates on `get`.
                     "items": prop(
                         "collection",
                         "Items",
-                        **RO,
+                        **_CU,
                         node={
                             "properties": {
                                 "product": prop(
@@ -851,9 +864,16 @@ class ProductAdapter(FacadeAdapterBase):
                                     "Product",
                                     reference="Product",
                                     renderProperty="name",
-                                    **RO,
+                                    **_CU,
                                 ),
-                                "quantity": prop("decimal", "Quantity", **RO),
+                                "quantity": prop("decimal", "Quantity", **_CU),
+                                "type": prop(
+                                    "select",
+                                    "Type",
+                                    **_CU,
+                                    options=[{"value": v, "label": v} for v in _PART_TYPES],
+                                ),
+                                "reference": prop("string", "Reference", **_CU),
                             }
                         },
                     )
@@ -1036,6 +1056,10 @@ class ProductAdapter(FacadeAdapterBase):
         "documentDefaults",
         "variant",
         "suppliers",
+        # `bom` is accepted but NOT put in the v2 body — parts are composed on the
+        # /parts sub-resource in _write (like prices.sale). Listed here so a write
+        # carrying it is not rejected as an unknown key.
+        "bom",
     }
     # Keys the read emits (so round-trip writes carry them) but that are
     # system/computed or schema read-only — accepted silently, never sent. The
@@ -1047,7 +1071,6 @@ class ProductAdapter(FacadeAdapterBase):
         "statusReason",
         "kind",
         "stock",
-        "bom",
         "customFields",
         "tags",
         "createdAt",
@@ -1228,19 +1251,32 @@ class ProductAdapter(FacadeAdapterBase):
         return v2, rejected
 
     # ---- sale-price composition -----------------------------------------
-    # Sale price is a separate resource. v1 salesPrices is field-verified here
-    # (product + amount [quantity tier] + price); v3 salesPrices exists too and is
-    # the model-aligned target once its body is verified live.
-    _sale_price_path = _SALES_PRICE_PATH_FALLBACK
+    # Sale price is a separate resource. Primary is v3 salesPrices (model-aligned);
+    # v1 salesPrices is the stable fallback (v3 is Beta and may be absent, or the
+    # token may lack the salesPrice:create scope, on a given tenant). The ONLY body
+    # difference is the quantity-tier key: v3 calls it ``quantity`` (required), v1
+    # calls it ``amount`` — both grounded in the OpenAPI create schemas.
+    # ``_post_sale_price`` tries each path in order and returns the first success
+    # (or the last failure if every attempt failed).
+    _sale_price_paths = (_SALES_PRICE_PATH, _SALES_PRICE_PATH_FALLBACK)
+    _sale_tier_key = {
+        _SALES_PRICE_PATH: "quantity",
+        _SALES_PRICE_PATH_FALLBACK: "amount",
+    }
+    # Only retry the next path when v3 looks unavailable/not-permitted (not deployed,
+    # missing scope, method not allowed). A real validation answer (400/409/422/429)
+    # is honest and surfaces as-is rather than being re-posted against the v1 schema.
+    _sale_price_fallback_statuses = frozenset({403, 404, 405, 501})
 
-    def _sale_price_payload(self, up_id: str, sale: Any) -> dict[str, Any] | None:
-        """v1 salesPrices create body for the product's base (quantity-1) price.
-        None when there is no amount to write."""
+    def _sale_price_payload(self, up_id: str, sale: Any, *, tier_key: str) -> dict[str, Any] | None:
+        """salesPrices create body for the product's base (quantity-1) price.
+        ``tier_key`` is the version's name for the quantity tier (v3 ``quantity`` /
+        v1 ``amount``). None when there is no amount to write."""
         if not isinstance(sale, dict) or sale.get("amount") in (None, ""):
             return None
         return {
             "product": {"id": str(up_id)},
-            "amount": 1,  # quantity tier — 1 = the base sale price
+            tier_key: 1,  # base tier — quantity 1 = the product's list price
             "price": {
                 "amount": str(sale["amount"]),
                 "currency": sale.get("currency") or "EUR",
@@ -1249,17 +1285,145 @@ class ProductAdapter(FacadeAdapterBase):
 
     async def _post_sale_price(
         self,
-        payload: dict[str, Any],
+        up_id: str,
+        sale: Any,
         base_url: str,
         token: str,
         accept_language: str | None,
         client,  # noqa: ANN001
     ) -> tuple[int, Any]:
-        url = f"{base_url.rstrip('/')}{self._sale_price_path}"
+        """POST the base sale price, trying v3 first then the v1 fallback. Returns
+        the first success, or the last response when every path failed. Falls back to
+        the next path only when v3 is unavailable/not-permitted (see
+        ``_sale_price_fallback_statuses``); a real validation error surfaces as-is.
+        (0, {}) means there was nothing to write."""
+        headers = self._headers(token, accept_language)
+        last: tuple[int, Any] = (0, {})
+        for path in self._sale_price_paths:
+            payload = self._sale_price_payload(up_id, sale, tier_key=self._sale_tier_key[path])
+            if payload is None:
+                return 0, {}  # nothing to write
+            url = f"{base_url.rstrip('/')}{path}"
+
+            async def _do(c, _url=url, _payload=payload):  # noqa: ANN001
+                return await c.post(_url, json=_payload, headers=headers)
+
+            if client is None:
+                async with httpx.AsyncClient(timeout=60.0) as c:
+                    resp = await _do(c)
+            else:
+                resp = await _do(client)
+            try:
+                body = resp.json()
+            except ValueError:
+                body = {}
+            last = (resp.status_code, body)
+            if resp.status_code < 400 or resp.status_code not in self._sale_price_fallback_statuses:
+                return last
+        return last
+
+    async def _write(  # noqa: ANN001
+        self, method, handle, query, body, base_url, token, accept_language, client
+    ):
+        """Create/update the product via v2 (base ``_write`` → ``write_path``), then
+        compose the resources the v2 body cannot carry — the sale price (salesPrices)
+        and the bill of materials (/parts). A composition failure AFTER a successful
+        product write is a partial success (the product exists): reported as a warning,
+        never a silent drop and never a false error."""
+        try:
+            model = json.loads(body or b"{}")
+        except (ValueError, TypeError):
+            model = {}
+        if not isinstance(model, dict):
+            model = {}
+        sale = (model.get("prices") or {}).get("sale")
+        bom_items = (model.get("bom") or {}).get("items")
+
+        resp = await super()._write(
+            method, handle, query, body, base_url, token, accept_language, client
+        )
+        is_dry = any(k == "dryRun" and v in ("true", "1") for k, v in query)
+        has_sale = isinstance(sale, dict) and sale.get("amount") not in (None, "")
+        compose_bom = isinstance(bom_items, list)
+        if resp.status_code >= 400 or is_dry or not (has_sale or compose_bom):
+            return resp
+
+        try:
+            data = json.loads(resp.content or b"{}").get("data") or {}
+        except (ValueError, TypeError):
+            data = {}
+        up_id = self._ref_id(data.get("id"))
+        if not up_id:
+            return resp  # no id to attach the composed resources to
+
+        warnings: dict[str, Any] = {}
+        if has_sale:
+            st, pr = await self._post_sale_price(
+                str(up_id), sale, base_url, token, accept_language, client
+            )
+            if st >= 400:
+                warnings["salePrice"] = {
+                    "message": (
+                        "Product was created/updated, but setting the sale price failed. "
+                        "Retry the sale price via the salesPrices resource."
+                    ),
+                    "status": st,
+                    "error": pr if isinstance(pr, dict) else {"raw": str(pr)[:300]},
+                }
+            else:
+                # The v3 read does not surface the sale price — stamp what we persisted.
+                data.setdefault("prices", {})["sale"] = {
+                    "amount": str(sale["amount"]),
+                    "currency": sale.get("currency") or "EUR",
+                }
+        if compose_bom:
+            ok, berr = await self._compose_bom(
+                str(up_id), bom_items, base_url, token, accept_language, client
+            )
+            if not ok:
+                warnings["bom"] = {
+                    "message": (
+                        "Product was created/updated, but setting the bill of materials "
+                        "failed. Retry via the product's parts resource."
+                    ),
+                    "error": berr if isinstance(berr, dict) else {"raw": str(berr)[:300]},
+                }
+            else:
+                # /parts is only hydrated on `get` — stamp the parts we just set.
+                data["bom"] = {"items": self._stamp_bom(bom_items)}
+        if warnings:
+            data["_warnings"] = warnings
+        return self._json(resp.status_code, {"data": data})
+
+    # ---- bill-of-materials composition (/products/{id}/parts) ------------
+    def _stamp_bom(self, items: Any) -> list[dict[str, Any]]:
+        """The set parts, in the model's bom.items shape, to stamp onto the write
+        response (the v3 read does not carry parts; they hydrate only on `get`)."""
+        out: list[dict[str, Any]] = []
+        for it in items or []:
+            if not isinstance(it, dict):
+                continue
+            pid = self._ref_id(it.get("product"))
+            if pid is None:
+                continue
+            q = it.get("quantity")
+            out.append(
+                {
+                    "product": ref("prd_", pid, None, None, "products"),
+                    "quantity": _num(q) if isinstance(q, (int, float)) else q,
+                    "type": it.get("type"),
+                    "reference": it.get("reference") or None,
+                }
+            )
+        return out
+
+    async def _parts_call(  # noqa: ANN001
+        self, method, url, token, accept_language, client, payload=None
+    ) -> tuple[int, Any]:
         headers = self._headers(token, accept_language)
 
         async def _do(c):  # noqa: ANN001
-            return await c.post(url, json=payload, headers=headers)
+            return await c.request(method, url, json=payload, headers=headers)
 
         if client is None:
             async with httpx.AsyncClient(timeout=60.0) as c:
@@ -1271,54 +1435,54 @@ class ProductAdapter(FacadeAdapterBase):
         except ValueError:
             return resp.status_code, {}
 
-    async def _write(  # noqa: ANN001
-        self, method, handle, query, body, base_url, token, accept_language, client
-    ):
-        """Create/update the product via v2 (base ``_write`` → ``write_path``),
-        then compose the sale price as a separate salesPrices write. A price
-        failure AFTER a successful product write is reported as a partial success
-        (the product exists) — never a silent drop and never a false error."""
-        try:
-            model = json.loads(body or b"{}")
-        except (ValueError, TypeError):
-            model = {}
-        sale = (model.get("prices") or {}).get("sale") if isinstance(model, dict) else None
+    async def _compose_bom(  # noqa: ANN001
+        self, up_id, items, base_url, token, accept_language, client
+    ) -> tuple[bool, Any]:
+        """SET the product's parts to ``items``: POST the desired parts, THEN delete
+        the previously existing lines. POST-before-DELETE keeps a failed POST
+        non-destructive (the old BOM stays intact). An empty ``items`` clears the BOM.
+        Returns (ok, error)."""
+        root = base_url.rstrip("/")
+        desired: list[dict[str, Any]] = []
+        for it in items or []:
+            if not isinstance(it, dict):
+                continue
+            pid = self._ref_id(it.get("product"))
+            if pid is None:
+                continue
+            q = it.get("quantity")
+            part: dict[str, Any] = {"part": {"id": pid}, "amount": q if q not in (None, "") else 1}
+            if it.get("type") in _PART_TYPES:
+                part["type"] = it["type"]
+            if it.get("reference") is not None:
+                part["reference"] = it["reference"]
+            desired.append(part)
 
-        resp = await super()._write(
-            method, handle, query, body, base_url, token, accept_language, client
+        # current part-line ids (best effort — a read failure just means nothing to prune)
+        cst, cur = await self._parts_call(
+            "GET", root + _PARTS_V1.format(id=up_id), token, accept_language, client
         )
-        is_dry = any(k == "dryRun" and v in ("true", "1") for k, v in query)
-        payload = self._sale_price_payload("0", sale) if sale else None
-        if resp.status_code >= 400 or is_dry or payload is None:
-            return resp
+        old_ids = [
+            str(r["id"])
+            for r in ((cur.get("data") if isinstance(cur, dict) else None) or [])
+            if isinstance(r, dict) and r.get("id") is not None
+        ]
 
-        try:
-            data = json.loads(resp.content or b"{}").get("data") or {}
-        except (ValueError, TypeError):
-            data = {}
-        up_id = self._ref_id(data.get("id"))
-        if not up_id:
-            return resp  # no id to attach a price to — leave the product response as is
-        payload["product"]["id"] = str(up_id)
-
-        st, pr = await self._post_sale_price(payload, base_url, token, accept_language, client)
-        if st >= 400:
-            data["_warnings"] = {
-                "salePrice": {
-                    "message": (
-                        "Product was created/updated, but setting the sale price failed. "
-                        "Retry the sale price via the salesPrices resource."
-                    ),
-                    "status": st,
-                    "error": pr if isinstance(pr, dict) else {"raw": str(pr)[:300]},
-                }
-            }
-            return self._json(resp.status_code, {"data": data})
-
-        # The v3 read does not surface the sale price (map_read leaves it null), so
-        # stamp the value we just persisted onto the returned record.
-        data.setdefault("prices", {})["sale"] = {
-            "amount": str(sale["amount"]),
-            "currency": sale.get("currency") or "EUR",
-        }
-        return self._json(resp.status_code, {"data": data})
+        if desired:
+            pst, ppl = await self._parts_call(
+                "POST", root + _PARTS_V2.format(id=up_id), token, accept_language, client, desired
+            )
+            if pst >= 400:
+                return False, ppl  # old BOM untouched
+        if old_ids:
+            dst, dpl = await self._parts_call(
+                "DELETE",
+                root + _PARTS_V1.format(id=up_id),
+                token,
+                accept_language,
+                client,
+                [{"id": i} for i in old_ids],
+            )
+            if dst >= 400:
+                return False, dpl
+        return True, None

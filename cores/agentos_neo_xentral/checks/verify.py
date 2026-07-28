@@ -8,11 +8,15 @@ hit):
             from a real sampled record (references probe by stripped id).
   sort    — per sortable field: probe sort=-<model path>.
   search  — per searchable field: probe the global search= with a sampled value.
-  update  — SAFE roundtrip on note/costCenter: set marker → read back → verify →
-            restore (net-zero). Only where the schema says updatable.
-  create  — documents only: POST a minimal record (partner ref + note), verify the
-            new id, then DELETE it (net-zero). Requires --destructive semantics —
-            this runner IS the destructive suite for this core.
+  update  — SAFE roundtrip on every updatable scalar leaf (string/date/number/
+            boolean + toggle-selects): set marker → read back → verify → restore
+            (net-zero). Numeric/boolean leaves are probed only where the sample
+            carries a value (a null cannot be restored net-zero — create covers those).
+  create  — documents (partner ref + note) and the master price/product entities
+            (Product, PriceList, PurchasePrice): POST a rich record, verify each
+            field persisted, then DELETE it (net-zero). Product has NO delete →
+            opt-in via VERIFY_CREATE_NONZERO, leaving one labelled record behind.
+            This runner IS the destructive suite for this core.
 
 actions + process steps (opt-in, VERIFY_ACTIONS=1 — these EXECUTE real upstream
   operations on a sampled record, so they are NOT net-zero): each action/step is
@@ -27,6 +31,8 @@ Env:
   DUMP_INSTANCE=<uuid>   target tenant (defaults to the mvp test instance)
   XENTRAL_API_KEY=id|hash  static Sanctum token, preferred for entity/action routes
   VERIFY_ACTIONS=1       also probe actions + process steps (executes upstream ops)
+  VERIFY_CREATE_NONZERO=1  also create-probe entities without a delete endpoint
+                         (Product) — NOT net-zero, leaves one labelled record
   VERIFY_ONLY=A,B        re-probe only these entities and MERGE into verified.json
                          (never wipes the entities it didn't touch)
 
@@ -62,6 +68,10 @@ _INSTANCE = os.environ.get("DUMP_INSTANCE", "a2ad4180-0d41-4360-8044-9dca0c35608
 # (confirm/cancel/createDeliveryNote …) — they are NOT net-zero like the field
 # suite. So they are opt-in: set VERIFY_ACTIONS=1 to probe them.
 _PROBE_ACTIONS = os.environ.get("VERIFY_ACTIONS") == "1"
+# A create probe on an entity WITHOUT a delete endpoint (Product) cannot be net-zero
+# — it leaves a clearly-labelled record behind. Opt-in so a normal run stays clean;
+# entities that DO have delete (PriceList, PurchasePrice) always run net-zero.
+_PROBE_CREATE_NONZERO = os.environ.get("VERIFY_CREATE_NONZERO") == "1"
 # Comma-separated entity keys to (re)probe; when set, the run MERGES into the
 # existing verified.json instead of overwriting it — fast, low-side-effect
 # re-checks of just the entities you care about (e.g. VERIFY_ONLY=Product).
@@ -149,9 +159,11 @@ def _value_at(rec: Any, path: str) -> Any:
 
 
 def _update_targets(props: dict[str, Any], prefix: str = "") -> list[tuple[str, dict[str, Any]]]:
-    """Every updatable scalar leaf (string/date) reachable WITHOUT crossing a
-    collection — collections (items, tags) need per-item probes, not a PATCH of
-    the whole list. Read-only embedded parents are not descended."""
+    """Every updatable scalar leaf (string/date/number/boolean) reachable WITHOUT
+    crossing a collection — collections (items, tags) need per-item probes, not a
+    PATCH of the whole list. Read-only embedded parents are not descended. Numeric
+    and boolean leaves are probed only where the sample carries a value (a null
+    number/flag cannot be restored net-zero — the create probe covers those)."""
     out: list[tuple[str, dict[str, Any]]] = []
     for name, spec in (props or {}).items():
         if not isinstance(spec, dict):
@@ -166,7 +178,7 @@ def _update_targets(props: dict[str, Any], prefix: str = "") -> list[tuple[str, 
             continue
         leaf = path.rsplit(".", 1)[-1]
         if spec.get("updatable") and (
-            spec.get("type") in ("string", "date")
+            spec.get("type") in ("string", "date", "integer", "decimal", "number", "boolean")
             or (spec.get("type") == "select" and leaf in _VALID_TOGGLE)
         ):
             out.append((path, spec))
@@ -295,6 +307,95 @@ def _doc_create_payload(
             body["taxation"] = "domestic"
             expects.append(("taxation", "eq", "domestic"))
     return body, expects
+
+
+def _simple_create_payload(
+    key: str,
+    schema: dict[str, Any],
+    product_id: str | None,
+    supplier_id: str | None,
+) -> tuple[dict[str, Any], list[tuple[str, str, Any]]]:
+    """Create body + per-path persistence expectations for the price/product master
+    entities (Product / PriceList / PurchasePrice), which take a create+verify probe
+    outside the document/partner path. The Product body deliberately sets the numeric
+    and boolean fields the null-restore update roundtrip cannot cover (minimumStock,
+    hidePrice, …) so a silently-dropped field surfaces as create=fail."""
+    prd = {"id": f"prd_{product_id}"} if product_id else None
+    sup = {"id": f"sup_{supplier_id}"} if supplier_id else None
+    if key == "Product":
+        body: dict[str, Any] = {
+            "name": "VT Verify Product" + _MARK,
+            "unit": "Stk",
+            "description": "VT verify description",
+            "prices": {
+                "purchase": {"amount": "3.30", "currency": "EUR"},
+                "sale": {"amount": "9.90", "currency": "EUR"},
+            },
+            "tax": {"rate": "standard"},
+            "identifiers": {"hsCode": "49019900", "countryOfOrigin": "DE"},
+            "manufacturer": {"name": "VT Mfr", "website": "https://vt.example"},
+            "logistics": {
+                "weight": {"value": 0.2, "unit": "kg"},
+                "minimumOrderQuantity": 2,
+                "minimumStockQuantity": 25,
+                "dimensions": {"length": 10, "width": 5, "height": 3, "unit": "cm"},
+            },
+            "tracking": {"stock": True, "batches": False, "bestBefore": False},
+            "production": {"mode": "none", "hasBillOfMaterials": False},
+            "documentDefaults": {"hidePrice": True},
+        }
+        expects: list[tuple[str, str, Any]] = [
+            ("name", "eq", body["name"]),
+            ("unit", "eq", "Stk"),
+            ("description", "eq", "VT verify description"),
+            ("prices.purchase.amount", "eq", "3.30"),
+            ("prices.sale.amount", "eq", "9.90"),
+            ("tax.rate", "eq", "standard"),
+            ("identifiers.hsCode", "eq", "49019900"),
+            ("identifiers.countryOfOrigin", "eq", "DE"),
+            ("manufacturer.name", "eq", "VT Mfr"),
+            ("manufacturer.website", "eq", "https://vt.example"),
+            ("logistics.weight.value", "num", 0.2),
+            ("logistics.minimumOrderQuantity", "num", 2),
+            ("logistics.minimumStockQuantity", "num", 25),
+            ("logistics.dimensions.length", "num", 10),
+            ("tracking.stock", "eq", True),
+            ("production.mode", "eq", "none"),
+            ("documentDefaults.hidePrice", "eq", True),
+        ]
+        return body, expects
+    if key == "PriceList":
+        if not prd:
+            return {}, []
+        body = {
+            "product": prd,
+            "minQuantity": 10,
+            "unitPrice": {"amount": "7.50", "currency": "EUR"},
+        }
+        return body, [
+            ("product", "ref", str(product_id)),
+            ("minQuantity", "num", 10),
+            ("unitPrice.amount", "eq", "7.50"),
+        ]
+    if key == "PurchasePrice":
+        if not prd:
+            return {}, []
+        body = {
+            "product": prd,
+            "minQuantity": 10,
+            "unitPrice": {"amount": "6.20", "currency": "EUR"},
+            "isStandardSupplier": False,
+        }
+        expects = [
+            ("product", "ref", str(product_id)),
+            ("minQuantity", "num", 10),
+            ("unitPrice.amount", "eq", "6.20"),
+        ]
+        if sup:
+            body["supplier"] = sup
+            expects.append(("supplier", "ref", str(supplier_id)))
+        return body, expects
+    return {}, []
 
 
 def _err(payload: Any) -> str:
@@ -478,6 +579,7 @@ async def _verify_entity(
     token: str,
     product_id: str | None = None,
     tag_title: str | None = None,
+    supplier_id: str | None = None,
 ) -> tuple[dict | None, str]:
     p = _Probe(adapter, base_url, token)
     key = adapter.manifest.key
@@ -619,6 +721,18 @@ async def _verify_entity(
                         )
                         continue
                     testv: Any = "2026-02-02" if orig != "2026-02-02" else "2026-03-03"
+                elif spec.get("type") == "boolean":
+                    if not isinstance(orig, bool):
+                        skip_note = (
+                            "no sample boolean value — not probed (a null flag cannot be restored)"
+                        )
+                        continue
+                    testv = not orig
+                elif spec.get("type") in ("integer", "decimal", "number"):
+                    if not isinstance(orig, (int, float)) or isinstance(orig, bool):
+                        skip_note = "no sample numeric value — not probed (a null number cannot be restored)"
+                        continue
+                    testv = orig + 1
                 elif leaf in _VALID_TOGGLE:
                     a, b = _VALID_TOGGLE[leaf]
                     testv = a if orig != a else b
@@ -661,7 +775,15 @@ async def _verify_entity(
                     last_note = f"PATCH {ust}: {_err(upl)}"
                     continue  # e.g. write-protected — try the next row
                 after = _value_at(upl.get("data") or {}, path)
-                took = after == testv
+                if (
+                    isinstance(testv, (int, float))
+                    and not isinstance(testv, bool)
+                    and isinstance(after, (int, float))
+                    and not isinstance(after, bool)
+                ):
+                    took = abs(float(after) - float(testv)) < 1e-6
+                else:
+                    took = after == testv
                 mark(
                     path,
                     "update",
@@ -928,6 +1050,54 @@ async def _verify_entity(
                 for path, _k, _w in expects:
                     mark(path, "create", False, note3)
 
+    # create + (delete) for the price/product master entities (Product, PriceList,
+    # PurchasePrice): POST a rich body — including the numeric/boolean fields the
+    # null-restore update roundtrip cannot reach — verify each path persisted, then
+    # DELETE (net-zero) where supported. Product has NO delete: opt-in via
+    # VERIFY_CREATE_NONZERO and the labelled record is left in place.
+    if key in ("Product", "PriceList", "PurchasePrice") and "create" in adapter.manifest.operations:
+        can_delete = "delete" in adapter.manifest.operations
+        if not can_delete and not _PROBE_CREATE_NONZERO:
+            fields.setdefault("name", {})["createNote"] = (
+                "create not probed — no delete endpoint (net-zero impossible); set "
+                "VERIFY_CREATE_NONZERO=1 to probe and leave a labelled record"
+            )
+        else:
+            body, expects = _simple_create_payload(key, schema, product_id, supplier_id)
+            if not body:
+                fields.setdefault("name", {})["createNote"] = (
+                    "create not probed — missing a product/supplier fixture on the instance"
+                )
+            else:
+                cst, cpl = await p.req("POST", body=body)
+                data = (cpl.get("data") or {}) if isinstance(cpl, dict) else {}
+                new_id = data.get("id")
+                if cst in (200, 201) and new_id:
+                    for path, kind, want in expects:
+                        ok = _cmp(kind, _got(data, path), want)
+                        mark(
+                            path,
+                            "create",
+                            ok,
+                            None
+                            if ok
+                            else "sent on create but did not persist on the created record",
+                        )
+                    if can_delete:
+                        dst, _ = await p.req("DELETE", str(new_id))
+                        if dst >= 400:
+                            fields.setdefault("name", {})["createNote"] = (
+                                f"created {new_id} but DELETE returned {dst} — manual cleanup needed"
+                            )
+                    else:
+                        fields.setdefault("name", {})["createNote"] = (
+                            f"created {new_id} (labelled 'VT Verify') — no delete endpoint, "
+                            "left in place"
+                        )
+                else:
+                    for path, _k, _w in expects:
+                        mark(path, "create", False, f"POST {cst}: {_err(cpl)}")
+
     # ---- actions + process steps (opt-in; EXECUTES upstream ops) -------------
     # Keyed by action/command key → "pass"/"fail" (matches the shared verified.json
     # contract read by verification.action_status / step_status). Notes are stored
@@ -999,6 +1169,7 @@ async def _main() -> None:
     # LIVE fixtures: a product id for line items, an existing catalogue tag for
     # tag roundtrips (an existing tag keeps the tag catalogue unpolluted).
     product_id: str | None = None
+    supplier_id: str | None = None
     tag_title: str | None = None
     for adapter in CORE.adapters:
         if adapter.manifest.key == "Product" and product_id is None:
@@ -1008,6 +1179,14 @@ async def _main() -> None:
                 pid = str(row.get("id") or "")
                 if pid:
                     product_id = pid.split("_", 1)[1] if "_" in pid else pid
+                    break
+        if adapter.manifest.key == "Supplier" and supplier_id is None:
+            p = _Probe(adapter, base_url, token)
+            st, pl = await p.req(query=[("page[size]", "3")])
+            for row in (pl.get("data") or []) if st == 200 else []:
+                sid = str(row.get("id") or "")
+                if sid:
+                    supplier_id = sid.split("_", 1)[1] if "_" in sid else sid
                     break
         if adapter.manifest.key == "Tag" and tag_title is None:
             p = _Probe(adapter, base_url, token)
@@ -1035,7 +1214,9 @@ async def _main() -> None:
         if _ONLY and key not in _ONLY:
             continue
         try:
-            result, summary = await _verify_entity(adapter, base_url, token, product_id, tag_title)
+            result, summary = await _verify_entity(
+                adapter, base_url, token, product_id, tag_title, supplier_id
+            )
         except Exception as exc:  # noqa: BLE001 - one entity must not kill the run
             print(f"  {key}: probe crashed: {exc}")
             continue
