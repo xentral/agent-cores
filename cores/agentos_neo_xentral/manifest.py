@@ -33,6 +33,7 @@ from .emulated.printer import PrinterAdapter
 from .emulated.product import ProductAdapter
 from .emulated.purchase_invoice import PurchaseInvoiceAdapter
 from .emulated.purchase_order import PurchaseOrderAdapter
+from .emulated.purchase_price import PurchasePriceAdapter
 from .emulated.quote import QuoteAdapter
 from .emulated.return_order import ReturnAdapter
 from .emulated.sales_invoice import SalesInvoiceAdapter
@@ -69,6 +70,7 @@ CORE = CoreManifest(
         ChannelAdapter(),
         ProductAdapter(),
         PriceListAdapter(),
+        PurchasePriceAdapter(),
         ShipmentAdapter(),
         PaymentAdapter(),
         StockMovementAdapter(),

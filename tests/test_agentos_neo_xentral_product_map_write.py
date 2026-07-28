@@ -11,7 +11,8 @@ These pin:
     read-only fields ignored (not rejected, so round-trip writes work), and a
     default project injected only on create;
   * the full write flow through MockTransport: POST hits /api/v2/products (not v3),
-    the sale price is posted to /api/v1/salesPrices, and the response carries it;
+    the sale price is posted to /api/v3/salesPrices (v1 salesPrices as fallback),
+    and the response carries it;
   * the honest partial-success path when the product is created but the price fails.
 """
 
@@ -36,7 +37,7 @@ _FULL_MODEL: dict[str, Any] = {
         "ean": "4001234567890",
         "hsCode": "76129080",
         "countryOfOrigin": "DE",
-        "manufacturerNumber": "ALB-750-S",  # read-only: no v2 slot
+        "manufacturerNumber": "ALB-750-S",  # → v2 manufacturer.number
     },
     "manufacturer": {"name": "AluBottle Inc.", "website": "https://alu.example"},
     "prices": {
@@ -85,7 +86,12 @@ def test_map_write_full_model_to_v2_body():
     assert v2["ean"] == "4001234567890"
     assert v2["customsTariffNumber"] == "76129080"
     assert v2["countryOfOrigin"] == "DE"
-    assert v2["manufacturer"] == {"name": "AluBottle Inc.", "link": "https://alu.example"}
+    # manufacturer number nests under manufacturer.number (from identifiers.manufacturerNumber)
+    assert v2["manufacturer"] == {
+        "name": "AluBottle Inc.",
+        "link": "https://alu.example",
+        "number": "ALB-750-S",
+    }
     assert v2["salesTax"] == "reduced"
     assert v2["standardSupplier"] == {"id": "42"}
 
@@ -120,8 +126,9 @@ def test_sale_price_is_not_in_the_product_body():
     # price (6.20) belongs in the v2 body
     assert "12.90" not in json.dumps(v2)
     assert "6.20" in json.dumps(v2)
-    # manufacturerNumber has no v2 slot → silently skipped (schema marks it RO)
+    # manufacturerNumber is written NESTED (manufacturer.number), never as a top-level key
     assert "manufacturerNumber" not in v2
+    assert v2["manufacturer"]["number"] == "ALB-750-S"
 
 
 def test_default_project_only_on_create():
@@ -154,6 +161,38 @@ def test_tax_rate_reads_from_v3_taxrate_field():
     assert a.map_read({"id": 1})["tax"]["rate"] is None
 
 
+def test_map_read_uses_the_actual_v3_field_names():
+    # These leaves regressed to null because map_read read the v2 write-names, not
+    # the v3 read-names. Pin the correct v3 source fields (colleague-reported).
+    a = ProductAdapter()
+    rec = a.map_read(
+        {
+            "id": 1,
+            "manufacturer": "ACME",
+            "manufacturerUrl": "https://acme.example",
+            "manufacturerProductNumber": "MFR-77",
+            "minimumStockLevel": 25,
+            "serialNumberTracking": "stockGenerated",
+            "printSettings": {"withoutPrices": True},
+        }
+    )
+    assert rec["manufacturer"] == {"name": "ACME", "website": "https://acme.example"}
+    assert rec["identifiers"]["manufacturerNumber"] == "MFR-77"
+    assert rec["logistics"]["minimumStockQuantity"] == 25
+    assert rec["tracking"]["serialNumbers"] == "stockGenerated"
+    assert rec["documentDefaults"]["hidePrice"] is True
+
+
+def test_manufacturer_number_is_writable_and_nested():
+    f = ProductAdapter().fields()
+    assert f["identifiers"]["properties"]["manufacturerNumber"].get("creatable")
+    v2, rejected = ProductAdapter().map_write(
+        {"identifiers": {"manufacturerNumber": "MFR-77"}}, creating=False
+    )
+    assert rejected == set()
+    assert v2["manufacturer"] == {"number": "MFR-77"}
+
+
 def test_writable_fields_flagged_in_schema():
     f = ProductAdapter().fields()
     assert f["name"].get("creatable") and f["name"].get("updatable")
@@ -168,11 +207,19 @@ def test_writable_fields_flagged_in_schema():
 class _Upstream:
     """Stateful fake Xentral for the two-call product+price write."""
 
-    def __init__(self, *, price_status: int = 201):
+    def __init__(self, *, price_status: int = 201, v3_available: bool = True):
         self.price_status = price_status
+        self.v3_available = v3_available
         self.product_posts: list[dict[str, Any]] = []
         self.price_posts: list[dict[str, Any]] = []
         self.post_paths: list[str] = []
+
+    def _price_response(self, request: httpx.Request) -> httpx.Response:
+        self.post_paths.append(request.url.path)
+        self.price_posts.append(json.loads(request.content))
+        if self.price_status >= 400:
+            return httpx.Response(self.price_status, json={"title": "price rejected"})
+        return httpx.Response(201, json={"data": {"id": "9"}})
 
     def handler(self, request: httpx.Request) -> httpx.Response:
         path = request.url.path
@@ -184,12 +231,14 @@ class _Upstream:
             return httpx.Response(
                 200, json={"data": {"id": 777, "name": "Alu-Flasche 750 ml", "number": "SKU-100"}}
             )
+        # v3 salesPrices is the primary target; a tenant without the Beta endpoint
+        # (or scope) answers 404, and the adapter falls back to v1 salesPrices.
+        if path == "/api/v3/salesPrices" and request.method == "POST":
+            if not self.v3_available:
+                return httpx.Response(404, json={"title": "not found"})
+            return self._price_response(request)
         if path == "/api/v1/salesPrices" and request.method == "POST":
-            self.post_paths.append(path)
-            self.price_posts.append(json.loads(request.content))
-            if self.price_status >= 400:
-                return httpx.Response(self.price_status, json={"title": "price rejected"})
-            return httpx.Response(201, json={"data": {"id": "9"}})
+            return self._price_response(request)
         raise AssertionError(f"unexpected call: {request.method} {path}")
 
 
@@ -215,17 +264,35 @@ def test_create_flow_writes_v2_then_sale_price():
     up = _Upstream()
     resp = _create(up, _FULL_MODEL)
     assert resp.status_code == 201
-    # write went to v2 products (NOT v3), then the sale price to salesPrices
-    assert up.post_paths == ["/api/v2/products", "/api/v1/salesPrices"]
+    # product write goes to v2 products (NOT v3); the sale price goes to v3
+    # salesPrices, where the quantity tier is named ``quantity`` (v1 calls it ``amount``)
+    assert up.post_paths == ["/api/v2/products", "/api/v3/salesPrices"]
     assert up.product_posts[0]["name"] == "Alu-Flasche 750 ml"
     assert up.price_posts[0] == {
         "product": {"id": "777"},
-        "amount": 1,
+        "quantity": 1,
         "price": {"amount": "12.90", "currency": "EUR"},
     }
     # the response carries the sale price we just persisted (v3 read omits it)
     data = json.loads(resp.content)["data"]
     assert data["id"] == "prd_777"
+    assert data["prices"]["sale"] == {"amount": "12.90", "currency": "EUR"}
+    assert "_warnings" not in data
+
+
+def test_sale_price_falls_back_to_v1_when_v3_unavailable():
+    # v3 salesPrices is Beta: a tenant without it answers 404, and the adapter
+    # retries on v1 salesPrices (whose quantity tier is named ``amount``).
+    up = _Upstream(v3_available=False)
+    resp = _create(up, _FULL_MODEL)
+    assert resp.status_code == 201
+    assert up.post_paths == ["/api/v2/products", "/api/v1/salesPrices"]
+    assert up.price_posts[0] == {
+        "product": {"id": "777"},
+        "amount": 1,
+        "price": {"amount": "12.90", "currency": "EUR"},
+    }
+    data = json.loads(resp.content)["data"]
     assert data["prices"]["sale"] == {"amount": "12.90", "currency": "EUR"}
     assert "_warnings" not in data
 

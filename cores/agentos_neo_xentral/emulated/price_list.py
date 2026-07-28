@@ -2,21 +2,44 @@
 
 Honest partial: the upstream has no named price-list containers — only flat sales-
 price rows (``GET /v1/salesPrices``: product × customer/customerGroup × minQuantity
-→ price, with validity). This facade exposes each row as a price ENTRY; the target
-model's named lists with tier arrays (prl_b2b …) and any write path are blue
-wishes (docs/05 #13: salesPrice write not found).
+→ price, with validity). This facade exposes each row as a price ENTRY, so a full
+scale price (Staffelpreis) is expressed as several entries that differ only in
+``minQuantity``.
 
-The v1 endpoint REQUIRES both ``page[number]`` and ``page[size]`` with size 10..50
-— ``_get`` below guarantees them (clamping the gateway's requested size).
+Reads use v1 salesPrices (the id/customerGroup shapes are grounded there). WRITES
+compose on the salesPrices resource: create prefers **v3** (``POST /api/v3/
+salesPrices``, model-aligned) and falls back to **v1** (``POST /api/v1/salesPrices``)
+when v3 is unavailable/not-permitted; update uses **v1** (``PATCH /api/v1/
+salesPrices/{id}`` — v3 exposes only a bulk updateMultiple, no single-record PATCH);
+delete prefers v3 then v1. The ONLY body difference between the versions is the
+quantity-tier key: v3 calls it ``quantity`` (required), v1 calls it ``amount`` —
+``map_write`` emits the canonical v3 name and ``_send`` renames it for the v1 paths.
+
+The v1 endpoints REQUIRE both ``page[number]`` and ``page[size]`` with size 10..50
+— ``_get`` guarantees them (clamping the gateway's requested size).
 """
 
 from __future__ import annotations
 
 from typing import Any
 
+import httpx
+
 from entity_registry.core_sdk import EmulationManifest
 
-from .base import RO, FacadeAdapterBase, money, prop, ref
+from .base import _TIMEOUT, RO, FacadeAdapterBase, money, prop, ref
+
+# create+update vs create-only field-flag shorthands (mirror product.py's _CU/_C).
+_CU: dict[str, Any] = {"creatable": True, "updatable": True}
+_C: dict[str, Any] = {"creatable": True}
+
+# salesPrices write paths. v3 is model-aligned (Beta); v1 is the stable full-CRUD
+# fallback. The quantity-tier key differs: v3 ``quantity`` vs v1 ``amount``.
+_SP_V3 = "/api/v3/salesPrices"
+_SP_V1 = "/api/v1/salesPrices"
+# Only fall back to v1 when v3 looks unavailable/not-permitted (not deployed,
+# missing scope, method not allowed). A real validation answer surfaces as-is.
+_SP_FALLBACK_STATUSES = frozenset({403, 404, 405, 501})
 
 
 class PriceListAdapter(FacadeAdapterBase):
@@ -27,7 +50,9 @@ class PriceListAdapter(FacadeAdapterBase):
         rollout_batch="agentos_neo_xentral",
         adapter="agentos_neo_xentral.priceList",
         source_apis=("agentos_neo_xentral",),
-        operations=("list", "read"),  # write not found upstream (docs/05 #13)
+        # Each record is one sales-price row (one tier). Write composes on the
+        # salesPrices resource (v3 primary, v1 fallback — see _send).
+        operations=("list", "read", "create", "update", "delete"),
     )
     v3_path = "/api/v1/salesPrices"
     include = ""
@@ -65,7 +90,7 @@ class PriceListAdapter(FacadeAdapterBase):
             self.action_def(
                 "duplicate",
                 "Duplicate (validFrom)",
-                wish="v1 salesPrices create exists — a duplicate-with-validFrom composer is not built.",
+                wish="A duplicate-with-validFrom composer is not built (create a new entry instead).",
             ),
             self.action_def(
                 "bulkAdjust",
@@ -92,9 +117,12 @@ class PriceListAdapter(FacadeAdapterBase):
                     }
                 },
             ),
+            # product + scope define the row's identity → create-only (a v1 PATCH
+            # cannot move a price to another product; change = new entry).
             "product": prop(
                 "reference",
                 "Product",
+                **_C,
                 reference="Product",
                 renderProperty="name",
                 section="general",
@@ -104,31 +132,33 @@ class PriceListAdapter(FacadeAdapterBase):
             "scope": prop(
                 "embedded",
                 "Scope",
-                **RO,
                 section="scope",
                 properties={
                     "customer": prop(
-                        "reference", "Customer", reference="Customer", renderProperty="name", **RO
+                        "reference", "Customer", **_C, reference="Customer", renderProperty="name"
                     ),
-                    "customerGroup": prop("string", "Customer group", **RO),
+                    "customerGroup": prop("string", "Customer group", **_C),
                 },
             ),
-            "minQuantity": prop("decimal", "Min quantity", **RO, section="price", previewable=True),
+            # The quantity tier (Staffel threshold) and the price/validity are the
+            # editable facets of an entry.
+            "minQuantity": prop(
+                "decimal", "Min quantity", **_CU, section="price", previewable=True
+            ),
             "unitPrice": prop(
                 "embedded",
                 "Unit price",
-                **RO,
                 section="price",
                 properties={
-                    "amount": prop("string", "Amount", **RO),
-                    "currency": prop("string", "Currency", **RO),
+                    "amount": prop("string", "Amount", **_CU),
+                    "currency": prop("string", "Currency", **_CU),
                     "amountGross": prop("string", "Gross amount", **RO),
                     "taxRate": prop("string", "Tax rate", **RO),
                 },
             ),
-            "validFrom": prop("date", "Valid from", **RO, section="price"),
-            "validUntil": prop("date", "Valid until", **RO, section="price"),
-            "remark": prop("string", "Remark", **RO, section="general"),
+            "validFrom": prop("date", "Valid from", **_CU, section="price"),
+            "validUntil": prop("date", "Valid until", **_CU, section="price"),
+            "remark": prop("string", "Remark", **_CU, section="general"),
             "createdAt": prop("datetime", "Created at", **RO),
             "updatedAt": prop("datetime", "Updated at", **RO),
         }
@@ -136,6 +166,7 @@ class PriceListAdapter(FacadeAdapterBase):
     def map_read(self, r: dict[str, Any]) -> dict[str, Any]:
         p = r.get("product") or {}
         cust = r.get("customer")
+        group = r.get("customerGroup")
         price = r.get("price") or {}
         tax = price.get("taxRate") or {}
         m = money(price.get("amount"), price.get("currency") or "EUR") or {}
@@ -156,7 +187,9 @@ class PriceListAdapter(FacadeAdapterBase):
                     None,
                     "customers",
                 ),
-                "customerGroup": r.get("customerGroup"),
+                # v1 delivers customerGroup as a {id} reference (nullable); expose the
+                # bare id string the field type promises.
+                "customerGroup": (group.get("id") if isinstance(group, dict) else group),
             },
             "minQuantity": r.get("amount"),
             "unitPrice": {
@@ -172,8 +205,177 @@ class PriceListAdapter(FacadeAdapterBase):
             "updatedAt": None,
         }
 
+    # ---- write mapping ---------------------------------------------------
+    # Top-level model keys mapped onto the salesPrices body.
+    _WRITABLE = {
+        "product",
+        "scope",
+        "minQuantity",
+        "unitPrice",
+        "validFrom",
+        "validUntil",
+        "remark",
+    }
+    # Keys the read emits that are system/computed — accepted silently, never sent.
+    _IGNORE = {"object", "id", "currency", "entries", "createdAt", "updatedAt"}
+
+    @staticmethod
+    def _ref_id(value: Any) -> str | None:
+        """A model reference ({id: "cus_7"} or a bare id) → the bare numeric upstream
+        id (speaking prefix stripped, ADR-002). None clears it."""
+        ident = value.get("id") if isinstance(value, dict) else value
+        if ident in (None, ""):
+            return None
+        ident = str(ident)
+        return ident.split("_", 1)[1] if "_" in ident else ident
+
     def map_write(
         self, model: dict[str, Any], *, creating: bool
     ) -> tuple[dict[str, Any], set[str]]:
-        # No write path found upstream (docs/05 #13) — everything is a blue wish.
-        return {}, {k for k in model if k not in {"object", "id", "createdAt", "updatedAt"}}
+        """Map the model onto the CANONICAL v3 salesPrices body (``quantity`` tier
+        name); ``_send`` renames it to ``amount`` for the v1 paths. product + scope
+        are the entry's identity → sent only on create. Unknown top-level keys 409."""
+        body: dict[str, Any] = {}
+        rejected: set[str] = set()
+
+        # product + scope define the row → create-only (v1 PATCH cannot change them).
+        if creating:
+            pid = self._ref_id(model.get("product")) if "product" in model else None
+            if pid is not None:
+                body["product"] = {"id": pid}
+            scope = model.get("scope") or {}
+            if isinstance(scope, dict):
+                cid = self._ref_id(scope.get("customer"))
+                if cid is not None:
+                    body["customer"] = {"id": cid}
+                gid = self._ref_id(scope.get("customerGroup"))
+                if gid is not None:
+                    body["customerGroup"] = {"id": gid}
+
+        # quantity tier — v3 requires it on create; default to the base tier (1).
+        mq = model.get("minQuantity")
+        if mq is not None:
+            body["quantity"] = mq
+        elif creating:
+            body["quantity"] = 1
+
+        # price
+        up = model.get("unitPrice") or {}
+        if isinstance(up, dict) and up.get("amount") is not None:
+            body["price"] = {
+                "amount": str(up["amount"]),
+                "currency": up.get("currency") or "EUR",
+            }
+
+        # validity + remark
+        if model.get("validFrom") is not None:
+            body["validFrom"] = model["validFrom"]
+        if model.get("validUntil") is not None:
+            body["expiresAt"] = model["validUntil"]
+        if model.get("remark") is not None:
+            body["remark"] = model["remark"]
+
+        for k in model:
+            if k not in self._WRITABLE and k not in self._IGNORE:
+                rejected.add(k)
+        return body, rejected
+
+    # ---- write dispatch (v3 primary, v1 fallback) ------------------------
+    @staticmethod
+    def _to_v1(body: dict[str, Any], *, for_update: bool = False) -> dict[str, Any]:
+        """Canonical (v3) body → v1 body: the quantity tier is ``amount`` on v1, and
+        v1's PATCH has no ``product`` field (identity is fixed on the row)."""
+        v1 = dict(body)
+        if "quantity" in v1:
+            v1["amount"] = v1.pop("quantity")
+        if for_update:
+            v1.pop("product", None)
+        return v1
+
+    @staticmethod
+    def _safe_json(resp: httpx.Response) -> Any:
+        try:
+            return resp.json()
+        except ValueError:
+            return {}
+
+    async def _http(
+        self,
+        method: str,
+        url: str,
+        token: str,
+        accept_language: str | None,
+        client: httpx.AsyncClient | None,
+        *,
+        payload: dict[str, Any] | None = None,
+    ) -> httpx.Response:
+        headers = self._headers(token, accept_language)
+
+        async def _do(c: httpx.AsyncClient) -> httpx.Response:
+            return await c.request(method, url, json=payload, headers=headers)
+
+        if client is None:
+            async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
+                return await _do(c)
+        return await _do(client)
+
+    def _created_body(self, resp: httpx.Response) -> dict[str, Any]:
+        """Normalize a create response to ``{data:{id}}``. v3 returns the record in
+        the body; v1 returns an empty body with the new id in the Location header."""
+        body = self._safe_json(resp)
+        rid = (body.get("data") or {}).get("id") if isinstance(body, dict) else None
+        if not rid:
+            loc = resp.headers.get("Location") or resp.headers.get("location")
+            if loc:
+                rid = loc.rstrip("/").rsplit("/", 1)[-1] or None
+        if rid:
+            return {"data": {"id": rid}}
+        return body if isinstance(body, dict) else {}
+
+    async def _send(  # noqa: ANN001
+        self, base_url, token, method, up_handle, payload, accept_language, client
+    ):
+        """salesPrices dispatch. POST: v3 then v1 fallback. PATCH/PUT: v1 /{id} (v3
+        has no single-record update). DELETE: v3 /{id} then v1 fallback."""
+        method = method.upper()
+        root = base_url.rstrip("/")
+        if method == "POST":
+            resp = await self._http(
+                "POST", f"{root}{_SP_V3}", token, accept_language, client, payload=payload
+            )
+            if resp.status_code >= 400 and resp.status_code in _SP_FALLBACK_STATUSES:
+                resp = await self._http(
+                    "POST",
+                    f"{root}{_SP_V1}",
+                    token,
+                    accept_language,
+                    client,
+                    payload=self._to_v1(payload),
+                )
+            if resp.status_code < 400:
+                return resp.status_code, self._created_body(resp)
+            return resp.status_code, self._safe_json(resp)
+        if method in ("PATCH", "PUT"):
+            # v3 salesPrices exposes only a bulk updateMultiple; a single-record
+            # update goes to v1 PATCH /{id}.
+            resp = await self._http(
+                "PATCH",
+                f"{root}{_SP_V1}/{up_handle}",
+                token,
+                accept_language,
+                client,
+                payload=self._to_v1(payload, for_update=True),
+            )
+            return resp.status_code, self._safe_json(resp)
+        if method == "DELETE":
+            resp = await self._http(
+                "DELETE", f"{root}{_SP_V3}/{up_handle}", token, accept_language, client
+            )
+            if resp.status_code >= 400 and resp.status_code in _SP_FALLBACK_STATUSES:
+                resp = await self._http(
+                    "DELETE", f"{root}{_SP_V1}/{up_handle}", token, accept_language, client
+                )
+            return resp.status_code, self._safe_json(resp)
+        return await super()._send(
+            base_url, token, method, up_handle, payload, accept_language, client
+        )
