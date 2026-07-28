@@ -27,17 +27,18 @@ The v3 products endpoint is **read-only by design** (per the PR). Write (create/
 update) therefore goes through **v2 products** (``POST/PATCH /api/v2/products`` —
 ``product.createV2`` / ``product.updateV2``), targeted via ``write_path`` while
 reads stay on v3. ``map_write`` below maps the new model onto the v2 create body
-(field names grounded in the v2 OpenAPI request schema). Fields the v2 body does
-not accept (manufacturerNumber, packaging units, custom fields, stock) stay
-read-only and surface as blue wishes (ADR-014).
+(field names grounded in the v2 OpenAPI request schema). Free-field VALUES ride the
+v2 body as ``freeFields[{id, value}]``; fields the v2 body does not accept (packaging
+units, stock) stay read-only and surface as blue wishes (ADR-014).
 
-**Sale price** and the **bill of materials** are not part of the product body
-upstream — each is a separate resource that ``_write`` composes on top of a
-successful create/update: the sale price via ``POST /api/v3/salesPrices`` (v1
-fallback), the BOM via the product's ``/parts`` sub-resource (POST v2 the desired
+**Sale price**, the **bill of materials** and the **property values** are not part
+of the product body upstream — each is a separate resource that ``_write`` composes
+on top of a successful create/update: the sale price via ``POST /api/v3/salesPrices``
+(v1 fallback), the BOM via the product's ``/parts`` sub-resource (POST v2 the desired
 parts, then DELETE v1 the previously existing lines — SET semantics, non-destructive
-on a failed POST). A composition failure after a successful product write is
-reported honestly as a partial success (never a false 201, never a silent drop).
+on a failed POST), the property values via ``PATCH /api/v1/products/{id}/properties``
+(upsert). A composition failure after a successful product write is reported honestly
+as a partial success (never a false 201, never a silent drop).
 """
 
 from __future__ import annotations
@@ -61,12 +62,13 @@ from .base import _TIMEOUT, RO, FacadeAdapterBase, map_tags, money, prop, ref, t
 # 75 extra round trips, and lists are the hot path. That summary-vs-detail
 # asymmetry is the usual trade; `get` is where a product is actually inspected.
 #
-# customFields stays empty on purpose: free-field *definitions* are exposed
-# (/api/v1/productsFreeFields → the ProductFreeField entity) but no upstream
-# endpoint returns per-product free-field VALUES.
+# customFields (free-field VALUES) come from the v3 ``include=customFields`` payload
+# (map_custom_fields) — NOT a hydration round trip. Properties (Eigenschaften) DO
+# hydrate here, from the v1 /properties sub-resource (map_properties).
 _SUB_STOCKS = "stocks"
 _SUB_PARTS = "parts"
 _SUB_SALES_PRICES = "salesPrices"
+_SUB_PROPERTIES = "properties"
 
 
 def _num(value: Any) -> Any:
@@ -146,6 +148,48 @@ def map_bom_items(payload: Any) -> list[dict[str, Any]]:
     return items
 
 
+def map_custom_fields(raw: Any) -> list[dict[str, Any]]:
+    """v3 ``include=customFields`` rows → the model's customFields collection. The v3
+    ``key`` is ``customField<N>`` (N = 1..40, the free-field slot); the model exposes
+    it as an integer ``number`` so a write can target the v2 ``freeFields[{id}]`` slot.
+    """
+    out: list[dict[str, Any]] = []
+    for r in raw or []:
+        if not isinstance(r, dict):
+            continue
+        key = str(r.get("key") or "")
+        number: int | None = None
+        if key.startswith("customField"):
+            try:
+                number = int(key[len("customField") :])
+            except ValueError:
+                number = None
+        out.append({"number": number, "label": r.get("label"), "value": r.get("value")})
+    return out
+
+
+def map_properties(payload: Any) -> list[dict[str, Any]]:
+    """``/products/{id}/properties`` rows → the model's properties collection. Each
+    row is one assigned property value: ``{property, name, value, unit}``."""
+    rows = payload.get("data") if isinstance(payload, dict) else None
+    out: list[dict[str, Any]] = []
+    for r in rows or []:
+        if not isinstance(r, dict):
+            continue
+        pdef = r.get("property") if isinstance(r.get("property"), dict) else {}
+        out.append(
+            {
+                "property": ref(
+                    "pprop_", pdef.get("id"), None, pdef.get("name"), "productsProperties"
+                ),
+                "name": pdef.get("name"),
+                "value": r.get("value"),
+                "unit": r.get("unit"),
+            }
+        )
+    return out
+
+
 def pick_sale_price(payload: Any, today: date) -> dict[str, Any] | None:
     """The product's own list price from ``/products/{id}/salesPrices``.
 
@@ -204,6 +248,9 @@ _SALES_PRICE_PATH_FALLBACK = "/api/v1/salesPrices"
 # use v1 list (map_bom_items). Composed in _write like the sale price.
 _PARTS_V2 = "/api/v2/products/{id}/parts"
 _PARTS_V1 = "/api/v1/products/{id}/parts"
+# Product properties (Eigenschaften): v1 GET lists {property, value, unit} rows,
+# PATCH upserts them. Read hydrates on `get`; write composes in _write.
+_PROPERTIES_V1 = "/api/v1/products/{id}/properties"
 # The v2 parts `type` enum (the model passes it straight through; default on create).
 _PART_TYPES = ("shopping part", "information part / service", "provision")
 
@@ -269,7 +316,9 @@ class ProductAdapter(FacadeAdapterBase):
     # v3 products is read-only; create/update go to v2 products (product.createV2 /
     # product.updateV2). The base's _send targets this for POST/PATCH; reads stay v3.
     write_path = "/api/v2/products"
-    include = "project,defaultSupplier,merchandiseGroup,tags"
+    # customFields carries the per-product free-field VALUES in the v3 payload (works
+    # on list AND single read) — cheaper than a hydration round trip.
+    include = "project,defaultSupplier,merchandiseGroup,tags,customFields"
     preview_template = "{{name}}"
     sections = {
         "general": {"label": "General"},
@@ -421,13 +470,14 @@ class ProductAdapter(FacadeAdapterBase):
                 self._fetch_sub(_SUB_STOCKS, up_id, base_url, token, accept_language, c),
                 self._fetch_sub(_SUB_PARTS, up_id, base_url, token, accept_language, c),
                 self._fetch_sub(_SUB_SALES_PRICES, up_id, base_url, token, accept_language, c),
+                self._fetch_sub(_SUB_PROPERTIES, up_id, base_url, token, accept_language, c),
             )
 
         if client is None:
             async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
-                stocks, parts, prices = await _gather(c)
+                stocks, parts, prices, properties = await _gather(c)
         else:
-            stocks, parts, prices = await _gather(client)
+            stocks, parts, prices, properties = await _gather(client)
 
         unavailable: list[str] = []
         if stocks is None:
@@ -445,6 +495,10 @@ class ProductAdapter(FacadeAdapterBase):
             unavailable.append("prices.sale")
         else:
             rec.setdefault("prices", {})["sale"] = pick_sale_price(prices, date.today())
+        if properties is None:
+            unavailable.append("properties")
+        else:
+            rec["properties"] = map_properties(properties)
 
         out: dict[str, Any] = {"data": rec}
         if unavailable:
@@ -900,7 +954,41 @@ class ProductAdapter(FacadeAdapterBase):
                     }
                 },
             ),
-            "customFields": prop("embedded", "Custom fields", section="general", properties={}),
+            # Per-product free-field VALUES (Freifelder). Read from v3 include=
+            # customFields; write to v2 freeFields[{id=number, value}] (see map_write).
+            "customFields": prop(
+                "collection",
+                "Custom fields",
+                section="general",
+                node={
+                    "properties": {
+                        "number": prop("integer", "Field number", **_CU),
+                        "label": prop("string", "Label", **RO),
+                        "value": prop("string", "Value", **_CU),
+                    }
+                },
+            ),
+            # Assigned property values (Eigenschaften). Read hydrates from v1
+            # /properties; write composes via v1 PATCH /properties (see _write).
+            "properties": prop(
+                "collection",
+                "Properties",
+                section="general",
+                node={
+                    "properties": {
+                        "property": prop(
+                            "reference",
+                            "Property",
+                            **_CU,
+                            reference="ProductProperty",
+                            renderProperty="name",
+                        ),
+                        "name": prop("string", "Name", **RO),
+                        "value": prop("string", "Value", **_CU),
+                        "unit": prop("string", "Unit", **_CU),
+                    }
+                },
+            ),
             "createdAt": prop("datetime", "Created at", **RO),
             "updatedAt": prop("datetime", "Updated at", **RO, sortable=True),
         }
@@ -1040,7 +1128,9 @@ class ProductAdapter(FacadeAdapterBase):
                 if isinstance(supplier, dict) and supplier.get("id")
                 else []
             ),
-            "customFields": {},
+            "customFields": map_custom_fields(r.get("customFields")),
+            # properties hydrate on `get` (v1 /properties); empty on list reads.
+            "properties": [],
             "createdAt": r.get("createdAt"),
             "updatedAt": r.get("updatedAt"),
         }
@@ -1063,10 +1153,13 @@ class ProductAdapter(FacadeAdapterBase):
         "documentDefaults",
         "variant",
         "suppliers",
-        # `bom` is accepted but NOT put in the v2 body — parts are composed on the
-        # /parts sub-resource in _write (like prices.sale). Listed here so a write
-        # carrying it is not rejected as an unknown key.
+        # customFields ARE mapped (→ v2 freeFields, see map_write).
+        "customFields",
+        # `bom` and `properties` are accepted but NOT put in the v2 body — they are
+        # composed on their own sub-resources in _write (like prices.sale). Listed
+        # here so a write carrying them is not rejected as an unknown key.
         "bom",
+        "properties",
     }
     # Keys the read emits (so round-trip writes carry them) but that are
     # system/computed or schema read-only — accepted silently, never sent. The
@@ -1078,7 +1171,6 @@ class ProductAdapter(FacadeAdapterBase):
         "statusReason",
         "kind",
         "stock",
-        "customFields",
         "tags",
         "createdAt",
         "updatedAt",
@@ -1257,6 +1349,22 @@ class ProductAdapter(FacadeAdapterBase):
             if sup_id is not None:
                 v2["standardSupplier"] = {"id": sup_id}
 
+        # --- custom fields → v2 freeFields[{id=<slot number>, value}] ------
+        # (model customFields carry the free-field slot as `number`; v3 reads them
+        # back under key customField<number>.) properties are composed separately.
+        cf = model.get("customFields")
+        if isinstance(cf, list):
+            free_fields = [
+                {
+                    "id": str(it["number"]),
+                    "value": "" if it.get("value") is None else str(it["value"]),
+                }
+                for it in cf
+                if isinstance(it, dict) and it.get("number") is not None
+            ]
+            if free_fields:
+                v2["freeFields"] = free_fields
+
         # --- reject genuinely unknown top-level keys -----------------------
         for k in model:
             if k not in self._WRITABLE and k not in self._IGNORE:
@@ -1339,10 +1447,11 @@ class ProductAdapter(FacadeAdapterBase):
         self, method, handle, query, body, base_url, token, accept_language, client
     ):
         """Create/update the product via v2 (base ``_write`` → ``write_path``), then
-        compose the resources the v2 body cannot carry — the sale price (salesPrices)
-        and the bill of materials (/parts). A composition failure AFTER a successful
-        product write is a partial success (the product exists): reported as a warning,
-        never a silent drop and never a false error."""
+        compose the resources the v2 body cannot carry — the sale price (salesPrices),
+        the bill of materials (/parts) and the assigned property values (/properties).
+        A composition failure AFTER a successful product write is a partial success
+        (the product exists): reported as a warning, never a silent drop, never a
+        false error."""
         try:
             model = json.loads(body or b"{}")
         except (ValueError, TypeError):
@@ -1351,6 +1460,7 @@ class ProductAdapter(FacadeAdapterBase):
             model = {}
         sale = (model.get("prices") or {}).get("sale")
         bom_items = (model.get("bom") or {}).get("items")
+        prop_items = model.get("properties")
 
         resp = await super()._write(
             method, handle, query, body, base_url, token, accept_language, client
@@ -1358,7 +1468,8 @@ class ProductAdapter(FacadeAdapterBase):
         is_dry = any(k == "dryRun" and v in ("true", "1") for k, v in query)
         has_sale = isinstance(sale, dict) and sale.get("amount") not in (None, "")
         compose_bom = isinstance(bom_items, list)
-        if resp.status_code >= 400 or is_dry or not (has_sale or compose_bom):
+        compose_props = isinstance(prop_items, list)
+        if resp.status_code >= 400 or is_dry or not (has_sale or compose_bom or compose_props):
             return resp
 
         try:
@@ -1404,6 +1515,21 @@ class ProductAdapter(FacadeAdapterBase):
             else:
                 # /parts is only hydrated on `get` — stamp the parts we just set.
                 data["bom"] = {"items": self._stamp_bom(bom_items)}
+        if compose_props:
+            ok, perr = await self._compose_properties(
+                str(up_id), prop_items, base_url, token, accept_language, client
+            )
+            if not ok:
+                warnings["properties"] = {
+                    "message": (
+                        "Product was created/updated, but setting the property values "
+                        "failed. Retry via the product's properties resource."
+                    ),
+                    "error": perr if isinstance(perr, dict) else {"raw": str(perr)[:300]},
+                }
+            else:
+                # properties hydrate only on `get` — stamp what we just set.
+                data["properties"] = self._stamp_properties(prop_items)
         if warnings:
             data["_warnings"] = warnings
         return self._json(resp.status_code, {"data": data})
@@ -1499,3 +1625,55 @@ class ProductAdapter(FacadeAdapterBase):
             if dst >= 400:
                 return False, dpl
         return True, None
+
+    # ---- property-value composition (/products/{id}/properties) ----------
+    def _stamp_properties(self, items: Any) -> list[dict[str, Any]]:
+        """The set property values, in the model's properties shape, stamped onto the
+        write response (properties hydrate only on `get`)."""
+        out: list[dict[str, Any]] = []
+        for it in items or []:
+            if not isinstance(it, dict):
+                continue
+            pid = self._ref_id(it.get("property"))
+            if pid is None:
+                continue
+            out.append(
+                {
+                    "property": ref("pprop_", pid, None, None, "productsProperties"),
+                    "name": it.get("name"),
+                    "value": it.get("value"),
+                    "unit": it.get("unit"),
+                }
+            )
+        return out
+
+    async def _compose_properties(  # noqa: ANN001
+        self, up_id, items, base_url, token, accept_language, client
+    ) -> tuple[bool, Any]:
+        """Upsert the product's property values via v1 PATCH /properties. An empty
+        list is a no-op (there is no per-value delete endpoint). Returns (ok, error)."""
+        body: list[dict[str, Any]] = []
+        for it in items or []:
+            if not isinstance(it, dict):
+                continue
+            pid = self._ref_id(it.get("property"))
+            if pid is None:
+                continue
+            entry: dict[str, Any] = {
+                "property": {"id": pid},
+                "value": "" if it.get("value") is None else str(it["value"]),
+            }
+            if it.get("unit") is not None:
+                entry["unit"] = it["unit"]
+            body.append(entry)
+        if not body:
+            return True, None  # nothing to set
+        st, pl = await self._parts_call(
+            "PATCH",
+            base_url.rstrip("/") + _PROPERTIES_V1.format(id=up_id),
+            token,
+            accept_language,
+            client,
+            body,
+        )
+        return (st < 400), (None if st < 400 else pl)

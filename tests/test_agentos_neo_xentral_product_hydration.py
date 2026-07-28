@@ -169,12 +169,16 @@ def test_not_yet_valid_row_is_skipped():
 # ---- hydration on the read path -------------------------------------------
 
 
-def test_detail_read_fills_all_three_sections():
+def test_detail_read_fills_all_sections():
     client = _FakeClient(
         {
             "stocks": _Resp(200, {"data": {"totals": {"sellable": 12, "reserved": 3}}}),
             "parts": _Resp(200, {"data": [{"amount": "2", "product": {"id": "9"}}]}),
             "salesPrices": _Resp(200, {"data": [{"amount": "1", "price": {"amount": "4.50"}}]}),
+            "properties": _Resp(
+                200,
+                {"data": [{"id": "1", "property": {"id": "5", "name": "Color"}, "value": "blue"}]},
+            ),
         }
     )
     body = _read(_adapter({"id": 7, "name": "Widget", "minimumStockLevel": 20}), client)
@@ -182,9 +186,12 @@ def test_detail_read_fills_all_three_sections():
     assert rec["stock"] == {"available": 12, "reserved": 3, "incoming": None, "belowMinimum": True}
     assert rec["bom"]["items"][0]["product"]["id"] == "prd_9"
     assert rec["prices"]["sale"] == {"amount": "4.50", "currency": "EUR"}
+    assert rec["properties"][0]["property"]["id"] == "pprop_5"
+    assert rec["properties"][0]["value"] == "blue"
     assert "extra" not in body
     assert sorted(u.rsplit("/", 1)[-1] for u in client.calls) == [
         "parts",
+        "properties",
         "salesPrices",
         "stocks",
     ]
@@ -202,6 +209,7 @@ def test_failed_subresource_is_reported_not_silently_empty():
             "stocks": _Resp(500, {}),
             "parts": _Resp(200, {"data": []}),
             "salesPrices": _Resp(200, {"data": []}),
+            "properties": _Resp(200, {"data": []}),
         }
     )
     body = _read(_adapter({"id": 7, "name": "Widget"}), client)
@@ -217,4 +225,9 @@ def test_hydration_failure_does_not_fail_the_product_read():
     client = _FakeClient({"stocks": _Resp(503, {}), "parts": _Resp(503, {})})
     body = _read(_adapter({"id": 7, "name": "Widget"}), client)
     assert body["data"]["name"] == "Widget"
-    assert sorted(body["extra"]["unavailableSections"]) == ["bom", "prices.sale", "stock"]
+    assert sorted(body["extra"]["unavailableSections"]) == [
+        "bom",
+        "prices.sale",
+        "properties",
+        "stock",
+    ]

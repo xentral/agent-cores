@@ -1206,15 +1206,6 @@
         "reason": "The default supplier IS writable (mapped to v2 standardSupplier); multi-supplier sourcing (several suppliers with per-supplier price/number) needs a suppliers include/relation not yet mapped, plus a write path."
       },
       {
-        "field": "customFields",
-        "ops": [
-          "create",
-          "read",
-          "update"
-        ],
-        "reason": "The legacy freeFields include needs parsing to populate customFields, and no write path exists — today the block is empty."
-      },
-      {
         "field": "tags",
         "ops": [
           "create",
