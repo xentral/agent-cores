@@ -45,7 +45,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 import httpx
@@ -1431,13 +1431,16 @@ class ProductAdapter(FacadeAdapterBase):
     # is honest and surfaces as-is rather than being re-posted against the v1 schema.
     _sale_price_fallback_statuses = frozenset({403, 404, 405, 501})
 
-    def _sale_price_payload(self, up_id: str, sale: Any, *, tier_key: str) -> dict[str, Any] | None:
+    def _sale_price_payload(
+        self, up_id: str, sale: Any, *, tier_key: str, valid_from: str | None = None
+    ) -> dict[str, Any] | None:
         """salesPrices create body for the product's base (quantity-1) price.
         ``tier_key`` is the version's name for the quantity tier (v3 ``quantity`` /
-        v1 ``amount``). None when there is no amount to write."""
+        v1 ``amount``). ``valid_from`` dates the new price (an update supersedes the
+        prior one). None when there is no amount to write."""
         if not isinstance(sale, dict) or sale.get("amount") in (None, ""):
             return None
-        return {
+        body: dict[str, Any] = {
             "product": {"id": str(up_id)},
             tier_key: 1,  # base tier — quantity 1 = the product's list price
             "price": {
@@ -1445,6 +1448,9 @@ class ProductAdapter(FacadeAdapterBase):
                 "currency": sale.get("currency") or "EUR",
             },
         }
+        if valid_from:
+            body["validFrom"] = valid_from
+        return body
 
     async def _post_sale_price(
         self,
@@ -1454,6 +1460,7 @@ class ProductAdapter(FacadeAdapterBase):
         token: str,
         accept_language: str | None,
         client,  # noqa: ANN001
+        valid_from: str | None = None,
     ) -> tuple[int, Any]:
         """POST the base sale price, trying v3 first then the v1 fallback. Returns
         the first success, or the last response when every path failed. Falls back to
@@ -1463,7 +1470,9 @@ class ProductAdapter(FacadeAdapterBase):
         headers = self._headers(token, accept_language)
         last: tuple[int, Any] = (0, {})
         for path in self._sale_price_paths:
-            payload = self._sale_price_payload(up_id, sale, tier_key=self._sale_tier_key[path])
+            payload = self._sale_price_payload(
+                up_id, sale, tier_key=self._sale_tier_key[path], valid_from=valid_from
+            )
             if payload is None:
                 return 0, {}  # nothing to write
             url = f"{base_url.rstrip('/')}{path}"
@@ -1484,6 +1493,66 @@ class ProductAdapter(FacadeAdapterBase):
             if resp.status_code < 400 or resp.status_code not in self._sale_price_fallback_statuses:
                 return last
         return last
+
+    async def _supersede_standard_sale_price(  # noqa: ANN001
+        self, up_id, new_amount, new_currency, base_url, token, accept_language, client
+    ) -> bool:
+        """Before writing a new standard sale price on UPDATE, end-date the current
+        standard price(s) so the product keeps ONE effective price plus history
+        (creating a second salesPrice would otherwise leave two "Standardpreis"
+        rows). Every OPEN standard tier (no customer/group, quantity 1) whose amount
+        differs from the target is validity-ended yesterday via the v3 salesPrices
+        collection PATCH — this also closes accumulated duplicates. Returns True if a
+        new price should still be posted; False when an open standard price already
+        equals the target (no-op, no duplicate)."""
+
+        def _r2(v: Any) -> float | None:
+            try:
+                return round(float(v), 2)
+            except (TypeError, ValueError):
+                return None
+
+        headers = self._headers(token, accept_language)
+        url = f"{base_url.rstrip('/')}/api/v1/products/{up_id}/salesPrices"
+        try:
+            if client is None:
+                async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
+                    resp = await c.get(url, headers=headers)
+            else:
+                resp = await client.get(url, headers=headers)
+            rows = resp.json().get("data") if resp.status_code < 400 else None
+        except (httpx.HTTPError, ValueError):
+            rows = None
+        if not isinstance(rows, list):
+            return True  # can't read the current prices → fall back to a plain POST
+
+        target = (_r2(new_amount), (new_currency or "EUR"))
+        close_ids: list[Any] = []
+        already = False
+        for r in rows:
+            if not isinstance(r, dict) or r.get("customer") or r.get("customerGroup"):
+                continue
+            if _r2(r.get("amount")) != 1.0 or not _valid_on(r, date.today()):
+                continue  # only the OPEN base (quantity-1) tier
+            price = r.get("price") if isinstance(r.get("price"), dict) else {}
+            if (_r2(price.get("amount")), (price.get("currency") or "EUR")) == target:
+                already = True
+            elif r.get("id") is not None:
+                close_ids.append(r["id"])
+
+        if close_ids:
+            yesterday = (date.today() - timedelta(days=1)).isoformat()
+            patch = [{"id": cid, "expiresAt": yesterday} for cid in close_ids]
+            purl = f"{base_url.rstrip('/')}{_SALES_PRICE_PATH}"
+            try:
+                if client is None:
+                    async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
+                        await c.patch(purl, json=patch, headers=headers)
+                else:
+                    await client.patch(purl, json=patch, headers=headers)
+            except httpx.HTTPError:
+                pass
+        return not already
 
     async def _write(  # noqa: ANN001
         self, method, handle, query, body, base_url, token, accept_language, client
@@ -1524,8 +1593,33 @@ class ProductAdapter(FacadeAdapterBase):
 
         warnings: dict[str, Any] = {}
         if has_sale:
-            st, pr = await self._post_sale_price(
-                str(up_id), sale, base_url, token, accept_language, client
+            # On UPDATE, end-date the current standard price first (keep one effective
+            # price + history, and clean up accumulated duplicates); the new price is
+            # dated from today. On CREATE there is nothing to supersede.
+            should_post, valid_from = True, None
+            if method != "POST":
+                should_post = await self._supersede_standard_sale_price(
+                    str(up_id),
+                    sale["amount"],
+                    sale.get("currency"),
+                    base_url,
+                    token,
+                    accept_language,
+                    client,
+                )
+                valid_from = date.today().isoformat()
+            st, pr = (
+                await self._post_sale_price(
+                    str(up_id),
+                    sale,
+                    base_url,
+                    token,
+                    accept_language,
+                    client,
+                    valid_from=valid_from,
+                )
+                if should_post
+                else (0, {})
             )
             if st >= 400:
                 warnings["salePrice"] = {
