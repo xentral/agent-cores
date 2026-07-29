@@ -243,6 +243,13 @@ _DEFAULT_PROJECT_ID = "1"
 _SALES_PRICE_PATH = "/api/v3/salesPrices"
 _SALES_PRICE_PATH_FALLBACK = "/api/v1/salesPrices"
 
+# v3 products cannot filter by manufacturer number, but v2 products can. A
+# manufacturerNumber filter is resolved here (ids) then read back via v3 — this is
+# the key an agent needs to match a supplier price list to products (MPN).
+_V2_PRODUCTS = "/api/v2/products"
+_MPN_MODEL_KEY = "identifiers.manufacturerNumber"
+_MPN_V2_KEY = "manufacturerNumber"
+
 # BOM parts are a separate sub-resource keyed by the parent product id. Writes go to
 # v2 (POST additive, PATCH by part-line id); DELETE is v1 (by part-line id). Reads
 # use v1 list (map_bom_items). Composed in _write like the sale price.
@@ -410,6 +417,8 @@ class ProductAdapter(FacadeAdapterBase):
     # here: scan the upstream list (capped) and match on mapped tag titles.
     _TAG_SCAN_PAGE_SIZE = 50
     _TAG_SCAN_MAX_PAGES = 20
+    _V2_SCAN_PAGE_SIZE = 50
+    _V2_SCAN_MAX_PAGES = 20
 
     async def request(  # noqa: ANN001
         self,
@@ -428,6 +437,11 @@ class ProductAdapter(FacadeAdapterBase):
             if terms:
                 return await self._list_by_tags(
                     terms, rest, page, size, base_url, token, accept_language, client
+                )
+            mpns, page, size = self._split_mpn_filter(query)
+            if mpns is not None:
+                return await self._list_by_manufacturer_number(
+                    mpns, page, size, base_url, token, accept_language, client
                 )
         resp = await super().request(
             method=method,
@@ -623,6 +637,133 @@ class ProductAdapter(FacadeAdapterBase):
             200, {"data": matched[start : start + size], "meta": meta, "extra": extra}
         )
 
+    @staticmethod
+    def _split_mpn_filter(
+        query: list[tuple[str, str]],
+    ) -> tuple[list[str] | None, int, int]:
+        """Pull a ``identifiers.manufacturerNumber`` filter out of the query.
+
+        Returns ``(values, page, size)`` — ``values`` is the list of requested
+        manufacturer numbers when the query filters ONLY by manufacturerNumber, else
+        ``None`` (so a combined query falls through to v3, which answers honestly).
+        v3 has no manufacturerNumber filter; ``_list_by_manufacturer_number`` resolves
+        it via v2 products."""
+        triplets: dict[str, dict[str, str]] = {}
+        page, size = 1, 25
+        for k, v in query:
+            if k.startswith("filter[") and "][" in k:
+                idx = k[len("filter[") : k.index("]")]
+                triplets.setdefault(idx, {})[k[k.index("][") + 2 : -1]] = v
+            elif k in ("page", "page[number]"):
+                try:
+                    page = max(1, int(v))
+                except ValueError:
+                    pass
+            elif k in ("perPage", "page[size]"):
+                try:
+                    size = max(1, min(100, int(v)))
+                except ValueError:
+                    pass
+        values: list[str] = []
+        other = False
+        for t in triplets.values():
+            if t.get("key") == _MPN_MODEL_KEY:
+                val = t.get("value")
+                if val not in (None, ""):
+                    values.append(val)
+            else:
+                other = True
+        # Only emulate a standalone manufacturerNumber filter. Combined with other
+        # filters, fall through so v3's honest "filter not allowed" surfaces rather
+        # than silently dropping the other constraints.
+        if not values or other:
+            return None, page, size
+        return values, page, size
+
+    async def _list_by_manufacturer_number(  # noqa: ANN001
+        self, values, page, size, base_url, token, accept_language, client
+    ):
+        """Resolve a manufacturerNumber filter via v2 products (which supports it),
+        then read the matched ids back through the normal v3 path so the rows are in
+        the model shape. This is the key that matches a supplier price list (MPN) to
+        products; v3 products cannot filter by it."""
+        op = "equals" if len(values) == 1 else "in"
+        base_params: list[tuple[str, str]] = [
+            ("filter[0][key]", _MPN_V2_KEY),
+            ("filter[0][op]", op),
+        ]
+        if op == "equals":
+            base_params.append(("filter[0][value]", values[0]))
+        else:
+            base_params.extend(("filter[0][value][]", v) for v in values)
+
+        ids: list[str] = []
+        truncated = False
+        url = f"{base_url.rstrip('/')}{_V2_PRODUCTS}"
+        for p in range(1, self._V2_SCAN_MAX_PAGES + 1):
+            params = base_params + [
+                ("page[number]", str(p)),
+                ("page[size]", str(self._V2_SCAN_PAGE_SIZE)),
+            ]
+            try:
+                if client is None:
+                    async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
+                        resp = await c.get(
+                            url, params=params, headers=self._headers(token, accept_language)
+                        )
+                else:
+                    resp = await client.get(
+                        url, params=params, headers=self._headers(token, accept_language)
+                    )
+            except httpx.HTTPError as exc:
+                return self._json(502, {"title": f"manufacturerNumber lookup failed: {exc}"})
+            if resp.status_code >= 400:
+                try:
+                    body = resp.json()
+                except ValueError:
+                    body = {"title": "manufacturerNumber lookup failed"}
+                return self._json(resp.status_code, body if isinstance(body, dict) else {})
+            try:
+                rows = (resp.json() or {}).get("data") or []
+            except ValueError:
+                rows = []
+            ids.extend(str(r.get("id")) for r in rows if isinstance(r, dict) and r.get("id"))
+            if len(rows) < self._V2_SCAN_PAGE_SIZE:
+                break
+        else:
+            truncated = True
+
+        start = (page - 1) * size
+        recs: list[dict[str, Any]] = []
+        for up in ids[start : start + size]:
+            status, payload = await self._get(
+                base_url,
+                token,
+                handle=str(up),
+                query=[],
+                accept_language=accept_language,
+                client=client,
+            )
+            if status < 400:
+                rec = payload.get("data") if isinstance(payload, dict) else None
+                if isinstance(rec, dict):
+                    recs.append(self.map_read(rec))
+
+        extra: dict[str, Any] = {
+            "emulatedFilter": {
+                "field": _MPN_MODEL_KEY,
+                "matched": len(ids),
+                "truncated": truncated,
+                "via": "v2 products",
+            }
+        }
+        meta: dict[str, Any] = {"page": page, "perPage": size}
+        if not truncated:
+            extra["total"] = len(ids)
+            meta["total"] = len(ids)
+            meta["lastPage"] = max(1, -(-len(ids) // size))
+        return self._json(200, {"data": recs, "meta": meta, "extra": extra})
+
     # Status writes go to v2 products via the `isDisabled` flag (v3 products is
     # read-only for status). Verified against upstream: `isDisabled` true/false is
     # accepted (204), but `isDeleted` (archive/un-archive) is rejected (400) — so
@@ -757,7 +898,12 @@ class ProductAdapter(FacadeAdapterBase):
                     "ean": prop("string", "EAN", **_CU, filterable=True, searchable=True),
                     # v2 write slot is manufacturer.number; v3 read is
                     # manufacturerProductNumber (see map_write / map_read).
-                    "manufacturerNumber": prop("string", "Manufacturer number", **_CU),
+                    # Filterable is EMULATED: v3 products has no manufacturerNumber
+                    # filter, so `request` routes it to v2 products (which does) to
+                    # resolve ids, then reads them via v3 — see _list_by_manufacturer_number.
+                    "manufacturerNumber": prop(
+                        "string", "Manufacturer number", **_CU, filterable=True
+                    ),
                     "hsCode": prop("string", "HS code", **_CU),
                     "countryOfOrigin": prop("string", "Country of origin", **_CU),
                     "external": prop(
