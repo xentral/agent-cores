@@ -1431,16 +1431,16 @@ class ProductAdapter(FacadeAdapterBase):
     # is honest and surfaces as-is rather than being re-posted against the v1 schema.
     _sale_price_fallback_statuses = frozenset({403, 404, 405, 501})
 
-    def _sale_price_payload(
-        self, up_id: str, sale: Any, *, tier_key: str, valid_from: str | None = None
-    ) -> dict[str, Any] | None:
+    def _sale_price_payload(self, up_id: str, sale: Any, *, tier_key: str) -> dict[str, Any] | None:
         """salesPrices create body for the product's base (quantity-1) price.
         ``tier_key`` is the version's name for the quantity tier (v3 ``quantity`` /
-        v1 ``amount``). ``valid_from`` dates the new price (an update supersedes the
-        prior one). None when there is no amount to write."""
+        v1 ``amount``). None when there is no amount to write. Left open (no
+        validFrom): v3 rejects validFrom without a later expiresAt, and an update
+        already ends the prior price yesterday, so an open new price is the single
+        effective one."""
         if not isinstance(sale, dict) or sale.get("amount") in (None, ""):
             return None
-        body: dict[str, Any] = {
+        return {
             "product": {"id": str(up_id)},
             tier_key: 1,  # base tier — quantity 1 = the product's list price
             "price": {
@@ -1448,9 +1448,6 @@ class ProductAdapter(FacadeAdapterBase):
                 "currency": sale.get("currency") or "EUR",
             },
         }
-        if valid_from:
-            body["validFrom"] = valid_from
-        return body
 
     async def _post_sale_price(
         self,
@@ -1460,7 +1457,6 @@ class ProductAdapter(FacadeAdapterBase):
         token: str,
         accept_language: str | None,
         client,  # noqa: ANN001
-        valid_from: str | None = None,
     ) -> tuple[int, Any]:
         """POST the base sale price, trying v3 first then the v1 fallback. Returns
         the first success, or the last response when every path failed. Falls back to
@@ -1470,9 +1466,7 @@ class ProductAdapter(FacadeAdapterBase):
         headers = self._headers(token, accept_language)
         last: tuple[int, Any] = (0, {})
         for path in self._sale_price_paths:
-            payload = self._sale_price_payload(
-                up_id, sale, tier_key=self._sale_tier_key[path], valid_from=valid_from
-            )
+            payload = self._sale_price_payload(up_id, sale, tier_key=self._sale_tier_key[path])
             if payload is None:
                 return 0, {}  # nothing to write
             url = f"{base_url.rstrip('/')}{path}"
@@ -1593,10 +1587,13 @@ class ProductAdapter(FacadeAdapterBase):
 
         warnings: dict[str, Any] = {}
         if has_sale:
-            # On UPDATE, end-date the current standard price first (keep one effective
-            # price + history, and clean up accumulated duplicates); the new price is
-            # dated from today. On CREATE there is nothing to supersede.
-            should_post, valid_from = True, None
+            # On UPDATE, end-date the current standard price(s) first so the product
+            # keeps ONE effective standard price + history (and accumulated duplicates
+            # are cleaned up); the new price is posted open, which — with the old ones
+            # ended yesterday — is the single effective price. On CREATE there is
+            # nothing to supersede. (The new price is left open rather than dated from
+            # today: v3 salesPrices rejects validFrom without a later expiresAt.)
+            should_post = True
             if method != "POST":
                 should_post = await self._supersede_standard_sale_price(
                     str(up_id),
@@ -1607,16 +1604,9 @@ class ProductAdapter(FacadeAdapterBase):
                     accept_language,
                     client,
                 )
-                valid_from = date.today().isoformat()
             st, pr = (
                 await self._post_sale_price(
-                    str(up_id),
-                    sale,
-                    base_url,
-                    token,
-                    accept_language,
-                    client,
-                    valid_from=valid_from,
+                    str(up_id), sale, base_url, token, accept_language, client
                 )
                 if should_post
                 else (0, {})
