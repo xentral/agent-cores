@@ -611,27 +611,39 @@ class ProductAdapter(FacadeAdapterBase):
             200, {"data": matched[start : start + size], "meta": meta, "extra": extra}
         )
 
+    # Status writes: v3 products is read-only, so the deactivate/activate/archive
+    # steps PATCH v2 products (isDisabled/isDeleted). A run command may carry
+    # {"disabledReason": "…"} — the base merges it onto the body.
+    action_map = {
+        "deactivate": {
+            "method": "PATCH",
+            "path": "/api/v2/products/{id}",
+            "body": {"isDisabled": True},
+        },
+        "activate": {
+            "method": "PATCH",
+            "path": "/api/v2/products/{id}",
+            "body": {"isDisabled": False, "isDeleted": False},
+        },
+        "archive": {
+            "method": "PATCH",
+            "path": "/api/v2/products/{id}",
+            "body": {"isDeleted": True},
+        },
+    }
+
     def steps(self):
         return [
             {
                 "key": "documentStatus",
                 "label": "Status",
                 "commands": [
-                    self.step_cmd(
-                        "deactivate",
-                        "Deactivate",
-                        wish="v3 products is read-only — status writes need a write endpoint.",
-                    ),
-                    self.step_cmd(
-                        "activate",
-                        "Activate",
-                        wish="v3 products is read-only — status writes need a write endpoint.",
-                    ),
-                    self.step_cmd(
-                        "archive",
-                        "Archive",
-                        wish="Archiving is not exposed; v3 products is read-only.",
-                    ),
+                    # Status writes go to v2 products (isDisabled/isDeleted); see
+                    # action_map. deactivate accepts an optional command
+                    # {disabledReason} that is merged onto the PATCH body.
+                    self.step_cmd("deactivate", "Deactivate"),
+                    self.step_cmd("activate", "Activate"),
+                    self.step_cmd("archive", "Archive"),
                 ],
             }
         ]
@@ -675,17 +687,18 @@ class ProductAdapter(FacadeAdapterBase):
                 sortable=True,
                 previewable=True,
             ),
-            # Status transitions run through the deactivate/activate steps, not a
-            # free field write; archived is not settable via v2 → read-only here.
+            # Writable (v2 isDisabled/isDeleted): active/inactive/archived — so a
+            # bulk create/update can set the lock directly, in parallel to the
+            # deactivate/activate/archive steps. statusReason → v2 disabledReason.
             "status": prop(
                 "select",
                 "Status",
-                **RO,
+                **_CU,
                 section="general",
                 options=_STATUS_OPTIONS,
                 previewable=True,
             ),
-            "statusReason": prop("string", "Status reason", **RO, section="general"),
+            "statusReason": prop("string", "Status reason", **_CU, section="general"),
             # v2 create only exposes isShippingCostsProduct/isFee flags, not a
             # free "kind" — service/digital cannot be expressed → read-only wish.
             "kind": prop("select", "Kind", **RO, section="general", options=_KIND_OPTIONS),
@@ -1141,6 +1154,9 @@ class ProductAdapter(FacadeAdapterBase):
         "number",
         "description",
         "unit",
+        # status/statusReason → v2 isDisabled/isDeleted/disabledReason (map_write).
+        "status",
+        "statusReason",
         "category",
         "project",
         "identifiers",
@@ -1167,8 +1183,6 @@ class ProductAdapter(FacadeAdapterBase):
     _IGNORE = {
         "object",
         "id",
-        "status",
-        "statusReason",
         "kind",
         "stock",
         "tags",
@@ -1215,6 +1229,20 @@ class ProductAdapter(FacadeAdapterBase):
         for key in ("name", "number", "description", "unit"):
             if model.get(key) is not None:
                 v2[key] = model[key]
+        # --- status lock (v2 isDisabled/isDeleted) + reason ----------------
+        # active → live; inactive → isDisabled; archived → isDeleted. Set directly
+        # in a create/update body so a bulk import can lock records too (the
+        # deactivate/activate/archive steps do the same via action_map).
+        status = model.get("status")
+        if status == "inactive":
+            v2["isDisabled"] = True
+        elif status == "archived":
+            v2["isDeleted"] = True
+        elif status == "active":
+            v2["isDisabled"] = False
+            v2["isDeleted"] = False
+        if model.get("statusReason") is not None:
+            v2["disabledReason"] = model["statusReason"]
         if "category" in model:  # model category == merchandise group (Warengruppe)
             mg = self._ref_id(model["category"])
             if mg is not None:
