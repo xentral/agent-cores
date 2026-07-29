@@ -330,8 +330,9 @@ def test_dry_run_creates_nothing():
 
 
 def test_map_write_status_lock_and_reason():
-    """status → v2 isDisabled/isDeleted, statusReason → disabledReason; writable in
-    a normal payload (so a bulk import can lock records), not rejected."""
+    """status active/inactive → v2 isDisabled, statusReason → disabledReason;
+    writable in a normal payload (so a bulk import can lock records), not rejected.
+    archived is NOT emitted (v2 rejects isDeleted writes)."""
     a = ProductAdapter()
     v2, rejected = a.map_write(
         {"name": "X", "status": "inactive", "statusReason": "Sperrgrund"}, creating=False
@@ -341,21 +342,26 @@ def test_map_write_status_lock_and_reason():
     assert "isDeleted" not in v2
     assert v2["disabledReason"] == "Sperrgrund"
 
-    v2, _ = a.map_write({"name": "X", "status": "archived"}, creating=False)
-    assert v2["isDeleted"] is True and "isDisabled" not in v2
-
     v2, _ = a.map_write({"name": "X", "status": "active"}, creating=False)
-    assert v2["isDisabled"] is False and v2["isDeleted"] is False
+    assert v2["isDisabled"] is False and "isDeleted" not in v2
+
+    # archived can't be written via v2 → no flag emitted, round-trip stays a no-op.
+    v2, rejected = a.map_write({"name": "X", "status": "archived"}, creating=False)
+    assert rejected == set()
+    assert "isDeleted" not in v2 and "isDisabled" not in v2
 
 
 def test_status_steps_wired_to_v2():
-    """deactivate/activate/archive are executable (no wish) and PATCH v2 products."""
+    """deactivate/activate are executable (PATCH v2 isDisabled); archive stays a
+    wish (v2 rejects isDeleted)."""
     a = ProductAdapter()
-    assert set(a.action_map) >= {"deactivate", "activate", "archive"}
+    assert set(a.action_map) == {"deactivate", "activate"}
     cmds = {c["key"]: c for c in a.steps()[0]["commands"]}
-    assert not any(cmds[k].get("wish") for k in ("deactivate", "activate", "archive"))
+    assert not cmds["deactivate"].get("wish") and not cmds["activate"].get("wish")
+    assert cmds["archive"].get("wish")
     assert a.action_map["deactivate"] == {
         "method": "PATCH",
         "path": "/api/v2/products/{id}",
         "body": {"isDisabled": True},
     }
+    assert a.action_map["activate"]["body"] == {"isDisabled": False}

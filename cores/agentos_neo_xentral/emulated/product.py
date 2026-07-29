@@ -611,9 +611,11 @@ class ProductAdapter(FacadeAdapterBase):
             200, {"data": matched[start : start + size], "meta": meta, "extra": extra}
         )
 
-    # Status writes: v3 products is read-only, so the deactivate/activate/archive
-    # steps PATCH v2 products (isDisabled/isDeleted). A run command may carry
-    # {"disabledReason": "…"} — the base merges it onto the body.
+    # Status writes go to v2 products via the `isDisabled` flag (v3 products is
+    # read-only for status). Verified against upstream: `isDisabled` true/false is
+    # accepted (204), but `isDeleted` (archive/un-archive) is rejected (400) — so
+    # only deactivate/activate are wired; archive stays a wish. A run command may
+    # carry {"disabledReason": "…"}, which the base merges onto the PATCH body.
     action_map = {
         "deactivate": {
             "method": "PATCH",
@@ -623,12 +625,7 @@ class ProductAdapter(FacadeAdapterBase):
         "activate": {
             "method": "PATCH",
             "path": "/api/v2/products/{id}",
-            "body": {"isDisabled": False, "isDeleted": False},
-        },
-        "archive": {
-            "method": "PATCH",
-            "path": "/api/v2/products/{id}",
-            "body": {"isDeleted": True},
+            "body": {"isDisabled": False},
         },
     }
 
@@ -638,12 +635,14 @@ class ProductAdapter(FacadeAdapterBase):
                 "key": "documentStatus",
                 "label": "Status",
                 "commands": [
-                    # Status writes go to v2 products (isDisabled/isDeleted); see
-                    # action_map. deactivate accepts an optional command
-                    # {disabledReason} that is merged onto the PATCH body.
+                    # deactivate/activate flip v2 isDisabled (see action_map);
+                    # deactivate accepts an optional command {disabledReason}.
                     self.step_cmd("deactivate", "Deactivate"),
                     self.step_cmd("activate", "Activate"),
-                    self.step_cmd("archive", "Archive"),
+                    # archive → v2 isDeleted:true is rejected (400) upstream.
+                    self.step_cmd(
+                        "archive", "Archive", wish="v2 products rejects isDeleted writes (400)."
+                    ),
                 ],
             }
         ]
@@ -1229,18 +1228,16 @@ class ProductAdapter(FacadeAdapterBase):
         for key in ("name", "number", "description", "unit"):
             if model.get(key) is not None:
                 v2[key] = model[key]
-        # --- status lock (v2 isDisabled/isDeleted) + reason ----------------
-        # active → live; inactive → isDisabled; archived → isDeleted. Set directly
-        # in a create/update body so a bulk import can lock records too (the
-        # deactivate/activate/archive steps do the same via action_map).
+        # --- status lock (v2 isDisabled) + reason --------------------------
+        # active ↔ inactive flip v2 `isDisabled` — set directly in a create/update
+        # body so a bulk import can lock records too. `archived` maps to isDeleted,
+        # which v2 REJECTS (400), so it is intentionally not emitted here (archived
+        # stays read-only, and round-trip writes of an archived record are a no-op).
         status = model.get("status")
         if status == "inactive":
             v2["isDisabled"] = True
-        elif status == "archived":
-            v2["isDeleted"] = True
         elif status == "active":
             v2["isDisabled"] = False
-            v2["isDeleted"] = False
         if model.get("statusReason") is not None:
             v2["disabledReason"] = model["statusReason"]
         if "category" in model:  # model category == merchandise group (Warengruppe)
