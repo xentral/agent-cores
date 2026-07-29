@@ -344,6 +344,7 @@ def test_map_write_status_lock_and_reason():
 
     v2, _ = a.map_write({"name": "X", "status": "active"}, creating=False)
     assert v2["isDisabled"] is False and "isDeleted" not in v2
+    assert v2["disabledReason"] is None  # reactivate clears the reason
 
     # archived can't be written via v2 → no flag emitted, round-trip stays a no-op.
     v2, rejected = a.map_write({"name": "X", "status": "archived"}, creating=False)
@@ -364,4 +365,4 @@ def test_status_steps_wired_to_v2():
         "path": "/api/v2/products/{id}",
         "body": {"isDisabled": True},
     }
-    assert a.action_map["activate"]["body"] == {"isDisabled": False}
+    assert a.action_map["activate"]["body"] == {"isDisabled": False, "disabledReason": None}

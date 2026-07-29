@@ -625,7 +625,9 @@ class ProductAdapter(FacadeAdapterBase):
         "activate": {
             "method": "PATCH",
             "path": "/api/v2/products/{id}",
-            "body": {"isDisabled": False},
+            # Clear the block reason on reactivate (disabledReason:null; v2 rejects
+            # an empty string with 400, so null is the clear).
+            "body": {"isDisabled": False, "disabledReason": None},
         },
     }
 
@@ -1238,6 +1240,9 @@ class ProductAdapter(FacadeAdapterBase):
             v2["isDisabled"] = True
         elif status == "active":
             v2["isDisabled"] = False
+            # Reactivating clears the block reason (null; "" is rejected 400).
+            v2["disabledReason"] = None
+        # An explicit statusReason still wins (e.g. deactivate-with-reason).
         if model.get("statusReason") is not None:
             v2["disabledReason"] = model["statusReason"]
         if "category" in model:  # model category == merchandise group (Warengruppe)
