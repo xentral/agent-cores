@@ -1238,9 +1238,11 @@ class ProductAdapter(FacadeAdapterBase):
         status = model.get("status")
         if status == "inactive":
             v2["isDisabled"] = True
-        elif status == "active":
+        elif status == "active" and not creating:
+            # Reactivate: unblock and clear the reason (null; "" is rejected 400).
+            # Only on UPDATE — a new product is active by default, and the v2
+            # CREATE rejects disabledReason:null (create wants a string, not null).
             v2["isDisabled"] = False
-            # Reactivating clears the block reason (null; "" is rejected 400).
             v2["disabledReason"] = None
         # An explicit statusReason still wins (e.g. deactivate-with-reason).
         if model.get("statusReason") is not None:
