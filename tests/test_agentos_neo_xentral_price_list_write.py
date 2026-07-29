@@ -85,7 +85,7 @@ def test_map_write_rejects_unknown_key():
 class _Upstream:
     """Stateful fake Xentral salesPrices (v3 primary + v1 fallback)."""
 
-    def __init__(self, *, v3_available: bool = True, groups_status: int = 200):
+    def __init__(self, *, v3_available: bool = True):
         self.v3_available = v3_available
         self.post_paths: list[str] = []  # every POST attempt (incl. a v3 that 404s)
         self.posts: list[tuple[str, dict[str, Any]]] = []
@@ -93,13 +93,6 @@ class _Upstream:
         self.deletes: list[str] = []
         self._next = 500
         self.rows: dict[str, dict[str, Any]] = {}
-        # GET /api/v1/groups (the customer-group guard reads this). Ids 11/12 exist.
-        self.groups_status = groups_status
-        self.groups = [
-            {"id": "11", "name": "Preisgruppe A", "type": "priceGroup"},
-            {"id": "12", "name": "Preisgruppe B", "type": "priceGroup"},
-        ]
-        self.group_reads = 0
 
     def _store(self, body: dict[str, Any], *, tier_key: str) -> str:
         rid = str(self._next)
@@ -122,11 +115,6 @@ class _Upstream:
 
     def handler(self, request: httpx.Request) -> httpx.Response:
         path, method = request.url.path, request.method
-        if path == "/api/v1/groups" and method == "GET":
-            self.group_reads += 1
-            if self.groups_status >= 400:
-                return httpx.Response(self.groups_status, json={"title": "boom"})
-            return httpx.Response(200, json={"data": self.groups})
         if path == "/api/v3/salesPrices" and method == "POST":
             self.post_paths.append(path)
             if not self.v3_available:
@@ -281,70 +269,3 @@ def test_multi_tier_scale_price_is_writable():
     # three distinct rows, each posted to v3 with its own quantity tier
     assert [b["quantity"] for _, b in up.posts] == [1, 10, 100]
     assert len(set(ids)) == 3
-
-
-# ---- customer-group guard ------------------------------------------------
-def _group_model(gid: str) -> dict[str, Any]:
-    return {
-        "product": {"id": "prd_12"},
-        "scope": {"customerGroup": gid},
-        "minQuantity": 1,
-        "unitPrice": {"amount": "9.00", "currency": "EUR"},
-    }
-
-
-def test_group_price_rejects_unknown_group():
-    # Upstream salesPrices would silently store a price against a ghost group id;
-    # the guard rejects it up front and never posts.
-    up = _Upstream()
-    resp = _call(up, method="POST", handle=None, model=_group_model("1"))
-    assert resp.status_code == 400
-    assert "1" in json.loads(resp.content)["title"]
-    assert up.posts == []  # nothing written upstream
-    assert up.group_reads == 1
-
-
-def test_group_price_accepts_known_group():
-    up = _Upstream()
-    resp = _call(up, method="POST", handle=None, model=_group_model("11"))
-    assert resp.status_code == 201
-    assert up.posts[0][0] == "/api/v3/salesPrices"
-    assert up.posts[0][1]["customerGroup"] == {"id": "11"}
-
-
-def test_group_guard_fails_open_when_groups_unreadable():
-    # A flaky/forbidden groups read must never block a price write.
-    up = _Upstream(groups_status=500)
-    resp = _call(up, method="POST", handle=None, model=_group_model("1"))
-    assert resp.status_code == 201  # fail-open: the write proceeds
-    assert up.posts[0][1]["customerGroup"] == {"id": "1"}
-
-
-def test_group_guard_runs_on_dryrun():
-    # bulk_validate uses dryRun; the guard must catch an unknown group there too.
-    up = _Upstream()
-    a = PriceListAdapter()
-
-    async def go():
-        async with httpx.AsyncClient(transport=httpx.MockTransport(up.handler)) as client:
-            return await a.request(
-                method="POST",
-                handle=None,
-                query=[("dryRun", "true")],
-                body=json.dumps(_group_model("1")).encode(),
-                base_url="https://unit.test",
-                token="t",
-                client=client,
-            )
-
-    resp = asyncio.run(go())
-    assert resp.status_code == 400
-    assert up.posts == []
-
-
-def test_customer_price_skips_group_guard():
-    # A customer-scoped (or standard) price must not pay the groups lookup.
-    up = _Upstream()
-    resp = _call(up, method="POST", handle=None, model=_ENTRY)  # customer scope
-    assert resp.status_code == 201
-    assert up.group_reads == 0

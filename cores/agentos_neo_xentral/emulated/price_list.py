@@ -21,7 +21,6 @@ The v1 endpoints REQUIRE both ``page[number]`` and ``page[size]`` with size 10..
 
 from __future__ import annotations
 
-import json
 from typing import Any
 
 import httpx
@@ -41,9 +40,6 @@ _SP_V1 = "/api/v1/salesPrices"
 # Only fall back to v1 when v3 looks unavailable/not-permitted (not deployed,
 # missing scope, method not allowed). A real validation answer surfaces as-is.
 _SP_FALLBACK_STATUSES = frozenset({403, 404, 405, 501})
-# Customer/price groups are read-only via the API (GET /api/v1/groups; POST 404s).
-# Used to validate scope.customerGroup before a write — see _group_exists.
-_GROUPS_PATH = "/api/v1/groups"
 
 
 class PriceListAdapter(FacadeAdapterBase):
@@ -389,76 +385,4 @@ class PriceListAdapter(FacadeAdapterBase):
             return resp.status_code, self._safe_json(resp)
         return await super()._send(
             base_url, token, method, up_handle, payload, accept_language, client
-        )
-
-    # ---- customer-group guard -------------------------------------------
-    async def _group_exists(  # noqa: ANN001
-        self, gid, base_url, token, accept_language, client
-    ) -> bool:
-        """Whether a customer/price group with ``gid`` exists (GET /api/v1/groups).
-        Fail-OPEN: returns True whenever the listing can't be read (transient error,
-        non-200, or a tenant that surfaces no groups at all), so the guard only ever
-        rejects on a POSITIVE 'not found' and never blocks a price write on a flaky
-        read. Groups are small; a few pages cover any SMB tenant."""
-        root = base_url.rstrip("/")
-        target = str(gid)
-        saw_rows = False
-        for page in range(1, 6):
-            url = f"{root}{_GROUPS_PATH}?page[number]={page}&page[size]=100"
-            try:
-                resp = await self._http("GET", url, token, accept_language, client)
-            except httpx.HTTPError:
-                return True  # fail-open
-            if resp.status_code >= 400:
-                return True  # fail-open
-            body = self._safe_json(resp)
-            rows = body.get("data") if isinstance(body, dict) else body
-            if not rows:
-                break
-            saw_rows = True
-            for r in rows:
-                if isinstance(r, dict) and str(r.get("id")) == target:
-                    return True
-            if len(rows) < 100:
-                break
-        # Read groups successfully and none matched → genuinely unknown (reject).
-        # Never saw any group at all → fail-open rather than block on thin data.
-        return not saw_rows
-
-    async def _write(  # noqa: ANN001
-        self, method, handle, query, body, base_url, token, accept_language, client
-    ):
-        """Reject a price scoped to a non-existent customer group before writing.
-        Upstream salesPrices does NOT validate the group reference: it will happily
-        store a price against a ghost id (e.g. ``"1"`` when no group 1 exists),
-        leaving an orphaned row that binds to nothing. Validate the id against
-        GET /api/v1/groups first. Runs on dryRun too, so ``bulk_validate`` catches
-        it. Customer refs are left to upstream, which does validate them."""
-        if method.upper() == "POST":
-            try:
-                model = json.loads(body or b"{}")
-            except (ValueError, TypeError):
-                model = {}
-            scope = model.get("scope") if isinstance(model, dict) else None
-            gid = (
-                self._ref_id((scope or {}).get("customerGroup"))
-                if isinstance(scope, dict)
-                else None
-            )
-            if gid is not None and not await self._group_exists(
-                gid, base_url, token, accept_language, client
-            ):
-                return self._json(
-                    400,
-                    {
-                        "title": f"Unknown customer group id {gid!r}",
-                        "detail": (
-                            "scope.customerGroup must be an existing group id from "
-                            "GET /api/v1/groups. Upstream salesPrices would otherwise "
-                            "store this price against a non-existent group (orphaned row)."
-                        ),
-                    },
-                )
-        return await super()._write(
-            method, handle, query, body, base_url, token, accept_language, client
         )
