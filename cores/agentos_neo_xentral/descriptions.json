@@ -707,7 +707,7 @@
     "product": "Product this price entry applies to.",
     "scope": "Who the price applies to: a specific customer, a customer group, or neither (a plain standard price — prefer setting that on Product.prices.sale). Provide customer or customerGroup, not both.",
     "scope.customer": "Specific customer the price is granted to (null = applies broadly).",
-    "scope.customerGroup": "Customer group (price group) the price applies to. Must be an existing group id from GET /api/v1/groups — an unknown id is rejected rather than silently stored against a non-existent group.",
+    "scope.customerGroup": "Customer group the price applies to (the customer-group id; e.g. 1 = the default group). Xentral validates the id and rejects an unknown one.",
     "minQuantity": "Minimum order quantity from which this price applies (staffel/tier threshold). Several entries with different minQuantity form a scale price.",
     "unitPrice": "Price per unit for this entry.",
     "unitPrice.amount": "Net unit price amount.",
