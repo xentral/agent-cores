@@ -319,6 +319,13 @@ class ProductAdapter(FacadeAdapterBase):
     # customFields carries the per-product free-field VALUES in the v3 payload (works
     # on list AND single read) — cheaper than a hydration round trip.
     include = "project,defaultSupplier,merchandiseGroup,tags,customFields"
+    # A `status` filter maps to the v3 `isDisabled` flag: the default list is
+    # active-only (upstream hides disabled), so this lets a caller find inactive
+    # products explicitly (records filters=[{key:"status", value:"inactive"}]).
+    # value → isDisabled bool; key → isDisabled. (archived is isDeleted, not
+    # covered by this single-key filter.)
+    query_aliases = {"status": "isDisabled"}
+    filter_value_maps = {"status": {"active": "false", "inactive": "true"}}
     preview_template = "{{name}}"
     sections = {
         "general": {"label": "General"},
@@ -698,6 +705,9 @@ class ProductAdapter(FacadeAdapterBase):
                 section="general",
                 options=_STATUS_OPTIONS,
                 previewable=True,
+                # Filter active/inactive (→ v3 isDisabled); the default list is
+                # active-only, so this surfaces disabled products on demand.
+                filterable=True,
             ),
             "statusReason": prop("string", "Status reason", **_CU, section="general"),
             # v2 create only exposes isShippingCostsProduct/isFee flags, not a

@@ -372,3 +372,13 @@ def test_status_steps_wired_to_v2():
         "body": {"isDisabled": True},
     }
     assert a.action_map["activate"]["body"] == {"isDisabled": False, "disabledReason": None}
+
+
+def test_status_filter_maps_to_isdisabled():
+    """A `status` filter is exposed and maps to the v3 isDisabled flag (default
+    list is active-only), so callers can find inactive products."""
+    a = ProductAdapter()
+    assert a.fields()["status"].get("filterable") is True
+    assert a.query_aliases.get("status") == "isDisabled"
+    # inactive → isDisabled true, active → false (v3 wants the bool as a string).
+    assert a.filter_value_maps["status"] == {"active": "false", "inactive": "true"}
