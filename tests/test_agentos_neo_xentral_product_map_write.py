@@ -327,3 +327,35 @@ def test_dry_run_creates_nothing():
     assert body["dryRun"] is True
     assert body["wouldSend"]["name"] == "Alu-Flasche 750 ml"
     assert up.post_paths == []  # nothing hit the network
+
+
+def test_map_write_status_lock_and_reason():
+    """status → v2 isDisabled/isDeleted, statusReason → disabledReason; writable in
+    a normal payload (so a bulk import can lock records), not rejected."""
+    a = ProductAdapter()
+    v2, rejected = a.map_write(
+        {"name": "X", "status": "inactive", "statusReason": "Sperrgrund"}, creating=False
+    )
+    assert rejected == set()
+    assert v2["isDisabled"] is True
+    assert "isDeleted" not in v2
+    assert v2["disabledReason"] == "Sperrgrund"
+
+    v2, _ = a.map_write({"name": "X", "status": "archived"}, creating=False)
+    assert v2["isDeleted"] is True and "isDisabled" not in v2
+
+    v2, _ = a.map_write({"name": "X", "status": "active"}, creating=False)
+    assert v2["isDisabled"] is False and v2["isDeleted"] is False
+
+
+def test_status_steps_wired_to_v2():
+    """deactivate/activate/archive are executable (no wish) and PATCH v2 products."""
+    a = ProductAdapter()
+    assert set(a.action_map) >= {"deactivate", "activate", "archive"}
+    cmds = {c["key"]: c for c in a.steps()[0]["commands"]}
+    assert not any(cmds[k].get("wish") for k in ("deactivate", "activate", "archive"))
+    assert a.action_map["deactivate"] == {
+        "method": "PATCH",
+        "path": "/api/v2/products/{id}",
+        "body": {"isDisabled": True},
+    }
