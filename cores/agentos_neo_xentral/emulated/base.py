@@ -380,6 +380,11 @@ class FacadeAdapterBase:
             "origin": "emulated",
             "emulation": self.manifest.marker(),
         }
+        # Entity-level "what is this / when to use it" — surfaced at the head of
+        # `describe` so an agent reads the entity's role before scanning fields
+        # (e.g. that scoped/tiered prices live on PriceList, not on Product).
+        if getattr(self.manifest, "description", ""):
+            meta["description"] = self.manifest.description
         # Advertise the consolidated `search` filter only when the schema
         # actually flags fields — consumers (record pickers, list search) key
         # their server-search affordance off this list.

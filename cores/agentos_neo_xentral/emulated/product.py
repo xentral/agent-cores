@@ -307,6 +307,11 @@ class ProductAdapter(FacadeAdapterBase):
         rollout_batch="agentos_neo_xentral",
         adapter="agentos_neo_xentral.product",
         source_apis=("agentos_neo_xentral",),
+        description=(
+            "Product master data, including the single standard sale (list) price "
+            "via prices.sale. Customer-specific, customer-group and scale (Staffel) "
+            "prices are NOT set here — use the PriceList entity for those."
+        ),
         # Read via v3 (PR #24325, read-only by design); WRITE via v2 products
         # (POST/PATCH /api/v2/products — see write_path). Sale price is a separate
         # resource composed on top of the create (see _write).
