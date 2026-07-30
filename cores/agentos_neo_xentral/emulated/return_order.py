@@ -180,7 +180,10 @@ class ReturnAdapter(FacadeAdapterBase):
                     "Settle the return by issuing a credit note (Gutschrift) for the "
                     "returned goods — the return's financial resolution. Optional "
                     "command {isApproved, isPaid} (both default: approved, unpaid). "
-                    "The created credit note is returned under `result`."
+                    "A still-unreleased (draft) return is released first: a credit note "
+                    "issued from a draft leaves the return without a document number and "
+                    "it can never be released afterwards. The created credit note is "
+                    "linked on the return under `resolution.creditNote`."
                 ),
                 command={
                     "type": "object",
@@ -618,6 +621,17 @@ class ReturnAdapter(FacadeAdapterBase):
             return await self._create_from_delivery_note(
                 body, base_url, token, accept_language, client
             )
+        if action_key == "createCreditNote":
+            blocked = await self._release_before_credit_note(
+                handle=handle,
+                body=body,
+                base_url=base_url,
+                token=token,
+                accept_language=accept_language,
+                client=client,
+            )
+            if blocked is not None:
+                return blocked
         return await super().action(
             action_key=action_key,
             handle=handle,
@@ -627,6 +641,71 @@ class ReturnAdapter(FacadeAdapterBase):
             accept_language=accept_language,
             client=client,
         )
+
+    async def _release_before_credit_note(  # noqa: ANN001
+        self, *, handle, body, base_url, token, accept_language, client
+    ):
+        """Never issue a credit note from an unreleased draft return.
+
+        Upstream happily accepts createCreditNote on a draft: it mints a real,
+        numbered credit note while the return itself keeps no document number
+        and can no longer be released afterwards ("Only a draft ReturnOrder can
+        be released") — the source strands in draft forever. `status` cannot
+        tell the two apart (it reads `requested` both before and after a
+        release), so the document number is the only usable marker.
+
+        Releases the return first and returns a 409 when that fails; returns
+        None when the caller may proceed.
+        """
+        try:
+            envelope = json.loads(body or b"{}")
+        except (ValueError, TypeError):
+            envelope = {}
+        ids = envelope.get("ids") or ([handle] if handle else [])
+        if not ids:
+            return None  # the base action reports the missing target itself
+        up_id = str(ids[0]).split("_", 1)[1] if "_" in str(ids[0]) else str(ids[0])
+
+        status, payload = await self._get(
+            base_url,
+            token,
+            handle=up_id,
+            query=[],
+            accept_language=accept_language,
+            client=client,
+        )
+        if status >= 400:
+            return None  # let the action itself surface the upstream error
+        rec = payload.get("data") if isinstance(payload, dict) else None
+        if not isinstance(rec, dict) or rec.get("documentNumber") not in (None, ""):
+            return None  # already released — nothing to do
+
+        url = f"{base_url.rstrip('/')}{self.v3_path}/{up_id}/actions/release"
+        headers = self._headers(token, accept_language)
+
+        async def _do(c):  # noqa: ANN001, ANN202
+            return await c.request("PATCH", url, json=None, headers=headers)
+
+        if client is None:
+            async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
+                resp = await _do(c)
+        else:
+            resp = await _do(client)
+        if resp.status_code >= 400:
+            return self._json(
+                409,
+                {
+                    "title": (
+                        "createCreditNote: the return is still a draft and could not be released"
+                    ),
+                    "detail": (
+                        "A credit note may only be issued from a released return — otherwise "
+                        "the return keeps no document number and can never be released again. "
+                        "Releasing it first failed; fix that before settling the return."
+                    ),
+                },
+            )
+        return None
 
     async def _create_from_delivery_note(self, body, base_url, token, accept_language, client):  # noqa: ANN001
         """POST /api/v3/returnOrders/actions/createFromDeliveryNote — build a return
