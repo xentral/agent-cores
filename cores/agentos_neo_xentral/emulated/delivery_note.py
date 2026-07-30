@@ -108,7 +108,7 @@ class DeliveryNoteAdapter(FacadeAdapterBase):
         rollout_batch="agentos_neo_xentral",
         adapter="agentos_neo_xentral.deliveryNote",
         source_apis=("agentos_neo_xentral",),
-        operations=("list", "read", "create", "update"),
+        operations=("list", "read", "create", "update", "delete"),
     )
     v3_path = "/api/v3/deliveryNotes"
     include = "lineItems,lineItems.product,project,address,tags"
