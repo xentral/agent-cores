@@ -138,6 +138,18 @@ def test_action_advertises_create_from_delivery_note():
     assert "deliveryNote" in cmd and "lineItems" in cmd
 
 
+def test_confirm_releases_like_the_sales_order():
+    # freigeben — identical mapping to the sales order's confirm → v3 release.
+    assert ReturnAdapter().action_map["confirm"] == ("PATCH", "release")
+
+
+def test_confirm_is_a_document_status_step():
+    groups = {g["key"]: g for g in ReturnAdapter().steps()}
+    keys = [c["key"] for c in groups["documentStatus"]["commands"]]
+    assert "confirm" in keys
+    assert {"settle", "cancel"} <= set(keys)
+
+
 if __name__ == "__main__":
     import pytest
 
