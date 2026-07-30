@@ -67,6 +67,17 @@ def test_invoice_no_longer_advertises_stale_create_credit_note_wish():
     assert "createCreditNote" not in keys  # fulfilled by `cancel` now
 
 
+def test_invoice_partially_cancelled_status_is_surfaced_not_draft():
+    # A partial storno leaves the invoice partiallyCancelled (v3); it must not
+    # fall back to the "draft" default, which would read as un-cancelled.
+    a = SalesInvoiceAdapter()
+    assert a.map_read({"status": "partiallyCancelled"})["status"] == "partiallyCancelled"
+    assert a.map_read({"status": "cancelled"})["status"] == "cancelled"
+    assert a.map_read({"status": "released"})["status"] == "open"
+    values = {o["value"] for o in a.fields()["status"]["options"]}
+    assert {"partiallyCancelled", "cancelled"} <= values
+
+
 # --- credit note has NO v3 cancel ------------------------------------------
 def test_credit_note_has_no_cancel_route():
     assert "cancel" not in CreditNoteAdapter().action_map
