@@ -466,7 +466,7 @@
     "items.quantity": "Quantity announced for return.",
     "items.quantity.value": "Numeric quantity.",
     "items.quantity.unit": "Unit of measure (e.g. piece).",
-    "items.reason": "Reason the item is being returned.",
+    "items.reason": "Reason the item is being returned — REQUIRED per return policy. Pick a ReturnReason id (list them via the ReturnReason entity / GET /returnReasons); do not invent one.",
     "items.condition": "Condition of the received item (e.g. new, damaged).",
     "items.action": "Action to take with the item (e.g. restock, scrap, repair).",
     "items.receivedQuantity": "Quantity actually received back (read-only).",

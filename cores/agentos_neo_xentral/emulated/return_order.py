@@ -9,11 +9,15 @@ creatable/updatable; the rest are blue wishes.
 
 from __future__ import annotations
 
+import json
 from typing import Any
+
+import httpx
 
 from entity_registry.core_sdk import EmulationManifest
 
 from .base import (
+    _TIMEOUT,
     FacadeAdapterBase,
     RO,
     line_qty,
@@ -112,6 +116,44 @@ class ReturnAdapter(FacadeAdapterBase):
 
     def actions(self):
         return [
+            self.action_def(
+                "createFromDeliveryNote",
+                "Create return from delivery note",
+                description=(
+                    "Best-practice one-step return: create a return directly from a "
+                    "delivery note (the goods that were shipped). Provide the delivery "
+                    "note id and the lines to return — each with the delivery-note line "
+                    "item id, the quantity, and a REQUIRED ReturnReason id (list them "
+                    "via the ReturnReason entity)."
+                ),
+                command={
+                    "type": "object",
+                    "required": ["deliveryNote", "lineItems"],
+                    "properties": {
+                        "deliveryNote": {"type": "string", "label": "Delivery note id"},
+                        "lineItems": {
+                            "type": "array",
+                            "label": "Lines to return",
+                            "items": {
+                                "type": "object",
+                                "required": ["deliveryNoteItem", "quantity", "reason"],
+                                "properties": {
+                                    "deliveryNoteItem": {
+                                        "type": "string",
+                                        "label": "Delivery-note line item id",
+                                    },
+                                    "quantity": {"type": "number", "label": "Quantity to return"},
+                                    "reason": {
+                                        "type": "string",
+                                        "label": "ReturnReason id (required)",
+                                    },
+                                    "description": {"type": "string", "label": "Note"},
+                                },
+                            },
+                        },
+                    },
+                },
+            ),
             self.action_def(
                 "sendReturnLabel",
                 "Send return label",
@@ -243,7 +285,12 @@ class ReturnAdapter(FacadeAdapterBase):
                             },
                         ),
                         "reason": prop(
-                            "reference", "Reason", reference="ReturnReason", renderProperty="name"
+                            "reference",
+                            "Reason",
+                            reference="ReturnReason",
+                            renderProperty="name",
+                            creatable=True,
+                            required=True,
                         ),
                         "condition": prop("select", "Condition"),
                         "action": prop("select", "Action"),
@@ -278,22 +325,24 @@ class ReturnAdapter(FacadeAdapterBase):
             "documents": prop(
                 "embedded",
                 "Documents",
-                **RO,
                 section="flow",
                 properties={
+                    # Create-only: link the return to its source order / delivery note
+                    # (v3 salesOrder{id} / deliveryNote{id}). On read they show the
+                    # linked documents.
                     "salesOrder": prop(
                         "reference",
                         "Sales order",
                         reference="SalesOrder",
                         renderProperty="number",
-                        **RO,
+                        creatable=True,
                     ),
                     "deliveryNote": prop(
                         "reference",
                         "Delivery note",
                         reference="DeliveryNote",
                         renderProperty="number",
-                        **RO,
+                        creatable=True,
                     ),
                 },
             ),
@@ -412,7 +461,16 @@ class ReturnAdapter(FacadeAdapterBase):
             "updatedAt": r.get("updatedAt"),
         }
 
-    _WRITABLE = {"customer", "project", "note", "billingAddress", "items", "dates", "tags"}
+    _WRITABLE = {
+        "customer",
+        "project",
+        "note",
+        "billingAddress",
+        "items",
+        "dates",
+        "tags",
+        "documents",
+    }
     _IGNORE = {
         "object",
         "id",
@@ -420,7 +478,6 @@ class ReturnAdapter(FacadeAdapterBase):
         "status",
         "warehouse",
         "resolution",
-        "documents",
         "createdAt",
         "updatedAt",
     }
@@ -484,6 +541,18 @@ class ReturnAdapter(FacadeAdapterBase):
                 ]
             else:
                 rejected.add("items")
+        if "documents" in model:
+            # Link the return to its source order / delivery note (create-only).
+            if creating:
+                docs = model["documents"] or {}
+                so = self._ref_id(docs.get("salesOrder")) if isinstance(docs, dict) else None
+                if so is not None:
+                    v3["salesOrder"] = so
+                dn = self._ref_id(docs.get("deliveryNote")) if isinstance(docs, dict) else None
+                if dn is not None:
+                    v3["deliveryNote"] = dn
+            else:
+                rejected.add("documents")
         if "tags" in model:
             v3["tags"] = tags_to_v3(model["tags"])
         for k in model:
@@ -506,4 +575,103 @@ class ReturnAdapter(FacadeAdapterBase):
             out["discount"] = i["discountPercent"]
         if i.get("taxRate") is not None:
             out["taxRate"] = i["taxRate"]
+        reason = i.get("reason")
+        if reason is not None:
+            rid = reason.get("id") if isinstance(reason, dict) else reason
+            if rid not in (None, ""):
+                out["returnReason"] = {
+                    "id": str(rid).split("_", 1)[1] if "_" in str(rid) else str(rid)
+                }
         return out
+
+    # ---- best-practice one-shot: create a return from a delivery note ----
+    async def action(  # noqa: ANN001
+        self, *, action_key, handle, body, base_url, token, accept_language=None, client=None
+    ):
+        if action_key == "createFromDeliveryNote":
+            return await self._create_from_delivery_note(
+                body, base_url, token, accept_language, client
+            )
+        return await super().action(
+            action_key=action_key,
+            handle=handle,
+            body=body,
+            base_url=base_url,
+            token=token,
+            accept_language=accept_language,
+            client=client,
+        )
+
+    async def _create_from_delivery_note(self, body, base_url, token, accept_language, client):  # noqa: ANN001
+        """POST /api/v3/returnOrders/actions/createFromDeliveryNote — build a return
+        from a delivery note. Maps the model command (deliveryNote + lines with
+        deliveryNoteItem/quantity/reason) to the v3 wire body; returnReason is
+        required on every line (upstream requirement)."""
+        try:
+            envelope = json.loads(body or b"{}")
+        except (ValueError, TypeError):
+            envelope = {}
+        command = envelope.get("command") or {}
+        dn = self._ref_id(command.get("deliveryNote"))
+        lines = command.get("lineItems")
+        if dn is None or not isinstance(lines, list) or not lines:
+            return self._json(
+                422,
+                {
+                    "title": (
+                        "createFromDeliveryNote needs command.deliveryNote and "
+                        "command.lineItems=[{deliveryNoteItem, quantity, reason}]"
+                    )
+                },
+            )
+        v3_lines: list[dict[str, Any]] = []
+        for m in lines:
+            if not isinstance(m, dict):
+                continue
+            item = self._ref_id(
+                m.get("deliveryNoteItem") if m.get("deliveryNoteItem") is not None else m.get("id")
+            )
+            if item is None:
+                return self._json(
+                    422, {"title": f"createFromDeliveryNote: missing deliveryNoteItem in {m}"}
+                )
+            reason = self._ref_id(m.get("reason"))
+            if reason is None:
+                return self._json(
+                    422,
+                    {"title": f"createFromDeliveryNote: a ReturnReason is required per line ({m})"},
+                )
+            try:
+                qty = float(m.get("quantity"))
+            except (TypeError, ValueError):
+                return self._json(422, {"title": f"createFromDeliveryNote: bad quantity in {m}"})
+            li: dict[str, Any] = {"id": item["id"], "quantity": qty, "returnReason": reason}
+            if m.get("description") is not None:
+                li["description"] = m["description"]
+            v3_lines.append(li)
+
+        payload = {"deliveryNote": dn, "lineItems": v3_lines}
+        url = f"{base_url.rstrip('/')}/api/v3/returnOrders/actions/createFromDeliveryNote"
+        headers = self._headers(token, accept_language)
+
+        async def _do(c):  # noqa: ANN001, ANN202
+            return await c.post(url, json=payload, headers=headers)
+
+        if client is None:
+            async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
+                resp = await _do(c)
+        else:
+            resp = await _do(client)
+        try:
+            rbody = resp.json()
+        except ValueError:
+            rbody = {}
+        if resp.status_code >= 400:
+            return self._json(
+                resp.status_code,
+                rbody if isinstance(rbody, dict) else {"title": "createFromDeliveryNote failed"},
+            )
+        rec = rbody.get("data") if isinstance(rbody, dict) else None
+        if isinstance(rec, dict):
+            return self._json(201, {"data": self.map_read(rec)})
+        return self._json(resp.status_code, rbody if isinstance(rbody, dict) else {})
