@@ -65,7 +65,7 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
         rollout_batch="agentos_neo_xentral",
         adapter="agentos_neo_xentral.purchaseOrder",
         source_apis=("agentos_neo_xentral",),
-        operations=("list", "read", "create", "update"),
+        operations=("list", "read", "create", "update", "delete"),
     )
     v3_path = "/api/v3/purchaseOrders"
     include = "lineItems,lineItems.product,project,address,tags"

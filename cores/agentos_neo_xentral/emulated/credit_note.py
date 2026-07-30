@@ -63,7 +63,7 @@ class CreditNoteAdapter(FacadeAdapterBase):
         rollout_batch="agentos_neo_xentral",
         adapter="agentos_neo_xentral.creditNote",
         source_apis=("agentos_neo_xentral",),
-        operations=("list", "read", "create", "update"),
+        operations=("list", "read", "create", "update", "delete"),
     )
     v3_path = "/api/v3/creditNotes"
     include = "lineItems,lineItems.product,address,tags"
@@ -91,7 +91,6 @@ class CreditNoteAdapter(FacadeAdapterBase):
     action_map = {
         # Release / freigeben from draft (v3 release) — uniform across documents.
         "release": ("PATCH", "release"),
-        "cancel": ("PATCH", "cancel"),
         "send": ("PATCH", "send"),
     }
 
@@ -102,7 +101,19 @@ class CreditNoteAdapter(FacadeAdapterBase):
                 "label": "Document status",
                 "commands": [
                     self.step_cmd("release", "Release"),
-                    self.step_cmd("cancel", "Cancel"),
+                    # A released credit note is itself the reversal document; Xentral
+                    # cancels it only in the legacy UI (status→storniert). v3 exposes
+                    # no cancel action here, so this stays a declared wish. A DRAFT
+                    # credit note is removed with `delete`, not cancelled.
+                    self.step_cmd(
+                        "cancel",
+                        "Cancel",
+                        wish=(
+                            "A released credit note can only be cancelled in the "
+                            "Xentral UI (legacy); v3 exposes no cancel action. Drafts "
+                            "are removed with `delete`."
+                        ),
+                    ),
                 ],
             }
         ]

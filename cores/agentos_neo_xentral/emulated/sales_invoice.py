@@ -112,7 +112,7 @@ class SalesInvoiceAdapter(FacadeAdapterBase):
         rollout_batch="agentos_neo_xentral",
         adapter="agentos_neo_xentral.salesInvoice",
         source_apis=("agentos_neo_xentral",),
-        operations=("list", "read", "create", "update"),
+        operations=("list", "read", "create", "update", "delete"),
     )
     v3_path = "/api/v3/invoices"
     include = "lineItems,lineItems.product,project,address,tags"
@@ -145,7 +145,17 @@ class SalesInvoiceAdapter(FacadeAdapterBase):
     action_map = {
         # Release / freigeben from draft (v3 release) — uniform across documents.
         "release": ("PATCH", "release"),
-        "cancel": ("PATCH", "cancel"),
+        # Storno. An invoice is NOT cancelled by a status flip (it is write-
+        # protected once released, GoBD). The reversal is a *counter-document*:
+        # POST /api/v1/creditNotes {invoice:{id}} creates a cancellation credit
+        # note and marks the invoice cancelled. This is what the Xentral UI's
+        # "Weiterführen zu Stornorechnung" does. A DRAFT invoice has no number
+        # yet — discard it with `delete`, not `cancel`.
+        "cancel": {
+            "method": "POST",
+            "path": "/api/v1/creditNotes",
+            "body": {"invoice": {"id": "{id}"}},
+        },
         "send": ("PATCH", "send"),
     }
 
@@ -156,7 +166,31 @@ class SalesInvoiceAdapter(FacadeAdapterBase):
                 "label": "Document status",
                 "commands": [
                     self.step_cmd("release", "Release"),
-                    self.step_cmd("cancel", "Cancel"),
+                    {
+                        "key": "cancel",
+                        "label": "Cancel (storno via credit note)",
+                        "destructive": True,
+                        "description": (
+                            "Cancels a released invoice by creating a cancellation "
+                            "credit note (Storno-Gutschrift) — the GoBD-compliant "
+                            "reversal. A released invoice is write-protected and cannot "
+                            "be status-cancelled; this creates a new counter-document "
+                            "and marks the invoice cancelled. Not reversible; several "
+                            "credit notes may exist per invoice. A DRAFT invoice has no "
+                            "number — discard it with `delete` instead. Optional command "
+                            "{documentNumber} sets the credit note number. The created "
+                            "credit note is returned under `result`."
+                        ),
+                        "command": {
+                            "type": "object",
+                            "properties": {
+                                "documentNumber": {
+                                    "type": "string",
+                                    "label": "Credit note number (optional)",
+                                }
+                            },
+                        },
+                    },
                 ],
             }
         ]
@@ -175,11 +209,6 @@ class SalesInvoiceAdapter(FacadeAdapterBase):
                 wish="The payments API is not public — no endpoint to register an incoming payment.",
             ),
             self.action_def("remind", "Send reminder", wish="Dunning has no public API."),
-            self.action_def(
-                "createCreditNote",
-                "Create credit note",
-                wish="No createFrom endpoint for credit notes upstream.",
-            ),
             self.action_def("writeOff", "Write off", wish="Write-offs have no public endpoint."),
             self.action_def(
                 "downloadPdf",

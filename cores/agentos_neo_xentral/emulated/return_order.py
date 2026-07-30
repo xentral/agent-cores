@@ -65,7 +65,7 @@ class ReturnAdapter(FacadeAdapterBase):
         rollout_batch="agentos_neo_xentral",
         adapter="agentos_neo_xentral.return",
         source_apis=("agentos_neo_xentral",),
-        operations=("list", "read", "create", "update"),
+        operations=("list", "read", "create", "update", "delete"),
     )
     v3_path = "/api/v3/returnOrders"
     include = "lineItems,lineItems.product,address,tags"
@@ -94,6 +94,15 @@ class ReturnAdapter(FacadeAdapterBase):
         "release": ("PATCH", "release"),
         "settle": ("PATCH", "complete"),
         "cancel": ("PATCH", "cancel"),
+        # Settle the return by issuing a credit note (the return's resolution).
+        # POST /api/v1/returns/{id}/actions/createCreditNote; isApproved/isPaid
+        # are required upstream — default to approved & not-yet-paid, overridable
+        # via the command. Returns the created credit note under `result`.
+        "createCreditNote": {
+            "method": "POST",
+            "path": "/api/v1/returns/{id}/actions/createCreditNote",
+            "body": {"isApproved": True, "isPaid": False},
+        },
     }
 
     def steps(self):
@@ -166,7 +175,20 @@ class ReturnAdapter(FacadeAdapterBase):
             self.action_def(
                 "createCreditNote",
                 "Create credit note",
-                wish="No createFrom endpoint for credit notes upstream.",
+                destructive=True,
+                description=(
+                    "Settle the return by issuing a credit note (Gutschrift) for the "
+                    "returned goods — the return's financial resolution. Optional "
+                    "command {isApproved, isPaid} (both default: approved, unpaid). "
+                    "The created credit note is returned under `result`."
+                ),
+                command={
+                    "type": "object",
+                    "properties": {
+                        "isApproved": {"type": "boolean", "label": "Approve the credit note"},
+                        "isPaid": {"type": "boolean", "label": "Mark the refund as paid"},
+                    },
+                },
             ),
             self.action_def(
                 "createReplacementOrder",
