@@ -195,7 +195,7 @@
     "shippingAddress.email": "Email on the shipping address.",
     "shippingAddress.phone": "Phone on the shipping address.",
     "shippingAddress.vatId": "VAT id (USt-IdNr.) recorded on the shipping address.",
-    "items": "Order line items.",
+    "items": "Order line items. On UPDATE this REPLACES the line-item set: an item with an existing items.id is changed, one without an id is added, and any existing item you omit is removed. Send the full desired list (echo back the ids you want to keep).",
     "items.position": "Ordering position of the line on the document.",
     "items.product": "The ordered product.",
     "items.description": "Free-text description of the line (extends or overrides the product name).",
