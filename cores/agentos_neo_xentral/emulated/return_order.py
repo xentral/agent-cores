@@ -248,6 +248,7 @@ class ReturnAdapter(FacadeAdapterBase):
                             reference="ReturnReason",
                             renderProperty="name",
                             creatable=True,
+                            required=True,
                         ),
                         "condition": prop("select", "Condition"),
                         "action": prop("select", "Action"),

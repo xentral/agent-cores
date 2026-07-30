@@ -48,6 +48,7 @@ def test_schema_marks_link_and_reason_creatable():
     assert docs["salesOrder"].get("creatable") and docs["deliveryNote"].get("creatable")
     reason = fields["items"]["node"]["properties"]["reason"]
     assert reason.get("creatable")
+    assert reason.get("required")  # reason is mandatory per return policy
 
 
 if __name__ == "__main__":
