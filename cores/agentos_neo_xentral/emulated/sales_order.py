@@ -55,14 +55,33 @@ _PRIORITY_OPTIONS = [{"value": "normal", "label": "Normal"}, {"value": "high", "
 # The only partial-shipping policy the upstream can represent today; the read
 # reports it unconditionally, so the write treats it as the no-op value.
 _PARTIAL_SHIPPING = "allowed"
-# trafficLights that represent an actual fulfilment BLOCK (→ holds); the rest are
-# informational signals, not holds. Polarity/`since`/`by` need product sign-off
-# (docs/00-decisions Offene Klärung #3) — kept minimal and honest until then.
+# System trafficLights that represent an actual fulfilment BLOCK (→ holds) when
+# they sit in a blocking state. The full raw set is passed through as the read-only
+# `trafficLights` field (no interpretation); `holds` is the curated, evidence-based
+# subset — the reason a dispatch would be rejected (e.g. stock: false → "Check items
+# in stock not passed"). Every id here maps to a stable hold `type`.
 _HOLD_LIGHTS = {
+    "stock": "stock",
+    "stockAvailableFifo": "stock",
+    "stockAvailableOpenSupply": "stock",
     "creditLimit": "creditLimit",
     "deliveryBlock": "manual",
     "addressValidation": "address",
 }
+# A system light blocks when its state is falsy in the "not ok" sense — verified
+# against mvp: an out-of-stock order shows stock=false / stockAvailable*="no" while
+# every passing check is true. (Polarity is per-light; only these blocking values
+# are treated as a hold, everything else stays purely informational.)
+_BLOCK_STATES = (False, "no", "notAvailable")
+
+
+def _light_state(v: Any) -> Any:
+    """Normalize a traffic-light state to a stable string (booleans → 'true'/'false';
+    upstream string states pass through; None stays None)."""
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    return v
+
 
 # Address sub-field flags: writable both on create + update upstream.
 _CU = {"creatable": True, "updatable": True}
@@ -153,7 +172,7 @@ class SalesOrderAdapter(FacadeAdapterBase):
         operations=("list", "read", "create", "update"),
     )
     v3_path = "/api/v3/salesOrders"
-    include = "lineItems,lineItems.product,project,address,tags,__internal__trafficLights"
+    include = "lineItems,lineItems.product,project,address,tags,trafficLights"
     preview_template = "{{number}}"
     query_aliases = {
         "number": "documentNumber",
@@ -471,6 +490,18 @@ class SalesOrderAdapter(FacadeAdapterBase):
                     }
                 },
             ),
+            "trafficLights": prop(
+                "collection",
+                "Traffic lights",
+                **RO,
+                section="general",
+                node={
+                    "properties": {
+                        "id": prop("string", "Signal", **RO),
+                        "state": prop("string", "State", **RO),
+                    }
+                },
+            ),
             "texts": prop(
                 "embedded",
                 "Texts",
@@ -554,10 +585,22 @@ class SalesOrderAdapter(FacadeAdapterBase):
         doc_addr = r.get("documentAddress") or {}
         terms = fin.get("paymentTerms") or {}
 
+        # Raw traffic lights (all of them) pass through untouched so an agent can
+        # see every fulfilment signal; `holds` is the curated subset that actually
+        # blocks a dispatch (evidence-based polarity — see _HOLD_LIGHTS/_BLOCK_STATES).
+        lights: list[dict[str, Any]] = []
         holds = []
+        seen_holds: set[str] = set()
         for e in r.get("trafficLights") or []:
-            if isinstance(e, dict) and e.get("id") in _HOLD_LIGHTS:
-                holds.append({"type": _HOLD_LIGHTS[e["id"]], "state": e.get("state")})
+            if not isinstance(e, dict) or e.get("id") is None:
+                continue
+            lights.append({"id": str(e["id"]), "state": _light_state(e.get("state"))})
+            hid = e["id"]
+            if hid in _HOLD_LIGHTS and e.get("state") in _BLOCK_STATES:
+                t = _HOLD_LIGHTS[hid]
+                if t not in seen_holds:
+                    seen_holds.add(t)
+                    holds.append({"type": t, "state": _light_state(e.get("state"))})
 
         items = []
         for li in r.get("lineItems") or []:
@@ -672,6 +715,7 @@ class SalesOrderAdapter(FacadeAdapterBase):
                 "partialShipping": _PARTIAL_SHIPPING,
             },
             "holds": holds,
+            "trafficLights": lights,
             "texts": {"intro": r.get("bodyIntroduction"), "outro": r.get("bodyOutroduction")},
             "note": r.get("internalComment"),
             "documents": {
@@ -711,6 +755,7 @@ class SalesOrderAdapter(FacadeAdapterBase):
         "totals",
         "documents",
         "holds",
+        "trafficLights",
         "createdAt",
         "updatedAt",
     }
