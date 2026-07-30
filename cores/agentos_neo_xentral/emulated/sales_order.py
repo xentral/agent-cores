@@ -194,6 +194,13 @@ class SalesOrderAdapter(FacadeAdapterBase):
             "method": "PATCH",
             "path": "/api/v1/salesOrders/{id}/actions/createPartialSalesOrder",
         },
+        # Hand the order to logistics (Autoversand): v1 dispatch creates a pick run
+        # + delivery note and starts shipping. Requires a released order with
+        # positions. An optional {printPickList: true} command prints the pick list.
+        "dispatch": {
+            "method": "POST",
+            "path": "/api/v1/salesOrders/{id}/actions/dispatch",
+        },
     }
 
     def steps(self):
@@ -206,7 +213,30 @@ class SalesOrderAdapter(FacadeAdapterBase):
                     self.step_cmd("close", "Close"),
                     self.step_cmd("cancel", "Cancel"),
                 ],
-            }
+            },
+            {
+                "key": "fulfillment",
+                "label": "Fulfillment",
+                "commands": [
+                    {
+                        "key": "dispatch",
+                        "label": "Dispatch (hand to logistics)",
+                        "destructive": True,
+                        "description": (
+                            "Hands the order to logistics (Autoversand): creates a pick "
+                            "run and delivery note and starts shipping. Requires a "
+                            "released/confirmed order with positions. Optional command "
+                            "{printPickList: true} prints the pick list."
+                        ),
+                        "command": {
+                            "type": "object",
+                            "properties": {
+                                "printPickList": {"type": "boolean", "label": "Print pick list"}
+                            },
+                        },
+                    },
+                ],
+            },
         ]
 
     def actions(self):
