@@ -243,7 +243,11 @@ class ReturnAdapter(FacadeAdapterBase):
                             },
                         ),
                         "reason": prop(
-                            "reference", "Reason", reference="ReturnReason", renderProperty="name"
+                            "reference",
+                            "Reason",
+                            reference="ReturnReason",
+                            renderProperty="name",
+                            creatable=True,
                         ),
                         "condition": prop("select", "Condition"),
                         "action": prop("select", "Action"),
@@ -278,22 +282,24 @@ class ReturnAdapter(FacadeAdapterBase):
             "documents": prop(
                 "embedded",
                 "Documents",
-                **RO,
                 section="flow",
                 properties={
+                    # Create-only: link the return to its source order / delivery note
+                    # (v3 salesOrder{id} / deliveryNote{id}). On read they show the
+                    # linked documents.
                     "salesOrder": prop(
                         "reference",
                         "Sales order",
                         reference="SalesOrder",
                         renderProperty="number",
-                        **RO,
+                        creatable=True,
                     ),
                     "deliveryNote": prop(
                         "reference",
                         "Delivery note",
                         reference="DeliveryNote",
                         renderProperty="number",
-                        **RO,
+                        creatable=True,
                     ),
                 },
             ),
@@ -412,7 +418,16 @@ class ReturnAdapter(FacadeAdapterBase):
             "updatedAt": r.get("updatedAt"),
         }
 
-    _WRITABLE = {"customer", "project", "note", "billingAddress", "items", "dates", "tags"}
+    _WRITABLE = {
+        "customer",
+        "project",
+        "note",
+        "billingAddress",
+        "items",
+        "dates",
+        "tags",
+        "documents",
+    }
     _IGNORE = {
         "object",
         "id",
@@ -420,7 +435,6 @@ class ReturnAdapter(FacadeAdapterBase):
         "status",
         "warehouse",
         "resolution",
-        "documents",
         "createdAt",
         "updatedAt",
     }
@@ -484,6 +498,18 @@ class ReturnAdapter(FacadeAdapterBase):
                 ]
             else:
                 rejected.add("items")
+        if "documents" in model:
+            # Link the return to its source order / delivery note (create-only).
+            if creating:
+                docs = model["documents"] or {}
+                so = self._ref_id(docs.get("salesOrder")) if isinstance(docs, dict) else None
+                if so is not None:
+                    v3["salesOrder"] = so
+                dn = self._ref_id(docs.get("deliveryNote")) if isinstance(docs, dict) else None
+                if dn is not None:
+                    v3["deliveryNote"] = dn
+            else:
+                rejected.add("documents")
         if "tags" in model:
             v3["tags"] = tags_to_v3(model["tags"])
         for k in model:
@@ -506,4 +532,11 @@ class ReturnAdapter(FacadeAdapterBase):
             out["discount"] = i["discountPercent"]
         if i.get("taxRate") is not None:
             out["taxRate"] = i["taxRate"]
+        reason = i.get("reason")
+        if reason is not None:
+            rid = reason.get("id") if isinstance(reason, dict) else reason
+            if rid not in (None, ""):
+                out["returnReason"] = {
+                    "id": str(rid).split("_", 1)[1] if "_" in str(rid) else str(rid)
+                }
         return out
