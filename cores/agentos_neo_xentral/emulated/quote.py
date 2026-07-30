@@ -99,7 +99,14 @@ class QuoteAdapter(FacadeAdapterBase):
         "flow": {"label": "Document flow"},
     }
 
-    action_map = {"cancel": ("PATCH", "cancel"), "send": ("PATCH", "send")}
+    action_map = {
+        # Release / freigeben from draft — the document leaves 'draft', becomes
+        # valid and gets its number from the number range. v3 action is 'release'
+        # (uniform across all documents; matches the Xentral UI 'Freigeben').
+        "release": ("PATCH", "release"),
+        "cancel": ("PATCH", "cancel"),
+        "send": ("PATCH", "send"),
+    }
 
     def steps(self):
         return [
@@ -107,6 +114,7 @@ class QuoteAdapter(FacadeAdapterBase):
                 "key": "documentStatus",
                 "label": "Document status",
                 "commands": [
+                    self.step_cmd("release", "Release"),
                     self.step_cmd(
                         "accept",
                         "Accept",

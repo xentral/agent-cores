@@ -30,7 +30,7 @@ def test_dispatch_is_a_fulfillment_step_and_flagged_destructive():
 def test_document_status_steps_unchanged():
     groups = {g["key"]: g for g in SalesOrderAdapter().steps()}
     keys = {c["key"] for c in groups["documentStatus"]["commands"]}
-    assert keys == {"confirm", "close", "cancel"}
+    assert keys == {"release", "close", "cancel"}
 
 
 if __name__ == "__main__":

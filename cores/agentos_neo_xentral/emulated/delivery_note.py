@@ -134,6 +134,8 @@ class DeliveryNoteAdapter(FacadeAdapterBase):
     }
 
     action_map = {
+        # Release / freigeben from draft (v3 release) — uniform across documents.
+        "release": ("PATCH", "release"),
         "markDelivered": ("PATCH", "complete"),
         "cancel": ("PATCH", "cancel"),
         "createSalesInvoice": {
@@ -154,6 +156,7 @@ class DeliveryNoteAdapter(FacadeAdapterBase):
                 "key": "documentStatus",
                 "label": "Document status",
                 "commands": [
+                    self.step_cmd("release", "Release"),
                     self.step_cmd(
                         "startPicking",
                         "Start picking",

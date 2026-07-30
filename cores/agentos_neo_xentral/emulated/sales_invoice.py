@@ -143,7 +143,8 @@ class SalesInvoiceAdapter(FacadeAdapterBase):
     }
 
     action_map = {
-        "issue": ("PATCH", "release"),
+        # Release / freigeben from draft (v3 release) — uniform across documents.
+        "release": ("PATCH", "release"),
         "cancel": ("PATCH", "cancel"),
         "send": ("PATCH", "send"),
     }
@@ -154,7 +155,7 @@ class SalesInvoiceAdapter(FacadeAdapterBase):
                 "key": "documentStatus",
                 "label": "Document status",
                 "commands": [
-                    self.step_cmd("issue", "Issue"),
+                    self.step_cmd("release", "Release"),
                     self.step_cmd("cancel", "Cancel"),
                 ],
             }
