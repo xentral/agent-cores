@@ -36,6 +36,10 @@ from .base import (
 # order PATCH cannot touch them, so `update` with `items` reconciles here.
 _SO_LINEITEMS = "/api/v3/salesOrders/{id}/lineItems"
 
+# Per-line availability is computed on the single `get` from one v2 product read
+# per line (isStockItem + stockCount) — see _hydrate_availability.
+_V2_PRODUCT = "/api/v2/products/{id}"
+
 # Upstream status → new main-status chain (ADR-015; docs/03 mapping table).
 _STATUS = {
     "draft": "draft",
@@ -80,6 +84,13 @@ def _light_state(v: Any) -> Any:
     upstream string states pass through; None stays None)."""
     if isinstance(v, bool):
         return "true" if v else "false"
+    return v
+
+
+def _num(v: Any) -> Any:
+    """Whole floats → int for clean JSON (2.0 → 2); None and others pass through."""
+    if isinstance(v, float) and v.is_integer():
+        return int(v)
     return v
 
 
@@ -156,6 +167,18 @@ def _item_props() -> dict[str, Any]:
                 "shipped": prop("integer", "Shipped", **RO),
                 "invoiced": prop("integer", "Invoiced", **RO),
                 "returned": prop("integer", "Returned", **RO),
+            },
+        ),
+        # Per-line stock availability, computed on the single `get` (one product
+        # lookup per line — not on list). See _hydrate_availability.
+        "availability": prop(
+            "embedded",
+            "Availability",
+            **RO,
+            properties={
+                "stockManaged": prop("boolean", "Stock managed", **RO),
+                "onHand": prop("decimal", "On hand", **RO),
+                "deliverable": prop("decimal", "Deliverable now", **RO),
             },
         ),
     }
@@ -1034,3 +1057,80 @@ class SalesOrderAdapter(FacadeAdapterBase):
         if failures:
             data["_warnings"] = {"items": failures}
         return self._json(200, {"data": data})
+
+    # ---- per-line availability (single-record hydration) ------------------
+    async def request(  # noqa: ANN001
+        self, *, method, handle, query, body, base_url, token, accept_language=None, client=None
+    ):
+        resp = await super().request(
+            method=method,
+            handle=handle,
+            query=query,
+            body=body,
+            base_url=base_url,
+            token=token,
+            accept_language=accept_language,
+            client=client,
+        )
+        # Availability is a single-record convenience — hydrating a whole list page
+        # would cost one product read per line per row.
+        if method.upper() == "GET" and handle:
+            return await self._hydrate_availability(resp, base_url, token, accept_language, client)
+        return resp
+
+    async def _hydrate_availability(  # noqa: ANN001
+        self, resp, base_url, token, accept_language, client
+    ):
+        """Attach items[].availability (stockManaged / onHand / deliverable) from one
+        v2 product read per line. Best-effort: a line whose product can't be read is
+        left without an availability block rather than guessing."""
+        if getattr(resp, "status_code", None) != 200:
+            return resp
+        try:
+            body = json.loads(resp.content or b"{}")
+        except (ValueError, TypeError):
+            return resp
+        data = body.get("data") if isinstance(body, dict) else None
+        items = data.get("items") if isinstance(data, dict) else None
+        if not isinstance(items, list):
+            return resp
+        for it in items:
+            if not isinstance(it, dict):
+                continue
+            prod = it.get("product") or {}
+            pid = prod.get("id") if isinstance(prod, dict) else prod
+            if pid is None:
+                continue
+            up = str(pid).split("_", 1)[1] if "_" in str(pid) else str(pid)
+            q = it.get("quantity") or {}
+            ordered = q.get("value") if isinstance(q, dict) else q
+            av = await self._product_availability(
+                up, ordered, base_url, token, accept_language, client
+            )
+            if av is not None:
+                it["availability"] = av
+        return self._json(200, body)
+
+    async def _product_availability(  # noqa: ANN001
+        self, up_id, ordered, base_url, token, accept_language, client
+    ) -> dict[str, Any] | None:
+        """One v2 product read → {stockManaged, onHand, deliverable} for a line.
+        Non-stock products carry no stock constraint → the full ordered qty is
+        deliverable; stock items deliver min(ordered, on-hand)."""
+        url = base_url.rstrip("/") + _V2_PRODUCT.replace("{id}", str(up_id))
+        st, resp = await self._li_call("GET", url, token, accept_language, client)
+        if st >= 400 or not isinstance(resp, dict):
+            return None
+        d = resp.get("data") if isinstance(resp.get("data"), dict) else resp
+        try:
+            ord_n = float(ordered) if ordered is not None else None
+        except (TypeError, ValueError):
+            ord_n = None
+        if not d.get("isStockItem"):
+            return {"stockManaged": False, "onHand": None, "deliverable": _num(ord_n)}
+        try:
+            on_hand = float(d.get("stockCount") or 0)
+        except (TypeError, ValueError):
+            on_hand = 0.0
+        deliverable = on_hand if ord_n is None else min(ord_n, max(0.0, on_hand))
+        return {"stockManaged": True, "onHand": _num(on_hand), "deliverable": _num(deliverable)}
