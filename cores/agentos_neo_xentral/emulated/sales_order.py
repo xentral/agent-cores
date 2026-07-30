@@ -10,11 +10,15 @@ priorities.json (a write that includes it answers 409 with the field list).
 
 from __future__ import annotations
 
+import json
 from typing import Any
+
+import httpx
 
 from entity_registry.core_sdk import EmulationManifest
 
 from .base import (
+    _TIMEOUT,
     FacadeAdapterBase,
     line_price_net,
     line_qty,
@@ -27,6 +31,10 @@ from .base import (
     tags_prop,
     tags_to_v3,
 )
+
+# Line items on an existing order are their own v3 sub-resource (full CRUD). The
+# order PATCH cannot touch them, so `update` with `items` reconciles here.
+_SO_LINEITEMS = "/api/v3/salesOrders/{id}/lineItems"
 
 # Upstream status → new main-status chain (ADR-015; docs/03 mapping table).
 _STATUS = {
@@ -782,8 +790,9 @@ class SalesOrderAdapter(FacadeAdapterBase):
                 v3["lineItems"] = [
                     self._item_to_v3(i) for i in model["items"] if isinstance(i, dict)
                 ]
-            else:
-                rejected.add("items")  # v3 has no line-item update path
+            # On UPDATE the items are NOT sent in the order PATCH body — they are
+            # reconciled against the v3 lineItems sub-resource in _write (POST new /
+            # PATCH changed / DELETE omitted). So neither emit nor reject them here.
         # anything else the merchant tried to set = a blue wish (not writable today)
         if "tags" in model:
             v3["tags"] = tags_to_v3(model["tags"])
@@ -813,3 +822,140 @@ class SalesOrderAdapter(FacadeAdapterBase):
         if price is not None:
             out["price"] = price
         return out
+
+    # ---- line-item reconcile on update (v3 lineItems sub-resource) --------
+    async def _li_call(  # noqa: ANN001
+        self, method, url, token, accept_language, client, payload=None
+    ) -> tuple[int, Any]:
+        headers = self._headers(token, accept_language)
+
+        async def _do(c):  # noqa: ANN001, ANN202
+            return await c.request(method, url, json=payload, headers=headers)
+
+        if client is None:
+            async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
+                resp = await _do(c)
+        else:
+            resp = await _do(client)
+        try:
+            return resp.status_code, resp.json()
+        except ValueError:
+            return resp.status_code, {}
+
+    async def _reconcile_line_items(  # noqa: ANN001
+        self, up_id, desired, base_url, token, accept_language, client
+    ) -> dict[str, Any]:
+        """Bring the order's line items to ``desired`` via the v3 lineItems
+        sub-resource — the order PATCH cannot touch them. Contract (collection
+        replace): an item WITH an existing ``id`` is PATCHed, one WITHOUT an id is
+        POSTed (added), and an existing item OMITTED from ``desired`` is DELETEd.
+        Returns per-op failures (empty = all ok) so a partial reconcile surfaces as
+        a warning, never a silent drop."""
+        base = base_url.rstrip("/") + _SO_LINEITEMS.format(id=up_id)
+        # current line-item ids (skip text lines — they carry no product)
+        st, payload = await self._get(
+            base_url,
+            token,
+            handle=f"so_{up_id}",
+            query=[],
+            accept_language=accept_language,
+            client=client,
+        )
+        current_ids: list[str] = []
+        if st < 400 and isinstance(payload, dict):
+            for li in (payload.get("data") or {}).get("lineItems") or []:
+                if isinstance(li, dict) and li.get("id") is not None and li.get("type") != "text":
+                    current_ids.append(str(li["id"]))
+        keep = {
+            str(i["id"]) for i in desired if isinstance(i, dict) and i.get("id") not in (None, "")
+        }
+        failures: dict[str, list[Any]] = {}
+
+        # DELETE the omitted lines first.
+        for lid in current_ids:
+            if lid not in keep:
+                status, body = await self._li_call(
+                    "DELETE", f"{base}/{lid}", token, accept_language, client
+                )
+                if status >= 400:
+                    failures.setdefault("delete", []).append(
+                        {"id": lid, "status": status, "error": body}
+                    )
+        # PATCH the kept-with-changes, POST the new ones.
+        for it in desired:
+            if not isinstance(it, dict):
+                continue
+            lid = it.get("id")
+            v3 = self._item_to_v3(it)
+            if lid not in (None, "") and str(lid) in current_ids:
+                v3.pop("product", None)  # product is fixed on an existing line
+                if not v3:
+                    continue  # {id} only → keep unchanged, no-op
+                status, resp = await self._li_call(
+                    "PATCH", f"{base}/{lid}", token, accept_language, client, v3
+                )
+                if status >= 400:
+                    failures.setdefault("update", []).append(
+                        {"id": str(lid), "status": status, "error": resp}
+                    )
+            else:
+                status, resp = await self._li_call("POST", base, token, accept_language, client, v3)
+                if status >= 400:
+                    failures.setdefault("add", []).append(
+                        {"product": it.get("product"), "status": status, "error": resp}
+                    )
+        return failures
+
+    async def _write(  # noqa: ANN001
+        self, method, handle, query, body, base_url, token, accept_language, client
+    ):
+        """On UPDATE, compose line items on the v3 lineItems sub-resource (the order
+        PATCH cannot carry them). Order-level fields still go through the normal
+        PATCH; when items are the ONLY change the order PATCH is skipped so an empty
+        body is never sent. Create is unchanged (items ride the v3 create body)."""
+        try:
+            model = json.loads(body or b"{}")
+        except (ValueError, TypeError):
+            model = {}
+        items = model.get("items") if isinstance(model, dict) else None
+        is_dry = any(k == "dryRun" and v in ("true", "1") for k, v in query)
+        compose = method.upper() != "POST" and isinstance(items, list) and not is_dry
+        if not compose:
+            return await super()._write(
+                method, handle, query, body, base_url, token, accept_language, client
+            )
+
+        rest = {k: v for k, v in model.items() if k != "items"}
+        if rest:
+            resp = await super()._write(
+                method,
+                handle,
+                query,
+                json.dumps(rest).encode(),
+                base_url,
+                token,
+                accept_language,
+                client,
+            )
+            if resp.status_code >= 400:
+                return resp
+        up_id = handle.split("_", 1)[1] if handle and "_" in handle else handle
+        failures = await self._reconcile_line_items(
+            str(up_id), items, base_url, token, accept_language, client
+        )
+        st, payload = await self._get(
+            base_url,
+            token,
+            handle=handle,
+            query=[],
+            accept_language=accept_language,
+            client=client,
+        )
+        if st >= 400:
+            return self._json(
+                st, payload if isinstance(payload, dict) else {"title": "read-back failed"}
+            )
+        data = self.map_read((payload.get("data") or {}) if isinstance(payload, dict) else {})
+        if failures:
+            data["_warnings"] = {"items": failures}
+        return self._json(200, {"data": data})
