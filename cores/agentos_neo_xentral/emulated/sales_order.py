@@ -223,7 +223,9 @@ class SalesOrderAdapter(FacadeAdapterBase):
     }
 
     action_map = {
-        "confirm": ("PATCH", "release"),
+        # Release / freigeben from draft (v3 release) — the document becomes valid
+        # and gets its number. Uniform 'release' op across all documents.
+        "release": ("PATCH", "release"),
         "close": ("PATCH", "complete"),
         "cancel": ("PATCH", "cancel"),
         "sendConfirmation": ("PATCH", "send"),
@@ -251,7 +253,7 @@ class SalesOrderAdapter(FacadeAdapterBase):
                 "key": "documentStatus",
                 "label": "Document status",
                 "commands": [
-                    self.step_cmd("confirm", "Confirm"),
+                    self.step_cmd("release", "Release"),
                     self.step_cmd("close", "Close"),
                     self.step_cmd("cancel", "Cancel"),
                 ],

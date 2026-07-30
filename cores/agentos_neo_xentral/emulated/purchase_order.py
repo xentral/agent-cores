@@ -94,6 +94,8 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
     }
 
     action_map = {
+        # Release / freigeben from draft (v3 release) — uniform across documents.
+        "release": ("PATCH", "release"),
         "close": ("PATCH", "complete"),
         "cancel": ("PATCH", "cancel"),
         "send": ("PATCH", "send"),
@@ -105,6 +107,7 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
                 "key": "documentStatus",
                 "label": "Document status",
                 "commands": [
+                    self.step_cmd("release", "Release"),
                     self.step_cmd("close", "Close"),
                     self.step_cmd("cancel", "Cancel"),
                 ],

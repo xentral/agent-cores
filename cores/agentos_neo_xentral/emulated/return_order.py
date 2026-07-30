@@ -90,8 +90,8 @@ class ReturnAdapter(FacadeAdapterBase):
     }
 
     action_map = {
-        # Freigeben — identical to the sales order's confirm → v3 release.
-        "confirm": ("PATCH", "release"),
+        # Release / freigeben from draft (v3 release) — uniform across documents.
+        "release": ("PATCH", "release"),
         "settle": ("PATCH", "complete"),
         "cancel": ("PATCH", "cancel"),
     }
@@ -102,9 +102,8 @@ class ReturnAdapter(FacadeAdapterBase):
                 "key": "documentStatus",
                 "label": "Document status",
                 "commands": [
-                    # Release / freigeben — the return's confirm step (v3 release),
-                    # mirroring the sales order's confirm.
-                    self.step_cmd("confirm", "Confirm"),
+                    # Release / freigeben from draft (v3 release) — uniform op.
+                    self.step_cmd("release", "Release"),
                     self.step_cmd(
                         "receive",
                         "Receive",
