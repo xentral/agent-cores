@@ -35,9 +35,17 @@ _STATUS = {
     "paid": "paid",
     "completed": "paid",
     "cancelled": "cancelled",
+    # A storno via credit note that covers only part of the invoice leaves it
+    # partiallyCancelled (v3 InvoiceStatus) — surface it faithfully instead of
+    # falling back to the "draft" default (which read as un-cancelled).
+    "partiallyCancelled": "partiallyCancelled",
 }
 _STATUS_OPTIONS = [
-    {"value": v, "label": v.capitalize()} for v in ("draft", "open", "paid", "cancelled")
+    {"value": "draft", "label": "Draft"},
+    {"value": "open", "label": "Open"},
+    {"value": "paid", "label": "Paid"},
+    {"value": "partiallyCancelled", "label": "Partially cancelled"},
+    {"value": "cancelled", "label": "Cancelled"},
 ]
 _PAY_OPTIONS = [{"value": v, "label": v} for v in ("unpaid", "partiallyPaid", "paid")]
 _CU = {"creatable": True, "updatable": True}
