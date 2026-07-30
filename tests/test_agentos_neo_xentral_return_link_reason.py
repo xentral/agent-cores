@@ -7,6 +7,9 @@ documents.deliveryNote (create-only) and items[].reason accordingly.
 
 from __future__ import annotations
 
+import asyncio
+import json
+
 from xentral_entity_cores.agentos_neo_xentral.emulated.return_order import ReturnAdapter
 
 
@@ -49,6 +52,90 @@ def test_schema_marks_link_and_reason_creatable():
     reason = fields["items"]["node"]["properties"]["reason"]
     assert reason.get("creatable")
     assert reason.get("required")  # reason is mandatory per return policy
+
+
+class _Resp:
+    def __init__(self, status_code=201, payload=None):
+        self.status_code = status_code
+        self._payload = payload or {
+            "data": {"id": 500, "documentNumber": "301295-R", "lineItems": []}
+        }
+
+    def json(self):
+        return self._payload
+
+
+class _Client:
+    def __init__(self):
+        self.calls = []
+
+    async def post(self, url, json=None, headers=None):  # noqa: A002
+        self.calls.append((url, json))
+        return _Resp()
+
+
+def _cfdn(command):
+    a = ReturnAdapter()
+    client = _Client()
+    resp = asyncio.run(
+        a.action(
+            action_key="createFromDeliveryNote",
+            handle=None,
+            body=json.dumps({"command": command}).encode(),
+            base_url="https://x",
+            token="t",
+            client=client,
+        )
+    )
+    return resp, client
+
+
+def test_create_from_delivery_note_builds_v3_body():
+    resp, client = _cfdn(
+        {
+            "deliveryNote": "dn_1399",
+            "lineItems": [
+                {
+                    "deliveryNoteItem": "itm_2994",
+                    "quantity": 2,
+                    "reason": "rsn_18",
+                    "description": "unhappy",
+                }
+            ],
+        }
+    )
+    assert resp.status_code == 201
+    url, body = client.calls[0]
+    assert url.endswith("/api/v3/returnOrders/actions/createFromDeliveryNote")
+    assert body["deliveryNote"] == {"id": "1399"}
+    assert body["lineItems"][0] == {
+        "id": "2994",
+        "quantity": 2.0,
+        "returnReason": {"id": "18"},
+        "description": "unhappy",
+    }
+
+
+def test_create_from_delivery_note_requires_reason_per_line():
+    resp, client = _cfdn(
+        {"deliveryNote": "dn_1399", "lineItems": [{"deliveryNoteItem": "itm_2994", "quantity": 2}]}
+    )
+    assert resp.status_code == 422
+    assert client.calls == []  # nothing posted
+
+
+def test_create_from_delivery_note_needs_delivery_note_and_lines():
+    resp, client = _cfdn({"lineItems": []})
+    assert resp.status_code == 422
+    assert client.calls == []
+
+
+def test_action_advertises_create_from_delivery_note():
+    a = ReturnAdapter()
+    by_key = {x["key"]: x for x in a.actions()}
+    assert "createFromDeliveryNote" in by_key
+    cmd = by_key["createFromDeliveryNote"]["command"]["properties"]
+    assert "deliveryNote" in cmd and "lineItems" in cmd
 
 
 if __name__ == "__main__":
