@@ -315,8 +315,42 @@ class SalesOrderAdapter(FacadeAdapterBase):
             ),
             self.action_def(
                 "split",
-                "Split order",
-                description="Splits off a partial order (v1 createPartialSalesOrder).",
+                "Split order (empty shell)",
+                description="Splits off an EMPTY partial order (raw v1 createPartialSalesOrder); fill it yourself. Prefer splitOrder to move items in one step.",
+            ),
+            self.action_def(
+                "splitOrder",
+                "Split order (move items)",
+                destructive=True,
+                description=(
+                    "Move the given items/quantities into a NEW partial order in one "
+                    "step: creates the partial (v1 createPartialSalesOrder), adds the "
+                    "moved quantities to it, and reduces this order to the remainder "
+                    "(a line fully moved is removed). Together the two orders equal the "
+                    "original demand."
+                ),
+                command={
+                    "type": "object",
+                    "required": ["items"],
+                    "properties": {
+                        "items": {
+                            "type": "array",
+                            "label": "Items to move into the new partial order",
+                            "items": {
+                                "type": "object",
+                                "required": ["quantity"],
+                                "properties": {
+                                    "lineItem": {"type": "string", "label": "Source line item id"},
+                                    "product": {
+                                        "type": "string",
+                                        "label": "Product id (when no lineItem given)",
+                                    },
+                                    "quantity": {"type": "number", "label": "Quantity to move"},
+                                },
+                            },
+                        }
+                    },
+                },
             ),
             self.action_def("duplicate", "Duplicate", wish="No duplicate endpoint upstream."),
             self.action_def(
@@ -1134,3 +1168,213 @@ class SalesOrderAdapter(FacadeAdapterBase):
             on_hand = 0.0
         deliverable = on_hand if ord_n is None else min(ord_n, max(0.0, on_hand))
         return {"stockManaged": True, "onHand": _num(on_hand), "deliverable": _num(deliverable)}
+
+    # ---- composed split: move items into a new partial order -------------
+    async def action(  # noqa: ANN001
+        self, *, action_key, handle, body, base_url, token, accept_language=None, client=None
+    ):
+        if action_key == "splitOrder":
+            return await self._split_order(handle, body, base_url, token, accept_language, client)
+        return await super().action(
+            action_key=action_key,
+            handle=handle,
+            body=body,
+            base_url=base_url,
+            token=token,
+            accept_language=accept_language,
+            client=client,
+        )
+
+    async def _create_partial(  # noqa: ANN001
+        self, src_up, base_url, token, accept_language, client
+    ) -> tuple[str | None, int, dict[str, Any]]:
+        """v1 createPartialSalesOrder → the new (empty) partial order's bare id.
+        The id comes back in the body or the Location header. Returns
+        ``(partial_up, status, error_body)``."""
+        url = f"{base_url.rstrip('/')}/api/v1/salesOrders/{src_up}/actions/createPartialSalesOrder"
+        headers = self._headers(token, accept_language)
+
+        async def _do(c):  # noqa: ANN001, ANN202
+            return await c.request("PATCH", url, headers=headers)
+
+        if client is None:
+            async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
+                resp = await _do(c)
+        else:
+            resp = await _do(client)
+        if resp.status_code >= 400:
+            try:
+                return None, resp.status_code, resp.json()
+            except ValueError:
+                return None, resp.status_code, {}
+        rid = None
+        try:
+            b = resp.json()
+            if isinstance(b, dict):
+                rid = (b.get("data") or {}).get("id")
+        except ValueError:
+            pass
+        if not rid:
+            loc = resp.headers.get("Location") or resp.headers.get("location")
+            if loc:
+                rid = loc.rstrip("/").rsplit("/", 1)[-1] or None
+        if rid and "_" in str(rid):
+            rid = str(rid).split("_", 1)[1]
+        return (str(rid) if rid else None), resp.status_code, {}
+
+    async def _split_order(self, handle, body, base_url, token, accept_language, client):  # noqa: ANN001
+        """Move ``command.items`` = [{lineItem|product, quantity}] into a new partial
+        order and reduce this order to the remainder — one composed step:
+        createPartialSalesOrder → add the moved quantities → PATCH/DELETE the source
+        lines. A line fully moved is removed; the two orders sum to the original."""
+        try:
+            envelope = json.loads(body or b"{}")
+        except (ValueError, TypeError):
+            envelope = {}
+        command = envelope.get("command") or {}
+        ids = envelope.get("ids") or ([handle] if handle else [])
+        if not ids:
+            return self._json(422, {"title": "splitOrder needs a target order id"})
+        src_handle = str(ids[0])
+        src_up = src_handle.split("_", 1)[1] if "_" in src_handle else src_handle
+        moves = command.get("items")
+        if not isinstance(moves, list) or not moves:
+            return self._json(
+                422, {"title": "splitOrder needs command.items = [{lineItem|product, quantity}]"}
+            )
+
+        st, payload = await self._get(
+            base_url,
+            token,
+            handle=src_handle,
+            query=[],
+            accept_language=accept_language,
+            client=client,
+        )
+        if st >= 400:
+            return self._json(
+                st, payload if isinstance(payload, dict) else {"title": "read failed"}
+            )
+        src = self.map_read((payload.get("data") or {}) if isinstance(payload, dict) else {})
+        lines = {
+            str(li["id"]): li
+            for li in (src.get("items") or [])
+            if isinstance(li, dict) and li.get("id")
+        }
+
+        def _find(m: dict[str, Any]) -> dict[str, Any] | None:
+            lid = m.get("lineItem")
+            if lid is not None:
+                key = str(lid).split("_", 1)[1] if "_" in str(lid) else str(lid)
+                if key in lines:
+                    return lines[key]
+            pid = m.get("product")
+            if pid is not None:
+                pid = str(pid).split("_", 1)[1] if "_" in str(pid) else str(pid)
+                for ln in lines.values():
+                    lp = (ln.get("product") or {}).get("id")
+                    lpb = str(lp).split("_", 1)[1] if lp and "_" in str(lp) else str(lp)
+                    if lpb == pid:
+                        return ln
+            return None
+
+        resolved: list[tuple[dict[str, Any], float, float | None]] = []
+        for m in moves:
+            if not isinstance(m, dict):
+                continue
+            try:
+                qty = float(m.get("quantity"))
+            except (TypeError, ValueError):
+                return self._json(422, {"title": f"splitOrder: bad quantity in {m}"})
+            if qty <= 0:
+                return self._json(422, {"title": f"splitOrder: quantity must be > 0 in {m}"})
+            line = _find(m)
+            if line is None:
+                return self._json(422, {"title": f"splitOrder: no matching line for {m}"})
+            try:
+                have = float((line.get("quantity") or {}).get("value"))
+            except (TypeError, ValueError):
+                have = None
+            if have is not None and qty > have:
+                return self._json(
+                    409,
+                    {
+                        "title": (
+                            f"splitOrder: move {qty} exceeds line quantity {have} "
+                            f"(line {line['id']})"
+                        )
+                    },
+                )
+            resolved.append((line, qty, have))
+
+        partial_up, pst, perr = await self._create_partial(
+            src_up, base_url, token, accept_language, client
+        )
+        if not partial_up:
+            return self._json(
+                pst if pst >= 400 else 502,
+                perr
+                if isinstance(perr, dict) and perr
+                else {"title": "createPartialSalesOrder failed"},
+            )
+
+        warnings: dict[str, list[Any]] = {}
+        part_base = base_url.rstrip("/") + _SO_LINEITEMS.format(id=partial_up)
+        src_base = base_url.rstrip("/") + _SO_LINEITEMS.format(id=src_up)
+
+        # add the moved quantities to the partial
+        for line, qty, _have in resolved:
+            item = {
+                "product": line.get("product"),
+                "quantity": {"value": _num(qty), "unit": (line.get("quantity") or {}).get("unit")},
+                "unitPrice": line.get("unitPrice"),
+                "taxRate": line.get("taxRate"),
+            }
+            status, resp = await self._li_call(
+                "POST", part_base, token, accept_language, client, self._item_to_v3(item)
+            )
+            if status >= 400:
+                warnings.setdefault("add", []).append(
+                    {"product": line.get("product"), "status": status, "error": resp}
+                )
+
+        # reduce the source order to the remainder
+        for line, qty, have in resolved:
+            lid = str(line["id"])
+            if have is None:
+                warnings.setdefault("reduce", []).append(
+                    {"id": lid, "error": "unknown source quantity; line not reduced"}
+                )
+                continue
+            remaining = have - qty
+            if remaining <= 0:
+                status, resp = await self._li_call(
+                    "DELETE", f"{src_base}/{lid}", token, accept_language, client
+                )
+            else:
+                status, resp = await self._li_call(
+                    "PATCH",
+                    f"{src_base}/{lid}",
+                    token,
+                    accept_language,
+                    client,
+                    {"quantity": _num(remaining)},
+                )
+            if status >= 400:
+                warnings.setdefault("reduce", []).append(
+                    {"id": lid, "status": status, "error": resp}
+                )
+
+        st, payload = await self._get(
+            base_url,
+            token,
+            handle=f"so_{partial_up}",
+            query=[],
+            accept_language=accept_language,
+            client=client,
+        )
+        data = self.map_read((payload.get("data") or {}) if isinstance(payload, dict) else {})
+        data["_split"] = {"partialId": f"so_{partial_up}", "sourceId": src_handle}
+        if warnings:
+            data["_warnings"] = warnings
+        return self._json(201, {"data": data})
