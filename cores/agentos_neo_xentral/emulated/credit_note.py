@@ -24,6 +24,7 @@ from .base import (
     prop,
     purchase_price_prop,
     ref,
+    rejected_item_keys,
     status_map,
     tags_prop,
     tags_to_v3,
@@ -527,6 +528,10 @@ class CreditNoteAdapter(FacadeAdapterBase):
             else:
                 rejected.add("customer")
         if "items" in model:
+            # item sub-keys the entity does not model would otherwise vanish silently
+            rejected |= rejected_item_keys(
+                model["items"], self.fields()["items"]["node"]["properties"]
+            )
             if creating:
                 doc_cur = model.get("currency") or "EUR"
                 v3["lineItems"] = [

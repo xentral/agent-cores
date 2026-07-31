@@ -208,6 +208,26 @@ def map_purchase_price(li: dict[str, Any], currency: str = "EUR") -> dict[str, A
     return money(net.get("amount"), net.get("currency") or currency)
 
 
+def rejected_item_keys(items: Any, item_props: dict[str, Any]) -> set[str]:
+    """``items.<key>`` for every line-item key the entity does not model.
+
+    A line item's ``_item_to_v3`` picks the keys it knows and ignores the rest, so
+    an unsupported one used to vanish without a trace — a create carrying it came
+    back 201 with the value never written. Top-level keys have always surfaced as
+    a wish via ``rejected``; this puts item sub-keys on the same footing.
+
+    The schema is the allowlist, so read-only leaves (``totals``, ``fulfillment``,
+    ``id`` …) pass silently and a read-modify-write round-trip stays quiet — only
+    keys the entity does not declare at all are reported."""
+    if not isinstance(items, list):
+        return set()
+    out: set[str] = set()
+    for it in items:
+        if isinstance(it, dict):
+            out |= {f"items.{k}" for k in it if k not in item_props}
+    return out
+
+
 def tags_prop(*, writable: bool = False) -> dict[str, Any]:
     """The model's ``tags`` field: a plain string array of tag titles
     (docs/01-model.md §6.1 ``"tags": ["b2b", "vip"]``). Declared as the FE's
