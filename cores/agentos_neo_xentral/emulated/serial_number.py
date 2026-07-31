@@ -26,7 +26,15 @@ class SerialNumberAdapter(FacadeAdapterBase):
         rollout_batch="agentos_neo_xentral",
         adapter="agentos_neo_xentral.serialNumber",
         source_apis=("agentos_neo_xentral",),
-        operations=("list", "read"),  # nothing upstream yet (docs/05 #4)
+        # NOTHING is executable: /v3/serialNumbers does not exist (docs/05 #4,
+        # verified 404 on mvp). Same reasoning as Batch — the contract states the
+        # gap instead of letting every caller find it via a 404.
+        operations=(),
+        description=(
+            "DECLARED BUT NOT READABLE: Xentral exposes no serial-number resource — "
+            "serial numbers exist only as read-only includes on a product. Neither "
+            "lookup nor trace is queryable today."
+        ),
     )
     v3_path = "/api/v3/serialNumbers"  # proposed endpoint — 404 until built
     include = ""

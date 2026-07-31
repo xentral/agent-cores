@@ -110,6 +110,8 @@ mit Pflicht-`reason`). Belege buchen automatisch und erscheinen als `source.docu
 `stockLevel` (Produkt × Platz × Charge) ist eine read-only Projektion.
 **Invarianten:** Kein PATCH auf Bestände/contents. Jede Bewegung hat `source`
 (Dokument ODER User+reason) — der Trail ist lückenlos.
+**Ergänzt durch ADR-017:** Die Bewegung bleibt der Datensatz der Wahrheit, ist aber
+nicht mehr die Bedienoberfläche — gebucht wird über benannte Lager-Actions.
 
 ## ADR-011 · Flags → Enums (Produkt und überall)
 
@@ -175,6 +177,56 @@ Mandanten-Scopes ist die teuerste Migration überhaupt.
 **Entscheidung:** `company`-Scope (`com_`) ist in Schema/IDs/Nummernkreisen/TaxProfiles
 vorgesehen; V1 läuft mit genau einer Company.
 **Invarianten:** Keine Tabelle/kein Objekt ohne company-Spalte (Default: die eine Company).
+
+## ADR-017 · Lagerarbeit sind benannte Actions, keine Payload-Kombinatorik
+
+**Kontext:** Bestand buchen war eine einzige `stockMovement`-Payload, deren Bedeutung
+sich aus `type` **plus** Feldkombination ergab: acht Vorgänge in einer Form. Die Regeln
+dazu (`quantity` immer positiv, `correction` genau **ein** Lagerplatz, `quantity` XOR
+`setQuantityTo`, `reason` nur bei `correction` Pflicht) standen im Docstring — also
+genau dort, wo ein Agent nie hinsieht. Er plant aus `describe`, und `describe` zeigte
+einen Discriminator ohne die Regeln. Der Lagerbereich war damit der einzige Teil des
+Modells, der so funktioniert: überall sonst hat ein Beleg `release`, `cancel`, `ship`.
+
+**Entscheidung:** Fünf benannte Actions am **Lagerplatz** — dort, wo die physische
+Arbeit stattfindet — jede mit eigenem `command`-Schema:
+
+| key | Label | Vorgang |
+|---|---|---|
+| `putaway` | Einlagern | Zugang auf diesen Platz |
+| `stockRemoval` | Auslagern | Abgang von diesem Platz |
+| `stockTransfer` | Umlagern | auf einen anderen Platz (`target` Pflicht) |
+| `inventoryCount` | Inventur zählen | gezählte Menge, **absolut** |
+| `stockAdjustment` | Bestandskorrektur | **vorzeichenbehaftete** Differenz, `reason` Pflicht |
+
+Aus Prosa-Regeln werden damit Schemata: `putaway` hat kein `target`, `stockTransfer`
+verlangt eines; `inventoryCount` nimmt eine absolute Menge, `stockAdjustment` ein
+Delta mit Vorzeichen. Jede Action antwortet mit dem resultierenden `stockLevel`
+(ADR-004 Garantie 5, hier erstmals auch für einen Schreibvorgang eingelöst) und
+akzeptiert `dryRun` im Command.
+
+**Vokabular:** Lagerwirtschaft, nicht API-Slang — SAP WM (Ein-/Auslagerung,
+Umlagerung) und MM (Inventur, Differenzbuchung). Bewusst **nicht**
+`goodsReceipt`/`goodsIssue`: das ist die MM-Belegebene, und `GoodsReceipt` ist hier
+bereits eine Entity. `key` ist agentenseitig (englisch, wie im ganzen Modell), das
+`label` ist die Textzeile für den Lagerarbeiter.
+
+**Verworfen:** (a) Nur die Payload dokumentieren — verlagert die Regeln erneut dorthin,
+wo der Aufrufer sie nicht liest. (b) Actions an `StockMovement` — Actions brauchen einen
+Zieldatensatz, und Bewegungen sind nicht lesbar. (c) Actions an `StockLevel` — es gibt
+noch keinen Level, wenn ein Artikel erstmals auf einen Platz kommt. (d) Zweite
+Implementierung neben `stockMovement.create` — die Actions delegieren an dieselbe
+Orchestrierung, `create` bleibt als Primitive und verweist auf sie.
+
+**Invarianten:** Eine Lager-Action validiert im **eigenen** Vokabular (nie mit
+`to`/`from`/`setQuantityTo`, die der Aufrufer nicht gesendet hat). Der Anlass wird
+später zum Action-Namen (`scrapping`, `sampling`, `returnToSupplier`), nicht zu einem
+Freitextfeld. `inventoryCount` ist der einzige wiederholbare Schreibweg — gleiche
+Zählung zweimal bucht beim zweiten Mal nichts.
+
+**Offen:** Die deutschen Labels sind noch nicht ausspielbar — `EmulationManifest.label()`
+verwirft `accept_language`, und `action_def` nimmt einen festen String. Für Agenten
+irrelevant (die wählen über `key` + `description`), für die UI Voraussetzung.
 
 ---
 

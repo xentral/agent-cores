@@ -1,17 +1,23 @@
 """Xentral V3 facade · storageLocation — Lagerplatz (docs/01-model.md §7.5).
 
 Reads ``GET /v1/storageLocations`` (verified live — thin: id, designation,
-warehouse). The target model's kind/pickingOrder/capacity/contents need the
-scattered v1/v2 fan-in (docs/03: v1 CRUD + v2 items + v1 product-stocks) — not
-yet composed, so those blocks are blue wishes. ``stockLevel`` as THE stock query
-is a separate upstream ask (docs/05 #18).
+warehouse). The target model's kind/pickingOrder/capacity need the scattered
+v1/v2 fan-in (docs/03) — not yet composed, so those blocks are blue wishes;
+``contents`` is answered by the StockLevel projection (filter[storageLocation]).
+
+This is also WHERE WAREHOUSE WORK HAPPENS: the five stock actions (putaway,
+stockRemoval, stockTransfer, inventoryCount, stockAdjustment) hang off the bin,
+because that is what a warehouse acts on. They are the named entry points to the
+booking orchestration in ``stock_movement`` — one implementation, addressed by
+purpose instead of by a type discriminator plus a field combination.
 """
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
-from entity_registry.core_sdk import EmulationManifest
+from entity_registry.core_sdk import AdapterResponse, EmulationManifest
 
 from .base import RO, FacadeAdapterBase, prop, ref
 
@@ -53,15 +59,137 @@ class StorageLocationAdapter(FacadeAdapterBase):
             }
         ]
 
+    # ---- warehouse actions (ADR-017) --------------------------------------
+    # Named logistics operations, each with its own command schema, instead of
+    # one stockMovement payload whose meaning follows from a discriminator plus a
+    # field combination. The rules that used to live in prose ("quantity always
+    # positive", "correction needs exactly ONE location", "quantity XOR
+    # setQuantityTo") are schema here: putaway has no target, stockTransfer
+    # requires one; inventoryCount takes an absolute quantity, stockAdjustment a
+    # signed delta. An agent reads describe and knows — it cannot read a docstring.
+    #
+    # Vocabulary follows warehouse-management usage (SAP WM: Einlagerung /
+    # Auslagerung / Umlagerung, MM: Inventur / Differenzbuchung). Deliberately NOT
+    # goodsReceipt/goodsIssue: those are the MM document level and GoodsReceipt is
+    # already an entity here — the same name for a bare stock booking would
+    # collide with the Wareneingang document.
+    _PRODUCT = {"type": "string", "label": "Product id (prd_…)"}
+    _BATCH = {"type": "string", "label": "Batch / lot (batch-managed products only)"}
+    _DRYRUN = {
+        "type": "boolean",
+        "label": "Validate and report what would be booked, without booking",
+    }
+
     def actions(self):
+        def cmd(props: dict, required: list[str]) -> dict:
+            return {
+                "type": "object",
+                "required": required,
+                "properties": {**props, "dryRun": self._DRYRUN},
+            }
+
         return [
             self.action_def(
-                "printLabel", "Print label", wish="Storage-location labels have no public endpoint."
+                "putaway",
+                "Put away",
+                description=(
+                    "Einlagern: book stock ONTO this location. Irreversible — a "
+                    "mistake is corrected by a counter-booking, not by an undo."
+                ),
+                command=cmd(
+                    {
+                        "product": self._PRODUCT,
+                        "quantity": {"type": "number", "label": "Quantity to put away (> 0)"},
+                        "batch": self._BATCH,
+                        "reason": {"type": "string", "label": "Free-text note"},
+                    },
+                    ["product", "quantity"],
+                ),
             ),
             self.action_def(
-                "requestCount",
-                "Request count",
-                wish="Spot counts have no public trigger; v1 storageLocations/setTotalStock only sets an absolute quantity.",
+                "stockRemoval",
+                "Stock removal",
+                destructive=True,
+                description=(
+                    "Auslagern: book stock OFF this location. Reduces stock and "
+                    "cannot be undone — only counter-booked."
+                ),
+                command=cmd(
+                    {
+                        "product": self._PRODUCT,
+                        "quantity": {"type": "number", "label": "Quantity to remove (> 0)"},
+                        "batch": self._BATCH,
+                        "reason": {"type": "string", "label": "Free-text note"},
+                    },
+                    ["product", "quantity"],
+                ),
+            ),
+            self.action_def(
+                "stockTransfer",
+                "Stock transfer",
+                description=(
+                    "Umlagern: move stock from THIS location to another one. Not "
+                    "atomic upstream — on a partial failure the removal is "
+                    "compensated and the outcome reported."
+                ),
+                command=cmd(
+                    {
+                        "product": self._PRODUCT,
+                        "quantity": {"type": "number", "label": "Quantity to move (> 0)"},
+                        "target": {
+                            "type": "string",
+                            "label": "Destination storage location id (loc_…)",
+                        },
+                        "batch": self._BATCH,
+                    },
+                    ["product", "quantity", "target"],
+                ),
+            ),
+            self.action_def(
+                "inventoryCount",
+                "Inventory count",
+                description=(
+                    "Inventur: record the COUNTED quantity of a product on this "
+                    "location; the difference to the book quantity is posted. The "
+                    "only repeatable stock write — counting the same result twice "
+                    "posts nothing the second time."
+                ),
+                command=cmd(
+                    {
+                        "product": self._PRODUCT,
+                        "quantity": {
+                            "type": "number",
+                            "label": "Counted quantity — ABSOLUTE, not a delta (>= 0)",
+                        },
+                        "reason": {"type": "string", "label": "Count reference / note"},
+                    },
+                    ["product", "quantity"],
+                ),
+            ),
+            self.action_def(
+                "stockAdjustment",
+                "Stock adjustment",
+                destructive=True,
+                description=(
+                    "Bestandskorrektur: post a known difference against this "
+                    "location. Requires a reason. Use inventoryCount when the "
+                    "counted quantity is known instead of the difference."
+                ),
+                command=cmd(
+                    {
+                        "product": self._PRODUCT,
+                        "quantity": {
+                            "type": "number",
+                            "label": "SIGNED delta: +3 books three on, -3 books three off",
+                        },
+                        "reason": {"type": "string", "label": "Why the stock was wrong"},
+                        "batch": self._BATCH,
+                    },
+                    ["product", "quantity", "reason"],
+                ),
+            ),
+            self.action_def(
+                "printLabel", "Print label", wish="Storage-location labels have no public endpoint."
             ),
         ]
 
@@ -94,6 +222,11 @@ class StorageLocationAdapter(FacadeAdapterBase):
                 renderProperty="name",
                 section="general",
                 previewable=True,
+                filterable=True,
+                description=(
+                    "The warehouse this location belongs to. Filtering by it reads the "
+                    "warehouse-scoped upstream collection instead of paging the tenant."
+                ),
             ),
             "kind": prop(
                 "select",
@@ -129,6 +262,12 @@ class StorageLocationAdapter(FacadeAdapterBase):
                 "Contents",
                 **RO,
                 section="contents",
+                description=(
+                    "What lies on this location, composed from StockLevel. Filled on a "
+                    "SINGLE read only — on a list it would cost one extra call per row. "
+                    "Use StockLevel with filter[storageLocation] to query it directly. "
+                    "reserved stays empty: no per-location reservation exists upstream."
+                ),
                 node={
                     "properties": {
                         "product": prop(
@@ -189,3 +328,344 @@ class StorageLocationAdapter(FacadeAdapterBase):
     ) -> tuple[dict[str, Any], set[str]]:
         # v1 CRUD exists upstream but is not orchestrated here yet.
         return {}, {k for k in model if k not in {"object", "id", "createdAt", "updatedAt"}}
+
+    # ---- reads: warehouse scope + contents ---------------------------------
+    async def request(  # noqa: ANN001
+        self, *, method, handle, query, body, base_url, token, accept_language=None, client=None
+    ) -> AdapterResponse:
+        """Two enrichments over the plain v1 list:
+
+        * ``filter[warehouse]`` — the flat ``/v1/storageLocations`` cannot filter
+          by warehouse, but the upstream list is warehouse-scoped by nature
+          (``/v1/warehouses/{id}/storageLocations``). Without this, finding the
+          bins of one warehouse means paging the whole tenant and filtering by
+          hand — 3 pages over 102 rows on mvp just to reach 9.
+        * ``contents`` on a SINGLE read — composed from the StockLevel
+          projection. Not on the list: that would be one extra call per row.
+        """
+        if method.upper() != "GET":
+            return await super().request(
+                method=method,
+                handle=handle,
+                query=query,
+                body=body,
+                base_url=base_url,
+                token=token,
+                accept_language=accept_language,
+                client=client,
+            )
+        from .stock_shared import numeric, parse_filters, resolve_location_row
+
+        if handle is None:
+            warehouse = parse_filters(query).get("warehouse")
+            if warehouse:
+                return await self._by_warehouse(
+                    numeric(str(warehouse[1])), query, base_url, token, accept_language, client
+                )
+            return await super().request(
+                method=method,
+                handle=handle,
+                query=query,
+                body=body,
+                base_url=base_url,
+                token=token,
+                accept_language=accept_language,
+                client=client,
+            )
+        # Single read: v1 has NO show route — GET /v1/storageLocations/{id} answers
+        # 404 (verified on mvp 2026-07-31), so the entity declared `read` and could
+        # not do it. The id filter on the list is the lookup this core already uses
+        # to resolve a location for a booking; reuse it instead of dropping `read`.
+        row = await resolve_location_row(
+            handle, base_url=base_url, headers=self._headers(token, accept_language), client=client
+        )
+        if row is None:
+            return self._json(404, {"title": f"StorageLocation {handle} not found"})
+        resp = self._json(200, {"data": self.map_read(row)})
+        return await self._with_contents(resp, handle, base_url, token, accept_language, client)
+
+    async def _by_warehouse(  # noqa: ANN001
+        self, warehouse_id, query, base_url, token, accept_language, client
+    ) -> AdapterResponse:
+        from .stock_shared import get_json
+
+        page, per_page = self._query_paging(query)
+        size = max(10, min(50, per_page))  # v1 rejects sizes outside 10..50
+        status, payload = await get_json(
+            f"{base_url.rstrip('/')}/api/v1/warehouses/{warehouse_id}/storageLocations",
+            [("page[number]", str(page)), ("page[size]", str(size))],
+            self._headers(token, accept_language),
+            client,
+        )
+        if status >= 400:
+            return self._json(
+                status,
+                {
+                    "title": f"storageLocation: warehouse {warehouse_id} not readable",
+                    "detail": payload if isinstance(payload, dict) else None,
+                },
+            )
+        rows = (payload.get("data") if isinstance(payload, dict) else None) or []
+        mapped = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            # The scoped collection may omit the warehouse (it is implied by the
+            # path); the model always carries it, so put it back.
+            if not row.get("warehouse"):
+                row = {**row, "warehouse": {"id": warehouse_id}}
+            mapped.append(self.map_read(row))
+        return self._json(200, self._list_envelope(mapped, payload, query))
+
+    async def _with_contents(  # noqa: ANN001
+        self, resp, handle, base_url, token, accept_language, client
+    ) -> AdapterResponse:
+        """``contents`` = what StockLevel reports for this location."""
+        from .stock_level import StockLevelAdapter
+
+        try:
+            body = json.loads(resp.content or b"{}")
+        except ValueError:
+            return resp
+        record = body.get("data") if isinstance(body, dict) else None
+        if not isinstance(record, dict):
+            return resp
+        levels = await StockLevelAdapter().request(
+            method="GET",
+            handle=None,
+            query=[
+                ("filter[0][key]", "storageLocation"),
+                ("filter[0][op]", "equals"),
+                ("filter[0][value]", str(handle)),
+                ("page[number]", "1"),
+                ("page[size]", "50"),
+            ],
+            body=None,
+            base_url=base_url,
+            token=token,
+            accept_language=accept_language,
+            client=client,
+        )
+        if levels.status_code >= 400:
+            return resp  # leave contents empty rather than claim the bin is empty
+        try:
+            rows = json.loads(levels.content or b"{}").get("data") or []
+        except ValueError:
+            return resp
+        record["contents"] = [
+            {
+                "product": r.get("product"),
+                "batch": r.get("batch"),
+                "quantity": r.get("quantity"),
+                "reserved": r.get("reserved"),
+            }
+            for r in rows
+            if isinstance(r, dict)
+        ]
+        return self._json(200, body)
+
+    # ---- action dispatch --------------------------------------------------
+    _STOCK_ACTIONS = (
+        "putaway",
+        "stockRemoval",
+        "stockTransfer",
+        "inventoryCount",
+        "stockAdjustment",
+    )
+
+    async def action(  # noqa: ANN001
+        self, *, action_key, handle, body, base_url, token, accept_language=None, client=None
+    ):
+        if action_key in self._STOCK_ACTIONS:
+            return await self._book(
+                action_key, handle, body, base_url, token, accept_language, client
+            )
+        return await super().action(
+            action_key=action_key,
+            handle=handle,
+            body=body,
+            base_url=base_url,
+            token=token,
+            accept_language=accept_language,
+            client=client,
+        )
+
+    def _movement(  # noqa: C901
+        self, action_key: str, location: str, cmd: dict[str, Any]
+    ) -> tuple[dict[str, Any] | None, list[str]]:
+        """Action command -> stockMovement model, validated in the ACTION's own
+        vocabulary. The orchestrator validates again, but it speaks of to/from/
+        setQuantityTo — fields this caller never sent, so its message would name
+        something the caller cannot see."""
+        problems: list[str] = []
+        product = cmd.get("product")
+        if isinstance(product, dict):
+            product = product.get("id")
+        if not product:
+            problems.append("product is required")
+        raw_qty = cmd.get("quantity")
+        try:
+            quantity = float(raw_qty)
+        except (TypeError, ValueError):
+            quantity = 0.0
+            problems.append("quantity must be a number")
+        reason = cmd.get("reason")
+        batch = cmd.get("batch")
+
+        if action_key == "stockAdjustment":
+            if not reason:
+                problems.append("reason is required — an adjustment without a cause is untraceable")
+            if quantity == 0:
+                problems.append("quantity must not be 0 (signed delta: + books on, - books off)")
+        elif action_key == "inventoryCount":
+            if quantity < 0:
+                problems.append("quantity is the counted amount and cannot be negative")
+        elif quantity <= 0:
+            problems.append(
+                "quantity must be > 0 — the direction comes from the action, not a sign"
+            )
+
+        target = cmd.get("target")
+        if isinstance(target, dict):
+            target = target.get("id")
+        if action_key == "stockTransfer":
+            if not target:
+                problems.append("target (destination storage location) is required")
+            elif str(target) == str(location):
+                problems.append("target must differ from this location")
+        if problems:
+            return None, problems
+
+        model: dict[str, Any] = {"product": product}
+        if batch:
+            model["batch"] = batch
+        if action_key == "putaway":
+            model |= {"type": "receipt", "quantity": {"value": quantity}, "to": location}
+        elif action_key == "stockRemoval":
+            model |= {"type": "issue", "quantity": {"value": quantity}, "from": location}
+        elif action_key == "stockTransfer":
+            model |= {
+                "type": "transfer",
+                "quantity": {"value": quantity},
+                "from": location,
+                "to": target,
+            }
+        elif action_key == "inventoryCount":
+            model |= {"type": "correction", "setQuantityTo": quantity, "to": location}
+            reason = reason or "Inventory count"
+        elif action_key == "stockAdjustment":
+            model |= {"type": "correction", "quantity": {"value": abs(quantity)}}
+            model["to" if quantity > 0 else "from"] = location
+        if reason:
+            model["source"] = {"reason": reason}
+        return model, []
+
+    async def _read_level(  # noqa: ANN001
+        self, product: str, location: str, base_url, token, accept_language, client
+    ) -> dict[str, Any] | None:
+        """The stock level of one product on one location after the booking —
+        the read-back every write owes its caller (ADR-018).
+
+        Emptying a location REMOVES the row upstream, so the read then 404s.
+        "No row" and "zero on the shelf" are the same fact, and a null right
+        after a successful booking reads as a failed one (observed live: a
+        transfer that emptied its source answered ``data: null``). A 404 is
+        therefore reported as an explicit zero level — while any OTHER read
+        error stays ``None``, because "unreadable" must never be served as
+        "zero", which is exactly the number a caller would act on.
+        """
+        from .stock_level import StockLevelAdapter
+        from .stock_shared import numeric, resolve_location_row
+
+        product_id, location_id = numeric(str(product)), numeric(str(location))
+        adapter = StockLevelAdapter()
+        resp = await adapter.request(
+            method="GET",
+            handle=f"slv_{product_id}_{location_id}",
+            query=[],
+            body=None,
+            base_url=base_url,
+            token=token,
+            accept_language=accept_language,
+            client=client,
+        )
+        if resp.status_code == 404:
+            # A zero row must be shaped like a real one, or "same fact" is only
+            # half true: the location row still carries its designation and
+            # warehouse, and a caller reading `warehouse` off the result would
+            # find it missing on exactly the records that report an empty bin.
+            row = await resolve_location_row(
+                location_id,
+                base_url=base_url,
+                headers=self._headers(token, accept_language),
+                client=client,
+            )
+            wh = (row or {}).get("warehouse") or {}
+            return adapter.level_row(
+                product_id=product_id,
+                location_id=location_id,
+                location_name=(row or {}).get("designation"),
+                warehouse_id=wh.get("id") if isinstance(wh, dict) else None,
+                warehouse_name=wh.get("name") if isinstance(wh, dict) else None,
+                quantity=0,
+            )
+        if resp.status_code >= 400:
+            return None
+        try:
+            return json.loads(resp.content or b"{}").get("data")
+        except ValueError:
+            return None
+
+    async def _book(  # noqa: ANN001
+        self, action_key, handle, body, base_url, token, accept_language, client
+    ) -> AdapterResponse:
+        try:
+            envelope = json.loads(body or b"{}")
+        except (ValueError, TypeError):
+            envelope = {}
+        if not isinstance(envelope, dict):
+            envelope = {}
+        ids = envelope.get("ids") or ([handle] if handle else [])
+        if not ids:
+            return self._json(
+                422, {"title": f"{action_key} needs the storage location it acts on (ids[])"}
+            )
+        location = str(ids[0])
+        cmd = envelope.get("command") or {}
+        if not isinstance(cmd, dict):
+            cmd = {}
+
+        model, problems = self._movement(action_key, location, cmd)
+        if problems:
+            return self._json(
+                422,
+                {
+                    "title": f"storageLocation.{action_key}: invalid command",
+                    "problems": problems,
+                },
+            )
+
+        from .stock_movement import StockMovementAdapter
+
+        # dryRun rides in the command (the action envelope carries no query
+        # string) and is translated onto the orchestrator's own switch.
+        query = [("dryRun", "true")] if cmd.get("dryRun") in (True, "true", "1") else []
+        booked = await StockMovementAdapter()._create_movement(  # noqa: SLF001
+            query, json.dumps(model).encode(), base_url, token, accept_language, client
+        )
+        if booked.status_code >= 400 or query:
+            return booked
+
+        assert model is not None
+        product = str(model["product"])
+        out: dict[str, Any] = {
+            "data": await self._read_level(
+                product, location, base_url, token, accept_language, client
+            ),
+            "result": {"action": action_key, "storageLocation": location},
+        }
+        if action_key == "stockTransfer":
+            out["result"]["target"] = await self._read_level(
+                product, str(model["to"]), base_url, token, accept_language, client
+            )
+        return self._json(200, out)
