@@ -1101,7 +1101,15 @@ class ProductAdapter(FacadeAdapterBase):
                         description="What is actually on the shelf, across all warehouses.",
                     ),
                     "reserved": prop(
-                        "decimal", "Reserved", **RO, description="Committed to orders."
+                        "decimal",
+                        "Reserved",
+                        **RO,
+                        description=(
+                            "The quantity Xentral reports as committed. Do NOT compute "
+                            "availability from it: available deducts open order demand, not "
+                            "this figure — observed physical 6 / reserved 1 / available 3. "
+                            "What exactly Xentral counts here is not documented upstream."
+                        ),
                     ),
                     "openSalesOrders": prop(
                         "decimal",
@@ -1136,7 +1144,12 @@ class ProductAdapter(FacadeAdapterBase):
                         "decimal",
                         "Calculated",
                         **RO,
-                        description="The stock figure after the correction has been applied.",
+                        description=(
+                            "Xentral's own derived stock figure. The spec's example suggests "
+                            "physical + correction, but every value measured on mvp tracked "
+                            "`available` instead (0/3/17). Undocumented upstream — prefer "
+                            "physical or available, whichever the question actually needs."
+                        ),
                     ),
                     "pseudo": prop(
                         "decimal",
