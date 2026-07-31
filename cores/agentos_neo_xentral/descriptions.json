@@ -39,7 +39,7 @@
     "items.purchasePrice.amount": "Net cost amount per unit.",
     "items.purchasePrice.currency": "Currency of the cost price — must equal the document currency.",
     "items.contributionMargin": "Contribution margin of this line as a PERCENT of its net revenue ((net - purchase price) / net x 100), computed upstream from the line's purchasePrice — not an amount.",
-    "items.totals": "Computed totals for the whole line quantity (read-only)."
+    "items.totals": "Totals for the whole line quantity, as reported by Xentral (read-only). No tax amount: v3 states none per line — see the document totals for per-rate tax."
   },
   "Customer": {
     "number": "Human-facing customer number (e.g. K-10023).",

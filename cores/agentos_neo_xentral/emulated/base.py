@@ -187,14 +187,14 @@ def purchase_price_prop(*, updatable: bool = False) -> dict[str, Any]:
 
 
 def item_totals_prop() -> dict[str, Any]:
-    """A line's computed totals for the whole quantity — see ``map_item_totals``."""
+    """A line's totals for the whole quantity — see ``map_item_totals``. No ``tax``
+    leaf: v3 states no per-line tax amount and the core does not invent one."""
     return prop(
         "embedded",
         "Item totals",
         access="readOnly",
         properties={
             "net": prop("string", "Net", access="readOnly"),
-            "tax": prop("string", "Tax", access="readOnly"),
             "gross": prop("string", "Gross", access="readOnly"),
         },
     )
@@ -231,7 +231,8 @@ def map_purchase_price(li: dict[str, Any], currency: str = "EUR") -> dict[str, A
 
 
 def map_item_totals(li: dict[str, Any], currency: str = "EUR") -> dict[str, Any] | None:
-    """A line's computed totals from upstream's ``lineItemRevenue``.
+    """A line's totals for the whole quantity, passed straight through from upstream's
+    ``lineItemRevenue``.
 
     Upstream carries BOTH a per-unit and a quantity-total revenue, and the published
     OpenAPI descriptions have them the wrong way round (corrected in the monorepo,
@@ -239,28 +240,23 @@ def map_item_totals(li: dict[str, Any], currency: str = "EUR") -> dict[str, Any]
     ``itemRevenue`` reported 100 and ``lineItemRevenue`` 300 — so the quantity total,
     which is what a line's ``totals`` means, is ``lineItemRevenue``.
 
-    ``tax`` is the gross/net difference; upstream breaks tax out per rate only at
-    document level."""
+    There is deliberately NO ``tax`` here. v3 exposes no per-line tax amount (only
+    ``taxRate`` and ``effectiveTaxRate``), and deriving it as gross - net would be the
+    core computing a money figure Xentral never stated — against ADR-014's 1:1
+    pass-through, and squarely on the unresolved legacy rounding-parity question
+    (docs/03-mapping-layer.md Kategorie 3 §1, ``projekt.preisberechnung``). A derived
+    number would be indistinguishable from an upstream one while being free to
+    disagree with the printed document. The gap is a blue wish in priorities.json;
+    per-rate tax is available on the document's ``totals``."""
     rev = li.get("lineItemRevenue") or {}
     net = ((rev.get("net") or {}).get("amount"), (rev.get("net") or {}).get("currency"))
     gross = ((rev.get("gross") or {}).get("amount"), (rev.get("gross") or {}).get("currency"))
     if net[0] is None and gross[0] is None:
         return None
     cur = net[1] or gross[1] or currency
-    net_m = money(net[0], cur)
-    gross_m = money(gross[0], cur)
-    tax: str | None = None
-    if net[0] is not None and gross[0] is not None:
-        try:
-            tax = (money(str(Decimal(str(gross[0])) - Decimal(str(net[0]))), cur) or {}).get(
-                "amount"
-            )
-        except (ArithmeticError, ValueError):
-            tax = None
     return {
-        "net": (net_m or {}).get("amount"),
-        "tax": tax,
-        "gross": (gross_m or {}).get("amount"),
+        "net": (money(net[0], cur) or {}).get("amount"),
+        "gross": (money(gross[0], cur) or {}).get("amount"),
     }
 
 
