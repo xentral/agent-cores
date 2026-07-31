@@ -43,15 +43,48 @@ def test_purchase_price_declared_creatable_on_all_four():
         assert set(pp["properties"]) == {"amount", "currency"}, cls.__name__
 
 
-def test_updatable_only_where_items_are_actually_reconciled():
-    # salesOrder reconciles its positions against the v3 lineItems sub-resource…
-    assert _item_schema(SalesOrderAdapter)["purchasePrice"].get("updatable") is True
-    # …the other three reject `items` on UPDATE, so they must not claim otherwise.
-    for cls in (QuoteAdapter, SalesInvoiceAdapter, CreditNoteAdapter):
-        assert "updatable" not in _item_schema(cls)["purchasePrice"], cls.__name__
-        assert cls().map_write({"items": [{"product": {"id": "prd_1"}}]}, creating=False)[1] == {
-            "items"
-        }, cls.__name__
+def test_updatable_everywhere_now_that_every_document_reconciles():
+    """All four reconcile their positions against the v3 lineItems sub-resource, so
+    the EK is editable on each — the flag has to say so."""
+    for cls in _ALL:
+        assert cls.reconciles_line_items is True, cls.__name__
+        assert _item_schema(cls)["purchasePrice"].get("updatable") is True, cls.__name__
+        # `items` on UPDATE is no longer refused outright
+        assert "items" not in cls().map_write({"items": []}, creating=False)[1], cls.__name__
+
+
+def test_updatable_flags_match_what_the_patch_actually_sends():
+    """The schema's writability must describe the reconcile, not aspiration: every
+    field _item_to_v3 emits on a PATCH is updatable, and `product` — which the
+    reconcile strips from an existing line — is not."""
+    patched = set(
+        SalesOrderAdapter._item_to_v3(
+            {
+                "description": "x",
+                "quantity": {"value": 1},
+                "unitPrice": {"amount": 1, "currency": "EUR"},
+                "discountPercent": 1,
+                "taxRate": "standard",
+                "purchasePrice": {"amount": 1, "currency": "EUR"},
+                "product": {"id": "prd_1"},
+            }
+        )
+    )
+    patched.discard("product")  # popped by the reconcile on an existing line
+    v3_to_model = {
+        "description": "description",
+        "quantity": "quantity",
+        "price": "unitPrice",
+        "discount": "discountPercent",
+        "taxRate": "taxRate",
+        "purchasePrice": "purchasePrice",
+    }
+    for cls in _ALL:
+        schema = _item_schema(cls)
+        for wire in patched:
+            field = v3_to_model[wire]
+            assert schema[field].get("updatable") is True, f"{cls.__name__}.{field}"
+        assert schema["product"].get("updatable") is not True, cls.__name__
 
 
 # ---- write --------------------------------------------------------------

@@ -14,9 +14,12 @@ from entity_registry.core_sdk import EmulationManifest
 from .base import (
     FacadeAdapterBase,
     line_price_net,
+    contribution_margin_prop,
+    item_totals_prop,
     line_purchase_price_net,
     line_qty,
     RO,
+    map_item_totals,
     map_purchase_price,
     map_tags,
     money,
@@ -74,6 +77,7 @@ class QuoteAdapter(FacadeAdapterBase):
         operations=("list", "read", "create", "update", "delete"),
     )
     v3_path = "/api/v3/offers"
+    reconciles_line_items = True
     include = "lineItems,lineItems.product,project,address,tags"
     preview_template = "{{number}}"
     query_aliases = {
@@ -250,11 +254,14 @@ class QuoteAdapter(FacadeAdapterBase):
                             creatable=True,
                             filterable=True,
                         ),
-                        "description": prop("string", "Description", creatable=True),
+                        "description": prop(
+                            "string", "Description", creatable=True, updatable=True
+                        ),
                         "quantity": prop(
                             "embedded",
                             "Quantity",
                             creatable=True,
+                            updatable=True,
                             properties={
                                 "value": prop("decimal", "Value"),
                                 "unit": prop("string", "Unit"),
@@ -264,15 +271,20 @@ class QuoteAdapter(FacadeAdapterBase):
                             "embedded",
                             "Unit price",
                             creatable=True,
+                            updatable=True,
                             properties={
                                 "amount": prop("decimal", "Amount"),
                                 "currency": prop("string", "Currency"),
                             },
                         ),
                         "priceSource": prop("string", "Price source", **RO),
-                        "discountPercent": prop("decimal", "Discount %", creatable=True),
-                        "purchasePrice": purchase_price_prop(),
-                        "taxRate": prop("string", "Tax rate", creatable=True),
+                        "discountPercent": prop(
+                            "decimal", "Discount %", creatable=True, updatable=True
+                        ),
+                        "purchasePrice": purchase_price_prop(updatable=True),
+                        "contributionMargin": contribution_margin_prop(),
+                        "totals": item_totals_prop(),
+                        "taxRate": prop("string", "Tax rate", creatable=True, updatable=True),
                         "isOptional": prop("boolean", "Optional"),
                     }
                 },
@@ -396,6 +408,8 @@ class QuoteAdapter(FacadeAdapterBase):
                     "priceSource": None,
                     "discountPercent": li.get("discount"),
                     "purchasePrice": map_purchase_price(li, cur),
+                    "totals": map_item_totals(li, cur),
+                    "contributionMargin": li.get("contributionMargin"),
                     "taxRate": li.get("taxRate"),
                     "isOptional": False,
                 }
@@ -559,8 +573,9 @@ class QuoteAdapter(FacadeAdapterBase):
                 v3["lineItems"] = [
                     self._item_to_v3(i, doc_cur) for i in model["items"] if isinstance(i, dict)
                 ]
-            else:
-                rejected.add("items")
+            # On UPDATE the items are NOT sent in the document PATCH body — they are
+            # reconciled against the v3 lineItems sub-resource (POST new / PATCH
+            # changed / DELETE omitted). So neither emit nor reject them here.
         if "tags" in model:
             v3["tags"] = tags_to_v3(model["tags"])
         if "shipping" in model:

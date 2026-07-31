@@ -186,6 +186,28 @@ def purchase_price_prop(*, updatable: bool = False) -> dict[str, Any]:
     )
 
 
+def item_totals_prop() -> dict[str, Any]:
+    """A line's computed totals for the whole quantity — see ``map_item_totals``."""
+    return prop(
+        "embedded",
+        "Item totals",
+        access="readOnly",
+        properties={
+            "net": prop("string", "Net", access="readOnly"),
+            "tax": prop("string", "Tax", access="readOnly"),
+            "gross": prop("string", "Gross", access="readOnly"),
+        },
+    )
+
+
+def contribution_margin_prop() -> dict[str, Any]:
+    """A line's contribution margin (Deckungsbeitrag). Upstream reports a PERCENT,
+    not an amount — verified on mvp: net 200 with an EK of 50 reports 75, and net 100
+    with an EK of 40 reports 60, i.e. (net - EK) / net × 100. Computed upstream from
+    the line's purchasePrice, so it moves when the EK is written."""
+    return prop("decimal", "Contribution margin %", access="readOnly")
+
+
 def line_purchase_price_net(item: dict[str, Any], currency: str = "EUR") -> dict[str, Any] | None:
     """v3 ``purchasePrice`` payload from a line item's ``purchasePrice``, tolerating
     both the canonical ``{"amount": …, "currency": …}`` object AND a bare scalar
@@ -206,6 +228,40 @@ def map_purchase_price(li: dict[str, Any], currency: str = "EUR") -> dict[str, A
     shape. None when upstream reports no EK."""
     net = (li.get("purchasePrice") or {}).get("net") or {}
     return money(net.get("amount"), net.get("currency") or currency)
+
+
+def map_item_totals(li: dict[str, Any], currency: str = "EUR") -> dict[str, Any] | None:
+    """A line's computed totals from upstream's ``lineItemRevenue``.
+
+    Upstream carries BOTH a per-unit and a quantity-total revenue, and the published
+    OpenAPI descriptions have them the wrong way round (corrected in the monorepo,
+    not yet in the spec repo). Verified on mvp with quantity 3 × net 100:
+    ``itemRevenue`` reported 100 and ``lineItemRevenue`` 300 — so the quantity total,
+    which is what a line's ``totals`` means, is ``lineItemRevenue``.
+
+    ``tax`` is the gross/net difference; upstream breaks tax out per rate only at
+    document level."""
+    rev = li.get("lineItemRevenue") or {}
+    net = ((rev.get("net") or {}).get("amount"), (rev.get("net") or {}).get("currency"))
+    gross = ((rev.get("gross") or {}).get("amount"), (rev.get("gross") or {}).get("currency"))
+    if net[0] is None and gross[0] is None:
+        return None
+    cur = net[1] or gross[1] or currency
+    net_m = money(net[0], cur)
+    gross_m = money(gross[0], cur)
+    tax: str | None = None
+    if net[0] is not None and gross[0] is not None:
+        try:
+            tax = (money(str(Decimal(str(gross[0])) - Decimal(str(net[0]))), cur) or {}).get(
+                "amount"
+            )
+        except (ArithmeticError, ValueError):
+            tax = None
+    return {
+        "net": (net_m or {}).get("amount"),
+        "tax": tax,
+        "gross": (gross_m or {}).get("amount"),
+    }
 
 
 def rejected_item_keys(items: Any, item_props: dict[str, Any]) -> set[str]:
@@ -289,6 +345,12 @@ class FacadeAdapterBase:
     # pickLists…) REQUIRE page[number] AND page[size] with size 10..50; setting
     # this flag makes ``_get`` guarantee both (clamping the requested size).
     v1_paging: bool = False
+    # The document PATCH cannot carry line items on any v3 business document, but
+    # ``{v3_path}/{id}/lineItems`` is a full sub-resource (POST/PATCH/DELETE). Set
+    # this and ``update`` with ``items`` reconciles there as a collection replace —
+    # see ``_reconcile_line_items``. Requires the adapter to implement
+    # ``_item_to_v3`` and to declare ``items`` in ``fields()``.
+    reconciles_line_items: bool = False
     # MODEL field path → upstream filter/sort wire key (number → documentNumber).
     query_aliases: dict[str, str] = {}
     # MODEL field path → {model enum value → upstream enum value}; applied to
@@ -945,7 +1007,187 @@ class FacadeAdapterBase:
         except ValueError:
             return resp.status_code, {}
 
+    # ---- line items on the v3 sub-resource --------------------------------
+    @staticmethod
+    def _item_to_v3(i: dict[str, Any], currency: str = "EUR") -> dict[str, Any]:
+        """One model line item → its v3 body. Adapters that set
+        ``reconciles_line_items`` override this."""
+        raise NotImplementedError
+
+    def _item_props(self) -> dict[str, Any]:
+        """The declared line-item properties — the allowlist unknown keys are held
+        against. Read off ``fields()`` so it cannot drift from the schema."""
+        items = self.fields().get("items") or {}
+        return (items.get("node") or {}).get("properties") or {}
+
+    def _line_items_url(self, base_url: str, up_id: str) -> str:
+        return f"{base_url.rstrip('/')}{self.v3_path}/{up_id}/lineItems"
+
+    async def _li_call(  # noqa: ANN001
+        self, method, url, token, accept_language, client, payload=None
+    ) -> tuple[int, Any]:
+        headers = self._headers(token, accept_language)
+
+        async def _do(c):  # noqa: ANN001, ANN202
+            return await c.request(method, url, json=payload, headers=headers)
+
+        if client is None:
+            async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
+                resp = await _do(c)
+        else:
+            resp = await _do(client)
+        try:
+            return resp.status_code, resp.json()
+        except ValueError:
+            return resp.status_code, {}
+
+    async def _reconcile_line_items(  # noqa: ANN001
+        self, handle, up_id, desired, base_url, token, accept_language, client
+    ) -> dict[str, Any]:
+        """Bring the document's line items to ``desired`` via the v3 lineItems
+        sub-resource — the document PATCH cannot touch them. Contract (collection
+        replace): an item WITH an existing ``id`` is PATCHed, one WITHOUT an id is
+        POSTed (added), and an existing item OMITTED from ``desired`` is DELETEd.
+        Returns per-op failures (empty = all ok) so a partial reconcile surfaces as
+        a warning, never a silent drop."""
+        base = self._line_items_url(base_url, str(up_id))
+        # current line-item ids (skip text lines — they carry no product)
+        st, payload = await self._get(
+            base_url,
+            token,
+            handle=handle,
+            query=[],
+            accept_language=accept_language,
+            client=client,
+        )
+        current_ids: list[str] = []
+        # The document currency governs what a line's money may be sent in — read it
+        # off the same fetch instead of defaulting the line items to EUR.
+        doc_cur = "EUR"
+        if st < 400 and isinstance(payload, dict):
+            data = payload.get("data") or {}
+            doc_cur = (data.get("financials") or {}).get("currency") or doc_cur
+            for li in data.get("lineItems") or []:
+                if isinstance(li, dict) and li.get("id") is not None and li.get("type") != "text":
+                    current_ids.append(str(li["id"]))
+        keep = {
+            str(i["id"]) for i in desired if isinstance(i, dict) and i.get("id") not in (None, "")
+        }
+        failures: dict[str, list[Any]] = {}
+
+        # DELETE the omitted lines first.
+        for lid in current_ids:
+            if lid not in keep:
+                status, body = await self._li_call(
+                    "DELETE", f"{base}/{lid}", token, accept_language, client
+                )
+                if status >= 400:
+                    failures.setdefault("delete", []).append(
+                        {"id": lid, "status": status, "error": body}
+                    )
+        # PATCH the kept-with-changes, POST the new ones.
+        for it in desired:
+            if not isinstance(it, dict):
+                continue
+            lid = it.get("id")
+            v3 = self._item_to_v3(it, doc_cur)
+            if lid not in (None, "") and str(lid) in current_ids:
+                v3.pop("product", None)  # product is fixed on an existing line
+                if not v3:
+                    continue  # {id} only → keep unchanged, no-op
+                status, resp = await self._li_call(
+                    "PATCH", f"{base}/{lid}", token, accept_language, client, v3
+                )
+                if status >= 400:
+                    failures.setdefault("update", []).append(
+                        {"id": str(lid), "status": status, "error": resp}
+                    )
+            else:
+                status, resp = await self._li_call("POST", base, token, accept_language, client, v3)
+                if status >= 400:
+                    failures.setdefault("add", []).append(
+                        {"product": it.get("product"), "status": status, "error": resp}
+                    )
+        return failures
+
+    async def _compose_item_write(  # noqa: ANN001
+        self, method, handle, query, model, items, base_url, token, accept_language, client
+    ):
+        """UPDATE with ``items``: document-level fields still go through the normal
+        PATCH, the line items are reconciled on the sub-resource. When items are the
+        ONLY change the document PATCH is skipped so an empty body is never sent."""
+        # This path splits `items` off before delegating, so map_write never sees
+        # them — and with an items-only body it is not reached at all. Check the item
+        # keys here, else an unsupported one is silently dropped on UPDATE.
+        item_rejects = rejected_item_keys(items, self._item_props())
+        if item_rejects:
+            return self.rejected_response(item_rejects)
+
+        rest = {k: v for k, v in model.items() if k != "items"}
+        if rest:
+            resp = await self._write_document(
+                method,
+                handle,
+                query,
+                json.dumps(rest).encode(),
+                base_url,
+                token,
+                accept_language,
+                client,
+            )
+            if resp.status_code >= 400:
+                return resp
+        up_id = handle.split("_", 1)[1] if handle and "_" in handle else handle
+        failures = await self._reconcile_line_items(
+            handle, str(up_id), items, base_url, token, accept_language, client
+        )
+        st, payload = await self._get(
+            base_url,
+            token,
+            handle=handle,
+            query=[],
+            accept_language=accept_language,
+            client=client,
+        )
+        if st >= 400:
+            return self._json(
+                st, payload if isinstance(payload, dict) else {"title": "read-back failed"}
+            )
+        data = self.map_read((payload.get("data") or {}) if isinstance(payload, dict) else {})
+        if failures:
+            data["_warnings"] = {"items": failures}
+        return self._json(200, {"data": data})
+
     async def _write(
+        self,
+        method: str,
+        handle: str | None,
+        query: list[tuple[str, str]],
+        body: bytes | None,
+        base_url: str,
+        token: str,
+        accept_language: str | None,
+        client: httpx.AsyncClient | None,
+    ) -> AdapterResponse:
+        """Route an UPDATE carrying ``items`` to the line-item sub-resource when the
+        adapter reconciles them; everything else writes the document directly.
+        Create is unchanged either way — items ride the v3 create body."""
+        if self.reconciles_line_items:
+            try:
+                model = json.loads(body or b"{}")
+            except (ValueError, TypeError):
+                model = {}
+            items = model.get("items") if isinstance(model, dict) else None
+            is_dry = any(k == "dryRun" and v in ("true", "1") for k, v in query)
+            if method.upper() != "POST" and isinstance(items, list) and not is_dry:
+                return await self._compose_item_write(
+                    method, handle, query, model, items, base_url, token, accept_language, client
+                )
+        return await self._write_document(
+            method, handle, query, body, base_url, token, accept_language, client
+        )
+
+    async def _write_document(
         self,
         method: str,
         handle: str | None,

@@ -21,9 +21,12 @@ from .base import (
     _TIMEOUT,
     FacadeAdapterBase,
     line_price_net,
+    contribution_margin_prop,
+    item_totals_prop,
     line_purchase_price_net,
     line_qty,
     RO,
+    map_item_totals,
     map_purchase_price,
     map_tags,
     money,
@@ -35,10 +38,6 @@ from .base import (
     tags_prop,
     tags_to_v3,
 )
-
-# Line items on an existing order are their own v3 sub-resource (full CRUD). The
-# order PATCH cannot touch them, so `update` with `items` reconciles here.
-_SO_LINEITEMS = "/api/v3/salesOrders/{id}/lineItems"
 
 # Per-line availability is computed on the single `get` from one v2 product read
 # per line (isStockItem + stockCount) — see _hydrate_availability.
@@ -134,17 +133,19 @@ def _item_props() -> dict[str, Any]:
             creatable=True,
             filterable=True,
         ),
-        "description": prop("string", "Description", creatable=True),
+        "description": prop("string", "Description", creatable=True, updatable=True),
         "quantity": prop(
             "embedded",
             "Quantity",
             creatable=True,
+            updatable=True,
             properties={"value": prop("decimal", "Value"), "unit": prop("string", "Unit")},
         ),
         "unitPrice": prop(
             "embedded",
             "Unit price",
             creatable=True,
+            updatable=True,
             properties={
                 "amount": prop("decimal", "Amount"),
                 "currency": prop("string", "Currency"),
@@ -152,18 +153,10 @@ def _item_props() -> dict[str, Any]:
         ),
         "priceSource": prop("string", "Price source", **RO),
         "purchasePrice": purchase_price_prop(updatable=True),
-        "discountPercent": prop("decimal", "Discount %", creatable=True),
-        "taxRate": prop("string", "Tax rate", creatable=True),
-        "totals": prop(
-            "embedded",
-            "Item totals",
-            **RO,
-            properties={
-                "net": prop("string", "Net", **RO),
-                "tax": prop("string", "Tax", **RO),
-                "gross": prop("string", "Gross", **RO),
-            },
-        ),
+        "contributionMargin": contribution_margin_prop(),
+        "discountPercent": prop("decimal", "Discount %", creatable=True, updatable=True),
+        "taxRate": prop("string", "Tax rate", creatable=True, updatable=True),
+        "totals": item_totals_prop(),
         "warehouse": prop("reference", "Warehouse", reference="Warehouse", renderProperty="name"),
         "fulfillment": prop(
             "embedded",
@@ -201,6 +194,7 @@ class SalesOrderAdapter(FacadeAdapterBase):
         operations=("list", "read", "create", "update", "delete"),
     )
     v3_path = "/api/v3/salesOrders"
+    reconciles_line_items = True
     include = "lineItems,lineItems.product,project,address,tags,trafficLights"
     preview_template = "{{number}}"
     query_aliases = {
@@ -696,6 +690,8 @@ class SalesOrderAdapter(FacadeAdapterBase):
                     "unitPrice": money(price.get("amount"), price.get("currency") or cur),
                     "priceSource": None,
                     "purchasePrice": map_purchase_price(li, cur),
+                    "totals": map_item_totals(li, cur),
+                    "contributionMargin": li.get("contributionMargin"),
                     "discountPercent": li.get("discount"),
                     "taxRate": li.get("taxRate"),
                 }
@@ -973,155 +969,6 @@ class SalesOrderAdapter(FacadeAdapterBase):
             out["purchasePrice"] = purchase
         return out
 
-    # ---- line-item reconcile on update (v3 lineItems sub-resource) --------
-    async def _li_call(  # noqa: ANN001
-        self, method, url, token, accept_language, client, payload=None
-    ) -> tuple[int, Any]:
-        headers = self._headers(token, accept_language)
-
-        async def _do(c):  # noqa: ANN001, ANN202
-            return await c.request(method, url, json=payload, headers=headers)
-
-        if client is None:
-            async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
-                resp = await _do(c)
-        else:
-            resp = await _do(client)
-        try:
-            return resp.status_code, resp.json()
-        except ValueError:
-            return resp.status_code, {}
-
-    async def _reconcile_line_items(  # noqa: ANN001
-        self, up_id, desired, base_url, token, accept_language, client
-    ) -> dict[str, Any]:
-        """Bring the order's line items to ``desired`` via the v3 lineItems
-        sub-resource — the order PATCH cannot touch them. Contract (collection
-        replace): an item WITH an existing ``id`` is PATCHed, one WITHOUT an id is
-        POSTed (added), and an existing item OMITTED from ``desired`` is DELETEd.
-        Returns per-op failures (empty = all ok) so a partial reconcile surfaces as
-        a warning, never a silent drop."""
-        base = base_url.rstrip("/") + _SO_LINEITEMS.format(id=up_id)
-        # current line-item ids (skip text lines — they carry no product)
-        st, payload = await self._get(
-            base_url,
-            token,
-            handle=f"so_{up_id}",
-            query=[],
-            accept_language=accept_language,
-            client=client,
-        )
-        current_ids: list[str] = []
-        # The document currency governs what an EK may be sent in — read it off the
-        # same fetch instead of defaulting the line items to EUR.
-        doc_cur = "EUR"
-        if st < 400 and isinstance(payload, dict):
-            data = payload.get("data") or {}
-            doc_cur = (data.get("financials") or {}).get("currency") or doc_cur
-            for li in data.get("lineItems") or []:
-                if isinstance(li, dict) and li.get("id") is not None and li.get("type") != "text":
-                    current_ids.append(str(li["id"]))
-        keep = {
-            str(i["id"]) for i in desired if isinstance(i, dict) and i.get("id") not in (None, "")
-        }
-        failures: dict[str, list[Any]] = {}
-
-        # DELETE the omitted lines first.
-        for lid in current_ids:
-            if lid not in keep:
-                status, body = await self._li_call(
-                    "DELETE", f"{base}/{lid}", token, accept_language, client
-                )
-                if status >= 400:
-                    failures.setdefault("delete", []).append(
-                        {"id": lid, "status": status, "error": body}
-                    )
-        # PATCH the kept-with-changes, POST the new ones.
-        for it in desired:
-            if not isinstance(it, dict):
-                continue
-            lid = it.get("id")
-            v3 = self._item_to_v3(it, doc_cur)
-            if lid not in (None, "") and str(lid) in current_ids:
-                v3.pop("product", None)  # product is fixed on an existing line
-                if not v3:
-                    continue  # {id} only → keep unchanged, no-op
-                status, resp = await self._li_call(
-                    "PATCH", f"{base}/{lid}", token, accept_language, client, v3
-                )
-                if status >= 400:
-                    failures.setdefault("update", []).append(
-                        {"id": str(lid), "status": status, "error": resp}
-                    )
-            else:
-                status, resp = await self._li_call("POST", base, token, accept_language, client, v3)
-                if status >= 400:
-                    failures.setdefault("add", []).append(
-                        {"product": it.get("product"), "status": status, "error": resp}
-                    )
-        return failures
-
-    async def _write(  # noqa: ANN001
-        self, method, handle, query, body, base_url, token, accept_language, client
-    ):
-        """On UPDATE, compose line items on the v3 lineItems sub-resource (the order
-        PATCH cannot carry them). Order-level fields still go through the normal
-        PATCH; when items are the ONLY change the order PATCH is skipped so an empty
-        body is never sent. Create is unchanged (items ride the v3 create body)."""
-        try:
-            model = json.loads(body or b"{}")
-        except (ValueError, TypeError):
-            model = {}
-        items = model.get("items") if isinstance(model, dict) else None
-        is_dry = any(k == "dryRun" and v in ("true", "1") for k, v in query)
-        compose = method.upper() != "POST" and isinstance(items, list) and not is_dry
-        if not compose:
-            return await super()._write(
-                method, handle, query, body, base_url, token, accept_language, client
-            )
-
-        # The compose path splits `items` off before delegating, so map_write never
-        # sees them — and with an items-only body it is not reached at all. Check the
-        # item keys here, else an unsupported one is silently dropped on UPDATE.
-        item_rejects = rejected_item_keys(items, _item_props())
-        if item_rejects:
-            return self.rejected_response(item_rejects)
-
-        rest = {k: v for k, v in model.items() if k != "items"}
-        if rest:
-            resp = await super()._write(
-                method,
-                handle,
-                query,
-                json.dumps(rest).encode(),
-                base_url,
-                token,
-                accept_language,
-                client,
-            )
-            if resp.status_code >= 400:
-                return resp
-        up_id = handle.split("_", 1)[1] if handle and "_" in handle else handle
-        failures = await self._reconcile_line_items(
-            str(up_id), items, base_url, token, accept_language, client
-        )
-        st, payload = await self._get(
-            base_url,
-            token,
-            handle=handle,
-            query=[],
-            accept_language=accept_language,
-            client=client,
-        )
-        if st >= 400:
-            return self._json(
-                st, payload if isinstance(payload, dict) else {"title": "read-back failed"}
-            )
-        data = self.map_read((payload.get("data") or {}) if isinstance(payload, dict) else {})
-        if failures:
-            data["_warnings"] = {"items": failures}
-        return self._json(200, {"data": data})
-
     # ---- per-line availability (single-record hydration) ------------------
     async def request(  # noqa: ANN001
         self, *, method, handle, query, body, base_url, token, accept_language=None, client=None
@@ -1349,8 +1196,8 @@ class SalesOrderAdapter(FacadeAdapterBase):
             )
 
         warnings: dict[str, list[Any]] = {}
-        part_base = base_url.rstrip("/") + _SO_LINEITEMS.format(id=partial_up)
-        src_base = base_url.rstrip("/") + _SO_LINEITEMS.format(id=src_up)
+        part_base = self._line_items_url(base_url, str(partial_up))
+        src_base = self._line_items_url(base_url, str(src_up))
 
         # add the moved quantities to the partial
         for line, qty, _have in resolved:
