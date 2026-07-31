@@ -222,6 +222,11 @@ class StorageLocationAdapter(FacadeAdapterBase):
                 renderProperty="name",
                 section="general",
                 previewable=True,
+                filterable=True,
+                description=(
+                    "The warehouse this location belongs to. Filtering by it reads the "
+                    "warehouse-scoped upstream collection instead of paging the tenant."
+                ),
             ),
             "kind": prop(
                 "select",
@@ -257,6 +262,12 @@ class StorageLocationAdapter(FacadeAdapterBase):
                 "Contents",
                 **RO,
                 section="contents",
+                description=(
+                    "What lies on this location, composed from StockLevel. Filled on a "
+                    "SINGLE read only — on a list it would cost one extra call per row. "
+                    "Use StockLevel with filter[storageLocation] to query it directly. "
+                    "reserved stays empty: no per-location reservation exists upstream."
+                ),
                 node={
                     "properties": {
                         "product": prop(
@@ -317,6 +328,141 @@ class StorageLocationAdapter(FacadeAdapterBase):
     ) -> tuple[dict[str, Any], set[str]]:
         # v1 CRUD exists upstream but is not orchestrated here yet.
         return {}, {k for k in model if k not in {"object", "id", "createdAt", "updatedAt"}}
+
+    # ---- reads: warehouse scope + contents ---------------------------------
+    async def request(  # noqa: ANN001
+        self, *, method, handle, query, body, base_url, token, accept_language=None, client=None
+    ) -> AdapterResponse:
+        """Two enrichments over the plain v1 list:
+
+        * ``filter[warehouse]`` — the flat ``/v1/storageLocations`` cannot filter
+          by warehouse, but the upstream list is warehouse-scoped by nature
+          (``/v1/warehouses/{id}/storageLocations``). Without this, finding the
+          bins of one warehouse means paging the whole tenant and filtering by
+          hand — 3 pages over 102 rows on mvp just to reach 9.
+        * ``contents`` on a SINGLE read — composed from the StockLevel
+          projection. Not on the list: that would be one extra call per row.
+        """
+        if method.upper() != "GET":
+            return await super().request(
+                method=method,
+                handle=handle,
+                query=query,
+                body=body,
+                base_url=base_url,
+                token=token,
+                accept_language=accept_language,
+                client=client,
+            )
+        from .stock_shared import numeric, parse_filters, resolve_location_row
+
+        if handle is None:
+            warehouse = parse_filters(query).get("warehouse")
+            if warehouse:
+                return await self._by_warehouse(
+                    numeric(str(warehouse[1])), query, base_url, token, accept_language, client
+                )
+            return await super().request(
+                method=method,
+                handle=handle,
+                query=query,
+                body=body,
+                base_url=base_url,
+                token=token,
+                accept_language=accept_language,
+                client=client,
+            )
+        # Single read: v1 has NO show route — GET /v1/storageLocations/{id} answers
+        # 404 (verified on mvp 2026-07-31), so the entity declared `read` and could
+        # not do it. The id filter on the list is the lookup this core already uses
+        # to resolve a location for a booking; reuse it instead of dropping `read`.
+        row = await resolve_location_row(
+            handle, base_url=base_url, headers=self._headers(token, accept_language), client=client
+        )
+        if row is None:
+            return self._json(404, {"title": f"StorageLocation {handle} not found"})
+        resp = self._json(200, {"data": self.map_read(row)})
+        return await self._with_contents(resp, handle, base_url, token, accept_language, client)
+
+    async def _by_warehouse(  # noqa: ANN001
+        self, warehouse_id, query, base_url, token, accept_language, client
+    ) -> AdapterResponse:
+        from .stock_shared import get_json
+
+        page, per_page = self._query_paging(query)
+        size = max(10, min(50, per_page))  # v1 rejects sizes outside 10..50
+        status, payload = await get_json(
+            f"{base_url.rstrip('/')}/api/v1/warehouses/{warehouse_id}/storageLocations",
+            [("page[number]", str(page)), ("page[size]", str(size))],
+            self._headers(token, accept_language),
+            client,
+        )
+        if status >= 400:
+            return self._json(
+                status,
+                {
+                    "title": f"storageLocation: warehouse {warehouse_id} not readable",
+                    "detail": payload if isinstance(payload, dict) else None,
+                },
+            )
+        rows = (payload.get("data") if isinstance(payload, dict) else None) or []
+        mapped = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            # The scoped collection may omit the warehouse (it is implied by the
+            # path); the model always carries it, so put it back.
+            if not row.get("warehouse"):
+                row = {**row, "warehouse": {"id": warehouse_id}}
+            mapped.append(self.map_read(row))
+        return self._json(200, self._list_envelope(mapped, payload, query))
+
+    async def _with_contents(  # noqa: ANN001
+        self, resp, handle, base_url, token, accept_language, client
+    ) -> AdapterResponse:
+        """``contents`` = what StockLevel reports for this location."""
+        from .stock_level import StockLevelAdapter
+
+        try:
+            body = json.loads(resp.content or b"{}")
+        except ValueError:
+            return resp
+        record = body.get("data") if isinstance(body, dict) else None
+        if not isinstance(record, dict):
+            return resp
+        levels = await StockLevelAdapter().request(
+            method="GET",
+            handle=None,
+            query=[
+                ("filter[0][key]", "storageLocation"),
+                ("filter[0][op]", "equals"),
+                ("filter[0][value]", str(handle)),
+                ("page[number]", "1"),
+                ("page[size]", "50"),
+            ],
+            body=None,
+            base_url=base_url,
+            token=token,
+            accept_language=accept_language,
+            client=client,
+        )
+        if levels.status_code >= 400:
+            return resp  # leave contents empty rather than claim the bin is empty
+        try:
+            rows = json.loads(levels.content or b"{}").get("data") or []
+        except ValueError:
+            return resp
+        record["contents"] = [
+            {
+                "product": r.get("product"),
+                "batch": r.get("batch"),
+                "quantity": r.get("quantity"),
+                "reserved": r.get("reserved"),
+            }
+            for r in rows
+            if isinstance(r, dict)
+        ]
+        return self._json(200, body)
 
     # ---- action dispatch --------------------------------------------------
     _STOCK_ACTIONS = (

@@ -1319,11 +1319,11 @@
         "reason": "Location kind (picking/bulk/inbound/returns/quarantine) and picking order drive WMS routing — the v1 list exposes only id/designation/warehouse."
       },
       {
-        "field": "contents",
+        "field": "contents.reserved",
         "ops": [
           "read"
         ],
-        "reason": "Location contents (product × batch × quantity/reserved) are readable per location via the v2 items endpoint — the StockLevel projection composes exactly that (filter[storageLocation]); wiring it into this collection field is the remaining step. Reserved per location stays unavailable upstream."
+        "reason": "Location contents are composed from the StockLevel projection now; the reserved portion per location stays unavailable — upstream reports reservations only as a product total."
       },
       {
         "field": "capacity",
