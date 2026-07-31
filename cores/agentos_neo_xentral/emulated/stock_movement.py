@@ -85,10 +85,12 @@ class StockMovementAdapter(FacadeAdapterBase):
         # a failed round-trip to learn what the contract can state directly.
         operations=("create",),
         description=(
-            "Books stock (receipt / issue / transfer / correction). Movements CANNOT "
-            "be read back — Xentral has no stock-ledger API; verify a booking's effect "
-            "via StockLevel (per location) or Product.stock (total). Deltas are not "
-            "retry-safe; for a repeatable write use correction + setQuantityTo."
+            "Low-level booking primitive. PREFER the named StorageLocation actions "
+            "(putaway / stockRemoval / stockTransfer / inventoryCount / "
+            "stockAdjustment) — same orchestration, but each with its own command "
+            "schema and a stock-level read-back. Movements CANNOT be read back: "
+            "Xentral has no stock-ledger API, so verify an effect via StockLevel "
+            "(per location) or Product.stock (total)."
         ),
     )
     v3_path = "/api/v3/stockMovements"  # proposed endpoint — 404 until built

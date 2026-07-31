@@ -80,10 +80,13 @@ def test_every_dead_entity_says_why_in_its_catalogue_description():
         assert len(desc) > 40
 
 
-def test_stock_movement_description_names_the_read_back_and_retry_path():
+def test_stock_movement_description_names_the_read_back_and_the_preferred_surface():
+    """create stays as the primitive, but must route a caller to the named
+    warehouse actions (ADR-017) rather than being the obvious first choice."""
     desc = StockMovementAdapter.manifest.description
     assert "StockLevel" in desc  # where the effect is verified
-    assert "setQuantityTo" in desc  # the retry-safe write
+    assert "inventoryCount" in desc  # the retry-safe write, now an action
+    assert "PREFER" in desc
 
 
 def test_writes_still_reach_the_orchestrator():
