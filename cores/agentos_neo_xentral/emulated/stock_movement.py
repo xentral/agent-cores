@@ -15,9 +15,13 @@ write-orchestrator:
 
 The model references product/location by our speaking ids; upstream wants
 ``product.sku`` and warehouse+location numerics, so the orchestrator resolves
-both through this core's own Product/StorageLocation adapters. There is no
-read-back (no ledger API): a successful booking answers 201 with the echoed
-movement (id-less) — the effect is visible in Product.stock immediately.
+both through this core's own Product/StorageLocation adapters.
+
+A successful booking answers 201 with the echoed movement carrying the id from
+the upstream ``Location`` header (the item endpoints answer with an empty body —
+same shape as the v2 product writes). The MOVEMENT itself still cannot be read
+back (no ledger API, docs/05 #1); its EFFECT can, via ``stockLevel`` for the
+touched location and ``Product.stock`` for the total.
 """
 
 from __future__ import annotations
@@ -30,6 +34,7 @@ import httpx
 from entity_registry.core_sdk import AdapterResponse, EmulationManifest
 
 from .base import RO, FacadeAdapterBase, prop
+from .stock_shared import resolve_location_pair
 
 _TYPE_OPTIONS = [
     {"value": v, "label": v.capitalize()} for v in ("receipt", "issue", "transfer", "correction")
@@ -44,8 +49,19 @@ def _ref_id(value: Any) -> str | None:
     return value if isinstance(value, str) and value else None
 
 
-def _numeric(speaking_id: str) -> str:
-    return speaking_id.split("_", 1)[1] if "_" in speaking_id else speaking_id
+def _id_from_location(header: str | None) -> str | None:
+    """The created resource's id out of a ``Location`` header.
+
+    The v1 item endpoints answer 200/201 with an EMPTY body and put the new
+    resource's URI in ``Location`` (same shape as v2 products — see
+    ProductAdapter._send). Only a numeric last segment is accepted: a header that
+    points back at the collection (``…/items``) must not turn into a fabricated
+    id like ``stm_items``.
+    """
+    if not header:
+        return None
+    tail = header.rstrip("/").rsplit("/", 1)[-1]
+    return tail if tail.isdigit() else None
 
 
 class StockMovementAdapter(FacadeAdapterBase):
@@ -207,35 +223,13 @@ class StockMovementAdapter(FacadeAdapterBase):
     async def _resolve_location(
         self, loc_id: str, base_url, token, accept_language, client
     ) -> tuple[str, str] | None:
-        """``loc_…`` -> (warehouseId, storageLocationId) numerics. v1 has no
-        show route — the id filter on the list is the lookup."""
-        numeric = _numeric(loc_id)
-        url = f"{base_url.rstrip('/')}/api/v1/storageLocations"
-        params = [
-            ("page[number]", "1"),
-            ("page[size]", "10"),
-            ("filter[0][key]", "id"),
-            ("filter[0][op]", "equals"),
-            ("filter[0][value]", numeric),
-        ]
-        headers = self._headers(token, accept_language)
-
-        async def _do(c: httpx.AsyncClient) -> httpx.Response:
-            return await c.get(url, params=params, headers=headers)
-
-        if client is None:
-            async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
-                resp = await _do(c)
-        else:
-            resp = await _do(client)
-        if resp.status_code >= 400:
-            return None
-        try:
-            rows = resp.json().get("data") or []
-        except ValueError:
-            return None
-        wh = (rows[0].get("warehouse") or {}).get("id") if rows else None
-        return (str(wh), numeric) if wh else None
+        """``loc_…`` -> (warehouseId, storageLocationId) numerics."""
+        return await resolve_location_pair(
+            loc_id,
+            base_url=base_url,
+            headers=self._headers(token, accept_language),
+            client=client,
+        )
 
     async def _items_call(
         self,
@@ -248,7 +242,9 @@ class StockMovementAdapter(FacadeAdapterBase):
         warehouse_id: str,
         location_id: str,
         payload: dict[str, Any],
-    ) -> tuple[int, Any]:
+    ) -> tuple[int, Any, str | None]:
+        """Returns ``(status, body, locationHeader)`` — the header carries the
+        created resource's URI and is the ONLY identity these endpoints emit."""
         url = (
             f"{base_url.rstrip('/')}/api/v1/warehouses/{warehouse_id}"
             f"/storageLocations/{location_id}/items"
@@ -263,10 +259,11 @@ class StockMovementAdapter(FacadeAdapterBase):
                 resp = await _do(c)
         else:
             resp = await _do(client)
+        location = resp.headers.get("Location") or resp.headers.get("location")
         try:
-            return resp.status_code, resp.json()
+            return resp.status_code, resp.json(), location
         except ValueError:
-            return resp.status_code, {}
+            return resp.status_code, {}, location
 
     async def _location_quantity(
         self, loc: tuple[str, str], sku: str, base_url, token, accept_language, client
@@ -466,8 +463,9 @@ class StockMovementAdapter(FacadeAdapterBase):
             )
 
         done: list[tuple[str, tuple[str, str]]] = []
+        booked_id: str | None = None
         for http_method, loc in steps:
-            st, resp = await self._items_call(
+            st, resp, location_header = await self._items_call(
                 base_url,
                 token,
                 accept_language,
@@ -484,7 +482,7 @@ class StockMovementAdapter(FacadeAdapterBase):
                 if done:
                     prev_method, prev_loc = done[-1]
                     comp_method = "POST" if prev_method == "PATCH" else "PATCH"
-                    comp_st, _ = await self._items_call(
+                    comp_st, _, _ = await self._items_call(
                         base_url,
                         token,
                         accept_language,
@@ -504,7 +502,17 @@ class StockMovementAdapter(FacadeAdapterBase):
                         **detail,
                     },
                 )
+            # The LAST successful call owns the identity: a transfer books out and
+            # then in, and the record this facade returns is the arrival.
+            booked_id = _id_from_location(location_header) or booked_id
             done.append((http_method, loc))
 
-        echo = {**model, "object": "stockMovement", "id": None}
+        # Identity comes from the upstream Location header — the item endpoints
+        # answer with an empty body. Without it the id stays null rather than
+        # being invented; a caller can then tell "no identity" from "id 0".
+        echo = {
+            **model,
+            "object": "stockMovement",
+            "id": (f"stm_{booked_id}" if booked_id else None),
+        }
         return self._json(201, {"data": echo})
