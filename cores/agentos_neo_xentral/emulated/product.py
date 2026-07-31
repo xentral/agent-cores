@@ -94,14 +94,51 @@ def _valid_on(row: dict[str, Any], today: date) -> bool:
     return not (end and today > end)
 
 
+# The stock block's keys, in emit order. Shared so the "no stock data" fallback
+# in map_read cannot drift out of sync with what map_stock produces — a caller
+# that sees a key on one product and not on another cannot tell absence from
+# "this product has none".
+_STOCK_KEYS = (
+    "available",
+    "physical",
+    "reserved",
+    "openSalesOrders",
+    "producible",
+    "correction",
+    "calculated",
+    "pseudo",
+    "incoming",
+    "belowMinimum",
+)
+
+
 def map_stock(payload: Any, minimum: Any) -> dict[str, Any] | None:
     """``/products/{id}/stocks`` totals → the model's stock block.
 
-    ``incoming`` has no counterpart upstream — the totals cover physical,
-    sellable, reserved, correction, pseudo, openSalesOrders, calculated and
-    producible — so it stays None instead of borrowing an approximate field.
-    ``belowMinimum`` is derived against the product's own minimum stock, and is
-    None when either side is unknown rather than defaulting to False.
+    The endpoint computes EIGHT figures and this used to surface two of them.
+    ``available`` (= upstream ``sellable``) is the right number for "may I sell
+    this", but it is NOT what lies on the shelf, and a reader had no way to see
+    the difference — nor any of the other figures the same call already carried.
+    They are all mapped now, under names that cannot be confused:
+
+      physical         what is actually on the shelf
+      available        sellable — what may still be sold
+      reserved         committed to orders
+      openSalesOrders  demanded by open orders, not yet shipped
+      producible       how many could be built from components on hand
+      correction       manual up/down adjustment applied before publishing
+      calculated       the figure after that correction
+      pseudo           a formula-driven stand-in figure; null when unconfigured
+
+    ``correction``/``calculated``/``pseudo`` are publication mechanics, not
+    physical facts — Xentral documents them only for the sales-channel block,
+    so their field descriptions say what they are and their arithmetic is left
+    unasserted rather than guessed.
+
+    ``incoming`` still has no counterpart upstream, so it stays None instead of
+    borrowing an approximate field. ``belowMinimum`` is derived against the
+    product's own minimum stock, and is None when either side is unknown rather
+    than defaulting to False.
     """
     data = payload.get("data") if isinstance(payload, dict) else None
     totals = data.get("totals") if isinstance(data, dict) else None
@@ -113,7 +150,13 @@ def map_stock(payload: Any, minimum: Any) -> dict[str, Any] | None:
         below = bool(available < minimum)
     return {
         "available": _num(available),
+        "physical": _num(totals.get("physical")),
         "reserved": _num(totals.get("reserved")),
+        "openSalesOrders": _num(totals.get("openSalesOrders")),
+        "producible": _num(totals.get("producible")),
+        "correction": _num(totals.get("correction")),
+        "calculated": _num(totals.get("calculated")),
+        "pseudo": _num(totals.get("pseudo")),
         "incoming": None,
         "belowMinimum": below,
     }
@@ -1039,10 +1082,99 @@ class ProductAdapter(FacadeAdapterBase):
                 **RO,
                 section="stock",
                 properties={
-                    "available": prop("integer", "Available", **RO),
-                    "reserved": prop("integer", "Reserved", **RO),
-                    "incoming": prop("integer", "Incoming", **RO),
-                    "belowMinimum": prop("boolean", "Below minimum", **RO),
+                    "available": prop(
+                        "decimal",
+                        "Available",
+                        **RO,
+                        description=(
+                            "What may still be sold (upstream 'sellable'). NOT what lies on "
+                            "the shelf — see physical — and NOT simply physical minus "
+                            "reserved: demand from open sales orders is deducted too, and "
+                            "the result is floored at 0. Observed on mvp: physical 6, "
+                            "reserved 1, openSalesOrders 3 → available 3."
+                        ),
+                    ),
+                    "physical": prop(
+                        "decimal",
+                        "Physical",
+                        **RO,
+                        description="What is actually on the shelf, across all warehouses.",
+                    ),
+                    "reserved": prop(
+                        "decimal",
+                        "Reserved",
+                        **RO,
+                        description=(
+                            "The quantity Xentral reports as committed. Do NOT compute "
+                            "availability from it: available deducts open order demand, not "
+                            "this figure — observed physical 6 / reserved 1 / available 3. "
+                            "What exactly Xentral counts here is not documented upstream."
+                        ),
+                    ),
+                    "openSalesOrders": prop(
+                        "decimal",
+                        "Open sales orders",
+                        **RO,
+                        description="Quantity demanded by open sales orders, not yet shipped.",
+                    ),
+                    "producible": prop(
+                        "decimal",
+                        "Producible",
+                        **RO,
+                        description=(
+                            "How many could be built from the components on hand: the "
+                            "minimum over the bill of materials, computed on each "
+                            "component's AVAILABLE quantity — not its physical stock. "
+                            "Null for a product without a bill of materials. Verified on "
+                            "mvp: components at available 17 and 3 → producible 3, while "
+                            "the constrained component's physical stock was 6."
+                        ),
+                    ),
+                    "correction": prop(
+                        "decimal",
+                        "Correction",
+                        **RO,
+                        description=(
+                            "Manual up/down adjustment applied to the stock figure before it "
+                            "is published (e.g. a safety buffer held back from a shop). A "
+                            "publication mechanic, not a physical fact."
+                        ),
+                    ),
+                    "calculated": prop(
+                        "decimal",
+                        "Calculated",
+                        **RO,
+                        description=(
+                            "Xentral's own derived stock figure. The spec's example suggests "
+                            "physical + correction, but every value measured on mvp tracked "
+                            "`available` instead (0/3/17). Undocumented upstream — prefer "
+                            "physical or available, whichever the question actually needs."
+                        ),
+                    ),
+                    "pseudo": prop(
+                        "decimal",
+                        "Pseudo",
+                        **RO,
+                        description=(
+                            "A formula-driven stand-in figure reported instead of the real "
+                            "one; null when none is configured."
+                        ),
+                    ),
+                    "incoming": prop(
+                        "decimal",
+                        "Incoming",
+                        **RO,
+                        description="Always null — Xentral computes no inbound figure.",
+                    ),
+                    "belowMinimum": prop(
+                        "boolean",
+                        "Below minimum",
+                        **RO,
+                        description=(
+                            "available < logistics.minimumStockQuantity. Null when either "
+                            "side is unknown — never defaulted to false."
+                        ),
+                    ),
                 },
             ),
             "production": prop(
@@ -1275,7 +1407,7 @@ class ProductAdapter(FacadeAdapterBase):
                 "serialNumbers": r.get("serialNumberTracking"),
                 "bestBefore": r.get("hasBestBeforeDate"),
             },
-            "stock": {"available": None, "reserved": None, "incoming": None, "belowMinimum": None},
+            "stock": dict.fromkeys(_STOCK_KEYS),
             "production": {
                 "mode": _production_mode(r),
                 "hasBillOfMaterials": r.get("hasBillOfMaterials"),

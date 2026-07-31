@@ -78,8 +78,56 @@ def _read(adapter: ProductAdapter, client: _FakeClient, *, handle: str | None = 
 
 
 def test_stock_totals_map_to_the_model_block():
-    got = map_stock({"data": {"totals": {"sellable": 75.0, "reserved": 20.0}}}, 100)
-    assert got == {"available": 75, "reserved": 20, "incoming": None, "belowMinimum": True}
+    """All eight upstream figures are surfaced. `available` is `sellable` — the
+    number for "may I sell this" — and `physical` is what lies on the shelf; the
+    two differ, and a reader used to see only the first with no way to tell."""
+    got = map_stock(
+        {
+            "data": {
+                "totals": {
+                    "pseudo": None,
+                    "sellable": 75.0,
+                    "reserved": 20.0,
+                    "correction": -5.0,
+                    "physical": 100.5,
+                    "openSalesOrders": 12.3,
+                    "calculated": 95.5,
+                    "producible": 4.0,
+                }
+            }
+        },
+        100,
+    )
+    assert got == {
+        "available": 75,
+        "physical": 100.5,
+        "reserved": 20,
+        "openSalesOrders": 12.3,
+        "producible": 4,
+        "correction": -5,
+        "calculated": 95.5,
+        "pseudo": None,
+        "incoming": None,
+        "belowMinimum": True,
+    }
+
+
+def test_figures_the_upstream_omits_are_none_not_zero():
+    """A missing figure must not read as "there are none of these"."""
+    got = map_stock({"data": {"totals": {"sellable": 5}}}, None)
+    assert got["available"] == 5
+    for key in ("physical", "openSalesOrders", "producible", "correction", "calculated"):
+        assert got[key] is None, key
+
+
+def test_the_empty_block_carries_the_same_keys_as_a_filled_one():
+    """map_read falls back to an all-null block when a product has no stock data.
+    If the two shapes drifted, a caller could not tell an absent key from a
+    product that genuinely has no figure."""
+    from xentral_entity_cores.agentos_neo_xentral.emulated.product import _STOCK_KEYS
+
+    filled = map_stock({"data": {"totals": {"sellable": 1}}}, None)
+    assert set(filled) == set(_STOCK_KEYS)
 
 
 def test_below_minimum_is_none_when_either_side_is_unknown():
@@ -183,7 +231,10 @@ def test_detail_read_fills_all_sections():
     )
     body = _read(_adapter({"id": 7, "name": "Widget", "minimumStockLevel": 20}), client)
     rec = body["data"]
-    assert rec["stock"] == {"available": 12, "reserved": 3, "incoming": None, "belowMinimum": True}
+    assert rec["stock"]["available"] == 12
+    assert rec["stock"]["reserved"] == 3
+    assert rec["stock"]["belowMinimum"] is True
+    assert rec["stock"]["incoming"] is None
     assert rec["bom"]["items"][0]["product"]["id"] == "prd_9"
     assert rec["prices"]["sale"] == {"amount": "4.50", "currency": "EUR"}
     assert rec["properties"][0]["property"]["id"] == "pprop_5"
