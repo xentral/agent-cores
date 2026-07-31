@@ -1080,6 +1080,13 @@ class SalesOrderAdapter(FacadeAdapterBase):
                 method, handle, query, body, base_url, token, accept_language, client
             )
 
+        # The compose path splits `items` off before delegating, so map_write never
+        # sees them — and with an items-only body it is not reached at all. Check the
+        # item keys here, else an unsupported one is silently dropped on UPDATE.
+        item_rejects = rejected_item_keys(items, _item_props())
+        if item_rejects:
+            return self.rejected_response(item_rejects)
+
         rest = {k: v for k, v in model.items() if k != "items"}
         if rest:
             resp = await super()._write(

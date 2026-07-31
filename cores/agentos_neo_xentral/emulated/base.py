@@ -890,6 +890,23 @@ class FacadeAdapterBase:
         return {"data": mapped, "meta": meta, "extra": extra}
 
     # ---- write orchestration --------------------------------------------
+    def rejected_response(self, rejected: set[str]) -> AdapterResponse:
+        """The 409 a write earns by naming fields the upstream cannot write today.
+        A method rather than an inline body because adapters that compose a write
+        outside the default path (salesOrder splits its line items off before
+        delegating) must answer identically instead of dropping the rejection."""
+        return self._json(
+            409,
+            {
+                "title": f"{self.manifest.key}: fields not writable via the current Xentral API",
+                "detail": (
+                    "These fields are read-only upstream today (ADR-014: no overlay). "
+                    "They are tracked as blue wishes in priorities.json."
+                ),
+                "fields": sorted(rejected),
+            },
+        )
+
     def map_write(
         self, model: dict[str, Any], *, creating: bool
     ) -> tuple[dict[str, Any], set[str]]:
@@ -947,17 +964,7 @@ class FacadeAdapterBase:
             return self._json(400, {"title": "body must be a JSON object"})
         v3_payload, rejected = self.map_write(model, creating=(method == "POST"))
         if rejected:
-            return self._json(
-                409,
-                {
-                    "title": f"{self.manifest.key}: fields not writable via the current Xentral API",
-                    "detail": (
-                        "These fields are read-only upstream today (ADR-014: no overlay). "
-                        "They are tracked as blue wishes in priorities.json."
-                    ),
-                    "fields": sorted(rejected),
-                },
-            )
+            return self.rejected_response(rejected)
         if any(k == "dryRun" and v in ("true", "1") for k, v in query):
             return self._json(200, {"data": {"dryRun": True, "wouldSend": v3_payload}})
         up_handle = handle.split("_", 1)[1] if handle and "_" in handle else handle

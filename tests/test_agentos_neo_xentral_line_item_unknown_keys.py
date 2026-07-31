@@ -10,6 +10,8 @@ a read-modify-write round-trip stays quiet.
 
 from __future__ import annotations
 
+import asyncio
+import json
 from typing import Any
 
 from xentral_entity_cores.agentos_neo_xentral.emulated.credit_note import CreditNoteAdapter
@@ -85,6 +87,47 @@ def test_reported_on_update_too_where_items_are_processed():
     assert "items.serialNumbers" in _rejected(
         SalesOrderAdapter, {**_LINE, "serialNumbers": ["SN-1"]}, creating=False
     )
+
+
+def test_salesorder_compose_path_answers_409_not_a_silent_drop():
+    """map_write returning the rejection is not enough: salesOrder's UPDATE splits
+    `items` off before delegating, and with an items-only body never calls map_write
+    at all. The compose path has to answer 409 itself — this is the live behaviour
+    that stayed silent while the unit-level map_write check already passed."""
+    a = SalesOrderAdapter()
+    calls: list = []
+
+    async def _fake_get(base_url, token, *, handle, query, accept_language, client):  # noqa: ANN001, ANN202
+        calls.append("get")
+        return 200, {"data": {"id": 22932, "financials": {"currency": "EUR"}, "lineItems": []}}
+
+    async def _fake_li_call(method, url, token, al, client, payload=None):  # noqa: ANN001, ANN202
+        calls.append(method)
+        return 200, {"data": {}}
+
+    a._get = _fake_get  # type: ignore[method-assign]
+    a._li_call = _fake_li_call  # type: ignore[method-assign]
+
+    resp = asyncio.run(
+        a.request(
+            method="PATCH",
+            handle="so_22932",
+            query=[],
+            body=json.dumps(
+                {"items": [{"id": "151012", "purchase_price": 9.99, "serialNumbers": ["SN-1"]}]}
+            ).encode(),
+            base_url="https://x.test",
+            token="t",
+            accept_language=None,
+            client=None,
+        )
+    )
+    assert resp.status_code == 409, resp.body
+    fields = json.loads(resp.content)["fields"]
+    assert "items.purchase_price" in fields
+    assert "items.serialNumbers" in fields
+    # and it refuses BEFORE touching the sub-resource
+    assert "POST" not in calls and "PATCH" not in calls and "DELETE" not in calls
 
 
 def test_non_dict_items_do_not_crash_the_write():
