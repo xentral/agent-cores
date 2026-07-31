@@ -34,7 +34,12 @@
     "contacts.mobile": "Contact's mobile number.",
     "channels": "Per-sales-channel links: the partner's external id in each connected shop / marketplace.",
     "channels.channel": "The connected sales channel.",
-    "channels.externalId": "The partner's id in that channel's external system."
+    "channels.externalId": "The partner's id in that channel's external system.",
+    "items.purchasePrice": "Net cost price (EK) of this line. The currency must match the document currency. Setting it overrides the price-list EK and is what the contribution margin is calculated from. Supplier price lists live on the PurchasePrice entity instead.",
+    "items.purchasePrice.amount": "Net cost amount per unit.",
+    "items.purchasePrice.currency": "Currency of the cost price — must equal the document currency.",
+    "items.contributionMargin": "Contribution margin of this line as a PERCENT of its net revenue ((net - purchase price) / net x 100), computed upstream from the line's purchasePrice — not an amount.",
+    "items.totals": "Computed totals for the whole line quantity (read-only)."
   },
   "Customer": {
     "number": "Human-facing customer number (e.g. K-10023).",
