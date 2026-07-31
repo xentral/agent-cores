@@ -390,6 +390,8 @@ class ProductAdapter(FacadeAdapterBase):
         "status": "isDisabled",
         "project": "project.id",
         "variant.isMatrix": "isMatrixProduct",
+        "identifiers.ean": "ean",
+        "identifiers.manufacturerNumber": "manufacturerProductNumber",
     }
     filter_value_maps = {"status": {"active": "false", "inactive": "true"}}
     preview_template = "{{name}}"
@@ -944,7 +946,8 @@ class ProductAdapter(FacadeAdapterBase):
                 section="general",
                 filterable=True,
             ),
-            "tags": tags_prop(writable=False),
+            # v3 products rejects a tags filter (verified on mvp).
+            "tags": tags_prop(writable=False, filterable=False),
             "identifiers": prop(
                 "embedded",
                 "Identifiers",

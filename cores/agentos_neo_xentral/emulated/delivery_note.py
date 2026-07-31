@@ -114,6 +114,7 @@ class DeliveryNoteAdapter(FacadeAdapterBase):
     include = "lineItems,lineItems.product,project,address,tags"
     preview_template = "{{number}}"
     query_aliases = {
+        "items.product": "lineItems.product.id",
         "number": "documentNumber",
         "dates.issued": "documentDate",
         "customer": "address.id",
@@ -246,7 +247,10 @@ class DeliveryNoteAdapter(FacadeAdapterBase):
                 reference="Channel",
                 renderProperty="name",
                 section="general",
-                filterable=True,
+                description=(
+                    "Not filterable — the upstream list endpoint rejects a channel "
+                    "filter on this document (verified on mvp)."
+                ),
             ),
             "project": prop(
                 "reference",

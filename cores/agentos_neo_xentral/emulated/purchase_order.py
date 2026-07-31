@@ -71,6 +71,7 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
     include = "lineItems,lineItems.product,project,address,tags"
     preview_template = "{{number}}"
     query_aliases = {
+        "items.product": "lineItems.product.id",
         "number": "documentNumber",
         "dates.issued": "documentDate",
         "supplier": "address.id",
@@ -203,7 +204,9 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
                 "References",
                 section="references",
                 properties={
-                    "ourCustomerNumber": prop("string", "Our customer number", filterable=True),
+                    "ourCustomerNumber": prop(
+                        "string", "Our customer number", description="Not filterable — the upstream list endpoint rejects it (verified on mvp)."
+                    ),
                     "supplierOfferNumber": prop("string", "Supplier offer number", filterable=True),
                 },
             ),

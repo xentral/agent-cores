@@ -198,6 +198,7 @@ class SalesOrderAdapter(FacadeAdapterBase):
     include = "lineItems,lineItems.product,project,address,tags,trafficLights"
     preview_template = "{{number}}"
     query_aliases = {
+        "items.product": "lineItems.product.id",
         "number": "documentNumber",
         "dates.issued": "documentDate",
         "customer": "address.id",
@@ -207,7 +208,6 @@ class SalesOrderAdapter(FacadeAdapterBase):
         "references.externalNumber": "externalOrderNumber",
         "references.externalId": "externalOrderId",
         "dates.requestedDelivery": "desiredDeliveryDate",
-        "channel": "salesChannel.id",
     }
     filter_value_maps = {
         "status": {"confirmed": "released", "fulfilled": "completed", "closed": "completed"}
@@ -408,7 +408,10 @@ class SalesOrderAdapter(FacadeAdapterBase):
                 reference="Channel",
                 renderProperty="name",
                 section="general",
-                filterable=True,
+                description=(
+                    "Not filterable — the upstream list endpoint rejects a channel "
+                    "filter on this document (verified on mvp)."
+                ),
             ),
             "project": prop(
                 "reference",
@@ -498,7 +501,9 @@ class SalesOrderAdapter(FacadeAdapterBase):
                             "discountDays": prop("integer", "Discount days"),
                         },
                     ),
-                    "status": prop("select", "Payment status", **RO, filterable=True),
+                    "status": prop(
+                        "select", "Payment status", **RO, description="Not filterable — the upstream list endpoint rejects it (verified on mvp)."
+                    ),
                 },
             ),
             "shipping": prop(
@@ -513,7 +518,9 @@ class SalesOrderAdapter(FacadeAdapterBase):
                         renderProperty="name",
                         **_CU,
                     ),
-                    "status": prop("select", "Shipping status", **RO, filterable=True),
+                    "status": prop(
+                        "select", "Shipping status", **RO, description="Not filterable — the upstream list endpoint rejects it (verified on mvp)."
+                    ),
                     "cost": prop(
                         "embedded",
                         "Cost",
