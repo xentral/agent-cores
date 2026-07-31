@@ -629,8 +629,26 @@ class SalesOrderAdapter(FacadeAdapterBase):
                 },
             ),
             "customFields": prop("embedded", "Custom fields", section="general", properties={}),
-            "createdAt": prop("datetime", "Created at", **RO, sortable=True),
-            "updatedAt": prop("datetime", "Updated at", **RO, sortable=True),
+            "createdAt": prop(
+                "datetime",
+                "Created at",
+                **RO,
+                sortable=True,
+                filterable=True,
+                description="When the record was created. Filterable.",
+            ),
+            "updatedAt": prop(
+                "datetime",
+                "Updated at",
+                **RO,
+                sortable=True,
+                filterable=True,
+                description=(
+                    "When the record last changed. Filterable — this is the key for "
+                    "an incremental sync: ask for what changed since the last run "
+                    "instead of paging the whole collection."
+                ),
+            ),
         }
 
     def map_read(self, r: dict[str, Any]) -> dict[str, Any]:

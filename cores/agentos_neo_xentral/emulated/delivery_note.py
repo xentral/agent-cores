@@ -114,6 +114,7 @@ class DeliveryNoteAdapter(FacadeAdapterBase):
     include = "lineItems,lineItems.product,project,address,tags"
     preview_template = "{{number}}"
     query_aliases = {
+        "documents.salesOrder": "salesOrder.id",
         "items.product": "lineItems.product.id",
         "number": "documentNumber",
         "dates.issued": "documentDate",
@@ -337,6 +338,11 @@ class DeliveryNoteAdapter(FacadeAdapterBase):
                         reference="SalesOrder",
                         renderProperty="number",
                         **RO,
+                        filterable=True,
+                        description=(
+                            "The sales order this document came from. Filterable — "
+                            "the way to ask which documents an order produced."
+                        ),
                     ),
                     "salesInvoices": prop(
                         "collection",
@@ -364,8 +370,26 @@ class DeliveryNoteAdapter(FacadeAdapterBase):
             ),
             "tags": tags_prop(writable=True),
             "customFields": prop("embedded", "Custom fields", section="general", properties={}),
-            "createdAt": prop("datetime", "Created at", **RO, sortable=True),
-            "updatedAt": prop("datetime", "Updated at", **RO, sortable=True),
+            "createdAt": prop(
+                "datetime",
+                "Created at",
+                **RO,
+                sortable=True,
+                filterable=True,
+                description="When the record was created. Filterable.",
+            ),
+            "updatedAt": prop(
+                "datetime",
+                "Updated at",
+                **RO,
+                sortable=True,
+                filterable=True,
+                description=(
+                    "When the record last changed. Filterable — this is the key for "
+                    "an incremental sync: ask for what changed since the last run "
+                    "instead of paging the whole collection."
+                ),
+            ),
         }
 
     def map_read(self, r: dict[str, Any]) -> dict[str, Any]:
