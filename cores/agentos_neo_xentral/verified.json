@@ -116,8 +116,8 @@
         "send": "pass"
       },
       "actionsNotes": {
-        "addTag": "reachable — 422: addTag requires a non-empty 'title'.",
-        "removeTag": "reachable — 422: removeTag requires a non-empty 'title'.",
+        "addTag": "fresh title 'verify-probe-7b41c0' attached — auto-create verified, net-zero",
+        "removeTag": "fresh title removed again — effect verified, net-zero",
         "send": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma"
       },
       "fields": {
@@ -170,6 +170,7 @@
           "update": "pass"
         },
         "createdAt": {
+          "filter": "pass",
           "read": "pass",
           "sort": "pass"
         },
@@ -197,7 +198,6 @@
           "update": "pass"
         },
         "dates.serviceDate": {
-          "filterNote": "no sample value on the test instance — filter not probed",
           "read": "pass"
         },
         "documents": {
@@ -215,10 +215,16 @@
         "items": {
           "read": "pass"
         },
+        "items.contributionMargin": {
+          "read": "pass"
+        },
         "items.description": {
+          "create": "fail",
+          "createNote": "sent on create but did not persist on the created record",
           "read": "pass"
         },
         "items.discountPercent": {
+          "create": "pass",
           "read": "pass"
         },
         "items.id": {
@@ -234,10 +240,21 @@
           "read": "pass"
         },
         "items.product": {
+          "create": "pass",
           "filterNote": "no sample value on the test instance — filter not probed",
           "read": "pass"
         },
+        "items.purchasePrice": {
+          "read": "pass"
+        },
+        "items.purchasePrice.amount": {
+          "read": "pass"
+        },
+        "items.purchasePrice.currency": {
+          "read": "pass"
+        },
         "items.quantity": {
+          "create": "pass",
           "read": "pass"
         },
         "items.quantity.unit": {
@@ -247,9 +264,20 @@
           "read": "pass"
         },
         "items.taxRate": {
+          "create": "pass",
+          "read": "pass"
+        },
+        "items.totals": {
+          "read": "pass"
+        },
+        "items.totals.gross": {
+          "read": "pass"
+        },
+        "items.totals.net": {
           "read": "pass"
         },
         "items.unitPrice": {
+          "create": "pass",
           "read": "pass"
         },
         "items.unitPrice.amount": {
@@ -344,17 +372,16 @@
           "read": "pass"
         },
         "updatedAt": {
+          "filter": "pass",
           "read": "pass",
           "sort": "pass"
         }
       },
       "processSteps": {
-        "cancel": "fail",
-        "issue": "pass"
+        "release": "pass"
       },
       "processStepsNotes": {
-        "cancel": "route not available (404): error",
-        "issue": "reachable — 409: Resource status invalid for requested operation"
+        "release": "reachable — 409: Resource status invalid for requested operation"
       }
     },
     "Customer": {
@@ -363,8 +390,8 @@
         "removeTag": "pass"
       },
       "actionsNotes": {
-        "addTag": "reachable — 422: addTag requires a non-empty 'title'.",
-        "removeTag": "reachable — 422: removeTag requires a non-empty 'title'."
+        "addTag": "fresh title 'verify-probe-d87d80' attached — auto-create verified, net-zero",
+        "removeTag": "fresh title removed again — effect verified, net-zero"
       },
       "fields": {
         "addresses": {
@@ -449,10 +476,28 @@
           "read": "pass",
           "update": "pass"
         },
+        "contacts.allowMarketingEmails": {
+          "read": "pass"
+        },
+        "contacts.birthday": {
+          "read": "pass"
+        },
+        "contacts.department": {
+          "read": "pass"
+        },
         "contacts.email": {
           "read": "pass"
         },
+        "contacts.fax": {
+          "read": "pass"
+        },
         "contacts.id": {
+          "read": "pass"
+        },
+        "contacts.internalNote": {
+          "read": "pass"
+        },
+        "contacts.language": {
           "read": "pass"
         },
         "contacts.mobile": {
@@ -464,7 +509,16 @@
         "contacts.phone": {
           "read": "pass"
         },
-        "contacts.role": {
+        "contacts.position": {
+          "read": "pass"
+        },
+        "contacts.remarks": {
+          "read": "pass"
+        },
+        "contacts.salutation": {
+          "read": "pass"
+        },
+        "contacts.subDepartment": {
           "read": "pass"
         },
         "contacts.title": {
@@ -479,6 +533,18 @@
           "sort": "pass"
         },
         "customFields": {
+          "read": "pass"
+        },
+        "customFields.key": {
+          "read": "pass"
+        },
+        "customFields.label": {
+          "read": "pass"
+        },
+        "customFields.type": {
+          "read": "pass"
+        },
+        "customFields.value": {
           "read": "pass"
         },
         "defaults": {
@@ -570,6 +636,9 @@
           "sort": "pass",
           "update": "pass"
         },
+        "notes": {
+          "read": "pass"
+        },
         "number": {
           "filter": "pass",
           "read": "pass",
@@ -628,10 +697,10 @@
         "removeTag": "pass"
       },
       "actionsNotes": {
-        "addTag": "reachable — 422: addTag requires a non-empty 'title'.",
+        "addTag": "fresh title 'verify-probe-39f37b' attached — auto-create verified, net-zero",
         "createReturn": "reachable — 400: line items must be present. {\"lineItems\": [\"line items must be present.\"]}",
-        "createSalesInvoice": "reachable — 400: All product line items must have a quantity greater than zero. {\"lineItems\": [\"All product line items must have a quantity greater than zero.\"]}",
-        "removeTag": "reachable — 422: removeTag requires a non-empty 'title'."
+        "createSalesInvoice": "reachable — 400: All product line items must reference an existing product. {\"lineItems\": [\"All product line items must reference an existing product.\"]}",
+        "removeTag": "fresh title removed again — effect verified, net-zero"
       },
       "fields": {
         "billingAddress": {
@@ -678,7 +747,6 @@
           "update": "pass"
         },
         "channel": {
-          "filterNote": "no sample value on the test instance — filter not probed",
           "read": "pass"
         },
         "costCenter": {
@@ -687,6 +755,7 @@
           "update": "pass"
         },
         "createdAt": {
+          "filter": "pass",
           "read": "pass",
           "sort": "pass"
         },
@@ -754,6 +823,7 @@
           "read": "pass"
         },
         "documents.salesOrder": {
+          "filterNote": "no sample value on the test instance — filter not probed",
           "read": "pass"
         },
         "id": {
@@ -775,6 +845,7 @@
           "read": "pass"
         },
         "items.description": {
+          "create": "pass",
           "read": "pass"
         },
         "items.id": {
@@ -790,10 +861,12 @@
           "read": "pass"
         },
         "items.product": {
+          "create": "pass",
           "filterNote": "no sample value on the test instance — filter not probed",
           "read": "pass"
         },
         "items.quantity": {
+          "create": "pass",
           "read": "pass"
         },
         "items.quantity.unit": {
@@ -859,6 +932,7 @@
           "update": "pass"
         },
         "updatedAt": {
+          "filter": "pass",
           "read": "pass",
           "sort": "pass"
         },
@@ -868,11 +942,13 @@
       },
       "processSteps": {
         "cancel": "pass",
-        "markDelivered": "pass"
+        "markDelivered": "pass",
+        "release": "pass"
       },
       "processStepsNotes": {
         "cancel": "reachable — 409: Resource status invalid for requested operation",
-        "markDelivered": "reachable — 409: Resource status invalid for requested operation"
+        "markDelivered": "reachable — 409: Resource status invalid for requested operation",
+        "release": "reachable — 409: Resource status invalid for requested operation"
       }
     },
     "DeliveryTerm": {
@@ -890,6 +966,12 @@
       }
     },
     "EmailAccount": {
+      "actions": {
+        "sendEmail": "pass"
+      },
+      "actionsNotes": {
+        "sendEmail": "reachable — 422: sendEmail requires command.to, .subject and .body."
+      },
       "fields": {
         "email": {
           "read": "pass"
@@ -1233,17 +1315,21 @@
           "read": "pass"
         },
         "minQuantity": {
-          "read": "pass"
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
         },
         "object": {
           "read": "pass"
         },
         "product": {
+          "create": "pass",
           "filter": "pass",
           "read": "pass"
         },
         "remark": {
-          "read": "pass"
+          "read": "pass",
+          "update": "pass"
         },
         "scope": {
           "read": "pass"
@@ -1258,13 +1344,18 @@
           "read": "pass"
         },
         "unitPrice.amount": {
-          "read": "pass"
+          "create": "pass",
+          "read": "pass",
+          "update": "fail",
+          "updateNote": "PATCH 400: Request payload validation failed. {\"price\": {\"amount\": [\"Field `amount` should be a valid string containing floating point number.\"]}}"
         },
         "unitPrice.amountGross": {
           "read": "pass"
         },
         "unitPrice.currency": {
-          "read": "pass"
+          "read": "pass",
+          "update": "fail",
+          "updateNote": "upstream accepted the write but the value did not persist"
         },
         "unitPrice.taxRate": {
           "read": "pass"
@@ -1273,14 +1364,22 @@
           "read": "pass"
         },
         "validFrom": {
-          "read": "pass"
+          "read": "pass",
+          "updateNote": "no sample date value — not probed (a null date cannot be restored)"
         },
         "validUntil": {
-          "read": "pass"
+          "read": "pass",
+          "update": "pass"
         }
       }
     },
     "Printer": {
+      "actions": {
+        "printDocument": "pass"
+      },
+      "actionsNotes": {
+        "printDocument": "reachable — 422: printDocument requires command.fileContent (base64 PDF)."
+      },
       "fields": {
         "active": {
           "read": "pass"
@@ -1318,6 +1417,386 @@
         "useCase": {
           "read": "pass"
         }
+      }
+    },
+    "Product": {
+      "fields": {
+        "bom": {
+          "read": "pass"
+        },
+        "bom.items": {
+          "read": "pass"
+        },
+        "bom.items.product": {
+          "read": "pass"
+        },
+        "bom.items.quantity": {
+          "read": "pass"
+        },
+        "bom.items.reference": {
+          "read": "pass"
+        },
+        "bom.items.type": {
+          "read": "pass"
+        },
+        "category": {
+          "read": "pass"
+        },
+        "createdAt": {
+          "read": "pass"
+        },
+        "customFields": {
+          "read": "pass"
+        },
+        "customFields.label": {
+          "read": "pass"
+        },
+        "customFields.number": {
+          "read": "pass"
+        },
+        "customFields.value": {
+          "read": "pass"
+        },
+        "description": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "documentDefaults": {
+          "read": "pass"
+        },
+        "documentDefaults.hidePrice": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "documentDefaults.noticeText": {
+          "read": "pass"
+        },
+        "documentDefaults.requiresCustomerApproval": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "identifiers": {
+          "read": "pass"
+        },
+        "identifiers.countryOfOrigin": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "identifiers.ean": {
+          "filter": "pass",
+          "read": "pass",
+          "search": "pass",
+          "update": "pass"
+        },
+        "identifiers.external": {
+          "read": "pass"
+        },
+        "identifiers.external.channel": {
+          "read": "pass"
+        },
+        "identifiers.external.id": {
+          "read": "pass"
+        },
+        "identifiers.hsCode": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "identifiers.manufacturerNumber": {
+          "filter": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "kind": {
+          "read": "pass"
+        },
+        "logistics": {
+          "read": "pass"
+        },
+        "logistics.dimensions": {
+          "read": "pass"
+        },
+        "logistics.dimensions.height": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "logistics.dimensions.length": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "logistics.dimensions.unit": {
+          "read": "pass",
+          "update": "fail",
+          "updateNote": "upstream accepted the write but the value did not persist"
+        },
+        "logistics.dimensions.width": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "logistics.minimumOrderQuantity": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "logistics.minimumStockQuantity": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "logistics.netWeight": {
+          "read": "pass"
+        },
+        "logistics.netWeight.unit": {
+          "read": "pass",
+          "update": "fail",
+          "updateNote": "upstream accepted the write but the value did not persist"
+        },
+        "logistics.netWeight.value": {
+          "read": "pass",
+          "updateNote": "no sample numeric value — not probed (a null number cannot be restored)"
+        },
+        "logistics.packagingUnits": {
+          "read": "pass"
+        },
+        "logistics.packagingUnits.quantity": {
+          "read": "pass"
+        },
+        "logistics.packagingUnits.unit": {
+          "read": "pass"
+        },
+        "logistics.weight": {
+          "read": "pass"
+        },
+        "logistics.weight.unit": {
+          "read": "pass",
+          "update": "fail",
+          "updateNote": "upstream accepted the write but the value did not persist"
+        },
+        "logistics.weight.value": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "manufacturer": {
+          "read": "pass"
+        },
+        "manufacturer.name": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "manufacturer.website": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "name": {
+          "create": "pass",
+          "createNote": "created prd_61991 (labelled 'VT Verify') — no delete endpoint, left in place",
+          "filter": "pass",
+          "read": "pass",
+          "search": "pass",
+          "sort": "pass",
+          "update": "pass"
+        },
+        "number": {
+          "filter": "pass",
+          "read": "pass",
+          "search": "pass",
+          "sort": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "prices": {
+          "read": "pass"
+        },
+        "prices.purchase": {
+          "read": "pass"
+        },
+        "prices.purchase.amount": {
+          "create": "pass",
+          "read": "pass",
+          "update": "fail",
+          "updateNote": "PATCH 400: Request payload validation failed. {\"calculatedPurchasePrice\": {\"price\": {\"amount\": [\"Field `amount` should be a positive int, float or string formatted int or float.\"]}}}"
+        },
+        "prices.purchase.currency": {
+          "read": "pass",
+          "update": "fail",
+          "updateNote": "upstream accepted the write but the value did not persist"
+        },
+        "prices.purchase.source": {
+          "read": "pass"
+        },
+        "prices.sale": {
+          "read": "pass"
+        },
+        "prices.sale.amount": {
+          "create": "pass",
+          "read": "pass",
+          "update": "fail",
+          "updateNote": "upstream accepted the write but the value did not persist"
+        },
+        "prices.sale.currency": {
+          "read": "pass",
+          "update": "fail",
+          "updateNote": "upstream accepted the write but the value did not persist"
+        },
+        "production": {
+          "read": "pass"
+        },
+        "production.hasBillOfMaterials": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "production.mode": {
+          "create": "pass",
+          "read": "pass"
+        },
+        "project": {
+          "filter": "pass",
+          "read": "pass",
+          "update": "pass",
+          "updateNote": "only one project on the instance — write accepted, change not provable"
+        },
+        "properties": {
+          "read": "pass"
+        },
+        "properties.name": {
+          "read": "pass"
+        },
+        "properties.property": {
+          "read": "pass"
+        },
+        "properties.unit": {
+          "read": "pass"
+        },
+        "properties.value": {
+          "read": "pass"
+        },
+        "status": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "statusReason": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "stock": {
+          "read": "pass"
+        },
+        "stock.available": {
+          "read": "pass"
+        },
+        "stock.belowMinimum": {
+          "read": "pass"
+        },
+        "stock.calculated": {
+          "read": "pass"
+        },
+        "stock.correction": {
+          "read": "pass"
+        },
+        "stock.incoming": {
+          "read": "pass"
+        },
+        "stock.openSalesOrders": {
+          "read": "pass"
+        },
+        "stock.physical": {
+          "read": "pass"
+        },
+        "stock.producible": {
+          "read": "pass"
+        },
+        "stock.pseudo": {
+          "read": "pass"
+        },
+        "stock.reserved": {
+          "read": "pass"
+        },
+        "suppliers": {
+          "read": "pass"
+        },
+        "suppliers.isDefault": {
+          "read": "pass"
+        },
+        "suppliers.supplier": {
+          "read": "pass"
+        },
+        "suppliers.supplierProductNumber": {
+          "read": "pass"
+        },
+        "tags": {
+          "read": "pass"
+        },
+        "tax": {
+          "read": "pass"
+        },
+        "tax.profile": {
+          "read": "pass"
+        },
+        "tax.rate": {
+          "create": "pass",
+          "read": "pass"
+        },
+        "tracking": {
+          "read": "pass"
+        },
+        "tracking.batches": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "tracking.bestBefore": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "tracking.serialNumbers": {
+          "read": "pass",
+          "update": "fail",
+          "updateNote": "upstream accepted the write but the value did not persist"
+        },
+        "tracking.stock": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "unit": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "updatedAt": {
+          "filter": "pass",
+          "read": "pass",
+          "sort": "pass"
+        },
+        "variant": {
+          "read": "pass"
+        },
+        "variant.isMatrix": {
+          "filter": "fail",
+          "filterNote": "filter[variant.isMatrix] 400: Invalid value: False. Valid values are: true, false. {\"matrixprodukt\": [\"Invalid value: False. Valid values are: true, false.\"]}",
+          "read": "pass",
+          "update": "pass"
+        },
+        "variant.of": {
+          "read": "pass"
+        }
+      },
+      "processSteps": {
+        "activate": "pass",
+        "deactivate": "pass"
+      },
+      "processStepsNotes": {
+        "activate": "EXECUTED on the sampled record (200) — created/changed data",
+        "deactivate": "EXECUTED on the sampled record (200) — created/changed data"
       }
     },
     "ProductCategory": {
@@ -1616,8 +2095,8 @@
         "send": "pass"
       },
       "actionsNotes": {
-        "addTag": "reachable — 422: addTag requires a non-empty 'title'.",
-        "removeTag": "reachable — 422: removeTag requires a non-empty 'title'.",
+        "addTag": "fresh title 'verify-probe-1d4669' attached — auto-create verified, net-zero",
+        "removeTag": "fresh title removed again — effect verified, net-zero",
         "send": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma"
       },
       "fields": {
@@ -1641,6 +2120,7 @@
           "read": "pass"
         },
         "createdAt": {
+          "filter": "pass",
           "read": "pass",
           "sort": "pass"
         },
@@ -1759,10 +2239,12 @@
           "read": "pass"
         },
         "items.product": {
+          "create": "pass",
           "filterNote": "no sample value on the test instance — filter not probed",
           "read": "pass"
         },
         "items.quantity": {
+          "create": "pass",
           "read": "pass"
         },
         "items.quantity.unit": {
@@ -1772,15 +2254,19 @@
           "read": "pass"
         },
         "items.supplierProductName": {
+          "create": "pass",
           "read": "pass"
         },
         "items.supplierProductNumber": {
+          "create": "pass",
           "read": "pass"
         },
         "items.taxRate": {
+          "create": "pass",
           "read": "pass"
         },
         "items.unitPrice": {
+          "create": "pass",
           "read": "pass"
         },
         "items.unitPrice.amount": {
@@ -1825,10 +2311,12 @@
           "read": "pass"
         },
         "printSettings.requestConfirmation": {
-          "read": "pass"
+          "read": "pass",
+          "update": "pass"
         },
         "printSettings.withoutPrices": {
-          "read": "pass"
+          "read": "pass",
+          "update": "pass"
         },
         "project": {
           "create": "pass",
@@ -1839,7 +2327,6 @@
           "read": "pass"
         },
         "references.ourCustomerNumber": {
-          "filterNote": "no sample value on the test instance — filter not probed",
           "read": "pass"
         },
         "references.supplierOfferNumber": {
@@ -1874,6 +2361,7 @@
           "read": "pass"
         },
         "updatedAt": {
+          "filter": "pass",
           "read": "pass",
           "sort": "pass"
         },
@@ -1883,11 +2371,13 @@
       },
       "processSteps": {
         "cancel": "pass",
-        "close": "pass"
+        "close": "pass",
+        "release": "pass"
       },
       "processStepsNotes": {
         "cancel": "reachable — 409: Resource status invalid for requested operation",
-        "close": "reachable — 409: Resource status invalid for requested operation"
+        "close": "reachable — 409: Resource status invalid for requested operation",
+        "release": "reachable — 409: Resource status invalid for requested operation"
       }
     },
     "Quote": {
@@ -1897,8 +2387,8 @@
         "send": "pass"
       },
       "actionsNotes": {
-        "addTag": "reachable — 422: addTag requires a non-empty 'title'.",
-        "removeTag": "reachable — 422: removeTag requires a non-empty 'title'.",
+        "addTag": "fresh title 'verify-probe-32dc58' attached — auto-create verified, net-zero",
+        "removeTag": "fresh title removed again — effect verified, net-zero",
         "send": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma"
       },
       "fields": {
@@ -1946,7 +2436,6 @@
           "update": "pass"
         },
         "channel": {
-          "filterNote": "no sample value on the test instance — filter not probed",
           "read": "pass"
         },
         "costCenter": {
@@ -1955,6 +2444,7 @@
           "update": "pass"
         },
         "createdAt": {
+          "filter": "pass",
           "read": "pass",
           "sort": "pass"
         },
@@ -2011,10 +2501,15 @@
         "items": {
           "read": "pass"
         },
+        "items.contributionMargin": {
+          "read": "pass"
+        },
         "items.description": {
+          "create": "pass",
           "read": "pass"
         },
         "items.discountPercent": {
+          "create": "pass",
           "read": "pass"
         },
         "items.id": {
@@ -2033,10 +2528,21 @@
           "read": "pass"
         },
         "items.product": {
+          "create": "pass",
           "filterNote": "no sample value on the test instance — filter not probed",
           "read": "pass"
         },
+        "items.purchasePrice": {
+          "read": "pass"
+        },
+        "items.purchasePrice.amount": {
+          "read": "pass"
+        },
+        "items.purchasePrice.currency": {
+          "read": "pass"
+        },
         "items.quantity": {
+          "create": "pass",
           "read": "pass"
         },
         "items.quantity.unit": {
@@ -2046,9 +2552,20 @@
           "read": "pass"
         },
         "items.taxRate": {
+          "create": "pass",
+          "read": "pass"
+        },
+        "items.totals": {
+          "read": "pass"
+        },
+        "items.totals.gross": {
+          "read": "pass"
+        },
+        "items.totals.net": {
           "read": "pass"
         },
         "items.unitPrice": {
+          "create": "pass",
           "read": "pass"
         },
         "items.unitPrice.amount": {
@@ -2184,25 +2701,32 @@
           "read": "pass"
         },
         "updatedAt": {
+          "filter": "pass",
           "read": "pass",
           "sort": "pass"
         }
       },
       "processSteps": {
-        "cancel": "pass"
+        "cancel": "pass",
+        "release": "pass"
       },
       "processStepsNotes": {
-        "cancel": "reachable — 409: Resource status invalid for requested operation"
+        "cancel": "reachable — 409: Resource status invalid for requested operation",
+        "release": "reachable — 409: Resource status invalid for requested operation"
       }
     },
     "Return": {
       "actions": {
         "addTag": "pass",
+        "createCreditNote": "pass",
+        "createFromDeliveryNote": "pass",
         "removeTag": "pass"
       },
       "actionsNotes": {
-        "addTag": "reachable — 422: addTag requires a non-empty 'title'.",
-        "removeTag": "reachable — 422: removeTag requires a non-empty 'title'."
+        "addTag": "fresh title 'verify-probe-3f2388' attached — auto-create verified, net-zero",
+        "createCreditNote": "EXECUTED on the sampled record (200) — created/changed data",
+        "createFromDeliveryNote": "reachable — 422: createFromDeliveryNote needs command.deliveryNote and command.lineItems=[{deliveryNoteItem, quantity, reason}]",
+        "removeTag": "fresh title removed again — effect verified, net-zero"
       },
       "fields": {
         "billingAddress": {
@@ -2249,6 +2773,7 @@
           "update": "pass"
         },
         "createdAt": {
+          "filter": "pass",
           "read": "pass",
           "sort": "pass"
         },
@@ -2283,6 +2808,7 @@
           "read": "pass"
         },
         "documents.salesOrder": {
+          "filterNote": "no sample value on the test instance — filter not probed",
           "read": "pass"
         },
         "id": {
@@ -2313,10 +2839,12 @@
           "read": "pass"
         },
         "items.product": {
+          "create": "pass",
           "filterNote": "no sample value on the test instance — filter not probed",
           "read": "pass"
         },
         "items.quantity": {
+          "create": "pass",
           "read": "pass"
         },
         "items.quantity.unit": {
@@ -2358,7 +2886,6 @@
           "read": "pass"
         },
         "references.rmaNumber": {
-          "filterNote": "no sample value on the test instance — filter not probed",
           "read": "pass"
         },
         "resolution": {
@@ -2381,6 +2908,7 @@
           "update": "pass"
         },
         "updatedAt": {
+          "filter": "pass",
           "read": "pass",
           "sort": "pass"
         },
@@ -2390,10 +2918,12 @@
       },
       "processSteps": {
         "cancel": "pass",
+        "release": "pass",
         "settle": "pass"
       },
       "processStepsNotes": {
         "cancel": "reachable — 409: Resource status invalid for requested operation",
+        "release": "reachable — 409: Resource status invalid for requested operation",
         "settle": "reachable — 409: Resource status invalid for requested operation"
       }
     },
@@ -2426,8 +2956,8 @@
         "send": "pass"
       },
       "actionsNotes": {
-        "addTag": "reachable — 422: addTag requires a non-empty 'title'.",
-        "removeTag": "reachable — 422: removeTag requires a non-empty 'title'.",
+        "addTag": "fresh title 'verify-probe-7c2828' attached — auto-create verified, net-zero",
+        "removeTag": "fresh title removed again — effect verified, net-zero",
         "send": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma"
       },
       "fields": {
@@ -2475,7 +3005,6 @@
           "update": "pass"
         },
         "channel": {
-          "filterNote": "no sample value on the test instance — filter not probed",
           "read": "pass"
         },
         "costCenter": {
@@ -2484,6 +3013,7 @@
           "update": "pass"
         },
         "createdAt": {
+          "filter": "pass",
           "read": "pass",
           "sort": "pass"
         },
@@ -2511,7 +3041,9 @@
           "update": "pass"
         },
         "dates.serviceDate": {
-          "read": "pass"
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
         },
         "dates.servicePeriod": {
           "read": "pass"
@@ -2538,6 +3070,7 @@
           "read": "pass"
         },
         "documents.salesOrder": {
+          "filter": "pass",
           "read": "pass"
         },
         "dunning": {
@@ -2579,10 +3112,15 @@
         "items": {
           "read": "pass"
         },
+        "items.contributionMargin": {
+          "read": "pass"
+        },
         "items.description": {
+          "create": "pass",
           "read": "pass"
         },
         "items.discountPercent": {
+          "create": "pass",
           "read": "pass"
         },
         "items.id": {
@@ -2598,10 +3136,21 @@
           "read": "pass"
         },
         "items.product": {
+          "create": "pass",
           "filterNote": "no sample value on the test instance — filter not probed",
           "read": "pass"
         },
+        "items.purchasePrice": {
+          "read": "pass"
+        },
+        "items.purchasePrice.amount": {
+          "read": "pass"
+        },
+        "items.purchasePrice.currency": {
+          "read": "pass"
+        },
         "items.quantity": {
+          "create": "pass",
           "read": "pass"
         },
         "items.quantity.unit": {
@@ -2611,6 +3160,7 @@
           "read": "pass"
         },
         "items.taxRate": {
+          "create": "pass",
           "read": "pass"
         },
         "items.totals": {
@@ -2622,10 +3172,8 @@
         "items.totals.net": {
           "read": "pass"
         },
-        "items.totals.tax": {
-          "read": "pass"
-        },
         "items.unitPrice": {
+          "create": "pass",
           "read": "pass"
         },
         "items.unitPrice.amount": {
@@ -2700,7 +3248,6 @@
           "update": "pass"
         },
         "references.debtorAccountNumber": {
-          "filterNote": "no sample value on the test instance — filter not probed",
           "read": "pass"
         },
         "status": {
@@ -2737,17 +3284,18 @@
           "read": "pass"
         },
         "updatedAt": {
+          "filter": "pass",
           "read": "pass",
           "sort": "pass"
         }
       },
       "processSteps": {
-        "cancel": "fail",
-        "issue": "pass"
+        "cancel": "pass",
+        "release": "pass"
       },
       "processStepsNotes": {
-        "cancel": "route not available (404): error",
-        "issue": "reachable — 409: Resource status invalid for requested operation"
+        "cancel": "EXECUTED on the sampled record (200) — created/changed data",
+        "release": "reachable — 409: Resource status invalid for requested operation"
       }
     },
     "SalesOrder": {
@@ -2756,14 +3304,16 @@
         "createSalesInvoice": "pass",
         "removeTag": "pass",
         "sendConfirmation": "pass",
-        "split": "pass"
+        "split": "pass",
+        "splitOrder": "pass"
       },
       "actionsNotes": {
-        "addTag": "reachable — 422: addTag requires a non-empty 'title'.",
+        "addTag": "fresh title 'verify-probe-de4254' attached — auto-create verified, net-zero",
         "createSalesInvoice": "EXECUTED on the sampled record (200) — created/changed data",
-        "removeTag": "reachable — 422: removeTag requires a non-empty 'title'.",
+        "removeTag": "fresh title removed again — effect verified, net-zero",
         "sendConfirmation": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma",
-        "split": "reachable — 400: Generic request validation failed."
+        "split": "reachable — 400: Generic request validation failed.",
+        "splitOrder": "reachable — 422: splitOrder needs command.items = [{lineItem|product, quantity}]"
       },
       "fields": {
         "billingAddress": {
@@ -2810,7 +3360,6 @@
           "update": "pass"
         },
         "channel": {
-          "filterNote": "no sample value on the test instance — filter not probed",
           "read": "pass"
         },
         "costCenter": {
@@ -2819,6 +3368,7 @@
           "update": "pass"
         },
         "createdAt": {
+          "filter": "pass",
           "read": "pass",
           "sort": "pass"
         },
@@ -2904,7 +3454,8 @@
           "read": "pass"
         },
         "fulfillmentPolicy.auto": {
-          "read": "pass"
+          "read": "pass",
+          "update": "pass"
         },
         "fulfillmentPolicy.partialShipping": {
           "read": "pass"
@@ -2927,10 +3478,27 @@
         "items": {
           "read": "pass"
         },
+        "items.availability": {
+          "read": "pass"
+        },
+        "items.availability.deliverable": {
+          "read": "pass"
+        },
+        "items.availability.onHand": {
+          "read": "pass"
+        },
+        "items.availability.stockManaged": {
+          "read": "pass"
+        },
+        "items.contributionMargin": {
+          "read": "pass"
+        },
         "items.description": {
+          "create": "pass",
           "read": "pass"
         },
         "items.discountPercent": {
+          "create": "pass",
           "read": "pass"
         },
         "items.fulfillment": {
@@ -2958,10 +3526,21 @@
           "read": "pass"
         },
         "items.product": {
+          "create": "pass",
           "filterNote": "no sample value on the test instance — filter not probed",
           "read": "pass"
         },
+        "items.purchasePrice": {
+          "read": "pass"
+        },
+        "items.purchasePrice.amount": {
+          "read": "pass"
+        },
+        "items.purchasePrice.currency": {
+          "read": "pass"
+        },
         "items.quantity": {
+          "create": "pass",
           "read": "pass"
         },
         "items.quantity.unit": {
@@ -2971,6 +3550,7 @@
           "read": "pass"
         },
         "items.taxRate": {
+          "create": "pass",
           "read": "pass"
         },
         "items.totals": {
@@ -2982,10 +3562,8 @@
         "items.totals.net": {
           "read": "pass"
         },
-        "items.totals.tax": {
-          "read": "pass"
-        },
         "items.unitPrice": {
+          "create": "pass",
           "read": "pass"
         },
         "items.unitPrice.amount": {
@@ -3018,7 +3596,6 @@
           "read": "pass"
         },
         "payment.status": {
-          "filterNote": "no sample value on the test instance — filter not probed",
           "read": "pass"
         },
         "payment.terms": {
@@ -3074,7 +3651,6 @@
           "read": "pass"
         },
         "shipping.status": {
-          "filterNote": "no sample value on the test instance — filter not probed",
           "read": "pass"
         },
         "shippingAddress": {
@@ -3168,7 +3744,17 @@
         "totals.taxes.rate": {
           "read": "pass"
         },
+        "trafficLights": {
+          "read": "pass"
+        },
+        "trafficLights.id": {
+          "read": "pass"
+        },
+        "trafficLights.state": {
+          "read": "pass"
+        },
         "updatedAt": {
+          "filter": "pass",
           "read": "pass",
           "sort": "pass"
         }
@@ -3176,12 +3762,14 @@
       "processSteps": {
         "cancel": "pass",
         "close": "pass",
-        "confirm": "pass"
+        "dispatch": "pass",
+        "release": "pass"
       },
       "processStepsNotes": {
         "cancel": "reachable — 409: Resource status invalid for requested operation",
         "close": "reachable — 409: Resource status invalid for requested operation",
-        "confirm": "reachable — 409: Resource status invalid for requested operation"
+        "dispatch": "reachable — 400: Generic request validation failed.",
+        "release": "reachable — 409: Resource status invalid for requested operation"
       }
     },
     "Shipment": {
@@ -3420,6 +4008,20 @@
       }
     },
     "StorageLocation": {
+      "actions": {
+        "inventoryCount": "pass",
+        "putaway": "pass",
+        "stockAdjustment": "pass",
+        "stockRemoval": "pass",
+        "stockTransfer": "pass"
+      },
+      "actionsNotes": {
+        "inventoryCount": "reachable — 422: storageLocation.inventoryCount: invalid command",
+        "putaway": "reachable — 422: storageLocation.putaway: invalid command",
+        "stockAdjustment": "reachable — 422: storageLocation.stockAdjustment: invalid command",
+        "stockRemoval": "reachable — 422: storageLocation.stockRemoval: invalid command",
+        "stockTransfer": "reachable — 422: storageLocation.stockTransfer: invalid command"
+      },
       "fields": {
         "capacity": {
           "read": "pass"
@@ -3489,6 +4091,7 @@
           "read": "pass"
         },
         "warehouse": {
+          "filter": "pass",
           "read": "pass"
         }
       }
@@ -3499,8 +4102,8 @@
         "removeTag": "pass"
       },
       "actionsNotes": {
-        "addTag": "reachable — 422: addTag requires a non-empty 'title'.",
-        "removeTag": "reachable — 422: removeTag requires a non-empty 'title'."
+        "addTag": "fresh title 'verify-probe-f9a465' attached — auto-create verified, net-zero",
+        "removeTag": "fresh title removed again — effect verified, net-zero"
       },
       "fields": {
         "addresses": {
@@ -3582,10 +4185,28 @@
           "read": "pass",
           "update": "pass"
         },
+        "contacts.allowMarketingEmails": {
+          "read": "pass"
+        },
+        "contacts.birthday": {
+          "read": "pass"
+        },
+        "contacts.department": {
+          "read": "pass"
+        },
         "contacts.email": {
           "read": "pass"
         },
+        "contacts.fax": {
+          "read": "pass"
+        },
         "contacts.id": {
+          "read": "pass"
+        },
+        "contacts.internalNote": {
+          "read": "pass"
+        },
+        "contacts.language": {
           "read": "pass"
         },
         "contacts.mobile": {
@@ -3597,7 +4218,16 @@
         "contacts.phone": {
           "read": "pass"
         },
-        "contacts.role": {
+        "contacts.position": {
+          "read": "pass"
+        },
+        "contacts.remarks": {
+          "read": "pass"
+        },
+        "contacts.salutation": {
+          "read": "pass"
+        },
+        "contacts.subDepartment": {
           "read": "pass"
         },
         "contacts.title": {
@@ -3679,6 +4309,7 @@
         },
         "name": {
           "create": "pass",
+          "createNote": "created sup_20456 but DELETE returned 405 — manual cleanup needed (record is named 'VT Verify GmbH')",
           "filter": "pass",
           "read": "pass",
           "search": "pass",
