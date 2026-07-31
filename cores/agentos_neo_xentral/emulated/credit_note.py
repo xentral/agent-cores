@@ -156,10 +156,13 @@ class CreditNoteAdapter(FacadeAdapterBase):
         return {
             "object": prop("string", "Object", **RO, section="general"),
             "id": prop("string", "ID", **RO, section="general"),
+            # Creatable, not updatable: the v3 create takes a documentNumber and stores
+            # it verbatim (verified on mvp — it survives release); PATCH has no slot for
+            # it. Omit it and Xentral draws the next number from the configured range.
             "number": prop(
                 "string",
                 "Number",
-                **RO,
+                creatable=True,
                 section="general",
                 filterable=True,
                 searchable=True,
@@ -461,6 +464,7 @@ class CreditNoteAdapter(FacadeAdapterBase):
         }
 
     _WRITABLE = {
+        "number",
         "customer",
         "project",
         "costCenter",
@@ -476,7 +480,6 @@ class CreditNoteAdapter(FacadeAdapterBase):
     _IGNORE = {
         "object",
         "id",
-        "number",
         "status",
         "kind",
         "totals",
@@ -563,6 +566,14 @@ class CreditNoteAdapter(FacadeAdapterBase):
             refs = model["references"] or {}
             if "customerOrderNumber" in refs:  # v3 customerOrderNumber (API-731 parity)
                 v3["customerOrderNumber"] = refs["customerOrderNumber"]
+        # The document number rides the create body; upstream refuses it on PATCH,
+        # so an attempt to change it afterwards is reported rather than dropped.
+        if "number" in model:
+            if creating and model["number"] is not None:
+                v3["documentNumber"] = model["number"]
+            elif not creating:
+                rejected.add("number")
+
         for k in model:
             if k in self._WRITABLE or k in self._IGNORE:
                 continue
