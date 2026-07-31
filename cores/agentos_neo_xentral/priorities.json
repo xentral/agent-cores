@@ -979,6 +979,21 @@
           "update"
         ],
         "reason": "The partial-shipping preference is not surfaced by the v3 partner read."
+      },
+      {
+        "field": "type",
+        "ops": [
+          "create",
+          "update"
+        ],
+        "reason": "Customer vs. lead (Interessent). v2 has isLead, but no v3 customers payload carries it — not in the record, not behind any allowed include — so the core cannot set it without leaving v3. Roughly half a typical CRM migration is leads, so they all land as customers today."
+      },
+      {
+        "field": "number",
+        "ops": [
+          "update"
+        ],
+        "reason": "Correcting a customer number after the fact. v3 accepts a number on POST but not on PATCH, so a typo in a migrated number can only be fixed in the UI."
       }
     ],
     "Supplier": [

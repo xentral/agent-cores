@@ -45,30 +45,61 @@ def _clean(d: dict[str, Any]) -> dict[str, Any]:
 
 
 def contact_from_v3(c: dict[str, Any]) -> dict[str, Any]:
+    d = c.get("contactPersonDetails") or {}
     return {
         "id": f"con_{c.get('id')}" if c.get("id") is not None else None,
         "type": c.get("type"),
         "name": c.get("name"),
         "title": c.get("title"),
-        "role": c.get("department"),
+        "salutation": c.get("salutation"),
+        # Upstream keeps these three apart; the model used to fold department into a
+        # single "role" and drop position entirely.
+        "position": d.get("position"),
+        "department": c.get("department"),
+        "subDepartment": c.get("subDepartment"),
         "email": c.get("email"),
         "phone": c.get("phone"),
         "mobile": c.get("mobile"),
+        "fax": c.get("fax"),
+        "language": d.get("language"),
+        "birthday": d.get("birthday"),
+        "allowMarketingEmails": d.get("allowMarketingEmails"),
+        # The printed remark and the internal-only one are separate upstream.
+        "remarks": d.get("remarks"),
+        "internalNote": d.get("internalNote"),
     }
 
 
+# Model key → its key inside the v3 ``contactPersonDetails`` sub-object.
+_CONTACT_DETAILS = {
+    "position": "position",
+    "language": "language",
+    "birthday": "birthday",
+    "allowMarketingEmails": "allowMarketingEmails",
+    "remarks": "remarks",
+    "internalNote": "internalNote",
+}
+
+
 def contact_to_v3(m: dict[str, Any]) -> dict[str, Any]:
-    return _clean(
+    out = _clean(
         {
             "type": m.get("type"),
             "name": m.get("name"),
             "title": m.get("title"),
-            "department": m.get("role"),
+            "salutation": m.get("salutation"),
+            "department": m.get("department"),
+            "subDepartment": m.get("subDepartment"),
             "email": m.get("email"),
             "phone": m.get("phone"),
             "mobile": m.get("mobile"),
+            "fax": m.get("fax"),
         }
     )
+    details = _clean({wire: m.get(key) for key, wire in _CONTACT_DETAILS.items()})
+    if details:
+        out["contactPersonDetails"] = details
+    return out
 
 
 def ship_addr_from_v3(a: dict[str, Any]) -> dict[str, Any]:
@@ -210,10 +241,19 @@ def contacts_prop(prop, RO, CU) -> dict[str, Any]:  # noqa: N803 - schema-flag b
                 ),
                 "name": prop("string", "Name", **CU),
                 "title": prop("string", "Title", **CU),
-                "role": prop("string", "Role / department", **CU),
+                "salutation": prop("string", "Salutation", **CU),
+                "position": prop("string", "Position", **CU),
+                "department": prop("string", "Department", **CU),
+                "subDepartment": prop("string", "Sub-department", **CU),
                 "email": prop("string", "Email", **CU),
                 "phone": prop("string", "Phone", **CU),
                 "mobile": prop("string", "Mobile", **CU),
+                "fax": prop("string", "Fax", **CU),
+                "language": prop("string", "Language", **CU),
+                "birthday": prop("date", "Birthday", **CU),
+                "allowMarketingEmails": prop("boolean", "Allow marketing emails", **CU),
+                "remarks": prop("text", "Remarks", **CU),
+                "internalNote": prop("text", "Internal note", **CU),
             }
         },
     )
