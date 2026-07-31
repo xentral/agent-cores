@@ -21,11 +21,14 @@ from .base import (
     _TIMEOUT,
     FacadeAdapterBase,
     line_price_net,
+    line_purchase_price_net,
     line_qty,
     RO,
+    map_purchase_price,
     map_tags,
     money,
     prop,
+    purchase_price_prop,
     ref,
     status_map,
     tags_prop,
@@ -120,7 +123,8 @@ def _item_props() -> dict[str, Any]:
         "object": prop("string", "Object", **RO),
         "id": prop("string", "Item id", **RO),
         "position": prop("integer", "Position"),
-        # writable on create; v3 has no line-item UPDATE path → wish (priorities.json)
+        # create-only: the v3 lineItems sub-resource fixes the product on an existing
+        # line, so _reconcile_line_items drops it from the PATCH body.
         "product": prop(
             "reference",
             "Product",
@@ -146,6 +150,7 @@ def _item_props() -> dict[str, Any]:
             },
         ),
         "priceSource": prop("string", "Price source", **RO),
+        "purchasePrice": purchase_price_prop(updatable=True),
         "discountPercent": prop("decimal", "Discount %", creatable=True),
         "taxRate": prop("string", "Tax rate", creatable=True),
         "totals": prop(
@@ -689,6 +694,7 @@ class SalesOrderAdapter(FacadeAdapterBase):
                     "quantity": {"value": li.get("quantity"), "unit": li.get("unit") or "piece"},
                     "unitPrice": money(price.get("amount"), price.get("currency") or cur),
                     "priceSource": None,
+                    "purchasePrice": map_purchase_price(li, cur),
                     "discountPercent": li.get("discount"),
                     "taxRate": li.get("taxRate"),
                 }
@@ -921,8 +927,9 @@ class SalesOrderAdapter(FacadeAdapterBase):
                 rejected.add("customer")  # v3 address is create-only
         if "items" in model:
             if creating:
+                doc_cur = model.get("currency") or "EUR"
                 v3["lineItems"] = [
-                    self._item_to_v3(i) for i in model["items"] if isinstance(i, dict)
+                    self._item_to_v3(i, doc_cur) for i in model["items"] if isinstance(i, dict)
                 ]
             # On UPDATE the items are NOT sent in the order PATCH body — they are
             # reconciled against the v3 lineItems sub-resource in _write (POST new /
@@ -937,7 +944,7 @@ class SalesOrderAdapter(FacadeAdapterBase):
         return v3, rejected
 
     @staticmethod
-    def _item_to_v3(i: dict[str, Any]) -> dict[str, Any]:
+    def _item_to_v3(i: dict[str, Any], currency: str = "EUR") -> dict[str, Any]:
         out: dict[str, Any] = {}
         prod = i.get("product")
         if prod is not None:
@@ -952,9 +959,15 @@ class SalesOrderAdapter(FacadeAdapterBase):
             out["discount"] = i["discountPercent"]
         if i.get("taxRate") is not None:
             out["taxRate"] = i["taxRate"]
-        price = line_price_net(i)
+        price = line_price_net(i, currency)
         if price is not None:
             out["price"] = price
+        # Upstream rejects an EK whose currency differs from the document's, so the
+        # document currency — not a bare "EUR" — is the fallback when the caller
+        # sends only an amount.
+        purchase = line_purchase_price_net(i, currency)
+        if purchase is not None:
+            out["purchasePrice"] = purchase
         return out
 
     # ---- line-item reconcile on update (v3 lineItems sub-resource) --------
@@ -996,8 +1009,13 @@ class SalesOrderAdapter(FacadeAdapterBase):
             client=client,
         )
         current_ids: list[str] = []
+        # The document currency governs what an EK may be sent in — read it off the
+        # same fetch instead of defaulting the line items to EUR.
+        doc_cur = "EUR"
         if st < 400 and isinstance(payload, dict):
-            for li in (payload.get("data") or {}).get("lineItems") or []:
+            data = payload.get("data") or {}
+            doc_cur = (data.get("financials") or {}).get("currency") or doc_cur
+            for li in data.get("lineItems") or []:
                 if isinstance(li, dict) and li.get("id") is not None and li.get("type") != "text":
                     current_ids.append(str(li["id"]))
         keep = {
@@ -1020,7 +1038,7 @@ class SalesOrderAdapter(FacadeAdapterBase):
             if not isinstance(it, dict):
                 continue
             lid = it.get("id")
-            v3 = self._item_to_v3(it)
+            v3 = self._item_to_v3(it, doc_cur)
             if lid not in (None, "") and str(lid) in current_ids:
                 v3.pop("product", None)  # product is fixed on an existing line
                 if not v3:
@@ -1331,9 +1349,17 @@ class SalesOrderAdapter(FacadeAdapterBase):
                 "quantity": {"value": _num(qty), "unit": (line.get("quantity") or {}).get("unit")},
                 "unitPrice": line.get("unitPrice"),
                 "taxRate": line.get("taxRate"),
+                # carry the manual EK over, else the split silently re-derives it
+                # from the price list and the contribution margin shifts
+                "purchasePrice": line.get("purchasePrice"),
             }
             status, resp = await self._li_call(
-                "POST", part_base, token, accept_language, client, self._item_to_v3(item)
+                "POST",
+                part_base,
+                token,
+                accept_language,
+                client,
+                self._item_to_v3(item, src.get("currency") or "EUR"),
             )
             if status >= 400:
                 warnings.setdefault("add", []).append(

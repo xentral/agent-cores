@@ -162,6 +162,52 @@ def line_price_net(item: dict[str, Any], currency: str = "EUR") -> dict[str, Any
     return {"net": {"amount": str(amount), "currency": cur or currency}}
 
 
+def purchase_price_prop(*, updatable: bool = False) -> dict[str, Any]:
+    """A line item's ``purchasePrice`` (EK) — the cost price carried on the position
+    itself, not the supplier price list (that is the PurchasePrice entity). Writable
+    upstream on offer, salesOrder, invoice and creditNote positions; proforma has no
+    EK columns. Setting it marks the price as manually provided (upstream clears the
+    price-list link) and feeds the contribution margin.
+
+    ``updatable`` follows what the entity actually does on UPDATE: salesOrder
+    reconciles its positions against the v3 lineItems sub-resource, the other three
+    reject ``items`` outright, so there the EK is create-only."""
+    flags: dict[str, Any] = {"creatable": True}
+    if updatable:
+        flags["updatable"] = True
+    return prop(
+        "embedded",
+        "Purchase price",
+        **flags,
+        properties={
+            "amount": prop("decimal", "Amount"),
+            "currency": prop("string", "Currency"),
+        },
+    )
+
+
+def line_purchase_price_net(item: dict[str, Any], currency: str = "EUR") -> dict[str, Any] | None:
+    """v3 ``purchasePrice`` payload from a line item's ``purchasePrice``, tolerating
+    both the canonical ``{"amount": …, "currency": …}`` object AND a bare scalar
+    amount. None when there is no amount to send — upstream rejects an explicit null
+    (its EK columns are NOT NULL), so a cleared EK is never emitted."""
+    pp = item.get("purchasePrice")
+    if isinstance(pp, dict):
+        amount, cur = pp.get("amount"), pp.get("currency")
+    else:
+        amount, cur = pp, None
+    if amount is None:
+        return None
+    return {"net": {"amount": str(amount), "currency": cur or currency}}
+
+
+def map_purchase_price(li: dict[str, Any], currency: str = "EUR") -> dict[str, Any] | None:
+    """Read a v3 line item's ``purchasePrice.net`` back into the model's flat money
+    shape. None when upstream reports no EK."""
+    net = (li.get("purchasePrice") or {}).get("net") or {}
+    return money(net.get("amount"), net.get("currency") or currency)
+
+
 def tags_prop(*, writable: bool = False) -> dict[str, Any]:
     """The model's ``tags`` field: a plain string array of tag titles
     (docs/01-model.md §6.1 ``"tags": ["b2b", "vip"]``). Declared as the FE's

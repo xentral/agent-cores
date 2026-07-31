@@ -14,11 +14,14 @@ from entity_registry.core_sdk import EmulationManifest
 from .base import (
     FacadeAdapterBase,
     line_price_net,
+    line_purchase_price_net,
     line_qty,
     RO,
+    map_purchase_price,
     map_tags,
     money,
     prop,
+    purchase_price_prop,
     ref,
     status_map,
     tags_prop,
@@ -267,6 +270,7 @@ class QuoteAdapter(FacadeAdapterBase):
                         ),
                         "priceSource": prop("string", "Price source", **RO),
                         "discountPercent": prop("decimal", "Discount %", creatable=True),
+                        "purchasePrice": purchase_price_prop(),
                         "taxRate": prop("string", "Tax rate", creatable=True),
                         "isOptional": prop("boolean", "Optional"),
                     }
@@ -390,6 +394,7 @@ class QuoteAdapter(FacadeAdapterBase):
                     "unitPrice": money(price.get("amount"), price.get("currency") or cur),
                     "priceSource": None,
                     "discountPercent": li.get("discount"),
+                    "purchasePrice": map_purchase_price(li, cur),
                     "taxRate": li.get("taxRate"),
                     "isOptional": False,
                 }
@@ -545,8 +550,9 @@ class QuoteAdapter(FacadeAdapterBase):
                 rejected.add("customer")
         if "items" in model:
             if creating:
+                doc_cur = model.get("currency") or "EUR"
                 v3["lineItems"] = [
-                    self._item_to_v3(i) for i in model["items"] if isinstance(i, dict)
+                    self._item_to_v3(i, doc_cur) for i in model["items"] if isinstance(i, dict)
                 ]
             else:
                 rejected.add("items")
@@ -563,7 +569,7 @@ class QuoteAdapter(FacadeAdapterBase):
         return v3, rejected
 
     @staticmethod
-    def _item_to_v3(i: dict[str, Any]) -> dict[str, Any]:
+    def _item_to_v3(i: dict[str, Any], currency: str = "EUR") -> dict[str, Any]:
         out: dict[str, Any] = {}
         prod = i.get("product")
         if prod is not None:
@@ -578,7 +584,13 @@ class QuoteAdapter(FacadeAdapterBase):
             out["discount"] = i["discountPercent"]
         if i.get("taxRate") is not None:
             out["taxRate"] = i["taxRate"]
-        price = line_price_net(i)
+        price = line_price_net(i, currency)
         if price is not None:
             out["price"] = price
+        # Upstream rejects an EK whose currency differs from the document's, so the
+        # document currency — not a bare "EUR" — is the fallback when the caller
+        # sends only an amount.
+        purchase = line_purchase_price_net(i, currency)
+        if purchase is not None:
+            out["purchasePrice"] = purchase
         return out
