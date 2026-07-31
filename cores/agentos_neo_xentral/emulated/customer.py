@@ -17,8 +17,10 @@ from entity_registry.core_sdk import EmulationManifest
 from .base import _TIMEOUT, RO, FacadeAdapterBase, map_tags, prop, ref, tags_prop, tags_to_v3
 from .partner_subresources import (
     PartnerSubresourcesMixin,
+    addresses_from_include,
     addresses_prop,
     bill_addr_from_dba,
+    contacts_from_include,
     contacts_prop,
 )
 
@@ -42,7 +44,7 @@ class CustomerAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
     _V1_PATH = "/api/v1/customers"
     # customFields only reach the payload when asked for — without the include the
     # free-field values are simply absent, not empty.
-    include = "tags,customFields"
+    include = "tags,customFields,contactPersons,deliveryAddresses"
     preview_template = "{{name}}"
     # The v3 address filters/sorts act on the record's main address; in the unified
     # model that is the default row of the ``addresses`` list, so the query keys map
@@ -306,30 +308,33 @@ class CustomerAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
             # ONE unified address list: the main address (v3 primaryAddress) is the
             # default row (type "both"); the billing singleton rides in the v3 payload
             # (surfaced on EVERY row); shipping rows are appended on composed reads.
-            "addresses": [
-                {
-                    "id": "adr_main",
-                    "type": "both",
-                    "label": "Hauptadresse",
-                    "isDefault": True,
-                    "name": pa.get("name"),
-                    "contactPerson": None,
-                    "street": pa.get("street"),
-                    "zip": pa.get("zipCode"),
-                    "city": pa.get("city"),
-                    "state": pa.get("state"),
-                    "country": pa.get("country"),
-                    "gln": None,
-                    "email": pa.get("email"),
-                    "phone": pa.get("phone"),
-                },
-                *(
-                    [bill_addr_from_dba(r["deviatingBillingAddress"])]
-                    if isinstance(r.get("deviatingBillingAddress"), dict)
-                    else []
-                ),
-            ],
-            "contacts": None,
+            "addresses": addresses_from_include(
+                r,
+                [
+                    {
+                        "id": "adr_main",
+                        "type": "both",
+                        "label": "Hauptadresse",
+                        "isDefault": True,
+                        "name": pa.get("name"),
+                        "contactPerson": None,
+                        "street": pa.get("street"),
+                        "zip": pa.get("zipCode"),
+                        "city": pa.get("city"),
+                        "state": pa.get("state"),
+                        "country": pa.get("country"),
+                        "gln": None,
+                        "email": pa.get("email"),
+                        "phone": pa.get("phone"),
+                    },
+                    *(
+                        [bill_addr_from_dba(r["deviatingBillingAddress"])]
+                        if isinstance(r.get("deviatingBillingAddress"), dict)
+                        else []
+                    ),
+                ],
+            ),
+            "contacts": contacts_from_include(r),
             "defaults": {
                 "currency": fin.get("currency"),
                 "language": comm.get("language"),
