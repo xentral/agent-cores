@@ -20,9 +20,15 @@ Upstream (live, no store — ADR-014):
 Speaking ids encode the upstream store: ``con_<id>``, ``adr_s<id>`` (shipping),
 ``adr_billing`` (the billing singleton) — reversible without lookup (ADR-002).
 
-The billing row lives IN the v3 partner payload, so map_read surfaces it on
-EVERY row (lists included); the shipping rows need the sub-resource call and are
-appended on composed reads (detail + tiny lists).
+The shipping rows need a sub-resource call, so they are read on detail reads,
+tiny list pages and EVERY write answer. Everywhere else the set is unknown and
+both collections answer ``null`` — the "not loaded" marker the write sync skips.
+
+A full-desired-set collection may never be answered TRUNCATED. Main + billing
+alone (the billing row rides in the v3 partner payload, so map_read has it for
+free) look exactly like a complete set, and the caller's round-trip then deletes
+every shipping address the answer failed to mention. Complete or null, never a
+fragment.
 """
 
 from __future__ import annotations
@@ -366,9 +372,16 @@ class PartnerSubresourcesMixin:
         st, pl = await self._sub_call(
             "GET", f"{paths['shipping']}?perPage=50", None, base_url, token, accept_language, client
         )
-        if st == 200:
-            rows = (pl.get("data") if isinstance(pl, dict) else None) or []
-            addresses += [ship_addr_from_v3(a) for a in rows if isinstance(a, dict)]
+        if st != 200:
+            # The shipping store did not answer, so the set is UNKNOWN — and
+            # main + billing alone look exactly like a complete one. Say null
+            # (the "not loaded" convention contacts already uses) rather than
+            # hand the caller a short list its own write contract reads as
+            # "delete the rest".
+            rec["addresses"] = None
+            return
+        rows = (pl.get("data") if isinstance(pl, dict) else None) or []
+        addresses += [ship_addr_from_v3(a) for a in rows if isinstance(a, dict)]
         rec["addresses"] = addresses
 
     # ---- write sync (full desired set, tags precedent) -------------------
@@ -506,30 +519,36 @@ class PartnerSubresourcesMixin:
                 if "contacts" in payload:
                     collections["contacts"] = payload.pop("contacts")
                 if "addresses" in payload:
-                    addrs = payload.pop("addresses") or []
-                    # The default/main row IS the record's primaryAddress — route it
-                    # onto the record (map_write handles ``primaryAddress``); only the
-                    # deviating billing + shipping rows go to the sub-resource sync.
-                    main = next(
-                        (
-                            a
-                            for a in addrs
-                            if isinstance(a, dict)
-                            and (
-                                a.get("isDefault")
-                                or a.get("type") == "both"
-                                or str(a.get("id")) == "adr_main"
-                            )
-                        ),
-                        None,
-                    )
-                    if isinstance(main, dict):
-                        payload["primaryAddress"] = {
-                            k: main.get(k)
-                            for k in ("name", "street", "zip", "city", "state", "country")
-                            if main.get(k) is not None
-                        }
-                    collections["addresses"] = [a for a in addrs if a is not main]
+                    # ``null`` is the not-loaded marker, NOT an empty desired set:
+                    # pop it so the write does not reject an unknown key, but do
+                    # not register a collection — otherwise sending a list row
+                    # back (Studio's mobile view PATCHes the whole row) would read
+                    # as "no addresses wanted" and delete every one of them.
+                    addrs = payload.pop("addresses")
+                    if addrs is not None:
+                        # The default/main row IS the record's primaryAddress — route it
+                        # onto the record (map_write handles ``primaryAddress``); only the
+                        # deviating billing + shipping rows go to the sub-resource sync.
+                        main = next(
+                            (
+                                a
+                                for a in addrs
+                                if isinstance(a, dict)
+                                and (
+                                    a.get("isDefault")
+                                    or a.get("type") == "both"
+                                    or str(a.get("id")) == "adr_main"
+                                )
+                            ),
+                            None,
+                        )
+                        if isinstance(main, dict):
+                            payload["primaryAddress"] = {
+                                k: main.get(k)
+                                for k in ("name", "street", "zip", "city", "state", "country")
+                                if main.get(k) is not None
+                            }
+                        collections["addresses"] = [a for a in addrs if a is not main]
                 body = json.dumps(payload).encode()
         resp = await super().request(
             method=method,
@@ -553,25 +572,51 @@ class PartnerSubresourcesMixin:
                 up_id = handle.split("_", 1)[1] if "_" in handle else handle
                 await self._compose(data, up_id, base_url, token, accept_language, client)
                 return self._json(resp.status_code, out)
-            if not handle and isinstance(data, list) and 0 < len(data) <= _COMPOSE_LIST_LIMIT:
+            if not handle and isinstance(data, list):
+                if 0 < len(data) <= _COMPOSE_LIST_LIMIT:
+                    for rec in data:
+                        if isinstance(rec, dict) and rec.get("id"):
+                            rid = str(rec["id"])
+                            await self._compose(
+                                rec,
+                                rid.split("_", 1)[1] if "_" in rid else rid,
+                                base_url,
+                                token,
+                                accept_language,
+                                client,
+                            )
+                    return self._json(resp.status_code, out)
+                # Bigger pages are NOT composed (2 sub-calls per row is not worth
+                # it), so what map_read built — main + the billing singleton — is
+                # a fragment. It reads as a complete set though, and `addresses`
+                # is a full-desired-set collection: a caller that sends a list row
+                # back deletes every shipping address it never saw. That is not
+                # hypothetical (Studio's mobile entity view PATCHes a whole list
+                # row on any edit). Answer null, the "not loaded" convention
+                # contacts already uses and _sync already skips.
                 for rec in data:
-                    if isinstance(rec, dict) and rec.get("id"):
-                        rid = str(rec["id"])
-                        await self._compose(
-                            rec,
-                            rid.split("_", 1)[1] if "_" in rid else rid,
-                            base_url,
-                            token,
-                            accept_language,
-                            client,
-                        )
+                    if isinstance(rec, dict):
+                        rec["addresses"] = None
                 return self._json(resp.status_code, out)
             return resp
-        if method_u in ("POST", "PATCH", "PUT") and collections:
+        if method_u in ("POST", "PATCH", "PUT"):
             rid = str((data or {}).get("id") or handle or "")
             if not rid:
                 return resp
             up_id = rid.split("_", 1)[1] if "_" in rid else rid
+            if not collections:
+                # A write that carried NO collection still has to answer with the
+                # WHOLE record: map_read alone reports contacts null and drops the
+                # shipping rows (they live in the sub-resources), and the callers
+                # of a full-desired-set collection read that truncated list back as
+                # "these are all the addresses" — round-tripping a tags-only write
+                # or a plain field update then DELETES every shipping address.
+                # Nothing on the record changed here, so compose in place instead
+                # of paying for a re-read.
+                if isinstance(data, dict):
+                    await self._compose(data, up_id, base_url, token, accept_language, client)
+                    return self._json(resp.status_code, out)
+                return resp
             errors = await self._sync(
                 up_id,
                 collections.get("contacts"),
