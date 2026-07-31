@@ -302,6 +302,18 @@ def test_emptying_a_location_reports_zero_not_null():
     assert data["id"] == "slv_61985_1"
 
 
+def test_a_zero_row_is_shaped_like_a_real_one():
+    """Otherwise `warehouse` would be missing on exactly the records that report
+    an empty bin — the caller cannot treat the two alike."""
+    up = _EmptiedUpstream()
+    data = json.loads(_run(up, "stockRemoval", {"product": "prd_61985", "quantity": 10}).content)[
+        "data"
+    ]
+    assert data["storageLocation"]["name"] == "Lagerplatz1"
+    assert data["warehouse"]["id"] == "wh_9"
+    assert data["warehouse"]["name"] == "Hauptlager"
+
+
 def test_an_unreadable_level_stays_null_and_is_never_served_as_zero():
     """The dangerous confusion: 'I could not read it' reported as 'there are
     zero' is a number a caller would act on."""

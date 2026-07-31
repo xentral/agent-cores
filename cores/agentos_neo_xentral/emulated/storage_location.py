@@ -429,7 +429,7 @@ class StorageLocationAdapter(FacadeAdapterBase):
         "zero", which is exactly the number a caller would act on.
         """
         from .stock_level import StockLevelAdapter
-        from .stock_shared import numeric
+        from .stock_shared import numeric, resolve_location_row
 
         product_id, location_id = numeric(str(product)), numeric(str(location))
         adapter = StockLevelAdapter()
@@ -444,7 +444,25 @@ class StorageLocationAdapter(FacadeAdapterBase):
             client=client,
         )
         if resp.status_code == 404:
-            return adapter.level_row(product_id=product_id, location_id=location_id, quantity=0)
+            # A zero row must be shaped like a real one, or "same fact" is only
+            # half true: the location row still carries its designation and
+            # warehouse, and a caller reading `warehouse` off the result would
+            # find it missing on exactly the records that report an empty bin.
+            row = await resolve_location_row(
+                location_id,
+                base_url=base_url,
+                headers=self._headers(token, accept_language),
+                client=client,
+            )
+            wh = (row or {}).get("warehouse") or {}
+            return adapter.level_row(
+                product_id=product_id,
+                location_id=location_id,
+                location_name=(row or {}).get("designation"),
+                warehouse_id=wh.get("id") if isinstance(wh, dict) else None,
+                warehouse_name=wh.get("name") if isinstance(wh, dict) else None,
+                quantity=0,
+            )
         if resp.status_code >= 400:
             return None
         try:
@@ -495,7 +513,9 @@ class StorageLocationAdapter(FacadeAdapterBase):
         assert model is not None
         product = str(model["product"])
         out: dict[str, Any] = {
-            "data": await self._read_level(product, location, base_url, token, accept_language, client),
+            "data": await self._read_level(
+                product, location, base_url, token, accept_language, client
+            ),
             "result": {"action": action_key, "storageLocation": location},
         }
         if action_key == "stockTransfer":
