@@ -372,10 +372,13 @@ class SalesOrderAdapter(FacadeAdapterBase):
         return {
             "object": prop("string", "Object", **RO, section="general"),
             "id": prop("string", "ID", **RO, section="general"),
+            # Creatable, not updatable: the v3 create takes a documentNumber and stores
+            # it verbatim (verified on mvp — it survives release); PATCH has no slot for
+            # it. Omit it and Xentral draws the next number from the configured range.
             "number": prop(
                 "string",
                 "Number",
-                **RO,
+                creatable=True,
                 section="general",
                 filterable=True,
                 searchable=True,
@@ -794,6 +797,7 @@ class SalesOrderAdapter(FacadeAdapterBase):
     # ---- write: new model → v3 (only what the upstream can set today) -----
     # Top-level model keys the upstream cannot write → 409 blue wishes.
     _WRITABLE = {
+        "number",
         "customer",
         "project",
         "costCenter",
@@ -809,11 +813,6 @@ class SalesOrderAdapter(FacadeAdapterBase):
         "shipping",
         "fulfillmentPolicy",
     }
-    # `number` is deliberately NOT ignored: a document number always comes from the
-    # configured number range, so a caller supplying one must be told it was refused
-    # rather than get a 201 and a different number. Upstream would accept it on three
-    # of these types (salesOrder / invoice / creditNote, verified on mvp) — declining
-    # it everywhere is a product decision, recorded as such in priorities.json.
     _IGNORE = {
         "object",
         "id",
@@ -940,6 +939,14 @@ class SalesOrderAdapter(FacadeAdapterBase):
         # anything else the merchant tried to set = a blue wish (not writable today)
         if "tags" in model:
             v3["tags"] = tags_to_v3(model["tags"])
+        # The document number rides the create body; upstream refuses it on PATCH,
+        # so an attempt to change it afterwards is reported rather than dropped.
+        if "number" in model:
+            if creating and model["number"] is not None:
+                v3["documentNumber"] = model["number"]
+            elif not creating:
+                rejected.add("number")
+
         for k in model:
             if k in self._WRITABLE or k in self._IGNORE:
                 continue

@@ -172,7 +172,7 @@
     "note": "Internal comment (not printed on the document).",
     "documents": "Follow-up documents created from this quote (read-only).",
     "documents.salesOrders": "Sales orders created from this quote.",
-    "number": "The quote number, assigned by Xentral's configured number range. It cannot be supplied — a create naming it is refused so a migration cannot end up with numbers other than the ones it asked for."
+    "number": "The quote number, drawn from the configured number range. It cannot be supplied: the v3 create does not accept a number for this document type."
   },
   "SalesOrder": {
     "status": "Lifecycle state of the order: draft, confirmed, fulfilled, closed, or cancelled.",
@@ -276,7 +276,7 @@
     "discounts.kind": "Type of discount (e.g. percentage, absolute).",
     "discounts.description": "Label of the discount.",
     "discounts.amount": "Discount amount.",
-    "number": "The sales order number, assigned by Xentral's configured number range. It cannot be supplied — a create naming it is refused so a migration cannot end up with numbers other than the ones it asked for."
+    "number": "The sales order number. Supply it on create to carry a number over from a previous system — Xentral stores it verbatim and it survives release. Omit it and the next number is drawn from the configured range. It cannot be changed afterwards; the number must be unique."
   },
   "SalesInvoice": {
     "status": "Lifecycle state of the invoice: draft, open, paid, or cancelled.",
@@ -351,7 +351,7 @@
     "documents.salesOrder": "Sales order this invoice was created from.",
     "documents.deliveryNotes": "Delivery notes billed by this invoice.",
     "documents.creditNotes": "Credit notes issued against this invoice.",
-    "number": "The invoice number, assigned by Xentral's configured number range. It cannot be supplied — a create naming it is refused so a migration cannot end up with numbers other than the ones it asked for."
+    "number": "The invoice number. Supply it on create to carry a number over from a previous system — Xentral stores it verbatim and it survives release. Omit it and the next number is drawn from the configured range. It cannot be changed afterwards; the number must be unique."
   },
   "DeliveryNote": {
     "status": "Lifecycle state of the delivery: draft, picking, shipped, delivered, or cancelled.",
@@ -402,7 +402,7 @@
     "documents.salesOrder": "Sales order this delivery fulfils.",
     "documents.salesInvoices": "Invoices billing this delivery.",
     "documents.returns": "Returns created from this delivery.",
-    "number": "The delivery note number, assigned by Xentral's configured number range. It cannot be supplied — a create naming it is refused so a migration cannot end up with numbers other than the ones it asked for."
+    "number": "The delivery note number, drawn from the configured number range. It cannot be supplied: the v3 create does not accept a number for this document type."
   },
   "CreditNote": {
     "status": "Lifecycle state of the credit note: draft, open, settled, or cancelled.",
@@ -454,7 +454,7 @@
     "documents": "Linked documents in the credit note's flow (read-only).",
     "documents.salesInvoice": "Invoice this credit note relates to.",
     "documents.return": "Return that triggered this credit note.",
-    "number": "The credit note number, assigned by Xentral's configured number range. It cannot be supplied — a create naming it is refused so a migration cannot end up with numbers other than the ones it asked for."
+    "number": "The credit note number. Supply it on create to carry a number over from a previous system — Xentral stores it verbatim and it survives release. Omit it and the next number is drawn from the configured range. It cannot be changed afterwards; the number must be unique."
   },
   "Return": {
     "status": "Lifecycle state of the return: requested, received, checked, settled, or cancelled.",
@@ -496,7 +496,7 @@
     "documents": "Linked documents in the return's flow (read-only).",
     "documents.salesOrder": "Original sales order for the returned goods.",
     "documents.deliveryNote": "Delivery note the goods were shipped on.",
-    "number": "The return number, assigned by Xentral's configured number range. It cannot be supplied — a create naming it is refused so a migration cannot end up with numbers other than the ones it asked for."
+    "number": "The return number, drawn from the configured number range. It cannot be supplied: the v3 create does not accept a number for this document type."
   },
   "PurchaseOrder": {
     "status": "Lifecycle state of the purchase order: draft, sent, confirmed, received, closed, or cancelled.",
@@ -559,7 +559,7 @@
     "printSettings.withoutPrices": "Print the order without prices.",
     "printSettings.requestConfirmation": "Print a request asking the supplier to confirm the order.",
     "dropship": "Read-only dropshipping details when the supplier ships directly to the customer.",
-    "number": "The purchase order number, assigned by Xentral's configured number range. It cannot be supplied — a create naming it is refused so a migration cannot end up with numbers other than the ones it asked for."
+    "number": "The purchase order number, drawn from the configured number range. It cannot be supplied: the v3 create does not accept a number for this document type."
   },
   "GoodsReceipt": {
     "references": "Read-only external references on the receipt.",

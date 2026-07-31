@@ -171,9 +171,9 @@
       {
         "field": "number",
         "ops": [
-          "create"
+          "update"
         ],
-        "reason": "Assigning a sales order number by hand. Xentral's v3 create WOULD take a documentNumber here (verified on mvp — it is stored and survives release), but the number must come from the configured number range, so the core declines it. This is a product decision, not a missing upstream capability: a write naming it answers 409 instead of silently drawing a different number."
+        "reason": "Correcting a sales order number after the fact. The v3 create accepts one, but PATCH has no slot for it — a number carried over from another system must be right the first time."
       }
     ],
     "SalesInvoice": [
@@ -306,9 +306,9 @@
       {
         "field": "number",
         "ops": [
-          "create"
+          "update"
         ],
-        "reason": "Assigning a invoice number by hand. Xentral's v3 create WOULD take a documentNumber here (verified on mvp — it is stored and survives release), but the number must come from the configured number range, so the core declines it. This is a product decision, not a missing upstream capability: a write naming it answers 409 instead of silently drawing a different number."
+        "reason": "Correcting a invoice number after the fact. The v3 create accepts one, but PATCH has no slot for it — a number carried over from another system must be right the first time."
       }
     ],
     "DeliveryNote": [
@@ -400,7 +400,7 @@
         "ops": [
           "create"
         ],
-        "reason": "Assigning a delivery note number by hand. Neither the core nor upstream supports it — v3 does not declare documentNumber for this document type and ignores it without an error. The number comes from the configured number range."
+        "reason": "Carrying a delivery note number over from another system. The v3 create does not declare documentNumber for this document type and ignores a supplied value without an error, so the core refuses it instead. salesOrder, invoice and creditNote do accept one."
       }
     ],
     "CreditNote": [
@@ -475,9 +475,9 @@
       {
         "field": "number",
         "ops": [
-          "create"
+          "update"
         ],
-        "reason": "Assigning a credit note number by hand. Xentral's v3 create WOULD take a documentNumber here (verified on mvp — it is stored and survives release), but the number must come from the configured number range, so the core declines it. This is a product decision, not a missing upstream capability: a write naming it answers 409 instead of silently drawing a different number."
+        "reason": "Correcting a credit note number after the fact. The v3 create accepts one, but PATCH has no slot for it — a number carried over from another system must be right the first time."
       }
     ],
     "Return": [
@@ -570,7 +570,7 @@
         "ops": [
           "create"
         ],
-        "reason": "Assigning a return number by hand. Neither the core nor upstream supports it — v3 does not declare documentNumber for this document type and ignores it without an error. The number comes from the configured number range."
+        "reason": "Carrying a return number over from another system. The v3 create does not declare documentNumber for this document type and ignores a supplied value without an error, so the core refuses it instead. salesOrder, invoice and creditNote do accept one."
       }
     ],
     "Quote": [
@@ -672,7 +672,7 @@
         "ops": [
           "create"
         ],
-        "reason": "Assigning a quote number by hand. Neither the core nor upstream supports it — v3 does not declare documentNumber for this document type and ignores it without an error. The number comes from the configured number range."
+        "reason": "Carrying a quote number over from another system. The v3 create does not declare documentNumber for this document type and ignores a supplied value without an error, so the core refuses it instead. salesOrder, invoice and creditNote do accept one."
       }
     ],
     "PurchaseOrder": [
@@ -757,7 +757,7 @@
         "ops": [
           "create"
         ],
-        "reason": "Assigning a purchase order number by hand. Neither the core nor upstream supports it — v3 does not declare documentNumber for this document type and ignores it without an error. The number comes from the configured number range."
+        "reason": "Carrying a purchase order number over from another system. The v3 create does not declare documentNumber for this document type and ignores a supplied value without an error, so the core refuses it instead. salesOrder, invoice and creditNote do accept one."
       }
     ],
     "GoodsReceipt": [
