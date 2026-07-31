@@ -415,6 +415,8 @@ class PartnerSubresourcesMixin:
         if st == 200:
             rows = (pl.get("data") if isinstance(pl, dict) else None) or []
             rec["contacts"] = [contact_from_v3(c) for c in rows if isinstance(c, dict)]
+        elif st == 404:
+            rec["contacts"] = []
         # billing is already on the mapped record (it rides in the v3 payload);
         # append the shipping rows from the sub-resource.
         addresses: list[dict[str, Any]] = [
@@ -423,8 +425,18 @@ class PartnerSubresourcesMixin:
         st, pl = await self._sub_call(
             "GET", f"{paths['shipping']}?perPage=50", None, base_url, token, accept_language, client
         )
+        if st == 404:
+            # The route does not exist on this build, so there ARE no rows of
+            # this kind — the singletons are the complete set. Verified on
+            # gate56, whose suppliers have no deliveryAddresses endpoint at all
+            # ("Route not found"). Answering null there would hide the main and
+            # billing address, which are known; and the fragment cannot be a
+            # loaded gun, because the same missing store makes the write-side
+            # delete impossible too.
+            rec["addresses"] = addresses
+            return
         if st != 200:
-            # The shipping store did not answer, so the set is UNKNOWN — and
+            # A store that EXISTS but did not answer: the set is UNKNOWN, and
             # main + billing alone look exactly like a complete one. Say null
             # (the "not loaded" convention contacts already uses) rather than
             # hand the caller a short list its own write contract reads as

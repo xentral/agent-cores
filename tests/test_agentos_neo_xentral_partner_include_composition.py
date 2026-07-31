@@ -228,3 +228,44 @@ def test_collection_write_still_syncs_and_deletes():
     up = _Upstream(1)
     _req(up, method="PATCH", handle="sup_1", body=json.dumps({"contacts": []}).encode())
     assert up.contacts["1"] == []
+
+
+# ---- a build where the store does not exist at all ----------------------
+
+
+class _NoShippingRoute(_Upstream):
+    """gate56's shape: the include is silently ignored for this entity AND
+    /suppliers/{id}/deliveryAddresses does not exist ("Route not found")."""
+
+    def handler(self, request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("deliveryAddresses"):
+            self.sub_calls += 1
+            return httpx.Response(404, json={"error": {"message": "Route not found"}})
+        return super().handler(request)
+
+
+def test_a_missing_store_means_no_rows_not_unknown():
+    """404 on the sub-resource is not a failure to read — the route is absent, so
+    there are no rows of that kind and the singletons ARE the set. Answering null
+    would hide the main address, which is known. Nor can the fragment bite: the
+    same missing store makes the write-side delete impossible."""
+    up = _NoShippingRoute(1, mode="ignores")
+    row = _req(up, method="GET", handle="sup_1")
+    assert [a["type"] for a in row["addresses"]] == ["both"]
+    assert [c["name"] for c in row["contacts"]] == ["Kontakt 1.0"]
+
+
+class _BrokenShippingStore(_Upstream):
+    """The store EXISTS but errors — genuinely unknown."""
+
+    def handler(self, request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("deliveryAddresses"):
+            self.sub_calls += 1
+            return httpx.Response(503, json={"title": "unavailable"})
+        return super().handler(request)
+
+
+def test_a_broken_store_still_answers_null():
+    up = _BrokenShippingStore(1, mode="ignores")
+    row = _req(up, method="GET", handle="sup_1")
+    assert row["addresses"] is None
