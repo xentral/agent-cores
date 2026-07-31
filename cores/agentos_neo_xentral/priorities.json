@@ -1191,11 +1191,11 @@
         "reason": "Packaging units (VPE) need the packagingUnits include parsed — not yet mapped."
       },
       {
-        "field": "stock",
+        "field": "stock.incoming",
         "ops": [
           "read"
         ],
-        "reason": "Live stock (available/reserved/incoming/byWarehouse) needs the stock include parsed — not yet mapped; today the block is empty."
+        "reason": "Inbound quantity (ordered but not yet received) is the one stock figure Xentral does not compute: /products/{id}/stocks returns physical, sellable, reserved, correction, pseudo, openSalesOrders, calculated and producible — all mapped — but nothing inbound. The per-warehouse split the same call carries is answered by StockLevel (filter[product], narrowed by warehouse), so it is not duplicated onto the product."
       },
       {
         "field": "suppliers",
