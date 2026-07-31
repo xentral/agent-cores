@@ -35,50 +35,42 @@ jobs:
           ./gitleaks detect --source . --no-git --redact --exit-code 1
 
   # Import-smoke: every core loads against the LIVE backend contract
-  # (entity_registry.core_sdk). Since agent-hub-labs is private, this checks it out
-  # with a read-only token (`AGENT_HUB_READ_TOKEN` secret) and imports the registry
-  # over this repo's cores/. When the secret is ABSENT the job skips (CI stays
-  # green) — set the secret to turn it on.
+  # (entity_registry.core_sdk). Since agent-os is private, this checks it out
+  # with a read-only deploy key (`AGENT_OS_READ_KEY` secret) and imports the
+  # registry over this repo's cores/. The key is REQUIRED: a missing key fails the
+  # job rather than skipping it, so "green" always means the contract was checked.
   import-smoke:
     runs-on: ubuntu-latest
     steps:
-      - name: Gate on the backend read token
-        id: gate
+      - name: Require the agent-os deploy key
         env:
-          TOKEN: ${{ secrets.AGENT_HUB_READ_TOKEN }}
+          KEY: ${{ secrets.AGENT_OS_READ_KEY }}
         run: |
-          if [ -n "$TOKEN" ]; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::AGENT_HUB_READ_TOKEN not set — skipping import-smoke. Set the secret to enable it."
+          if [ -z "$KEY" ]; then
+            echo "::error::AGENT_OS_READ_KEY is not set — import-smoke cannot validate cores against the agent-os contract. Add a read-only deploy key for xentral/agent-os as this repo's AGENT_OS_READ_KEY secret."
+            exit 1
           fi
 
       - name: Checkout agent-cores
-        if: steps.gate.outputs.enabled == 'true'
         uses: actions/checkout@v4
 
-      - name: Checkout agent-hub-labs (backend contract)
-        if: steps.gate.outputs.enabled == 'true'
+      - name: Checkout agent-os (backend contract)
         uses: actions/checkout@v4
         with:
-          repository: xentral/agent-hub-labs
+          repository: xentral/agent-os
           ref: main
-          token: ${{ secrets.AGENT_HUB_READ_TOKEN }}
-          path: _agent-hub-labs
+          ssh-key: ${{ secrets.AGENT_OS_READ_KEY }}
+          path: _agent-os
 
       - name: Set up uv
-        if: steps.gate.outputs.enabled == 'true'
         uses: astral-sh/setup-uv@v5
 
       - name: Install backend deps
-        if: steps.gate.outputs.enabled == 'true'
-        working-directory: _agent-hub-labs/backend
+        working-directory: _agent-os/backend
         run: uv sync
 
       - name: Import-smoke + core adapter tests
-        if: steps.gate.outputs.enabled == 'true'
-        working-directory: _agent-hub-labs/backend
+        working-directory: _agent-os/backend
         env:
           # registry discovery reads cores from THIS repo's cores/; backend on PYTHONPATH.
           XENTRAL_CORES_ROOT: ${{ github.workspace }}/cores
