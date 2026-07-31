@@ -379,7 +379,20 @@ class ProductAdapter(FacadeAdapterBase):
     # products explicitly (records filters=[{key:"status", value:"inactive"}]).
     # value → isDisabled bool; key → isDisabled. (archived is isDeleted, not
     # covered by this single-key filter.)
-    query_aliases = {"status": "isDisabled"}
+    # MODEL path → upstream filter key. The upstream reports its own allowed set
+    # in the 400 it answers to an unknown filter: id, number, ean, name,
+    # manufacturerProductNumber, project.id, isVariant, isMatrixProduct,
+    # updatedAt, isDisabled, isDeleted. Everything in that list that the model
+    # can express is declared filterable; `isVariant` is not, because the model
+    # has no boolean for it (variant.of is the parent reference, a different
+    # question) — adding one would be a field, not a filter.
+    query_aliases = {
+        "status": "isDisabled",
+        "project": "project.id",
+        "variant.isMatrix": "isMatrixProduct",
+        "identifiers.ean": "ean",
+        "identifiers.manufacturerNumber": "manufacturerProductNumber",
+    }
     filter_value_maps = {"status": {"active": "false", "inactive": "true"}}
     preview_template = "{{name}}"
     sections = {
@@ -931,8 +944,10 @@ class ProductAdapter(FacadeAdapterBase):
                 reference="Project",
                 renderProperty="name",
                 section="general",
+                filterable=True,
             ),
-            "tags": tags_prop(writable=False),
+            # v3 products rejects a tags filter (verified on mvp).
+            "tags": tags_prop(writable=False, filterable=False),
             "identifiers": prop(
                 "embedded",
                 "Identifiers",
@@ -1205,7 +1220,16 @@ class ProductAdapter(FacadeAdapterBase):
                     "of": prop(
                         "reference", "Of", **_CU, reference="Product", renderProperty="name"
                     ),
-                    "isMatrix": prop("boolean", "Is matrix", **_CU),
+                    "isMatrix": prop(
+                        "boolean",
+                        "Is matrix",
+                        **_CU,
+                        filterable=True,
+                        description=(
+                            "Whether this is the matrix (parent) product of a variant "
+                            "set. Filterable — the upstream key is isMatrixProduct."
+                        ),
+                    ),
                 },
             ),
             "bom": prop(
@@ -1322,7 +1346,18 @@ class ProductAdapter(FacadeAdapterBase):
                 },
             ),
             "createdAt": prop("datetime", "Created at", **RO),
-            "updatedAt": prop("datetime", "Updated at", **RO, sortable=True),
+            "updatedAt": prop(
+                "datetime",
+                "Updated at",
+                **RO,
+                sortable=True,
+                filterable=True,
+                description=(
+                    "When the product last changed. Filterable — this is the key for an "
+                    "incremental sync: ask for everything changed since the last run "
+                    "instead of paging the whole catalogue."
+                ),
+            ),
         }
 
     def map_read(self, r: dict[str, Any]) -> dict[str, Any]:

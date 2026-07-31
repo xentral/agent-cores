@@ -71,6 +71,7 @@ class ReturnAdapter(FacadeAdapterBase):
     include = "lineItems,lineItems.product,address,tags"
     preview_template = "{{number}}"
     query_aliases = {
+        "items.product": "lineItems.product.id",
         "number": "documentNumber",
         "dates.requested": "documentDate",
         "customer": "address.id",
@@ -256,7 +257,7 @@ class ReturnAdapter(FacadeAdapterBase):
                 "References",
                 section="references",
                 properties={
-                    "rmaNumber": prop("string", "RMA number", filterable=True),
+                    "rmaNumber": prop("string", "RMA number", description="Not filterable — the upstream list endpoint rejects it (verified on mvp)."),
                     "customerOrderNumber": prop("string", "Customer order number", filterable=True),
                 },
             ),

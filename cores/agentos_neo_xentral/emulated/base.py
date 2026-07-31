@@ -20,7 +20,7 @@ import functools
 import json
 import os
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -280,13 +280,15 @@ def rejected_item_keys(items: Any, item_props: dict[str, Any]) -> set[str]:
     return out
 
 
-def tags_prop(*, writable: bool = False) -> dict[str, Any]:
+def tags_prop(*, writable: bool = False, filterable: bool = True) -> dict[str, Any]:
     """The model's ``tags`` field: a plain string array of tag titles
     (docs/01-model.md §6.1 ``"tags": ["b2b", "vip"]``). Declared as the FE's
     ``tag`` type — that is the contract for the pill renderer AND for the table
     column picker (``collection`` is excluded from columns). v3 accepts titles on
     write, so the string form round-trips; color/group live on the Tag entity."""
-    flags: dict[str, Any] = {"filterable": True}
+    # Not every upstream list accepts a tag filter — v3 products rejects it
+    # outright, so the entity that cannot filter says so instead of promising it.
+    flags: dict[str, Any] = {"filterable": True} if filterable else {}
     if writable:
         flags["creatable"] = True
         flags["updatable"] = True
@@ -473,6 +475,53 @@ class FacadeAdapterBase:
             spec = self._resolve_path(properties, path) if "." in path else properties.get(path)
             if isinstance(spec, dict) and not spec.get("description"):
                 spec["description"] = text
+
+    def _filterable_keys(self) -> set[str]:
+        """Every MODEL path the schema marks ``filterable``, cached per class."""
+        cached = type(self).__dict__.get("_filterable_keys_cache")
+        if cached is not None:
+            return cached
+
+        def walk(props: dict[str, Any], prefix: str = "") -> Iterator[str]:
+            for name, spec in (props or {}).items():
+                if not isinstance(spec, dict):
+                    continue
+                path = f"{prefix}.{name}" if prefix else name
+                if spec.get("filterable"):
+                    yield path
+                sub = spec.get("properties")
+                if not isinstance(sub, dict):
+                    sub = (spec.get("node") or {}).get("properties")
+                if isinstance(sub, dict):
+                    yield from walk(sub, path)
+
+        try:
+            keys = set(walk(self.fields()))
+        except Exception:  # noqa: BLE001 - a broken fields() must not break list
+            keys = set()
+        type(self)._filterable_keys_cache = keys
+        return keys
+
+    def _undeclared_filter_keys(self, query: list[tuple[str, str]]) -> list[str]:
+        """Filter keys the caller sent that this entity does not declare.
+
+        Passing an unknown filter on to the upstream is not harmless: several v3
+        list endpoints (merchandiseGroups, productCategories, webhooks, …) IGNORE
+        it and answer 200 with the whole collection. The caller then reads an
+        unfiltered list as a filtered one — verified on mvp, where filtering
+        merchandise groups by a nonexistent name returned all 15 rows. A loud
+        422 here is strictly better than a plausible wrong answer there.
+
+        ``searchable`` keys are allowed through: the consolidated search fans out
+        over exactly those, and it calls back into this method.
+        """
+        allowed = self._filterable_keys() | set(self.search_fields())
+        sent = {
+            v
+            for k, v in query
+            if k.startswith("filter[") and k.endswith("][key]") and v != "search"
+        }
+        return sorted(sent - allowed)
 
     def search_fields(self) -> tuple[str, ...]:
         """MODEL fields flagged ``searchable`` in the entity's schema — the
@@ -814,6 +863,23 @@ class FacadeAdapterBase:
         # entity declares fields; the metadata advertises `searchFields`, so
         # well-behaved consumers never send `search` to an entity without them.
         if handle is None:
+            refused = self._undeclared_filter_keys(query)
+            if refused:
+                return self._json(
+                    422,
+                    {
+                        "title": f"{self.manifest.key}: filter(s) not supported",
+                        "detail": (
+                            "This entity does not filter on "
+                            f"{', '.join(refused)}. Some upstream list endpoints "
+                            "IGNORE an unknown filter and answer 200 with the "
+                            "unfiltered collection, which reads as a filtered "
+                            "result — so an undeclared key is refused here instead "
+                            "of being passed on."
+                        ),
+                        "filterable": sorted(self._filterable_keys()),
+                    },
+                )
             hit = extract_search(query)
             if hit is not None and self.search_fields():
                 value, op = hit

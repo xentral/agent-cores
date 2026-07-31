@@ -72,7 +72,11 @@ def test_credit_note_service_date_is_declared_read_only():
     props = CreditNoteAdapter().fields()["dates"]["properties"]
     assert not props["serviceDate"].get("creatable")
     assert not props["serviceDate"].get("updatable")
-    assert props["serviceDate"]["filterable"] is True  # still a useful filter
+    # It is not filterable either. This line used to assert the opposite with the
+    # comment "still a useful filter" — useful it would be, but a live probe on
+    # mvp shows the v3 creditNotes list REJECTS a deliveryDate filter, so the
+    # declaration was a promise the upstream does not keep.
+    assert not props["serviceDate"].get("filterable")
     # and the invoice's sibling really is the other way round
     inv = SalesInvoiceAdapter().fields()["dates"]["properties"]["serviceDate"]
     assert inv["updatable"] and not props["serviceDate"].get("updatable")

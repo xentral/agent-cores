@@ -77,6 +77,7 @@ class CreditNoteAdapter(FacadeAdapterBase):
     include = "lineItems,lineItems.product,address,tags"
     preview_template = "{{number}}"
     query_aliases = {
+        "items.product": "lineItems.product.id",
         "number": "documentNumber",
         "dates.issued": "documentDate",
         "customer": "address.id",
@@ -223,7 +224,9 @@ class CreditNoteAdapter(FacadeAdapterBase):
                     # Unlike the invoice, the credit-note v3 DTOs still carry no
                     # `deliveryDate` — the write drops this silently, so the schema must
                     # not advertise it as writable (priorities.json keeps the wish).
-                    "serviceDate": prop("date", "Service date", **RO, filterable=True),
+                    "serviceDate": prop(
+                        "date", "Service date", **RO, description="Not filterable — the upstream list endpoint rejects it (verified on mvp)."
+                    ),
                 },
             ),
             "taxation": prop("select", "Taxation", section="financials", **_CU),
