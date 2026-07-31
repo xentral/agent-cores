@@ -160,6 +160,13 @@
           "read"
         ],
         "reason": "Header discounts/vouchers (e-commerce) are not exposed by v3 salesOrders — only line-level discounts exist."
+      },
+      {
+        "field": "items.totals.tax",
+        "ops": [
+          "read"
+        ],
+        "reason": "Tax amount per line. v3 states only taxRate and effectiveTaxRate on a line — no money figure — so the tax a position carries cannot be read. The core will not derive it from gross minus net: that is a number Xentral never stated, and line-level rounding against the legacy PDF (projekt.preisberechnung) is still an open decision, so a derived value could silently disagree with the printed document. Per-rate tax exists on the document totals; the line needs its own."
       }
     ],
     "SalesInvoice": [
@@ -281,6 +288,13 @@
           "search"
         ],
         "reason": "Email search — standard use-case for finding a customer's invoices."
+      },
+      {
+        "field": "items.totals.tax",
+        "ops": [
+          "read"
+        ],
+        "reason": "Tax amount per line. v3 states only taxRate and effectiveTaxRate on a line — no money figure — so the tax a position carries cannot be read. The core will not derive it from gross minus net: that is a number Xentral never stated, and line-level rounding against the legacy PDF (projekt.preisberechnung) is still an open decision, so a derived value could silently disagree with the printed document. Per-rate tax exists on the document totals; the line needs its own."
       }
     ],
     "DeliveryNote": [
@@ -429,6 +443,13 @@
           "read"
         ],
         "reason": "Exact open amount needs readable refund/offset allocations (docs/05 #2); today derived from paymentStatus only."
+      },
+      {
+        "field": "items.totals.tax",
+        "ops": [
+          "read"
+        ],
+        "reason": "Tax amount per line. v3 states only taxRate and effectiveTaxRate on a line — no money figure — so the tax a position carries cannot be read. The core will not derive it from gross minus net: that is a number Xentral never stated, and line-level rounding against the legacy PDF (projekt.preisberechnung) is still an open decision, so a derived value could silently disagree with the printed document. Per-rate tax exists on the document totals; the line needs its own."
       }
     ],
     "Return": [
@@ -603,6 +624,13 @@
           "update"
         ],
         "reason": "Edit quote positions after creation — the v3 update DTO carries no line-item write path."
+      },
+      {
+        "field": "items.totals.tax",
+        "ops": [
+          "read"
+        ],
+        "reason": "Tax amount per line. v3 states only taxRate and effectiveTaxRate on a line — no money figure — so the tax a position carries cannot be read. The core will not derive it from gross minus net: that is a number Xentral never stated, and line-level rounding against the legacy PDF (projekt.preisberechnung) is still an open decision, so a derived value could silently disagree with the printed document. Per-rate tax exists on the document totals; the line needs its own."
       }
     ],
     "PurchaseOrder": [
