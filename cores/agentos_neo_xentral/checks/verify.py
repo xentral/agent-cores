@@ -954,7 +954,8 @@ async def _verify_entity(
                 {
                     "name": "VT Kontakt",
                     "type": "mr",
-                    "role": "Einkauf",
+                    "department": "Einkauf",
+                    "position": "Leiter",
                     "email": "verify-kontakt@example.test",
                 }
             ]
@@ -1010,9 +1011,9 @@ async def _verify_entity(
                         ship_ok and bill_ok,
                         None if ship_ok and bill_ok else "address missing on created record",
                     )
-                    # update roundtrip: full-set PATCH (mutate role + shipping city)
+                    # update roundtrip: full-set PATCH (mutate department + shipping city)
                     if cons and adrs:
-                        cons2 = [dict(cons[0], role="Vertrieb")]
+                        cons2 = [dict(cons[0], department="Vertrieb")]
                         adrs2 = [
                             dict(a, city="Bremen") if a.get("type") == "shipping" else a
                             for a in adrs
@@ -1022,7 +1023,7 @@ async def _verify_entity(
                         )
                         udata = (upl.get("data") or {}) if isinstance(upl, dict) else {}
                         ok_c = ust == 200 and any(
-                            c.get("role") == "Vertrieb" for c in udata.get("contacts") or []
+                            c.get("department") == "Vertrieb" for c in udata.get("contacts") or []
                         )
                         ok_a = ust == 200 and any(
                             a.get("city") == "Bremen" for a in udata.get("addresses") or []

@@ -39,11 +39,17 @@
     "items.purchasePrice.amount": "Net cost amount per unit.",
     "items.purchasePrice.currency": "Currency of the cost price — must equal the document currency.",
     "items.contributionMargin": "Contribution margin of this line as a PERCENT of its net revenue ((net - purchase price) / net x 100), computed upstream from the line's purchasePrice — not an amount.",
-    "items.totals": "Totals for the whole line quantity, as reported by Xentral (read-only). No tax amount: v3 states none per line — see the document totals for per-rate tax."
+    "items.totals": "Totals for the whole line quantity, as reported by Xentral (read-only). No tax amount: v3 states none per line — see the document totals for per-rate tax.",
+    "contacts.position": "The contact's job title / function (e.g. Head of Purchasing).",
+    "contacts.department": "Department the contact belongs to.",
+    "contacts.subDepartment": "Sub-department, where the company splits departments further.",
+    "contacts.remarks": "Remark about the contact.",
+    "contacts.internalNote": "Internal note about the contact — not intended for the customer.",
+    "contacts.allowMarketingEmails": "Whether the contact may receive marketing mail."
   },
   "Customer": {
-    "number": "Human-facing customer number (e.g. K-10023).",
-    "type": "Kind of partner: person or company (salutation / legal form) — not the customer/supplier role.",
+    "number": "The merchant's own customer number. Settable on create — supply it to keep the number from your previous system, omit it to let Xentral draw one from the number range. It is filterable, so it is also the key that makes a repeated import idempotent. Not changeable afterwards.",
+    "type": "Customer or lead (Interessent). Read-only: no v3 customers payload exposes the lead flag, so it cannot be set through the core today.",
     "status": "Lifecycle state of the customer: active or archived.",
     "parent": "Parent company in a branch → HQ hierarchy: this record is a branch of the referenced customer.",
     "billTo": "Central billing: invoices for this customer are addressed to this OTHER partner (e.g. a buying group or HQ). Null = billed directly.",
@@ -71,7 +77,9 @@
     "finance.creditLimit": "Maximum outstanding amount allowed before orders are put on hold.",
     "finance.onHold": "Delivery/credit hold — when true, orders are blocked from fulfilment.",
     "finance.dunningBlocked": "Excludes the customer from the dunning (payment-reminder) run.",
-    "finance.debtorAccountNumber": "Deviating debtor (A/R) account for the bookkeeping / DATEV export."
+    "finance.debtorAccountNumber": "Deviating debtor (A/R) account for the bookkeeping / DATEV export.",
+    "notes": "Free-text note on the customer (\"Sonstiges\" in the mask) — the usual home for migrated CRM remarks.",
+    "customFields": "Values of the company's custom fields (Freifelder) on this customer. `key` and `label` identify the field, `value` holds the content; `label` is required on write. Which fields exist is listed by the AddressCustomField entity. Note these are NOT filterable upstream — use `number` to match records on re-import."
   },
   "Supplier": {
     "number": "Human-facing supplier number (e.g. 70001).",

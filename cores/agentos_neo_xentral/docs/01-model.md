@@ -373,7 +373,7 @@ nicht wiederholt — sie existieren in jedem Beleg.
   // Ansprechpartner — own list, NOT mixed into addresses; in v3 a separate
   // sub-resource {partner}/contactPersons (CRUD, both partners); role ← upstream
   // `department`. Same full-set PATCH semantics.
-  "contacts": [{ "id": "con_1", "type": "mrs", "name": "Erika Beispiel", "title": "Dr.", "role": "Einkauf", "email": "…", "phone": "…", "mobile": "…" }],
+  "contacts": [{ "id": "con_1", "type": "mrs", "name": "Erika Beispiel", "title": "Dr.", "position": "Leiterin", "department": "Einkauf", "subDepartment": null, "email": "…", "phone": "…", "mobile": "…", "remarks": "…", "internalNote": null }],
   "defaults": { "currency": "EUR", "language": "de",
     "paymentMethod": { "…": "Ref" }, "paymentTerms": { "dueDays": 30, "discountPercent": 2, "discountDays": 10 },
     "shippingMethod": { "…": "Ref" }, "priceList": { "…": "Ref" },

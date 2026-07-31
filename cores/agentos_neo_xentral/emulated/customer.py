@@ -10,9 +10,11 @@ from __future__ import annotations
 
 from typing import Any
 
+import httpx
+
 from entity_registry.core_sdk import EmulationManifest
 
-from .base import RO, FacadeAdapterBase, map_tags, prop, ref, tags_prop, tags_to_v3
+from .base import _TIMEOUT, RO, FacadeAdapterBase, map_tags, prop, ref, tags_prop, tags_to_v3
 from .partner_subresources import (
     PartnerSubresourcesMixin,
     addresses_prop,
@@ -31,10 +33,16 @@ class CustomerAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
         rollout_batch="agentos_neo_xentral",
         adapter="agentos_neo_xentral.customer",
         source_apis=("agentos_neo_xentral",),
-        operations=("list", "read", "create", "update"),
+        operations=("list", "read", "create", "update", "delete"),
     )
     v3_path = "/api/v3/customers"
-    include = "tags"
+    # v3 has no customer delete; v1 does (verified on mvp: 204). Without it an agent
+    # can create a record but not clean up after itself — the asymmetry leaves test
+    # data behind in a live tenant and makes people wary of trying anything.
+    _V1_PATH = "/api/v1/customers"
+    # customFields only reach the payload when asked for — without the include the
+    # free-field values are simply absent, not empty.
+    include = "tags,customFields"
     preview_template = "{{name}}"
     # The v3 address filters/sorts act on the record's main address; in the unified
     # model that is the default row of the ``addresses`` list, so the query keys map
@@ -101,17 +109,21 @@ class CustomerAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
         return {
             "object": prop("string", "Object", **RO, section="general"),
             "id": prop("string", "ID", **RO, section="general"),
+            # Creatable, not updatable: v3 takes a number on POST (verified on mvp —
+            # a supplied number is stored verbatim) and draws one from the number
+            # range when it is omitted. That makes it the migration key, and the one
+            # filterable field an import can match on to stay repeatable.
             "number": prop(
                 "string",
                 "Number",
-                **RO,
+                creatable=True,
                 section="general",
                 filterable=True,
                 searchable=True,
                 sortable=True,
                 previewable=True,
             ),
-            "type": prop("select", "Type", section="general"),
+            "type": prop("select", "Type", **RO, section="general"),
             "status": prop(
                 "select",
                 "Status",
@@ -245,7 +257,27 @@ class CustomerAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
                 **_CU,
             ),
             "tags": tags_prop(writable=True),
-            "customFields": prop("embedded", "Custom fields", section="general", properties={}),
+            # Free-text CRM note on the partner ("Sonstiges" in the mask) — v3
+            # `notes`, writable. This is where migrated CRM remarks belong.
+            "notes": prop("text", "Notes", section="general", **_CU),
+            # Free-field VALUES. A typed collection, not an untyped embedded blob:
+            # an agent has to be able to read the payload shape off the schema.
+            # v3 include=customFields returns {key, label, type, value}; the write
+            # takes {key, label, value} — label is required upstream. The roster of
+            # fields that exist lives on the AddressCustomField entity.
+            "customFields": prop(
+                "collection",
+                "Custom fields",
+                section="general",
+                node={
+                    "properties": {
+                        "key": prop("string", "Key", **_CU),
+                        "label": prop("string", "Label", **_CU),
+                        "type": prop("string", "Type", **RO),
+                        "value": prop("string", "Value", **_CU),
+                    }
+                },
+            ),
             "createdAt": prop("datetime", "Created at", **RO, filterable=True, sortable=True),
             "updatedAt": prop("datetime", "Updated at", **RO, filterable=True, sortable=True),
         }
@@ -328,37 +360,50 @@ class CustomerAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
                 "ch_", ch.get("id") if isinstance(ch, dict) else ch, None, None, "channels"
             ),
             "tags": map_tags(r.get("tags")),
-            "customFields": {},
+            "notes": r.get("notes"),
+            "customFields": [
+                {
+                    "key": cf.get("key"),
+                    "label": cf.get("label"),
+                    "type": cf.get("type"),
+                    "value": cf.get("value"),
+                }
+                for cf in (r.get("customFields") or [])
+                if isinstance(cf, dict)
+            ],
             "createdAt": r.get("createdAt"),
             "updatedAt": r.get("updatedAt"),
         }
 
     # Write set = the v3-writable customer fields: identity/contact/address, the
-    # main project + origin channel ({id} refs on the v3 body), and tags. defaults
-    # + finance stay blue wishes until upstream write coverage is field-verified
-    # (ADR-014; docs/05 #14 records finance as UI-only today).
+    # main project + origin channel ({id} refs on the v3 body), the free-field
+    # values, the CRM note and tags. defaults + finance stay blue wishes until
+    # upstream write coverage is field-verified (ADR-014; docs/05 #14 records
+    # finance as UI-only today).
     _WRITABLE = {
         "name",
+        "number",
         "email",
         "phone",
         "website",
         "vatId",
         "language",
+        "notes",
+        "customFields",
         "primaryAddress",
         "project",
         "channel",
         "tags",
     }
+    # ONLY envelope keys a read emits and a write can never mean. Everything else
+    # belongs in `rejected`: ADR-014 answers a write naming a non-writable field
+    # with 409 + the field list, precisely so a migration cannot lose data without
+    # noticing. `number` and `type` used to sit here — a merchant's own customer
+    # number was accepted with 201 and silently replaced by a drawn one, which on a
+    # 6k-record import destroys every foreign key with no error to see.
     _IGNORE = {
-        "status",
-        "parent",
-        "billTo",
-        "channels",
         "object",
         "id",
-        "number",
-        "type",
-        "finance",
         "createdAt",
         "updatedAt",
     }
@@ -375,6 +420,24 @@ class CustomerAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
         return {"id": ident.split("_", 1)[1] if "_" in ident else ident}
 
     @staticmethod
+    def _custom_fields_to_v3(value: Any) -> list[dict[str, Any]] | None:
+        """Model free-field rows → the v3 ``customFields`` body. ``key`` and ``value``
+        come from the caller; ``label`` is required upstream, so a row without one is
+        refused rather than sent to earn a 400 the caller cannot read. ``type`` is
+        upstream's and never echoed back. None = the whole value is unusable."""
+        if not isinstance(value, list):
+            return None
+        out: list[dict[str, Any]] = []
+        for row in value:
+            if not isinstance(row, dict):
+                return None
+            key, label = row.get("key"), row.get("label")
+            if not key or not label:
+                return None
+            out.append({"key": key, "label": label, "value": row.get("value")})
+        return out
+
+    @staticmethod
     def _addr_to_v3(a: dict[str, Any] | None) -> dict[str, Any]:
         a = a or {}
         return {
@@ -389,6 +452,31 @@ class CustomerAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
             )
             if a.get(src) is not None
         }
+
+    async def _send(  # noqa: ANN001
+        self, base_url, token, method, up_handle, payload, accept_language, client
+    ):
+        """DELETE goes to v1 — v3 exposes no customer delete. Everything else keeps
+        the v3 path (see _V1_PATH)."""
+        if method.upper() != "DELETE":
+            return await super()._send(
+                base_url, token, method, up_handle, payload, accept_language, client
+            )
+        url = f"{base_url.rstrip('/')}{self._V1_PATH}/{up_handle}"
+        headers = self._headers(token, accept_language)
+
+        async def _do(c: httpx.AsyncClient) -> httpx.Response:
+            return await c.request("DELETE", url, headers=headers)
+
+        if client is None:
+            async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
+                resp = await _do(c)
+        else:
+            resp = await _do(client)
+        try:
+            return resp.status_code, resp.json()
+        except ValueError:
+            return resp.status_code, {}
 
     def map_write(
         self, model: dict[str, Any], *, creating: bool
@@ -407,6 +495,23 @@ class CustomerAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
             pa.update(self._addr_to_v3(model["primaryAddress"]))
         if pa:
             v3["primaryAddress"] = pa
+        # The merchant's own number, on CREATE only — upstream stores it verbatim and
+        # falls back to the number range when absent. On UPDATE it is not writable, so
+        # it lands in `rejected` (409) instead of being dropped.
+        if "number" in model:
+            if creating:
+                if model["number"] is not None:
+                    v3["number"] = model["number"]
+            else:
+                rejected.add("number")
+        if "notes" in model:
+            v3["notes"] = model["notes"]
+        if "customFields" in model:
+            cfs = self._custom_fields_to_v3(model["customFields"])
+            if cfs is None:
+                rejected.add("customFields")
+            elif cfs:
+                v3["customFields"] = cfs
         # vatId lives at v3 `financials.tax.vatId`, NOT on the address — writing it
         # onto primaryAddress (or a top-level `tax`) silently dropped it upstream.
         # v3 deep-merges financials.tax, so sending only vatId preserves taxNumber
