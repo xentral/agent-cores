@@ -672,7 +672,15 @@ async def _verify_entity(
                         ("page[size]", "5"),
                         ("filter[0][key]", path),
                         ("filter[0][op]", "equals"),
-                        ("filter[0][value]", str(fval)),
+                        # Booleans have to go out lowercase — str(False) is "False"
+                        # and upstream answers "Invalid value: False. Valid values
+                        # are: true, false". This probe builds its own query rather
+                        # than going through the MCP tool, so it needs the same
+                        # treatment the tool got (agent-os: service.filter_value).
+                        (
+                            "filter[0][value]",
+                            ("true" if fval else "false") if isinstance(fval, bool) else str(fval),
+                        ),
                     ]
                 )
                 mark(

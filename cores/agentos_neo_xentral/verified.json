@@ -1488,9 +1488,10 @@
           "update": "pass"
         },
         "identifiers.ean": {
-          "filter": "pass",
+          "filterNote": "no sample value on the test instance — filter not probed",
           "read": "pass",
           "search": "pass",
+          "searchNote": "probed with a fixture value — no sampled record carries this field",
           "update": "pass"
         },
         "identifiers.external": {
@@ -1508,7 +1509,7 @@
           "update": "pass"
         },
         "identifiers.manufacturerNumber": {
-          "filter": "pass",
+          "filterNote": "no sample value on the test instance — filter not probed",
           "read": "pass",
           "update": "pass"
         },
@@ -1598,7 +1599,7 @@
         },
         "name": {
           "create": "pass",
-          "createNote": "created prd_61991 (labelled 'VT Verify') — no delete endpoint, left in place",
+          "createNote": "created prd_61992 (labelled 'VT Verify') — no delete endpoint, left in place",
           "filter": "pass",
           "read": "pass",
           "search": "pass",
@@ -1781,8 +1782,7 @@
           "read": "pass"
         },
         "variant.isMatrix": {
-          "filter": "fail",
-          "filterNote": "filter[variant.isMatrix] 400: Invalid value: False. Valid values are: true, false. {\"matrixprodukt\": [\"Invalid value: False. Valid values are: true, false.\"]}",
+          "filter": "pass",
           "read": "pass",
           "update": "pass"
         },
