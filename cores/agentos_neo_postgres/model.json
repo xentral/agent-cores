@@ -6191,7 +6191,7 @@
                   }
                 }
               },
-              "description": "All postal addresses of the partner: one default 'both' row (the main address) plus an optional deviating billing address and any number of shipping addresses."
+              "description": "All postal addresses of the partner: one default 'both' row (the main address) plus an optional deviating billing address and any number of shipping addresses. Writing this collection REPLACES the stored list wholesale — the record is patched with a shallow JSONB merge, so the array you send becomes the array that is stored. There is no per-entry upsert: omit the key entirely to leave the list untouched, or send every entry you want to keep."
             },
             "contacts": {
               "type": "collection",
@@ -6277,7 +6277,7 @@
                   }
                 }
               },
-              "description": "Contact persons at the partner (each an individual, differentiated by role/department)."
+              "description": "Contact persons at the partner (each an individual, differentiated by role/department). Writing this collection REPLACES the stored list wholesale — the record is patched with a shallow JSONB merge, so the array you send becomes the array that is stored. There is no per-entry upsert: omit the key entirely to leave the list untouched, or send every entry you want to keep."
             },
             "defaults": {
               "type": "embedded",
@@ -6945,7 +6945,7 @@
                   }
                 }
               },
-              "description": "All postal addresses of the partner: one default 'both' row (the main address) plus an optional deviating billing address and any number of shipping addresses."
+              "description": "All postal addresses of the partner: one default 'both' row (the main address) plus an optional deviating billing address and any number of shipping addresses. Writing this collection REPLACES the stored list wholesale — the record is patched with a shallow JSONB merge, so the array you send becomes the array that is stored. There is no per-entry upsert: omit the key entirely to leave the list untouched, or send every entry you want to keep."
             },
             "contacts": {
               "type": "collection",
@@ -7031,7 +7031,7 @@
                   }
                 }
               },
-              "description": "Contact persons at the partner (each an individual, differentiated by role/department)."
+              "description": "Contact persons at the partner (each an individual, differentiated by role/department). Writing this collection REPLACES the stored list wholesale — the record is patched with a shallow JSONB merge, so the array you send becomes the array that is stored. There is no per-entry upsert: omit the key entirely to leave the list untouched, or send every entry you want to keep."
             },
             "defaults": {
               "type": "embedded",
