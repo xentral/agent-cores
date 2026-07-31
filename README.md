@@ -37,8 +37,27 @@ built against an incompatible contract. See `CONTRIBUTING.md`.
 manifest.json            version + contractVersion + core index + checksums
 cores/<id>/              one package per core, each exporting `CORE`
 scripts/validate_cores.py   structure + contract-conformance + import-smoke
+scripts/export_verified_xlsx.py  schema × verified.json → verified.xlsx
 .github/workflows/       validate (PR) + release (auto-tag on merge)
 ```
+
+### Capability workbook
+
+`cores/<id>/verified.json` records only what a live run *proved*, so on its own it
+cannot show what was never tested. `scripts/export_verified_xlsx.py` joins it with
+the core's own schema into `cores/<id>/verified.xlsx` — one tab per entity listing
+every field against read / create / update / filter / sort / search, plus all
+actions and process steps. It reads only checked-in files, no tenant access:
+
+```bash
+PYTHONPATH=<agent-os>/backend \
+  uv run --project <agent-os>/backend --with openpyxl \
+  python scripts/export_verified_xlsx.py [core_id]
+```
+
+`offen` (declared but unproven) and `–` (not applicable per the schema) are both
+*absent* from the JSON and mean opposite things — telling them apart is the point
+of the sheet. Regenerate it after every `checks/verify.py` run.
 
 ## Local development
 

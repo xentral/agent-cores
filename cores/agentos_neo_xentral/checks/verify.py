@@ -36,8 +36,29 @@ Env:
   VERIFY_ONLY=A,B        re-probe only these entities and MERGE into verified.json
                          (never wipes the entities it didn't touch)
 
-Run:  DUMP_INSTANCE=<uuid> VERIFY_ACTIONS=1 PYTHONPATH=. \\
-        python -m entity_registry.cores.agentos_neo_xentral.checks.verify
+Run: this module uses a relative import (``from ..manifest import CORE``), so it
+only runs inside the synthetic ``xentral_entity_cores`` package the backend
+registers (see conftest.py) — the old ``entity_registry.cores.…`` path is gone
+since the cores moved to this repo. Env is read at import time, so set it first.
+``XENTRAL_BASE_URL`` + ``XENTRAL_API_KEY`` together take the fast path in _auth()
+and skip Auth0 entirely::
+
+    XENTRAL_BASE_URL=https://mvp.xentral.biz XENTRAL_API_KEY=<id|hash> \\
+    DUMP_INSTANCE=<uuid> VERIFY_ACTIONS=1 \\
+      uv run --project <agent-os>/backend python -c "
+    import sys, types, asyncio, pathlib
+    p = types.ModuleType('xentral_entity_cores')
+    p.__path__ = [str(pathlib.Path('cores').resolve())]
+    sys.modules['xentral_entity_cores'] = p
+    sys.path.insert(0, '<agent-os>/backend')
+    from xentral_entity_cores.agentos_neo_xentral.checks.verify import _main
+    asyncio.run(_main())"
+
+Careful: this module's own load_dotenv points four levels up from checks/ — also a
+leftover from the in-backend days — so it does NOT read the backend's .env. Pass
+the credentials explicitly.
+
+Render the result as a workbook: ``scripts/export_verified_xlsx.py``.
 """
 
 from __future__ import annotations
@@ -616,10 +637,13 @@ async def _verify_entity(
             fval = val.get("id") if isinstance(val, dict) else val
             if isinstance(fval, str) and "_" in fval and spec.get("type") == "reference":
                 fval = fval.split("_", 1)[1]
-            if spec.get("type") == "datetime" and isinstance(fval, str) and "T" in fval:
-                # v3 date filters expect Y-m-d, not a full ISO timestamp — probe
-                # equals on the date part (a full timestamp → 400 "Expected Y-m-d").
-                fval = fval.split("T", 1)[0]
+            # NOTE: this used to truncate a datetime to its date part, because v3
+            # once rejected a full ISO timestamp with "Expected Y-m-d". Upstream has
+            # since flipped: it now answers 400 "not a valid datetime. Expected
+            # format: Y-m-d\\TH:i:sP or Y-m-d H:i:s" for the date-only form, which
+            # turned every createdAt/updatedAt probe red across eight entities.
+            # Probing with the value the read just returned is also the more honest
+            # test — can a caller filter on what the API handed them?
             if isinstance(val, list):
                 fval = None  # collections (tags) need a scalar probe value —
                 # the chosen sample row often has none, so scan ALL fetched rows
@@ -648,7 +672,15 @@ async def _verify_entity(
                         ("page[size]", "5"),
                         ("filter[0][key]", path),
                         ("filter[0][op]", "equals"),
-                        ("filter[0][value]", str(fval)),
+                        # Booleans have to go out lowercase — str(False) is "False"
+                        # and upstream answers "Invalid value: False. Valid values
+                        # are: true, false". This probe builds its own query rather
+                        # than going through the MCP tool, so it needs the same
+                        # treatment the tool got (agent-os: service.filter_value).
+                        (
+                            "filter[0][value]",
+                            ("true" if fval else "false") if isinstance(fval, bool) else str(fval),
+                        ),
                     ]
                 )
                 mark(
