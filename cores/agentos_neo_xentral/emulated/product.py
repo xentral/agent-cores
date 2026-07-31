@@ -1087,8 +1087,11 @@ class ProductAdapter(FacadeAdapterBase):
                         "Available",
                         **RO,
                         description=(
-                            "What may still be sold (upstream 'sellable'). NOT what lies "
-                            "on the shelf — see physical."
+                            "What may still be sold (upstream 'sellable'). NOT what lies on "
+                            "the shelf — see physical — and NOT simply physical minus "
+                            "reserved: demand from open sales orders is deducted too, and "
+                            "the result is floored at 0. Observed on mvp: physical 6, "
+                            "reserved 1, openSalesOrders 3 → available 3."
                         ),
                     ),
                     "physical": prop(
@@ -1110,7 +1113,14 @@ class ProductAdapter(FacadeAdapterBase):
                         "decimal",
                         "Producible",
                         **RO,
-                        description="How many could be built from the components on hand.",
+                        description=(
+                            "How many could be built from the components on hand: the "
+                            "minimum over the bill of materials, computed on each "
+                            "component's AVAILABLE quantity — not its physical stock. "
+                            "Null for a product without a bill of materials. Verified on "
+                            "mvp: components at available 17 and 3 → producible 3, while "
+                            "the constrained component's physical stock was 6."
+                        ),
                     ),
                     "correction": prop(
                         "decimal",
