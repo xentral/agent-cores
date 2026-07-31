@@ -1291,7 +1291,7 @@
           "list",
           "read"
         ],
-        "reason": "The stock ledger (Lagerprotokoll) has NO read API at all — the single biggest gap (docs/05 #1). GET /v3/stockMovements is the ask."
+        "reason": "The stock ledger (Lagerprotokoll) has NO read API at all — the single biggest gap (docs/05 #1). GET /v3/stockMovements is the ask. Until it ships the entity does not declare list/read at all, so a caller learns this from the contract instead of a 404."
       },
       {
         "field": "unitCost",
@@ -1299,6 +1299,13 @@
           "read"
         ],
         "reason": "Movement valuation (unitCost at booking time) is required for GoBD-clean stock accounting (ADR-009e) — nothing upstream."
+      },
+      {
+        "field": "id",
+        "ops": [
+          "create"
+        ],
+        "reason": "A booking returns no identity: the v1 storage-item endpoints answer 201 with an empty body and — contrary to their own spec — send no Location header (verified on mvp 2026-07-31). Without an id a repeated booking cannot be recognised afterwards, which is why correction+setQuantityTo is the only retry-safe write. The ask: return the specced Location header, or the created movement."
       }
     ],
     "StorageLocation": [

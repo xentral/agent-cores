@@ -1,7 +1,7 @@
 """Xentral V3 facade · stockMovement — Lagerbewegung (docs/01-model.md §7.4, ADR-010).
 
-READING stays the biggest honest resource gap (docs/05 #1): the upstream has no
-Lagerprotokoll API, so list/read remain grey until ``GET /v3/stockMovements``
+READING is impossible and therefore NOT DECLARED (docs/05 #1): the upstream has no
+Lagerprotokoll API, so this entity is write-only until ``GET /v3/stockMovements``
 ships. WRITING works today: the v1 storage-item endpoints book DELTA movements
 (``POST/PATCH /v1/warehouses/{wh}/storageLocations/{loc}/items`` — add resp.
 retrieve, incl. batch/bestBefore/serialNumbers/reason), so ``create`` is a real
@@ -17,11 +17,18 @@ The model references product/location by our speaking ids; upstream wants
 ``product.sku`` and warehouse+location numerics, so the orchestrator resolves
 both through this core's own Product/StorageLocation adapters.
 
-A successful booking answers 201 with the echoed movement carrying the id from
-the upstream ``Location`` header (the item endpoints answer with an empty body —
-same shape as the v2 product writes). The MOVEMENT itself still cannot be read
-back (no ledger API, docs/05 #1); its EFFECT can, via ``stockLevel`` for the
-touched location and ``Product.stock`` for the total.
+A successful booking answers 201 with the echoed movement. Its ``id`` comes from
+the upstream ``Location`` header — which the spec promises but mvp does NOT send
+(verified 2026-07-31: 201, empty body, no header), so today the id stays null
+rather than being invented. The handling is kept because it is spec-conformant
+and starts working the day Xentral ships the header.
+
+Consequence for callers, since neither an id nor a ledger exists: a repeated
+DELTA booking cannot be detected afterwards, only avoided. ``receipt``/``issue``
+are therefore not retry-safe by construction, while ``correction`` +
+``setQuantityTo`` is — it re-reads the location and books the difference, so a
+repeat books zero. The EFFECT of any booking is readable via ``stockLevel`` for
+the touched location and ``Product.stock`` for the total.
 """
 
 from __future__ import annotations
@@ -72,7 +79,17 @@ class StockMovementAdapter(FacadeAdapterBase):
         rollout_batch="agentos_neo_xentral",
         adapter="agentos_neo_xentral.stockMovement",
         source_apis=("agentos_neo_xentral",),
-        operations=("list", "read", "create"),  # read side still upstream-less (docs/05 #1)
+        # WRITE-ONLY on purpose. There is no stock-ledger API upstream (docs/05 #1,
+        # verified 404 on mvp), and unlike a missing filter this will not arrive by
+        # accident — so list/read are NOT declared. Declaring them cost every caller
+        # a failed round-trip to learn what the contract can state directly.
+        operations=("create",),
+        description=(
+            "Books stock (receipt / issue / transfer / correction). Movements CANNOT "
+            "be read back — Xentral has no stock-ledger API; verify a booking's effect "
+            "via StockLevel (per location) or Product.stock (total). Deltas are not "
+            "retry-safe; for a repeatable write use correction + setQuantityTo."
+        ),
     )
     v3_path = "/api/v3/stockMovements"  # proposed endpoint — 404 until built
     include = ""
@@ -137,7 +154,9 @@ class StockMovementAdapter(FacadeAdapterBase):
                 description=(
                     "Absolute correction (Inventur): sets the product's quantity on the "
                     "given location to this value — the difference is booked as a delta "
-                    "movement. Use quantity for delta corrections instead."
+                    "movement. Use quantity for delta corrections instead. This is the "
+                    "only RETRY-SAFE way to write stock: a repeat re-reads the location "
+                    "and books zero, whereas repeating a receipt/issue books twice."
                 ),
             ),
             "batch": prop(

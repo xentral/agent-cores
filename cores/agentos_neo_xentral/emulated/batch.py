@@ -25,7 +25,18 @@ class BatchAdapter(FacadeAdapterBase):
         rollout_batch="agentos_neo_xentral",
         adapter="agentos_neo_xentral.batch",
         source_apis=("agentos_neo_xentral",),
-        operations=("list", "read"),  # nothing upstream yet (docs/05 #4)
+        # NOTHING is executable: /v3/batches does not exist (docs/05 #4, verified
+        # 404 on mvp). Declaring list/read anyway made every caller discover the
+        # gap by hitting a route that is not there — an unreadable 404 from the
+        # upstream instead of an answer from the contract. The operations list is
+        # the contract, so it now says so up front; the model below stays declared
+        # as the target shape (ADR-014), and the gate answers 405 with the reason.
+        operations=(),
+        description=(
+            "DECLARED BUT NOT READABLE: Xentral exposes no batch resource — batches "
+            "exist only as read-only includes on a product. Batch-level stock is not "
+            "queryable; use Product/StockLevel for quantities."
+        ),
     )
     v3_path = "/api/v3/batches"  # proposed endpoint — 404 until built
     include = ""
