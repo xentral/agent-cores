@@ -1212,13 +1212,26 @@ class ProductAdapter(FacadeAdapterBase):
                 "embedded",
                 "Bill of materials",
                 section="production",
+                description=(
+                    "The product's DIRECT components — one level only. Each component is "
+                    "itself a product, so a full explosion means reading each child in "
+                    "turn until its bom.items is empty; there is no roll-up upstream. "
+                    "Filled on a single read only: in a list bom.items is always empty."
+                ),
                 properties={
-                    # Providing bom.items on a create/update SETS the product's parts
-                    # (v2 /parts) — reconciled in _write. Read hydrates on `get`.
                     "items": prop(
                         "collection",
                         "Items",
                         **_CU,
+                        description=(
+                            "REPLACES the whole bill of materials on a create/update — this "
+                            "is not an append. Send every line you want to keep: a line you "
+                            "omit is DELETED, and [] clears the bill entirely. To change one "
+                            "quantity, read the product, edit that number, and send all lines "
+                            "back. If only this composition fails the product is still "
+                            "written and the response carries `_warnings.bom` — a 200/201 "
+                            "does not by itself mean the bill was set."
+                        ),
                         node={
                             "properties": {
                                 "product": prop(
@@ -1228,12 +1241,24 @@ class ProductAdapter(FacadeAdapterBase):
                                     renderProperty="name",
                                     **_CU,
                                 ),
-                                "quantity": prop("decimal", "Quantity", **_CU),
+                                "quantity": prop(
+                                    "decimal",
+                                    "Quantity",
+                                    **_CU,
+                                    description=(
+                                        "How much of this component ONE unit of the parent "
+                                        "needs — not a stock figure."
+                                    ),
+                                ),
                                 "type": prop(
                                     "select",
                                     "Type",
                                     **_CU,
                                     options=[{"value": v, "label": v} for v in _PART_TYPES],
+                                    description=(
+                                        "Omitted on a write, the upstream assigns "
+                                        "'shopping part' (observed on mvp)."
+                                    ),
                                 ),
                                 "reference": prop("string", "Reference", **_CU),
                             }
