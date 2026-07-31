@@ -22,7 +22,9 @@ Speaking ids encode the upstream store: ``con_<id>``, ``adr_s<id>`` (shipping),
 
 The billing row lives IN the v3 partner payload, so map_read surfaces it on
 EVERY row (lists included); the shipping rows need the sub-resource call and are
-appended on composed reads (detail + tiny lists).
+appended on composed reads (detail + tiny lists) and on EVERY write answer — a
+full-desired-set collection may never be answered truncated, or the caller's
+round-trip deletes the rows the write response failed to mention.
 """
 
 from __future__ import annotations
@@ -567,11 +569,24 @@ class PartnerSubresourcesMixin:
                         )
                 return self._json(resp.status_code, out)
             return resp
-        if method_u in ("POST", "PATCH", "PUT") and collections:
+        if method_u in ("POST", "PATCH", "PUT"):
             rid = str((data or {}).get("id") or handle or "")
             if not rid:
                 return resp
             up_id = rid.split("_", 1)[1] if "_" in rid else rid
+            if not collections:
+                # A write that carried NO collection still has to answer with the
+                # WHOLE record: map_read alone reports contacts null and drops the
+                # shipping rows (they live in the sub-resources), and the callers
+                # of a full-desired-set collection read that truncated list back as
+                # "these are all the addresses" — round-tripping a tags-only write
+                # or a plain field update then DELETES every shipping address.
+                # Nothing on the record changed here, so compose in place instead
+                # of paying for a re-read.
+                if isinstance(data, dict):
+                    await self._compose(data, up_id, base_url, token, accept_language, client)
+                    return self._json(resp.status_code, out)
+                return resp
             errors = await self._sync(
                 up_id,
                 collections.get("contacts"),
