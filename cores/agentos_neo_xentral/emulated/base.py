@@ -949,21 +949,36 @@ class FacadeAdapterBase:
 
     # ---- write orchestration --------------------------------------------
     def rejected_response(self, rejected: set[str]) -> AdapterResponse:
-        """The 409 a write earns by naming fields the upstream cannot write today.
+        """The 409 a write earns by naming fields the core will not write.
+
         A method rather than an inline body because adapters that compose a write
         outside the default path (salesOrder splits its line items off before
-        delegating) must answer identically instead of dropping the rejection."""
-        return self._json(
-            409,
-            {
-                "title": f"{self.manifest.key}: fields not writable via the current Xentral API",
-                "detail": (
-                    "These fields are read-only upstream today (ADR-014: no overlay). "
-                    "They are tracked as blue wishes in priorities.json."
-                ),
-                "fields": sorted(rejected),
-            },
-        )
+        delegating) must answer identically instead of dropping the rejection.
+
+        The per-field ``reasons`` come from priorities.json. They matter because
+        "not writable" covers two different things, and a blanket "read-only
+        upstream" would be a false statement for the second: the upstream genuinely
+        cannot do it, OR it could and we decline (a document number is always drawn
+        from the number range, even though v3 would store a supplied one). A caller
+        that only reads this response has to be able to tell those apart."""
+        wishes = {
+            w.get("field"): w.get("reason")
+            for w in _priorities().get(self.manifest.key, [])
+            if isinstance(w, dict) and w.get("reason")
+        }
+        body: dict[str, Any] = {
+            "title": f"{self.manifest.key}: fields the core does not write",
+            "detail": (
+                "Either the upstream cannot write them today or the core declines them "
+                "by decision (ADR-014: no overlay, no silent drop). See `reasons`, and "
+                "priorities.json for the full backlog."
+            ),
+            "fields": sorted(rejected),
+        }
+        reasons = {f: wishes[f] for f in sorted(rejected) if f in wishes}
+        if reasons:
+            body["reasons"] = reasons
+        return self._json(409, body)
 
     def map_write(
         self, model: dict[str, Any], *, creating: bool

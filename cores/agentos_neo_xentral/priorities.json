@@ -167,6 +167,13 @@
           "read"
         ],
         "reason": "Tax amount per line. v3 states only taxRate and effectiveTaxRate on a line — no money figure — so the tax a position carries cannot be read. The core will not derive it from gross minus net: that is a number Xentral never stated, and line-level rounding against the legacy PDF (projekt.preisberechnung) is still an open decision, so a derived value could silently disagree with the printed document. Per-rate tax exists on the document totals; the line needs its own."
+      },
+      {
+        "field": "number",
+        "ops": [
+          "create"
+        ],
+        "reason": "Assigning a sales order number by hand. Xentral's v3 create WOULD take a documentNumber here (verified on mvp — it is stored and survives release), but the number must come from the configured number range, so the core declines it. This is a product decision, not a missing upstream capability: a write naming it answers 409 instead of silently drawing a different number."
       }
     ],
     "SalesInvoice": [
@@ -295,6 +302,13 @@
           "read"
         ],
         "reason": "Tax amount per line. v3 states only taxRate and effectiveTaxRate on a line — no money figure — so the tax a position carries cannot be read. The core will not derive it from gross minus net: that is a number Xentral never stated, and line-level rounding against the legacy PDF (projekt.preisberechnung) is still an open decision, so a derived value could silently disagree with the printed document. Per-rate tax exists on the document totals; the line needs its own."
+      },
+      {
+        "field": "number",
+        "ops": [
+          "create"
+        ],
+        "reason": "Assigning a invoice number by hand. Xentral's v3 create WOULD take a documentNumber here (verified on mvp — it is stored and survives release), but the number must come from the configured number range, so the core declines it. This is a product decision, not a missing upstream capability: a write naming it answers 409 instead of silently drawing a different number."
       }
     ],
     "DeliveryNote": [
@@ -380,6 +394,13 @@
           "search"
         ],
         "reason": "Postal-code search — standard phone use-case for delivery lookups."
+      },
+      {
+        "field": "number",
+        "ops": [
+          "create"
+        ],
+        "reason": "Assigning a delivery note number by hand. Neither the core nor upstream supports it — v3 does not declare documentNumber for this document type and ignores it without an error. The number comes from the configured number range."
       }
     ],
     "CreditNote": [
@@ -450,6 +471,13 @@
           "read"
         ],
         "reason": "Tax amount per line. v3 states only taxRate and effectiveTaxRate on a line — no money figure — so the tax a position carries cannot be read. The core will not derive it from gross minus net: that is a number Xentral never stated, and line-level rounding against the legacy PDF (projekt.preisberechnung) is still an open decision, so a derived value could silently disagree with the printed document. Per-rate tax exists on the document totals; the line needs its own."
+      },
+      {
+        "field": "number",
+        "ops": [
+          "create"
+        ],
+        "reason": "Assigning a credit note number by hand. Xentral's v3 create WOULD take a documentNumber here (verified on mvp — it is stored and survives release), but the number must come from the configured number range, so the core declines it. This is a product decision, not a missing upstream capability: a write naming it answers 409 instead of silently drawing a different number."
       }
     ],
     "Return": [
@@ -536,6 +564,13 @@
           "read"
         ],
         "reason": "Item condition is not surfaced by the v3 return payload yet (docs/05 #4 batch/trace family)."
+      },
+      {
+        "field": "number",
+        "ops": [
+          "create"
+        ],
+        "reason": "Assigning a return number by hand. Neither the core nor upstream supports it — v3 does not declare documentNumber for this document type and ignores it without an error. The number comes from the configured number range."
       }
     ],
     "Quote": [
@@ -631,6 +666,13 @@
           "read"
         ],
         "reason": "Tax amount per line. v3 states only taxRate and effectiveTaxRate on a line — no money figure — so the tax a position carries cannot be read. The core will not derive it from gross minus net: that is a number Xentral never stated, and line-level rounding against the legacy PDF (projekt.preisberechnung) is still an open decision, so a derived value could silently disagree with the printed document. Per-rate tax exists on the document totals; the line needs its own."
+      },
+      {
+        "field": "number",
+        "ops": [
+          "create"
+        ],
+        "reason": "Assigning a quote number by hand. Neither the core nor upstream supports it — v3 does not declare documentNumber for this document type and ignores it without an error. The number comes from the configured number range."
       }
     ],
     "PurchaseOrder": [
@@ -709,6 +751,13 @@
           "create"
         ],
         "reason": "Dropshipping (Strecke: salesOrder link + customer delivery address) is not exposed via v3 purchaseOrders."
+      },
+      {
+        "field": "number",
+        "ops": [
+          "create"
+        ],
+        "reason": "Assigning a purchase order number by hand. Neither the core nor upstream supports it — v3 does not declare documentNumber for this document type and ignores it without an error. The number comes from the configured number range."
       }
     ],
     "GoodsReceipt": [

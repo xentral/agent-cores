@@ -171,7 +171,8 @@
     "texts.outro": "Closing text printed below the line items.",
     "note": "Internal comment (not printed on the document).",
     "documents": "Follow-up documents created from this quote (read-only).",
-    "documents.salesOrders": "Sales orders created from this quote."
+    "documents.salesOrders": "Sales orders created from this quote.",
+    "number": "The quote number, assigned by Xentral's configured number range. It cannot be supplied — a create naming it is refused so a migration cannot end up with numbers other than the ones it asked for."
   },
   "SalesOrder": {
     "status": "Lifecycle state of the order: draft, confirmed, fulfilled, closed, or cancelled.",
@@ -274,7 +275,8 @@
     "discounts": "Document-level discounts applied to the order (read-only).",
     "discounts.kind": "Type of discount (e.g. percentage, absolute).",
     "discounts.description": "Label of the discount.",
-    "discounts.amount": "Discount amount."
+    "discounts.amount": "Discount amount.",
+    "number": "The sales order number, assigned by Xentral's configured number range. It cannot be supplied — a create naming it is refused so a migration cannot end up with numbers other than the ones it asked for."
   },
   "SalesInvoice": {
     "status": "Lifecycle state of the invoice: draft, open, paid, or cancelled.",
@@ -348,7 +350,8 @@
     "documents": "Linked documents in the invoice's flow (read-only).",
     "documents.salesOrder": "Sales order this invoice was created from.",
     "documents.deliveryNotes": "Delivery notes billed by this invoice.",
-    "documents.creditNotes": "Credit notes issued against this invoice."
+    "documents.creditNotes": "Credit notes issued against this invoice.",
+    "number": "The invoice number, assigned by Xentral's configured number range. It cannot be supplied — a create naming it is refused so a migration cannot end up with numbers other than the ones it asked for."
   },
   "DeliveryNote": {
     "status": "Lifecycle state of the delivery: draft, picking, shipped, delivered, or cancelled.",
@@ -398,7 +401,8 @@
     "documents": "Linked documents in the delivery's flow (read-only).",
     "documents.salesOrder": "Sales order this delivery fulfils.",
     "documents.salesInvoices": "Invoices billing this delivery.",
-    "documents.returns": "Returns created from this delivery."
+    "documents.returns": "Returns created from this delivery.",
+    "number": "The delivery note number, assigned by Xentral's configured number range. It cannot be supplied — a create naming it is refused so a migration cannot end up with numbers other than the ones it asked for."
   },
   "CreditNote": {
     "status": "Lifecycle state of the credit note: draft, open, settled, or cancelled.",
@@ -449,7 +453,8 @@
     "note": "Internal comment (not printed on the document).",
     "documents": "Linked documents in the credit note's flow (read-only).",
     "documents.salesInvoice": "Invoice this credit note relates to.",
-    "documents.return": "Return that triggered this credit note."
+    "documents.return": "Return that triggered this credit note.",
+    "number": "The credit note number, assigned by Xentral's configured number range. It cannot be supplied — a create naming it is refused so a migration cannot end up with numbers other than the ones it asked for."
   },
   "Return": {
     "status": "Lifecycle state of the return: requested, received, checked, settled, or cancelled.",
@@ -490,7 +495,8 @@
     "note": "Internal comment (not printed on the document).",
     "documents": "Linked documents in the return's flow (read-only).",
     "documents.salesOrder": "Original sales order for the returned goods.",
-    "documents.deliveryNote": "Delivery note the goods were shipped on."
+    "documents.deliveryNote": "Delivery note the goods were shipped on.",
+    "number": "The return number, assigned by Xentral's configured number range. It cannot be supplied — a create naming it is refused so a migration cannot end up with numbers other than the ones it asked for."
   },
   "PurchaseOrder": {
     "status": "Lifecycle state of the purchase order: draft, sent, confirmed, received, closed, or cancelled.",
@@ -552,7 +558,8 @@
     "printSettings": "Options controlling how the order document is printed.",
     "printSettings.withoutPrices": "Print the order without prices.",
     "printSettings.requestConfirmation": "Print a request asking the supplier to confirm the order.",
-    "dropship": "Read-only dropshipping details when the supplier ships directly to the customer."
+    "dropship": "Read-only dropshipping details when the supplier ships directly to the customer.",
+    "number": "The purchase order number, assigned by Xentral's configured number range. It cannot be supplied — a create naming it is refused so a migration cannot end up with numbers other than the ones it asked for."
   },
   "GoodsReceipt": {
     "references": "Read-only external references on the receipt.",
