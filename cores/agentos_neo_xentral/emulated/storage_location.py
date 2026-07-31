@@ -414,18 +414,28 @@ class StorageLocationAdapter(FacadeAdapterBase):
             model["source"] = {"reason": reason}
         return model, []
 
-    async def _level(  # noqa: ANN001
+    async def _read_level(  # noqa: ANN001
         self, product: str, location: str, base_url, token, accept_language, client
     ) -> dict[str, Any] | None:
-        """The stock level of one product on one location, after the booking —
-        the read-back every write owes its caller (ADR-018). ``None`` when the
-        pair has no level yet (a removal down to zero drops the row upstream)."""
+        """The stock level of one product on one location after the booking —
+        the read-back every write owes its caller (ADR-018).
+
+        Emptying a location REMOVES the row upstream, so the read then 404s.
+        "No row" and "zero on the shelf" are the same fact, and a null right
+        after a successful booking reads as a failed one (observed live: a
+        transfer that emptied its source answered ``data: null``). A 404 is
+        therefore reported as an explicit zero level — while any OTHER read
+        error stays ``None``, because "unreadable" must never be served as
+        "zero", which is exactly the number a caller would act on.
+        """
         from .stock_level import StockLevelAdapter
         from .stock_shared import numeric
 
-        resp = await StockLevelAdapter().request(
+        product_id, location_id = numeric(str(product)), numeric(str(location))
+        adapter = StockLevelAdapter()
+        resp = await adapter.request(
             method="GET",
-            handle=f"slv_{numeric(str(product))}_{numeric(str(location))}",
+            handle=f"slv_{product_id}_{location_id}",
             query=[],
             body=None,
             base_url=base_url,
@@ -433,6 +443,8 @@ class StorageLocationAdapter(FacadeAdapterBase):
             accept_language=accept_language,
             client=client,
         )
+        if resp.status_code == 404:
+            return adapter.level_row(product_id=product_id, location_id=location_id, quantity=0)
         if resp.status_code >= 400:
             return None
         try:
@@ -483,11 +495,11 @@ class StorageLocationAdapter(FacadeAdapterBase):
         assert model is not None
         product = str(model["product"])
         out: dict[str, Any] = {
-            "data": await self._level(product, location, base_url, token, accept_language, client),
+            "data": await self._read_level(product, location, base_url, token, accept_language, client),
             "result": {"action": action_key, "storageLocation": location},
         }
         if action_key == "stockTransfer":
-            out["result"]["target"] = await self._level(
+            out["result"]["target"] = await self._read_level(
                 product, str(model["to"]), base_url, token, accept_language, client
             )
         return self._json(200, out)

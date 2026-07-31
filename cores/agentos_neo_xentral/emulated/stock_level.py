@@ -147,7 +147,7 @@ class StockLevelAdapter(FacadeAdapterBase):
 
     # ---- projection ------------------------------------------------------
     @staticmethod
-    def _level(
+    def level_row(
         *,
         product_id: Any,
         product_name: Any = None,
@@ -217,7 +217,7 @@ class StockLevelAdapter(FacadeAdapterBase):
                 wh = loc.get("warehouse") or {} if isinstance(loc, dict) else {}
                 prod = row.get("product") or {}
                 out.append(
-                    self._level(
+                    self.level_row(
                         product_id=(prod.get("id") if isinstance(prod, dict) else None)
                         or numeric(product_id),
                         location_id=loc.get("id") if isinstance(loc, dict) else None,
@@ -262,7 +262,7 @@ class StockLevelAdapter(FacadeAdapterBase):
                 if not isinstance(item, dict):
                     continue
                 out.append(
-                    self._level(
+                    self.level_row(
                         product_id=item.get("productId"),
                         product_number=item.get("sku"),
                         location_id=loc_num,

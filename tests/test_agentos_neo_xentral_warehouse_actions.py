@@ -268,6 +268,49 @@ def test_dry_run_reports_without_booking():
     assert up.item_calls == []
 
 
+class _EmptiedUpstream(_Upstream):
+    """Upstream after a location was emptied: the product/location row is GONE,
+    which is how Xentral represents zero (observed live 2026-07-31 — a transfer
+    that emptied its source answered ``data: null``)."""
+
+    def handler(self, request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        if path.startswith("/api/v1/products/") and path.endswith("/storageLocations"):
+            return httpx.Response(
+                200, json={"data": [], "extra": {"page": {"number": 1, "size": 50}}}
+            )
+        return super().handler(request)
+
+
+class _UnreadableUpstream(_Upstream):
+    """The read-back itself fails — must NOT be reported as zero stock."""
+
+    def handler(self, request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        if path.startswith("/api/v1/products/") and path.endswith("/storageLocations"):
+            return httpx.Response(500, json={"title": "upstream down"})
+        return super().handler(request)
+
+
+def test_emptying_a_location_reports_zero_not_null():
+    up = _EmptiedUpstream()
+    resp = _run(up, "stockRemoval", {"product": "prd_61985", "quantity": 10})
+    assert resp.status_code == 200
+    data = json.loads(resp.content)["data"]
+    assert data is not None, "a successful booking must not answer with null"
+    assert data["quantity"]["value"] == 0
+    assert data["id"] == "slv_61985_1"
+
+
+def test_an_unreadable_level_stays_null_and_is_never_served_as_zero():
+    """The dangerous confusion: 'I could not read it' reported as 'there are
+    zero' is a number a caller would act on."""
+    up = _UnreadableUpstream()
+    resp = _run(up, "putaway", {"product": "prd_61985", "quantity": 1})
+    assert resp.status_code == 200  # the booking DID succeed
+    assert json.loads(resp.content)["data"] is None
+
+
 def test_unknown_action_still_falls_through_to_the_base():
     up = _Upstream()
     resp = _run(up, "printLabel", {})
