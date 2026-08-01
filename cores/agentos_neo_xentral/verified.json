@@ -1352,8 +1352,7 @@
         },
         "unitPrice.currency": {
           "read": "pass",
-          "update": "fail",
-          "updateNote": "upstream accepted the write but the value did not persist"
+          "update": "pass"
         },
         "unitPrice.taxRate": {
           "read": "pass"
@@ -1591,7 +1590,7 @@
         },
         "name": {
           "create": "pass",
-          "createNote": "created prd_61994 (labelled 'VT Verify') — no delete endpoint, left in place",
+          "createNote": "created prd_61995 (labelled 'VT Verify') — no delete endpoint, left in place",
           "filter": "pass",
           "read": "pass",
           "search": "pass",
@@ -1620,8 +1619,7 @@
         },
         "prices.purchase.currency": {
           "read": "pass",
-          "update": "fail",
-          "updateNote": "upstream accepted the write but the value did not persist"
+          "update": "pass"
         },
         "prices.purchase.source": {
           "read": "pass"
@@ -2429,8 +2427,7 @@
         },
         "unitPrice.currency": {
           "read": "pass",
-          "update": "fail",
-          "updateNote": "upstream accepted the write but the value did not persist"
+          "update": "pass"
         },
         "updatedAt": {
           "read": "pass"
