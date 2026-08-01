@@ -228,7 +228,10 @@ class CreditNoteAdapter(FacadeAdapterBase):
                     # `deliveryDate` — the write drops this silently, so the schema must
                     # not advertise it as writable (priorities.json keeps the wish).
                     "serviceDate": prop(
-                        "date", "Service date", **RO, description="Not filterable — the upstream list endpoint rejects it (verified on mvp)."
+                        "date",
+                        "Service date",
+                        **RO,
+                        description="Not filterable — the upstream list endpoint rejects it (verified on mvp).",
                     ),
                 },
             ),
@@ -608,6 +611,8 @@ class CreditNoteAdapter(FacadeAdapterBase):
         qty_val = line_qty(i)
         if qty_val is not None:
             out["quantity"] = qty_val
+        if i.get("description") is not None:
+            out["description"] = i["description"]
         if i.get("discountPercent") is not None:
             out["discount"] = i["discountPercent"]
         if i.get("taxRate") is not None:
