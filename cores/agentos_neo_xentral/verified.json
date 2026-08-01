@@ -116,7 +116,7 @@
         "send": "pass"
       },
       "actionsNotes": {
-        "addTag": "fresh title 'verify-probe-7b41c0' attached — auto-create verified, net-zero",
+        "addTag": "fresh title 'verify-probe-fa7d0b' attached — auto-create verified, net-zero",
         "removeTag": "fresh title removed again — effect verified, net-zero",
         "send": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma"
       },
@@ -219,8 +219,7 @@
           "read": "pass"
         },
         "items.description": {
-          "create": "fail",
-          "createNote": "sent on create but did not persist on the created record",
+          "create": "pass",
           "read": "pass"
         },
         "items.discountPercent": {
