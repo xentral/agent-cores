@@ -116,7 +116,7 @@
         "send": "pass"
       },
       "actionsNotes": {
-        "addTag": "fresh title 'verify-probe-fa7d0b' attached — auto-create verified, net-zero",
+        "addTag": "fresh title 'verify-probe-64e379' attached — auto-create verified, net-zero",
         "removeTag": "fresh title removed again — effect verified, net-zero",
         "send": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma"
       },
@@ -389,7 +389,7 @@
         "removeTag": "pass"
       },
       "actionsNotes": {
-        "addTag": "fresh title 'verify-probe-d87d80' attached — auto-create verified, net-zero",
+        "addTag": "fresh title 'verify-probe-03b52a' attached — auto-create verified, net-zero",
         "removeTag": "fresh title removed again — effect verified, net-zero"
       },
       "fields": {
@@ -696,7 +696,7 @@
         "removeTag": "pass"
       },
       "actionsNotes": {
-        "addTag": "fresh title 'verify-probe-39f37b' attached — auto-create verified, net-zero",
+        "addTag": "fresh title 'verify-probe-23f692' attached — auto-create verified, net-zero",
         "createReturn": "reachable — 400: line items must be present. {\"lineItems\": [\"line items must be present.\"]}",
         "createSalesInvoice": "reachable — 400: All product line items must reference an existing product. {\"lineItems\": [\"All product line items must reference an existing product.\"]}",
         "removeTag": "fresh title removed again — effect verified, net-zero"
@@ -1345,8 +1345,7 @@
         "unitPrice.amount": {
           "create": "pass",
           "read": "pass",
-          "update": "fail",
-          "updateNote": "PATCH 400: Request payload validation failed. {\"price\": {\"amount\": [\"Field `amount` should be a valid string containing floating point number.\"]}}"
+          "update": "pass"
         },
         "unitPrice.amountGross": {
           "read": "pass"
@@ -1598,7 +1597,7 @@
         },
         "name": {
           "create": "pass",
-          "createNote": "created prd_61992 (labelled 'VT Verify') — no delete endpoint, left in place",
+          "createNote": "created prd_61993 (labelled 'VT Verify') — no delete endpoint, left in place",
           "filter": "pass",
           "read": "pass",
           "search": "pass",
@@ -1623,8 +1622,7 @@
         "prices.purchase.amount": {
           "create": "pass",
           "read": "pass",
-          "update": "fail",
-          "updateNote": "PATCH 400: Request payload validation failed. {\"calculatedPurchasePrice\": {\"price\": {\"amount\": [\"Field `amount` should be a positive int, float or string formatted int or float.\"]}}}"
+          "update": "pass"
         },
         "prices.purchase.currency": {
           "read": "pass",
@@ -2094,7 +2092,7 @@
         "send": "pass"
       },
       "actionsNotes": {
-        "addTag": "fresh title 'verify-probe-1d4669' attached — auto-create verified, net-zero",
+        "addTag": "fresh title 'verify-probe-afb77a' attached — auto-create verified, net-zero",
         "removeTag": "fresh title removed again — effect verified, net-zero",
         "send": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma"
       },
@@ -2379,6 +2377,78 @@
         "release": "reachable — 409: Resource status invalid for requested operation"
       }
     },
+    "PurchasePrice": {
+      "fields": {
+        "createdAt": {
+          "read": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "isStandardSupplier": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "minQuantity": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "packageAmount": {
+          "read": "pass",
+          "updateNote": "no sample numeric value — not probed (a null number cannot be restored)"
+        },
+        "product": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass"
+        },
+        "remark": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "supplier": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass"
+        },
+        "supplierDesignation": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "supplierItemNumber": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "unitPrice": {
+          "read": "pass"
+        },
+        "unitPrice.amount": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "unitPrice.currency": {
+          "read": "pass",
+          "update": "fail",
+          "updateNote": "upstream accepted the write but the value did not persist"
+        },
+        "updatedAt": {
+          "read": "pass"
+        },
+        "validFrom": {
+          "read": "pass",
+          "updateNote": "no sample date value — not probed (a null date cannot be restored)"
+        },
+        "validUntil": {
+          "read": "pass",
+          "updateNote": "no sample date value — not probed (a null date cannot be restored)"
+        }
+      }
+    },
     "Quote": {
       "actions": {
         "addTag": "pass",
@@ -2386,7 +2456,7 @@
         "send": "pass"
       },
       "actionsNotes": {
-        "addTag": "fresh title 'verify-probe-32dc58' attached — auto-create verified, net-zero",
+        "addTag": "fresh title 'verify-probe-18499e' attached — auto-create verified, net-zero",
         "removeTag": "fresh title removed again — effect verified, net-zero",
         "send": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma"
       },
@@ -2722,7 +2792,7 @@
         "removeTag": "pass"
       },
       "actionsNotes": {
-        "addTag": "fresh title 'verify-probe-3f2388' attached — auto-create verified, net-zero",
+        "addTag": "fresh title 'verify-probe-c5823c' attached — auto-create verified, net-zero",
         "createCreditNote": "EXECUTED on the sampled record (200) — created/changed data",
         "createFromDeliveryNote": "reachable — 422: createFromDeliveryNote needs command.deliveryNote and command.lineItems=[{deliveryNoteItem, quantity, reason}]",
         "removeTag": "fresh title removed again — effect verified, net-zero"
@@ -2955,7 +3025,7 @@
         "send": "pass"
       },
       "actionsNotes": {
-        "addTag": "fresh title 'verify-probe-7c2828' attached — auto-create verified, net-zero",
+        "addTag": "fresh title 'verify-probe-e430b6' attached — auto-create verified, net-zero",
         "removeTag": "fresh title removed again — effect verified, net-zero",
         "send": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma"
       },
@@ -3307,7 +3377,7 @@
         "splitOrder": "pass"
       },
       "actionsNotes": {
-        "addTag": "fresh title 'verify-probe-de4254' attached — auto-create verified, net-zero",
+        "addTag": "fresh title 'verify-probe-67d9a1' attached — auto-create verified, net-zero",
         "createSalesInvoice": "EXECUTED on the sampled record (200) — created/changed data",
         "removeTag": "fresh title removed again — effect verified, net-zero",
         "sendConfirmation": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma",
@@ -4101,7 +4171,7 @@
         "removeTag": "pass"
       },
       "actionsNotes": {
-        "addTag": "fresh title 'verify-probe-f9a465' attached — auto-create verified, net-zero",
+        "addTag": "fresh title 'verify-probe-5fcf6c' attached — auto-create verified, net-zero",
         "removeTag": "fresh title removed again — effect verified, net-zero"
       },
       "fields": {
@@ -4308,7 +4378,7 @@
         },
         "name": {
           "create": "pass",
-          "createNote": "created sup_20456 but DELETE returned 405 — manual cleanup needed (record is named 'VT Verify GmbH')",
+          "createNote": "created sup_20462 but DELETE returned 405 — manual cleanup needed (record is named 'VT Verify GmbH')",
           "filter": "pass",
           "read": "pass",
           "search": "pass",

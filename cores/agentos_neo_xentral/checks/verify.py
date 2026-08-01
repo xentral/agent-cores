@@ -223,6 +223,42 @@ def _got(data: dict[str, Any], path: str) -> Any:
     return _value_at(data, path)
 
 
+def _option_toggle(spec: dict[str, Any], orig: Any) -> str | None:
+    """Another value from the field's declared ``options``, or None when it has
+    none. A constrained field must be probed with a value it can actually hold —
+    otherwise a refusal means "bad test value", never "not writable"."""
+    options = spec.get("options")
+    if not isinstance(options, list) or len(options) < 2:
+        return None
+    values: list[str] = []
+    for opt in options:
+        value = opt.get("value") if isinstance(opt, dict) else opt
+        if isinstance(value, str) and value:
+            values.append(value)
+    if len(values) < 2:
+        return None
+    return next((v for v in values if v != orig), None)
+
+
+def _numeric_string_toggle(orig: Any) -> str | None:
+    """``"4.00"`` → ``"5.00"`` — a different number in the same shape, for values
+    the schema types as string but the upstream parses as a number (money above
+    all). None when the value is not numeric, so free text still gets the marker.
+
+    Keeps the original's decimal places so a two-decimal money field stays
+    two-decimal, and always steps UP — a field constrained to non-negative values
+    must never be handed a negative probe.
+    """
+    if not isinstance(orig, str) or not orig.strip():
+        return None
+    try:
+        value = float(orig)
+    except (TypeError, ValueError):
+        return None
+    decimals = len(orig.partition(".")[2]) if "." in orig else 0
+    return f"{value + 1:.{decimals}f}"
+
+
 def _cmp(kind: str, got: Any, want: Any) -> bool:
     """Persistence comparison per value kind."""
     if kind == "eq":
@@ -637,13 +673,14 @@ async def _verify_entity(
             fval = val.get("id") if isinstance(val, dict) else val
             if isinstance(fval, str) and "_" in fval and spec.get("type") == "reference":
                 fval = fval.split("_", 1)[1]
-            # NOTE: this used to truncate a datetime to its date part, because v3
-            # once rejected a full ISO timestamp with "Expected Y-m-d". Upstream has
-            # since flipped: it now answers 400 "not a valid datetime. Expected
-            # format: Y-m-d\\TH:i:sP or Y-m-d H:i:s" for the date-only form, which
-            # turned every createdAt/updatedAt probe red across eight entities.
-            # Probing with the value the read just returned is also the more honest
-            # test — can a caller filter on what the API handed them?
+            # A datetime filter is probed in BOTH representations, because the two
+            # endpoint families disagree and neither can be guessed from the schema
+            # (measured on mvp): /api/v3/customers rejects a full timestamp with
+            # "not a valid date" and wants Y-m-d, while /api/v3/salesOrders rejects
+            # Y-m-d with "not a valid datetime" and wants the full one. Hard-coding
+            # either form paints half the entities red — this file has now done it
+            # in both directions. Pass = one of them is accepted; the note records
+            # which, so the asymmetry stays visible instead of being smoothed over.
             if isinstance(val, list):
                 fval = None  # collections (tags) need a scalar probe value —
                 # the chosen sample row often has none, so scan ALL fetched rows
@@ -667,28 +704,37 @@ async def _verify_entity(
                     "no sample value on the test instance — filter not probed"
                 )
             else:
-                fst, fpl = await p.req(
-                    query=[
-                        ("page[size]", "5"),
-                        ("filter[0][key]", path),
-                        ("filter[0][op]", "equals"),
-                        # Booleans have to go out lowercase — str(False) is "False"
-                        # and upstream answers "Invalid value: False. Valid values
-                        # are: true, false". This probe builds its own query rather
-                        # than going through the MCP tool, so it needs the same
-                        # treatment the tool got (agent-os: service.filter_value).
-                        (
-                            "filter[0][value]",
-                            ("true" if fval else "false") if isinstance(fval, bool) else str(fval),
-                        ),
-                    ]
-                )
-                mark(
-                    path,
-                    "filter",
-                    fst == 200,
-                    None if fst == 200 else f"filter[{path}] {fst}: {_err(fpl)}",
-                )
+                # Booleans have to go out lowercase — str(False) is "False" and
+                # upstream answers "Invalid value: False. Valid values are: true,
+                # false". This probe builds its own query rather than going through
+                # the MCP tool, so it needs the same treatment the tool got
+                # (agent-os: service.filter_value).
+                if isinstance(fval, bool):
+                    candidates = ["true" if fval else "false"]
+                else:
+                    candidates = [str(fval)]
+                    if spec.get("type") == "datetime" and "T" in str(fval):
+                        candidates.append(str(fval).split("T", 1)[0])
+
+                fst, fpl, used = 0, {}, ""
+                for candidate in candidates:
+                    fst, fpl = await p.req(
+                        query=[
+                            ("page[size]", "5"),
+                            ("filter[0][key]", path),
+                            ("filter[0][op]", "equals"),
+                            ("filter[0][value]", candidate),
+                        ]
+                    )
+                    used = candidate
+                    if fst == 200:
+                        break
+                note = None
+                if fst != 200:
+                    note = f"filter[{path}] {fst}: {_err(fpl)}"
+                elif len(candidates) > 1 and used != candidates[0]:
+                    note = "accepts the date part only, not the full timestamp it returns on read"
+                mark(path, "filter", fst == 200, note)
         if spec.get("sortable"):
             sst, spl = await p.req(query=[("page[size]", "5"), ("sort", f"-{path}")])
             mark(
@@ -768,6 +814,19 @@ async def _verify_entity(
                 elif leaf in _VALID_TOGGLE:
                     a, b = _VALID_TOGGLE[leaf]
                     testv = a if orig != a else b
+                elif (alt := _option_toggle(spec, orig)) is not None:
+                    # A constrained value set (select/enum): toggle to another
+                    # DECLARED option. Appending the marker would send something
+                    # the field cannot hold, and "accepted but not persisted" would
+                    # then say nothing about writability.
+                    testv = alt
+                elif (num := _numeric_string_toggle(orig)) is not None:
+                    # Money and other numbers carried as strings ("4.00"). The
+                    # marker made these "4.00·vt" — rejected outright by the
+                    # stricter endpoints and silently dropped by the lax ones, and
+                    # on one lax endpoint it PERSISTED, which is what later crashed
+                    # the PurchasePrice probe on read-back.
+                    testv = num
                 else:
                     # NEVER toggle to/from empty: upstream IGNORES empty-string
                     # writes, so an ""-restore silently leaves the marker behind

@@ -36,6 +36,10 @@ class SupplierAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
         operations=("list", "read", "create", "update"),
     )
     v3_path = "/api/v3/suppliers"
+    # This collection parses createdAt/updatedAt filters as DATES and rejects the
+    # full timestamp it returns on read (400 "not a valid date") — the document
+    # collections do the exact opposite. Measured on mvp; reported upstream.
+    datetime_filters_take_date_only = True
     include = "tags,contactPersons,deliveryAddresses"
     preview_template = "{{name}}"
     # The v3 address filters/sorts act on the record's main address; in the unified

@@ -202,11 +202,19 @@ class PurchasePriceAdapter(FacadeAdapterBase):
         up = model.get("unitPrice") or {}
         if isinstance(up, dict) and up.get("amount") is not None:
             amount = up["amount"]
-            body["price"] = {
+            try:
                 # create wants a string amount; v2 PATCH wants a number.
-                "amount": str(amount) if creating else float(amount),
-                "currency": up.get("currency") or "EUR",
-            }
+                wire = str(amount) if creating else float(amount)
+            except (TypeError, ValueError):
+                # A non-numeric amount used to raise straight out of map_write and
+                # take the whole request down with it. Refusing the field names it
+                # for the caller instead of answering with a stack trace.
+                rejected.add("unitPrice.amount")
+            else:
+                body["price"] = {
+                    "amount": wire,
+                    "currency": up.get("currency") or "EUR",
+                }
 
         if model.get("validFrom") is not None:
             body["validFrom"] = model["validFrom"]

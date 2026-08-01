@@ -658,6 +658,45 @@ class FacadeAdapterBase:
         type(self)._ref_filter_keys_cache = keys
         return keys
 
+    # Some upstream collections parse a `datetime` filter as a DATE and reject
+    # anything carrying a time — including the very timestamp they return on read:
+    #
+    #   /api/v3/customers  filter[createdAt]=2024-11-21T04:16:22+01:00 -> 400 "not a valid date"
+    #                      filter[createdAt]=2024-11-21                -> 200
+    #   /api/v3/salesOrders            the exact opposite (400 "not a valid datetime")
+    #
+    # Both families READ back a full ISO timestamp, so on the partner endpoints a
+    # caller cannot filter on the value they were just handed. That is an upstream
+    # inconsistency and is reported as such; until it is fixed the facade absorbs
+    # it, because the model promises ONE `createdAt: datetime, filterable` across
+    # every entity and a consumer must not have to know which parser sits behind
+    # which key. This trims the caller's value to its date part — a format
+    # adaptation at the boundary, not invented data (ADR-014 forbids the latter).
+    # Remove the flag once the upstream filter accepts what it emits.
+    datetime_filters_take_date_only: bool = False
+
+    def _datetime_filter_keys(self) -> set[str]:
+        """Dotted model paths of every filterable ``datetime`` field."""
+        keys: set[str] = set()
+
+        def walk(props: Any, prefix: str = "") -> None:
+            if not isinstance(props, dict):
+                return
+            for name, spec in props.items():
+                if not isinstance(spec, dict):
+                    continue
+                path = f"{prefix}.{name}" if prefix else name
+                if spec.get("type") == "datetime" and spec.get("filterable"):
+                    keys.add(path)
+                sub = spec.get("properties") or (spec.get("node") or {}).get("properties")
+                walk(sub, path)
+
+        try:
+            walk(self.fields())
+        except Exception:  # noqa: BLE001 - a broken fields() must not break list
+            return set()
+        return keys
+
     def _strip_reference_filter_prefixes(
         self, params: list[tuple[str, str]]
     ) -> list[tuple[str, str]]:
@@ -665,9 +704,12 @@ class FacadeAdapterBase:
         upstream filters on the bare numeric id, so strip the prefix for
         reference-typed filter keys (mirrors ``_ref_id`` on writes). Keyed off the
         MODEL filter key, so string/enum filters (number, tags, status, …) are
-        left untouched. Runs before ``query_aliases`` rewrites the ``[key]``."""
+        left untouched. Also trims datetime filter values where the collection
+        only accepts a date (see ``datetime_filters_take_date_only``). Runs before
+        ``query_aliases`` rewrites the ``[key]``."""
+        date_keys = self._datetime_filter_keys() if self.datetime_filters_take_date_only else set()
         ref_keys = self._reference_filter_keys()
-        if not ref_keys:
+        if not ref_keys and not date_keys:
             return params
         key_by_index = {
             k[len("filter[") : k.index("]")]: v
@@ -678,12 +720,11 @@ class FacadeAdapterBase:
         for k, v in params:
             if k.startswith("filter[") and k.endswith("][value]"):
                 idx = k[len("filter[") : k.index("]")]
-                if (
-                    key_by_index.get(idx) in ref_keys
-                    and isinstance(v, str)
-                    and _SPEAKING_ID.match(v)
-                ):
+                model_key = key_by_index.get(idx)
+                if model_key in ref_keys and isinstance(v, str) and _SPEAKING_ID.match(v):
                     v = v.split("_", 1)[1]
+                elif model_key in date_keys and isinstance(v, str) and "T" in v:
+                    v = v.split("T", 1)[0]
             out.append((k, v))
         return out
 
