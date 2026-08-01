@@ -480,6 +480,33 @@ class FacadeAdapterBase:
             if isinstance(spec, dict) and not spec.get("description"):
                 spec["description"] = text
 
+    def _apply_detail_only(self, properties: dict[str, Any]) -> None:
+        """Stamp ``detailOnly`` onto the sections a list does not load.
+
+        The response already says it after the fact (``extra.unavailableSections``),
+        which is too late to plan with: a caller looking for "products under 10 €"
+        lists, sees ``prices.sale: null`` on every row and draws the wrong
+        conclusion. In the schema the same fact is available BEFORE the call — read
+        this record singly, or do not ask for this field in a list.
+
+        Derived from ``detail_only_sections`` so the declaration stays single;
+        stamped on the section and everything below it, because a consumer may look
+        only at the leaf it wants.
+        """
+
+        def stamp(spec: Any) -> None:
+            if not isinstance(spec, dict):
+                return
+            spec["detailOnly"] = True
+            sub = spec.get("properties")
+            if not isinstance(sub, dict):
+                sub = (spec.get("node") or {}).get("properties")
+            for child in (sub or {}).values():
+                stamp(child)
+
+        for path in self.detail_only_sections:
+            stamp(self._resolve_path(properties, path) if "." in path else properties.get(path))
+
     def _filterable_keys(self) -> set[str]:
         """Every MODEL path the schema marks ``filterable``, cached per class."""
         cached = type(self).__dict__.get("_filterable_keys_cache")
@@ -547,6 +574,7 @@ class FacadeAdapterBase:
         self._apply_priorities(properties)
         self._apply_verified(properties)
         self._apply_descriptions(properties)
+        self._apply_detail_only(properties)
         meta: dict[str, Any] = {
             "key": self.manifest.key,
             "label": self.manifest.label(accept_language),
@@ -1377,9 +1405,7 @@ class FacadeAdapterBase:
         if not isinstance(model, dict):
             return body
         before = json.dumps(model, sort_keys=True)
-        await self._complete_money_pairs(
-            handle, model, base_url, token, accept_language, client
-        )
+        await self._complete_money_pairs(handle, model, base_url, token, accept_language, client)
         if json.dumps(model, sort_keys=True) == before:
             return body
         return json.dumps(model).encode()

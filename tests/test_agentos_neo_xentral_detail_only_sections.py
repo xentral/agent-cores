@@ -156,3 +156,55 @@ def test_an_unparsable_body_is_forwarded_unchanged(body: bytes) -> None:
         a._complete_body_money_pairs("prd_1", body, "https://x.test", "t", None, None)
     )
     assert out is body
+
+
+# ---- the schema says it BEFORE the call ----------------------------------
+
+
+def _spec(meta: dict[str, Any], path: str) -> dict[str, Any]:
+    node = (meta.get("rootNode") or {}).get("properties") or {}
+    spec: dict[str, Any] = {}
+    for part in path.split("."):
+        spec = node[part]
+        node = spec.get("properties") or (spec.get("node") or {}).get("properties") or {}
+    return spec
+
+
+def test_describe_marks_the_sections_detail_only() -> None:
+    """`extra.unavailableSections` reports it after the fact — too late for an
+    agent deciding whether to list or to read one record."""
+    meta = ProductAdapter().metadata()
+    for path in ("prices.sale", "stock", "bom", "properties"):
+        assert _spec(meta, path).get("detailOnly") is True, path
+
+
+def test_the_leaves_carry_it_too() -> None:
+    """A consumer may look only at the leaf it wants."""
+    meta = ProductAdapter().metadata()
+    assert _spec(meta, "prices.sale.amount").get("detailOnly") is True
+    assert _spec(meta, "prices.sale.currency").get("detailOnly") is True
+
+
+def test_an_ordinary_field_is_not_marked() -> None:
+    meta = ProductAdapter().metadata()
+    assert "detailOnly" not in _spec(meta, "name")
+    assert "detailOnly" not in _spec(meta, "prices.purchase")  # rides the v3 payload
+
+
+def test_the_flag_is_derived_from_the_declaration_not_a_second_list() -> None:
+    meta = ProductAdapter().metadata()
+    marked = set()
+
+    def walk(props: dict[str, Any], prefix: str = "") -> None:
+        for name, spec in (props or {}).items():
+            path = f"{prefix}.{name}" if prefix else name
+            if isinstance(spec, dict):
+                if spec.get("detailOnly"):
+                    marked.add(path)
+                walk(
+                    spec.get("properties") or (spec.get("node") or {}).get("properties") or {}, path
+                )
+
+    walk((meta.get("rootNode") or {}).get("properties") or {})
+    roots = {p for p in marked if not any(p.startswith(m + ".") for m in marked)}
+    assert roots == set(ProductAdapter.detail_only_sections)
