@@ -252,12 +252,28 @@ def _entity_sheet(wb: Workbook, key: str, meta: dict[str, Any], title: str) -> d
                     note or "",
                 ]
             )
-    _block(
+    last = _block(
         nxt,
         "Process-Steps",
         ["Key", "Label", "destruktiv", "Beschreibung", "Status", "Notiz"],
         step_rows,
     )
+
+    # Wishes for a field the schema does not have. They have no row to colour blue
+    # above — "items.totals.tax" is missing precisely BECAUSE upstream states no
+    # per-line tax amount — so without their own block the widest gaps in the
+    # backlog would be the only ones invisible in this workbook.
+    missing = meta.get("missingFieldWishes") or []
+    if missing:
+        _block(
+            last,
+            "Wünsche ohne Feld (Lücke im Modell)",
+            ["Feld", "Facetten", "Status", "Begründung"],
+            [
+                [m.get("field"), ", ".join(m.get("ops") or []), WISH, m.get("reason") or ""]
+                for m in missing
+            ],
+        )
 
     _autosize(
         ws,

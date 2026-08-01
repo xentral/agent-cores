@@ -109,7 +109,12 @@ def _item_props() -> dict[str, Any]:
         "discountPercent": prop("decimal", "Discount %", creatable=True, updatable=True),
         "purchasePrice": purchase_price_prop(updatable=True),
         "contributionMargin": contribution_margin_prop(),
-        "taxRate": prop("string", "Tax rate", creatable=True, updatable=True),
+        # Derived upstream from the product's tax class and the customer's tax rule.
+        # v3 accepts taxRate on a line, answers 2xx and keeps its own value — measured
+        # on offers, salesOrders, invoices and purchaseOrders (2026-08-01): sent
+        # "reduced", read back "standard", both on create and on update. Declaring it
+        # writable promised an edit that silently did nothing.
+        "taxRate": prop("string", "Tax rate", **RO),
         "totals": item_totals_prop(),
     }
 
@@ -746,8 +751,6 @@ class SalesInvoiceAdapter(FacadeAdapterBase):
             out["description"] = i["description"]
         if i.get("discountPercent") is not None:
             out["discount"] = i["discountPercent"]
-        if i.get("taxRate") is not None:
-            out["taxRate"] = i["taxRate"]
         price = line_price_net(i, currency)
         if price is not None:
             out["price"] = price

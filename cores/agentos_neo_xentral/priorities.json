@@ -5,8 +5,7 @@
       {
         "field": "references.customerOrderNumber",
         "ops": [
-          "create",
-          "update"
+          "create"
         ],
         "reason": "The customer's own order / PO number (B2B standard field). Read-only upstream today; a clerk must be able to set and correct it."
       },
@@ -50,7 +49,6 @@
       {
         "field": "dates.requestedDelivery",
         "ops": [
-          "create",
           "update"
         ],
         "reason": "Desired delivery date — core fulfilment field; one of the first things entered on an order. Not writable upstream today."
@@ -126,13 +124,6 @@
         "reason": "Reassign the order to the correct customer after creation — v3 accepts the partner only on create today."
       },
       {
-        "field": "items",
-        "ops": [
-          "update"
-        ],
-        "reason": "Edit order positions (quantities, add/remove articles) after creation — the v3 update DTO carries no line-item write path."
-      },
-      {
         "field": "fulfillmentPolicy.partialShipping",
         "ops": [
           "create",
@@ -174,14 +165,21 @@
           "update"
         ],
         "reason": "Correcting a sales order number after the fact. The v3 create accepts one, but PATCH has no slot for it — a number carried over from another system must be right the first time."
+      },
+      {
+        "field": "items.taxRate",
+        "ops": [
+          "create",
+          "update"
+        ],
+        "reason": "Deviating tax rate per position. Upstream derives the line tax from the product's tax class and the customer's tax rule; v3 accepts taxRate on a line item, answers 2xx and keeps its own value — measured on mvp 2026-08-01 (sent \"reduced\", read back \"standard\", on create and on update alike). Needs a real write path upstream."
       }
     ],
     "SalesInvoice": [
       {
         "field": "references.customerOrderNumber",
         "ops": [
-          "create",
-          "update"
+          "create"
         ],
         "reason": "The customer's PO number on the invoice (B2B) — read-only upstream today; must be settable and correctable."
       },
@@ -199,13 +197,6 @@
           "update"
         ],
         "reason": "Deviating debtor account for the FiBu/DATEV export — settable when it differs from the customer default."
-      },
-      {
-        "field": "taxation",
-        "ops": [
-          "update"
-        ],
-        "reason": "Correcting the taxation scheme (domestic/euB2B/euOss/export) on an invoice — not updatable upstream today."
       },
       {
         "field": "payment.method",
@@ -269,13 +260,6 @@
         "reason": "Reassign the invoice's partner after creation — v3 accepts it only on create."
       },
       {
-        "field": "items",
-        "ops": [
-          "update"
-        ],
-        "reason": "Edit invoice positions after creation — the v3 update DTO carries no line-item write path."
-      },
-      {
         "field": "eInvoice",
         "ops": [
           "read"
@@ -309,14 +293,21 @@
           "update"
         ],
         "reason": "Correcting a invoice number after the fact. The v3 create accepts one, but PATCH has no slot for it — a number carried over from another system must be right the first time."
+      },
+      {
+        "field": "items.taxRate",
+        "ops": [
+          "create",
+          "update"
+        ],
+        "reason": "Deviating tax rate per position. Upstream derives the line tax from the product's tax class and the customer's tax rule; v3 accepts taxRate on a line item, answers 2xx and keeps its own value — measured on mvp 2026-08-01 (sent \"reduced\", read back \"standard\", on create and on update alike). Needs a real write path upstream."
       }
     ],
     "DeliveryNote": [
       {
         "field": "references.customerOrderNumber",
         "ops": [
-          "create",
-          "update"
+          "create"
         ],
         "reason": "The customer's PO number on the delivery note (B2B) — read-only upstream today; must be settable."
       },
@@ -407,8 +398,7 @@
       {
         "field": "references.customerOrderNumber",
         "ops": [
-          "create",
-          "update"
+          "create"
         ],
         "reason": "The customer's PO number on the credit note (B2B) — read-only upstream today."
       },
@@ -452,13 +442,6 @@
         "reason": "Reassign the partner after creation — v3 accepts it only on create."
       },
       {
-        "field": "items",
-        "ops": [
-          "update"
-        ],
-        "reason": "Edit credit-note positions after creation — the v3 update DTO carries no line-item write path."
-      },
-      {
         "field": "totals.outstanding",
         "ops": [
           "read"
@@ -478,6 +461,14 @@
           "update"
         ],
         "reason": "Correcting a credit note number after the fact. The v3 create accepts one, but PATCH has no slot for it — a number carried over from another system must be right the first time."
+      },
+      {
+        "field": "items.taxRate",
+        "ops": [
+          "create",
+          "update"
+        ],
+        "reason": "Deviating tax rate per position. Upstream derives the line tax from the product's tax class and the customer's tax rule; v3 accepts taxRate on a line item, answers 2xx and keeps its own value — measured on mvp 2026-08-01 (sent \"reduced\", read back \"standard\", on create and on update alike). Needs a real write path upstream."
       }
     ],
     "Return": [
@@ -654,13 +645,6 @@
         "reason": "Reassign the quote's partner after creation — v3 accepts it only on create."
       },
       {
-        "field": "items",
-        "ops": [
-          "update"
-        ],
-        "reason": "Edit quote positions after creation — the v3 update DTO carries no line-item write path."
-      },
-      {
         "field": "items.totals.tax",
         "ops": [
           "read"
@@ -673,6 +657,14 @@
           "create"
         ],
         "reason": "Carrying a quote number over from another system. The v3 create does not declare documentNumber for this document type and ignores a supplied value without an error, so the core refuses it instead. salesOrder, invoice and creditNote do accept one."
+      },
+      {
+        "field": "items.taxRate",
+        "ops": [
+          "create",
+          "update"
+        ],
+        "reason": "Deviating tax rate per position. Upstream derives the line tax from the product's tax class and the customer's tax rule; v3 accepts taxRate on a line item, answers 2xx and keeps its own value — measured on mvp 2026-08-01 (sent \"reduced\", read back \"standard\", on create and on update alike). Needs a real write path upstream."
       }
     ],
     "PurchaseOrder": [
@@ -758,6 +750,14 @@
           "create"
         ],
         "reason": "Carrying a purchase order number over from another system. The v3 create does not declare documentNumber for this document type and ignores a supplied value without an error, so the core refuses it instead. salesOrder, invoice and creditNote do accept one."
+      },
+      {
+        "field": "items.taxRate",
+        "ops": [
+          "create",
+          "update"
+        ],
+        "reason": "Deviating tax rate per position. Upstream derives the line tax from the product's tax class and the customer's tax rule; v3 accepts taxRate on a line item, answers 2xx and keeps its own value — measured on mvp 2026-08-01 (sent \"reduced\", read back \"standard\", on create and on update alike). Needs a real write path upstream."
       }
     ],
     "GoodsReceipt": [

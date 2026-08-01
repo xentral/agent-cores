@@ -179,6 +179,65 @@ def _value_at(rec: Any, path: str) -> Any:
     return node
 
 
+def _line_toggle(spec: dict[str, Any], name: str, orig: Any) -> tuple[Any, Any]:
+    """A net-zero test value for ONE line field, plus what restores it.
+
+    Returns ``(None, None)`` when the sampled line carries nothing to toggle from:
+    a null price or quantity cannot be put back the way it was, and "restored to a
+    guess" is worse than "not probed".
+    """
+    if isinstance(orig, dict) and "amount" in orig:  # money
+        try:
+            amount = float(orig.get("amount"))
+        except (TypeError, ValueError):
+            return None, None
+        cur = orig.get("currency") or "EUR"
+        return (
+            {"amount": f"{amount + 1:.2f}", "currency": cur},
+            {"amount": f"{amount:.2f}", "currency": cur},
+        )
+    if isinstance(orig, dict) and "value" in orig:  # quantity
+        try:
+            value = float(orig.get("value"))
+        except (TypeError, ValueError):
+            return None, None
+        unit = orig.get("unit")
+        return ({"value": value + 1, "unit": unit}, {"value": value, "unit": unit})
+    if isinstance(orig, bool):
+        return (not orig), orig
+    if isinstance(orig, (int, float)):
+        return orig + 1, orig
+    if isinstance(orig, str):
+        if (alt := _option_toggle(spec, orig)) is not None:
+            return alt, orig
+        if (num := _numeric_string_toggle(orig)) is not None:
+            return num, orig
+        clean = orig.replace(_MARK, "").strip()
+        if not clean:
+            return None, None  # an empty string restores to "" — upstream ignores it
+        return (clean + _MARK if orig != clean + _MARK else clean), orig
+    return None, None  # null: nothing to restore to
+
+
+def _line_eq(got: Any, want: Any) -> bool:
+    """Compare a line value the way the wire returns it (money as strings, a
+    quantity as a number that may come back as 3 or 3.0)."""
+    if isinstance(want, dict) and isinstance(got, dict):
+        if "amount" in want:
+            try:
+                return float(got.get("amount")) == float(want["amount"])
+            except (TypeError, ValueError):
+                return False
+        if "value" in want:
+            try:
+                return float(got.get("value")) == float(want["value"])
+            except (TypeError, ValueError):
+                return False
+    if isinstance(want, (int, float)) and isinstance(got, (int, float)):
+        return float(got) == float(want)
+    return got == want
+
+
 def _update_targets(props: dict[str, Any], prefix: str = "") -> list[tuple[str, dict[str, Any]]]:
     """Every updatable scalar leaf (string/date/number/boolean) reachable WITHOUT
     crossing a collection — collections (items, tags) need per-item probes, not a
@@ -339,6 +398,10 @@ def _doc_create_payload(
                 ("unitPrice", {"amount": "9.90", "currency": "EUR"}, "money", "9.90"),
                 ("discountPercent", 5, "num", 5),
                 ("taxRate", "standard", "eq", "standard"),
+                # The position's own cost price (API-780). It was declared
+                # creatable on all four sales documents and never sent here, so its
+                # create cell stayed blank on every one of them.
+                ("purchasePrice", {"amount": "3.33", "currency": "EUR"}, "money", "3.33"),
                 ("supplierProductNumber", "VT-SPN", "eq", "VT-SPN"),
                 ("supplierProductName", "VT Supplier Name", "eq", "VT Supplier Name"),
             ]
@@ -675,6 +738,7 @@ async def _verify_entity(
             dst, dpl = await p.req(handle=handle)
             detail_cache[handle] = (dpl.get("data") or {}) if dst == 200 else fallback
         return detail_cache[handle]
+
     # a sample with the most non-null values gives the probes more ammunition
     sample = max(
         rows, key=lambda r: sum(1 for v in (r or {}).values() if v not in (None, "", [], {}))
@@ -926,6 +990,67 @@ async def _verify_entity(
                     fields.setdefault(path, {})["updateNote"] = skip_note
                 else:
                     mark(path, "update", False, last_note)
+
+        # LINE ITEMS. _update_targets skips collections on purpose — a document's
+        # positions are not written by PATCHing the whole list, the core reconciles
+        # them against the v3 lineItems sub-resource one line at a time. But
+        # skipping them left every line field `offen`, purchasePrice included: the
+        # field this suite was extended for was the one it never measured. So probe
+        # a single line the way the core writes one, and read the result back off
+        # the document.
+        items_spec = schema.get("items")
+        if isinstance(items_spec, dict) and items_spec.get("type") == "collection":
+            item_props = (items_spec.get("node") or {}).get("properties") or {}
+            line_targets = [
+                (n, sp)
+                for n, sp in item_props.items()
+                if isinstance(sp, dict) and sp.get("updatable")
+            ]
+            carrier = next((r for r in update_rows if r.get("id") and (r.get("items") or [])), None)
+            for name, spec in line_targets:
+                path = f"items.{name}"
+                if carrier is None:
+                    fields.setdefault(path, {})["updateNote"] = (
+                        "no sampled record carries a line item — not probed"
+                    )
+                    continue
+                handle = str(carrier["id"])
+                line = (carrier.get("items") or [])[0]
+                line_id = str(line.get("id") or "")
+                orig = line.get(name)
+                testv, restore_v = _line_toggle(spec, name, orig)
+                if testv is None:
+                    fields.setdefault(path, {})["updateNote"] = (
+                        f"no sample value for {name} — not probed "
+                        "(a null line value cannot be restored net-zero)"
+                    )
+                    continue
+                ust, upl = await p.req(
+                    "PATCH", handle, body={"items": [{"id": line_id, name: testv}]}
+                )
+                if ust >= 400:
+                    mark(path, "update", False, f"PATCH {ust}: {_err(upl)}")
+                    continue
+                # Read the document back rather than trusting the write response:
+                # the reconcile answers with its own re-read, and a line write that
+                # never reached upstream would still echo.
+                _gst, gpl = await p.req(handle=handle)
+                after = next(
+                    (
+                        it.get(name)
+                        for it in ((gpl.get("data") or {}).get("items") or [])
+                        if str(it.get("id") or "") == line_id
+                    ),
+                    None,
+                )
+                took = _line_eq(after, testv)
+                mark(
+                    path,
+                    "update",
+                    took,
+                    None if took else "upstream accepted the write but the value did not persist",
+                )
+                await p.req("PATCH", handle, body={"items": [{"id": line_id, name: restore_v}]})
 
         # reference update: switch project to another sampled project id, restore.
         pspec = schema.get("project")
@@ -1326,13 +1451,13 @@ async def _main() -> None:
     path = os.path.join(os.path.dirname(__file__), "..", "verified.json")
     # A scoped run (VERIFY_ONLY) MERGES into the existing manifest so it never
     # wipes entities it didn't re-probe; a full run overwrites as before.
-    entities: dict[str, Any] = {}
-    if _ONLY:
-        try:
-            with open(path, encoding="utf-8") as fh:  # noqa: ASYNC230 - one-shot generator
-                entities = json.load(fh).get("entities") or {}
-        except (FileNotFoundError, ValueError):
-            entities = {}
+    previous: dict[str, Any] = {}
+    try:
+        with open(path, encoding="utf-8") as fh:  # noqa: ASYNC230 - one-shot generator
+            previous = json.load(fh).get("entities") or {}
+    except (FileNotFoundError, ValueError):
+        previous = {}
+    entities: dict[str, Any] = dict(previous) if _ONLY else {}
     print(
         f"probing {'only ' + ', '.join(sorted(_ONLY)) if _ONLY else 'all entities'} "
         f"| actions/steps: {'ON' if _PROBE_ACTIONS else 'off'}"
@@ -1350,6 +1475,15 @@ async def _main() -> None:
             continue
         print(f"  {key}: {summary}")
         if result:
+            # A run that did not probe actions/steps must not delete the verdicts a
+            # run that did left behind. Re-probing Quote for a field fix silently
+            # dropped its send/addTag/removeTag results, and the sheet then read
+            # "declared, untested" for capabilities that had been proven.
+            if not _PROBE_ACTIONS:
+                before = previous.get(key) or {}
+                for carried in ("actions", "actionsNotes", "processSteps", "processStepsNotes"):
+                    if carried in before:
+                        result[carried] = before[carried]
             entities[key] = result
     out = {"generatedAt": None, "instance": _INSTANCE, "entities": entities}
     with open(path, "w", encoding="utf-8") as fh:  # noqa: ASYNC230 - one-shot generator

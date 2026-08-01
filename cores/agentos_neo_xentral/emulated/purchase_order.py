@@ -283,7 +283,12 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
                                 "currency": prop("string", "Currency"),
                             },
                         ),
-                        "taxRate": prop("string", "Tax rate", creatable=True),
+                        # Derived upstream from the product's tax class and the customer's tax rule.
+                        # v3 accepts taxRate on a line, answers 2xx and keeps its own value — measured
+                        # on offers, salesOrders, invoices and purchaseOrders (2026-08-01): sent
+                        # "reduced", read back "standard", both on create and on update. Declaring it
+                        # writable promised an edit that silently did nothing.
+                        "taxRate": prop("string", "Tax rate", **RO),
                         "fulfillment": prop(
                             "embedded",
                             "Fulfillment",
@@ -639,8 +644,6 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
             out["quantity"] = qty_val
         if i.get("discountPercent") is not None:
             out["discount"] = i["discountPercent"]
-        if i.get("taxRate") is not None:
-            out["taxRate"] = i["taxRate"]
         if i.get("supplierProductNumber") is not None:
             out["supplierProductNumber"] = i["supplierProductNumber"]
         if i.get("supplierProductName") is not None:
