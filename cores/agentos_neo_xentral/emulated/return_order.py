@@ -631,8 +631,6 @@ class ReturnAdapter(FacadeAdapterBase):
             out["quantity"] = qty_val
         if i.get("discountPercent") is not None:
             out["discount"] = i["discountPercent"]
-        if i.get("taxRate") is not None:
-            out["taxRate"] = i["taxRate"]
         reason = i.get("reason")
         if reason is not None:
             rid = reason.get("id") if isinstance(reason, dict) else reason

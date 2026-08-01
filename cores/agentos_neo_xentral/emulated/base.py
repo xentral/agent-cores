@@ -325,6 +325,11 @@ def tags_to_v3(value: Any) -> list[dict[str, str]]:
     return out
 
 
+# Facets whose `pass` was earned by an actual probe. `read` is not among them:
+# verify.py marks every declared path read-pass by construction.
+_EARNED_VERDICTS = frozenset({"create", "update", "filter", "sort", "search"})
+
+
 class FacadeAdapterBase:
     """Concrete adapters set ``manifest``, ``v3_path`` (upstream collection),
     ``sections``, ``preview_template``, ``include`` (upstream ?include=), and
@@ -441,20 +446,90 @@ class FacadeAdapterBase:
             node = spec.get("properties") or (spec.get("node") or {}).get("properties") or {}
         return spec
 
+    def _proven(self, field: str, op: str) -> bool:
+        """Whether a LIVE probe has shown this op working on this field.
+
+        Declaration is the wrong yardstick here. `Product.suppliers` declares a
+        writable child (the default supplier maps to v2 standardSupplier) while
+        multi-supplier sourcing — what the wish is actually about — has no write
+        path at all; dropping that wish because a flag exists would erase a real
+        gap. A recorded `pass` cannot be argued with: something wrote the value and
+        read it back.
+
+        A container counts as proven when any of its leaves is: `items` is editable
+        exactly when a line field has been shown to update.
+
+        `read` is excluded. The probe stamps `read: pass` on every declared path
+        whether or not the instance carried a value, so it says "the schema has
+        this field", not "upstream supplies it" — which is exactly what a read wish
+        disputes. Taking it as proof retired 50 legitimate wishes in one run."""
+        if op not in _EARNED_VERDICTS:
+            return False
+        fields = (_verified().get(self.manifest.key) or {}).get("fields") or {}
+        if (fields.get(field) or {}).get(op) == "pass":
+            return True
+        prefix = f"{field}."
+        return any(
+            path.startswith(prefix) and (facets or {}).get(op) == "pass"
+            for path, facets in fields.items()
+        )
+
     def _apply_priorities(self, properties: dict[str, Any]) -> None:
         """Stamp the hand-curated blue wishes (priorities.json) onto the schema —
         the living backlog (docs/03-mapping-layer.md §5). Renders blue only where
-        the op is actually unavailable."""
+        the op is actually unavailable.
+
+        A wish outranks every other verdict where it is shown, including a `pass` —
+        right for a real gap, dangerous for a stale one: the entry goes on claiming
+        "not possible" over a capability that has since been built and live-proven,
+        and the proof is what gets hidden. An op a live probe has PROVEN is
+        therefore not stamped, and the entry is surfaced through obsolete_wishes()
+        so it gets deleted rather than quietly ignored."""
+        for field, ops in self._wishes_by_field().items():
+            spec = self._resolve_path(properties, field) if "." in field else properties.get(field)
+            if not isinstance(spec, dict):
+                continue
+            live = {op: reason for op, reason in ops.items() if not self._proven(field, op)}
+            if live:
+                spec["priority"] = live
+
+    def _wishes_by_field(self) -> dict[str, dict[str, str]]:
         by_field: dict[str, dict[str, str]] = {}
         for entry in _priorities().get(self.manifest.key) or ():
             field = entry.get("field")
             reason = entry.get("reason") or ""
             for op in entry.get("ops") or ():
                 by_field.setdefault(field, {})[op] = reason
-        for field, ops in by_field.items():
+        return by_field
+
+    def obsolete_wishes(self) -> list[dict[str, Any]]:
+        """Wishes whose op the schema now declares — the backlog contradicting the
+        core. Reported by validate_cores.py so the entry is deleted, not carried."""
+        properties = self.fields()
+        out: list[dict[str, Any]] = []
+        for field, ops in self._wishes_by_field().items():
             spec = self._resolve_path(properties, field) if "." in field else properties.get(field)
-            if isinstance(spec, dict):
-                spec["priority"] = ops
+            if not isinstance(spec, dict):
+                continue
+            done = sorted(op for op in ops if self._proven(field, op))
+            if done:
+                out.append({"field": field, "ops": done})
+        return out
+
+    def missing_field_wishes(self) -> list[dict[str, Any]]:
+        """Wishes for a field the schema does not have at all.
+
+        These are the widest gaps in the backlog — `items.totals.tax` (no per-line
+        tax amount exists upstream), `contacts.address` — and until now they
+        rendered nowhere: there is no row to colour blue, so the stamp silently
+        found no spec and the wish vanished from every capability view."""
+        properties = self.fields()
+        out: list[dict[str, Any]] = []
+        for field, ops in sorted(self._wishes_by_field().items()):
+            spec = self._resolve_path(properties, field) if "." in field else properties.get(field)
+            if not isinstance(spec, dict):
+                out.append({"field": field, "ops": sorted(ops), "reason": next(iter(ops.values()))})
+        return out
 
     def _apply_verified(self, properties: dict[str, Any]) -> None:
         """Stamp live-test results (verified.json) onto the schema — the green/red
@@ -464,6 +539,25 @@ class FacadeAdapterBase:
             spec = self._resolve_path(properties, path) if "." in path else properties.get(path)
             if isinstance(spec, dict) and isinstance(facets, dict):
                 spec["verified"] = facets
+
+    def _apply_verified_capabilities(
+        self, entries: list[dict[str, Any]], results_key: str, notes_key: str
+    ) -> None:
+        """Stamp live-test results onto ACTIONS / process-step commands.
+
+        Only fields were ever stamped, so every action in every capability view read
+        "declared, untested" — including the ones a live run had proven. SalesOrder
+        carried `createSalesInvoice: pass` in verified.json while its sheet said
+        `offen` for all thirteen."""
+        entity = _verified().get(self.manifest.key) or {}
+        results = entity.get(results_key) or {}
+        notes = entity.get(notes_key) or {}
+        for entry in entries:
+            key = entry.get("key")
+            if key in results:
+                entry["verified"] = {"status": results[key]}
+                if notes.get(key):
+                    entry["verified"]["note"] = notes[key]
 
     def _apply_descriptions(self, properties: dict[str, Any]) -> None:
         """Stamp English field descriptions (descriptions.json) onto the schema. The
@@ -590,6 +684,12 @@ class FacadeAdapterBase:
         # (e.g. that scoped/tiered prices live on PriceList, not on Product).
         if getattr(self.manifest, "description", ""):
             meta["description"] = self.manifest.description
+        # Gaps with no field to colour blue: the schema has no such path, so the
+        # wish would otherwise be invisible in every capability view. Named here so
+        # "this entity cannot express X at all" is readable, not just "X is absent".
+        missing = self.missing_field_wishes()
+        if missing:
+            meta["missingFieldWishes"] = missing
         # Advertise the consolidated `search` filter only when the schema
         # actually flags fields — consumers (record pickers, list search) key
         # their server-search affordance off this list.
@@ -632,9 +732,15 @@ class FacadeAdapterBase:
                 },
             ]
         if actions:
+            self._apply_verified_capabilities(actions, "actions", "actionsNotes")
             meta["actions"] = actions
         steps = self.steps()
         if steps:
+            # Commands live one level down, inside their group.
+            for group in steps:
+                self._apply_verified_capabilities(
+                    group.get("commands") or [], "processSteps", "processStepsNotes"
+                )
             meta["processSteps"] = steps
         return meta
 

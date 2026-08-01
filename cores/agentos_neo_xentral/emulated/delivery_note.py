@@ -603,6 +603,4 @@ class DeliveryNoteAdapter(FacadeAdapterBase):
             out["description"] = i["description"]
         if i.get("discountPercent") is not None:
             out["discount"] = i["discountPercent"]
-        if i.get("taxRate") is not None:
-            out["taxRate"] = i["taxRate"]
         return out
