@@ -151,15 +151,18 @@ def line_qty(item: dict[str, Any]) -> Any:
 def line_price_net(item: dict[str, Any], currency: str = "EUR") -> dict[str, Any] | None:
     """v3 net-price payload from a line item's ``unitPrice``, tolerating both the
     canonical ``{"amount": …, "currency": …}`` object AND a bare scalar amount.
-    None when there is no amount to send."""
+    None when there is no amount to send.
+
+    The currency is ALWAYS the document's — a position cannot carry one of its own.
+    Line money is still emitted as ``{amount, currency}`` on read, because every
+    money value in the model has that shape (ADR-006), but the header decides. So a
+    caller who sends a deviating currency is not forwarded into an upstream 400 for
+    something the schema never marked writable in the first place."""
     up = item.get("unitPrice")
-    if isinstance(up, dict):
-        amount, cur = up.get("amount"), up.get("currency")
-    else:
-        amount, cur = up, None
+    amount = up.get("amount") if isinstance(up, dict) else up
     if amount is None:
         return None
-    return {"net": {"amount": str(amount), "currency": cur or currency}}
+    return {"net": {"amount": str(amount), "currency": currency}}
 
 
 def purchase_price_prop(*, updatable: bool = False) -> dict[str, Any]:
@@ -212,15 +215,16 @@ def line_purchase_price_net(item: dict[str, Any], currency: str = "EUR") -> dict
     """v3 ``purchasePrice`` payload from a line item's ``purchasePrice``, tolerating
     both the canonical ``{"amount": …, "currency": …}`` object AND a bare scalar
     amount. None when there is no amount to send — upstream rejects an explicit null
-    (its EK columns are NOT NULL), so a cleared EK is never emitted."""
+    (its EK columns are NOT NULL), so a cleared EK is never emitted.
+
+    The currency is ALWAYS the document's, as for the sale price: upstream refuses an
+    EK whose currency differs from the document's, and the position has no currency
+    of its own to differ with."""
     pp = item.get("purchasePrice")
-    if isinstance(pp, dict):
-        amount, cur = pp.get("amount"), pp.get("currency")
-    else:
-        amount, cur = pp, None
+    amount = pp.get("amount") if isinstance(pp, dict) else pp
     if amount is None:
         return None
-    return {"net": {"amount": str(amount), "currency": cur or currency}}
+    return {"net": {"amount": str(amount), "currency": currency}}
 
 
 def map_purchase_price(li: dict[str, Any], currency: str = "EUR") -> dict[str, Any] | None:
@@ -1328,6 +1332,56 @@ class FacadeAdapterBase:
             method, handle, query, body, base_url, token, accept_language, client
         )
 
+    # Dotted model paths of money values the upstream treats as an ATOMIC pair —
+    # it has no "set the currency" of its own, only "set amount+currency"
+    # (PurchasePriceHandler: `pricePerUnit->has && priceCurrency->has && setPricePerUnit(…)`).
+    # A currency-only update therefore has to be completed from the stored amount,
+    # or it goes out as no price block at all: 2xx back, nothing changed, nothing
+    # for the caller to see. Only for master data — a document POSITION has no
+    # currency of its own (the header decides), so no document declares any.
+    money_pairs: tuple[str, ...] = ()
+
+    async def _complete_money_pairs(  # noqa: ANN001
+        self, handle, model, base_url, token, accept_language, client
+    ) -> None:
+        """Fill in the amount for every declared money pair the caller set the
+        currency of but not the amount. Reads the record once, and only when such a
+        half-set pair is actually present — an ordinary write costs nothing."""
+        pending = [
+            path
+            for path in self.money_pairs
+            if isinstance((money := self._value_at(model, path)), dict)
+            and money.get("currency") is not None
+            and money.get("amount") is None
+        ]
+        if not pending or not handle:
+            return
+        st, payload = await self._get(
+            base_url,
+            token,
+            handle=handle,
+            query=[],
+            accept_language=accept_language,
+            client=client,
+        )
+        if st >= 400 or not isinstance(payload, dict):
+            return  # unreadable → leave the body alone and let upstream answer
+        current = self.map_read(payload.get("data") or {})
+        for path in pending:
+            stored = self._value_at(current, path)
+            amount = stored.get("amount") if isinstance(stored, dict) else None
+            if amount is not None:
+                self._value_at(model, path)["amount"] = amount
+
+    @staticmethod
+    def _value_at(record: Any, path: str) -> Any:
+        node = record
+        for part in path.split("."):
+            if not isinstance(node, dict):
+                return None
+            node = node.get(part)
+        return node
+
     async def _write_document(
         self,
         method: str,
@@ -1345,6 +1399,10 @@ class FacadeAdapterBase:
             return self._json(400, {"title": "invalid JSON body"})
         if not isinstance(model, dict):
             return self._json(400, {"title": "body must be a JSON object"})
+        if method != "POST" and self.money_pairs:
+            await self._complete_money_pairs(
+                handle, model, base_url, token, accept_language, client
+            )
         v3_payload, rejected = self.map_write(model, creating=(method == "POST"))
         if rejected:
             return self.rejected_response(rejected)

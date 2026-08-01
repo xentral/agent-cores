@@ -62,6 +62,7 @@ class PriceListAdapter(FacadeAdapterBase):
         operations=("list", "read", "create", "update", "delete"),
     )
     v3_path = "/api/v1/salesPrices"
+    money_pairs = ("unitPrice",)
     include = ""
     preview_template = "{{product.name}}"
     query_aliases = {"product": "productId"}

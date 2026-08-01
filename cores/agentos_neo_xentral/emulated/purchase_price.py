@@ -52,6 +52,7 @@ class PurchasePriceAdapter(FacadeAdapterBase):
     )
     v3_path = _PP_V2  # read list (and the base's PATCH target via write_path)
     write_path = _PP_V2
+    money_pairs = ("unitPrice",)
     include = ""
     preview_template = "{{product.name}}"
     v1_paging = True

@@ -134,13 +134,22 @@ def test_currency_falls_back_to_the_document_not_eur():
         assert line["price"] == {"net": {"amount": "9", "currency": "USD"}}, cls.__name__
 
 
-def test_explicit_currency_wins_over_the_document():
-    line = _create_line(
-        SalesOrderAdapter,
-        {"product": {"id": "prd_1"}, "purchasePrice": {"amount": 5, "currency": "CHF"}},
-        currency="USD",
-    )
-    assert line["purchasePrice"] == {"net": {"amount": "5", "currency": "CHF"}}
+def test_the_document_currency_wins_over_an_explicit_one():
+    """A position has no currency of its own — the header decides. A deviating one
+    used to be forwarded and earn an upstream 400 for a field the schema never
+    marked writable; it is now simply overridden."""
+    for cls in _ALL:
+        line = _create_line(
+            cls,
+            {
+                "product": {"id": "prd_1"},
+                "unitPrice": {"amount": 9, "currency": "CHF"},
+                "purchasePrice": {"amount": 5, "currency": "CHF"},
+            },
+            currency="USD",
+        )
+        assert line["price"] == {"net": {"amount": "9", "currency": "USD"}}, cls.__name__
+        assert line["purchasePrice"] == {"net": {"amount": "5", "currency": "USD"}}, cls.__name__
 
 
 # ---- read ---------------------------------------------------------------
