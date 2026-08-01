@@ -116,7 +116,7 @@
         "send": "pass"
       },
       "actionsNotes": {
-        "addTag": "fresh title 'verify-probe-83b06e' attached — auto-create verified, net-zero",
+        "addTag": "fresh title 'verify-probe-64e379' attached — auto-create verified, net-zero",
         "removeTag": "fresh title removed again — effect verified, net-zero",
         "send": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma"
       },
@@ -219,8 +219,7 @@
           "read": "pass"
         },
         "items.description": {
-          "create": "fail",
-          "createNote": "sent on create but did not persist on the created record",
+          "create": "pass",
           "read": "pass"
         },
         "items.discountPercent": {
@@ -390,7 +389,7 @@
         "removeTag": "pass"
       },
       "actionsNotes": {
-        "addTag": "fresh title 'verify-probe-155c53' attached — auto-create verified, net-zero",
+        "addTag": "fresh title 'verify-probe-03b52a' attached — auto-create verified, net-zero",
         "removeTag": "fresh title removed again — effect verified, net-zero"
       },
       "fields": {
@@ -529,7 +528,6 @@
         },
         "createdAt": {
           "filter": "pass",
-          "filterNote": "accepts the date part only, not the full timestamp it returns on read",
           "read": "pass",
           "sort": "pass"
         },
@@ -675,7 +673,6 @@
         },
         "updatedAt": {
           "filter": "pass",
-          "filterNote": "accepts the date part only, not the full timestamp it returns on read",
           "read": "pass",
           "sort": "pass"
         },
@@ -4174,7 +4171,7 @@
         "removeTag": "pass"
       },
       "actionsNotes": {
-        "addTag": "fresh title 'verify-probe-f94e94' attached — auto-create verified, net-zero",
+        "addTag": "fresh title 'verify-probe-5fcf6c' attached — auto-create verified, net-zero",
         "removeTag": "fresh title removed again — effect verified, net-zero"
       },
       "fields": {
@@ -4310,7 +4307,6 @@
         },
         "createdAt": {
           "filter": "pass",
-          "filterNote": "accepts the date part only, not the full timestamp it returns on read",
           "read": "pass",
           "sort": "pass"
         },
@@ -4382,7 +4378,7 @@
         },
         "name": {
           "create": "pass",
-          "createNote": "created sup_20460 but DELETE returned 405 — manual cleanup needed (record is named 'VT Verify GmbH')",
+          "createNote": "created sup_20462 but DELETE returned 405 — manual cleanup needed (record is named 'VT Verify GmbH')",
           "filter": "pass",
           "read": "pass",
           "search": "pass",
@@ -4449,7 +4445,6 @@
         },
         "updatedAt": {
           "filter": "pass",
-          "filterNote": "accepts the date part only, not the full timestamp it returns on read",
           "read": "pass",
           "sort": "pass"
         },

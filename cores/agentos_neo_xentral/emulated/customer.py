@@ -38,6 +38,10 @@ class CustomerAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
         operations=("list", "read", "create", "update", "delete"),
     )
     v3_path = "/api/v3/customers"
+    # This collection parses createdAt/updatedAt filters as DATES and rejects the
+    # full timestamp it returns on read (400 "not a valid date") — the document
+    # collections do the exact opposite. Measured on mvp; reported upstream.
+    datetime_filters_take_date_only = True
     # v3 has no customer delete; v1 does (verified on mvp: 204). Without it an agent
     # can create a record but not clean up after itself — the asymmetry leaves test
     # data behind in a live tenant and makes people wary of trying anything.
