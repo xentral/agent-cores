@@ -90,6 +90,14 @@ _INSTANCE = os.environ.get("DUMP_INSTANCE", "a2ad4180-0d41-4360-8044-9dca0c35608
 # (confirm/cancel/createDeliveryNote …) — they are NOT net-zero like the field
 # suite. So they are opt-in: set VERIFY_ACTIONS=1 to probe them.
 _PROBE_ACTIONS = os.environ.get("VERIFY_ACTIONS") == "1"
+# …and even then it is all-or-nothing per entity, which is a heavy price for
+# re-checking ONE action: probing `send` again mails another customer of the
+# sampled record. VERIFY_ACTIONS_ONLY=downloadPdf,release narrows the run to the
+# named keys and leaves every other verdict untouched (the merge in _main carries
+# the previous ones through).
+_ACTIONS_ONLY = {
+    k.strip() for k in os.environ.get("VERIFY_ACTIONS_ONLY", "").split(",") if k.strip()
+}
 # A create probe on an entity WITHOUT a delete endpoint (Product) cannot be net-zero
 # — it leaves a clearly-labelled record behind. Opt-in so a normal run stays clean;
 # entities that DO have delete (PriceList, PurchasePrice) always run net-zero.
@@ -1409,6 +1417,8 @@ async def _verify_entity(
         # _probe_tag_actions. Falls back to the generic probe when the
         # roundtrip could not cover the key (e.g. removeTag after a failed add).
         tag_results: dict[str, tuple[str, str]] | None = None
+        if _ACTIONS_ONLY:
+            targets = [t for t in targets if t[0] in _ACTIONS_ONLY]
         for akey, res_map, note_map in targets:
             if akey in ("addTag", "removeTag") and sample_id:
                 if tag_results is None:
@@ -1509,11 +1519,29 @@ async def _main() -> None:
             # run that did left behind. Re-probing Quote for a field fix silently
             # dropped its send/addTag/removeTag results, and the sheet then read
             # "declared, untested" for capabilities that had been proven.
-            if not _PROBE_ACTIONS:
-                before = previous.get(key) or {}
-                for carried in ("actions", "actionsNotes", "processSteps", "processStepsNotes"):
-                    if carried in before:
-                        result[carried] = before[carried]
+            # Carry forward every action/step verdict this run did not probe.
+            # A run without VERIFY_ACTIONS probes none of them, and a run narrowed
+            # by VERIFY_ACTIONS_ONLY probes one — in both cases writing only what
+            # was measured would delete the rest. Measured while building the
+            # narrow filter: SalesOrder went from six verdicts to one.
+            before = previous.get(key) or {}
+            for res_key, note_key in (
+                ("actions", "actionsNotes"),
+                ("processSteps", "processStepsNotes"),
+            ):
+                kept = before.get(res_key) or {}
+                if not kept:
+                    continue
+                fresh = result.get(res_key) or {}
+                result[res_key] = {**kept, **fresh}
+                # A note belongs to the verdict it explains: keep the old note only
+                # where the old verdict survived.
+                old_notes = {
+                    k: v for k, v in (before.get(note_key) or {}).items() if k not in fresh
+                }
+                merged_notes = {**old_notes, **(result.get(note_key) or {})}
+                if merged_notes:
+                    result[note_key] = merged_notes
             entities[key] = result
     out = {"generatedAt": None, "instance": _INSTANCE, "entities": entities}
     with open(path, "w", encoding="utf-8") as fh:  # noqa: ASYNC230 - one-shot generator

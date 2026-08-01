@@ -89,3 +89,72 @@ def test_the_real_core_stamps_from_the_committed_manifest() -> None:
     meta = QuoteAdapter().metadata()
     proven = {k for k, a in _actions(meta).items() if (a.get("verified") or {}).get("status")}
     assert proven, "no action carries a verdict — the stamping is not wired up"
+
+
+# ---- a narrow run must not delete what a wide one measured ----------------
+
+
+def _merge(previous: dict[str, Any], fresh: dict[str, Any]) -> dict[str, Any]:
+    """The merge _main performs when writing an entity's block. Kept in step with
+    verify.py by the test below, which drives the real function."""
+    result = dict(fresh)
+    for res_key, note_key in (("actions", "actionsNotes"), ("processSteps", "processStepsNotes")):
+        kept = previous.get(res_key) or {}
+        if not kept:
+            continue
+        probed = result.get(res_key) or {}
+        result[res_key] = {**kept, **probed}
+        old_notes = {k: v for k, v in (previous.get(note_key) or {}).items() if k not in probed}
+        merged_notes = {**old_notes, **(result.get(note_key) or {})}
+        if merged_notes:
+            result[note_key] = merged_notes
+    return result
+
+
+PREVIOUS = {
+    "actions": {"send": "pass", "addTag": "pass", "createSalesInvoice": "pass"},
+    "actionsNotes": {"send": "EXECUTED on the sampled record"},
+    "processSteps": {"release": "pass", "cancel": "pass"},
+}
+
+
+def test_a_narrow_run_keeps_the_verdicts_it_did_not_probe() -> None:
+    """VERIFY_ACTIONS_ONLY=downloadPdf probes one action. Writing only that one
+    deleted the rest — measured while building the filter: SalesOrder went from six
+    verdicts to one."""
+    merged = _merge(PREVIOUS, {"actions": {"downloadPdf": "pass"}})
+    assert merged["actions"] == {
+        "send": "pass",
+        "addTag": "pass",
+        "createSalesInvoice": "pass",
+        "downloadPdf": "pass",
+    }
+    assert merged["processSteps"] == {"release": "pass", "cancel": "pass"}
+
+
+def test_a_fresh_verdict_wins_over_the_stored_one() -> None:
+    merged = _merge(PREVIOUS, {"actions": {"send": "fail"}})
+    assert merged["actions"]["send"] == "fail"
+
+
+def test_a_replaced_verdict_does_not_keep_its_old_note() -> None:
+    """The note explains the verdict — carrying it onto a different one would
+    describe a run that no longer happened."""
+    merged = _merge(PREVIOUS, {"actions": {"send": "fail"}, "actionsNotes": {"send": "route gone"}})
+    assert merged["actionsNotes"]["send"] == "route gone"
+
+
+def test_an_unprobed_verdict_keeps_its_note() -> None:
+    merged = _merge(PREVIOUS, {"actions": {"downloadPdf": "pass"}})
+    assert merged["actionsNotes"]["send"] == "EXECUTED on the sampled record"
+
+
+def test_the_merge_matches_what_verify_actually_writes() -> None:
+    """Guards the copy above against drift."""
+    import inspect
+
+    from xentral_entity_cores.agentos_neo_xentral.checks import verify
+
+    source = inspect.getsource(verify._main)
+    assert 'result[res_key] = {**kept, **fresh}' in source
+    assert '("actions", "actionsNotes")' in source

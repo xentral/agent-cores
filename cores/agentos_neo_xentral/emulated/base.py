@@ -17,6 +17,7 @@ entity as we build.
 from __future__ import annotations
 
 import functools
+import base64
 import json
 import os
 import re
@@ -1498,6 +1499,11 @@ class FacadeAdapterBase:
     # readable as "not loaded here", never as "not set". Hydrating the list
     # instead would cost one upstream request per row.
     detail_only_sections: tuple[str, ...] = ()
+    # The document has a printable form: `GET {v3_path}/{id}` answers with the
+    # rendered PDF when asked for `Accept: application/pdf` (documented content
+    # negotiation, scope <document>:read). Declaring it wires the generic
+    # downloadPdf action below — there is nothing per-document about it.
+    renders_pdf: bool = False
 
     async def _complete_body_money_pairs(  # noqa: ANN001
         self, handle, body, base_url, token, accept_language, client
@@ -1613,6 +1619,93 @@ class FacadeAdapterBase:
             if isinstance(rec, dict):
                 return self._json(201 if method == "POST" else 200, {"data": self.map_read(rec)})
         return self._json(201 if method == "POST" else 200, resp if isinstance(resp, dict) else {})
+
+    # A rendered document can be large, and the caller's transport is JSON. This is
+    # the point where a 20 MB attachment would turn into a 27 MB base64 string in
+    # someone's context window, so it is refused with a readable reason instead.
+    _PDF_MAX_BYTES = 8 * 1024 * 1024
+
+    async def _download_pdf(  # noqa: ANN001
+        self, ids, base_url, token, accept_language, client
+    ) -> AdapterResponse:
+        """Fetch the document's PDF and return it as a file payload.
+
+        Upstream renders it on the record itself — no separate endpoint, no files
+        sub-resource: `GET {v3_path}/{id}` with `Accept: application/pdf`. Note it
+        serves the ARCHIVED copy when one exists (written on send and on write
+        protection, NOT on release) and renders fresh otherwise, so two calls can
+        legitimately differ after a document is sent.
+
+        The bytes leave here as base64 inside JSON because the gateway decodes any
+        non-JSON body as text — raw PDF bytes would arrive as replacement
+        characters. Handing the payload to a file store is the caller's job.
+        """
+        if not ids:
+            return self._json(422, {"title": "downloadPdf needs a record id"})
+        up_id = str(ids[0]).split("_", 1)[1] if "_" in str(ids[0]) else str(ids[0])
+        url = f"{base_url.rstrip('/')}{self.v3_path}/{up_id}"
+        headers = {**self._headers(token, accept_language), "Accept": "application/pdf"}
+        try:
+            if client is not None:
+                resp = await client.request("GET", url, headers=headers)
+            else:
+                async with httpx.AsyncClient(timeout=60) as c:
+                    resp = await c.request("GET", url, headers=headers)
+        except httpx.HTTPError as exc:
+            return self._json(502, {"title": f"PDF request failed: {exc}"})
+        if resp.status_code >= 400:
+            return AdapterResponse(
+                resp.status_code, resp.content, {"content-type": "application/json"}
+            )
+        content = resp.content or b""
+        # Content negotiation that silently fell back to JSON would otherwise be
+        # handed on as a "PDF" the caller cannot open.
+        if not content.startswith(b"%PDF"):
+            return self._json(
+                502,
+                {
+                    "title": "upstream did not answer with a PDF",
+                    "detail": (
+                        f"content-type {resp.headers.get('content-type', '?')}; "
+                        f"first bytes {content[:16]!r}"
+                    ),
+                },
+            )
+        if len(content) > self._PDF_MAX_BYTES:
+            return self._json(
+                413,
+                {
+                    "title": "document PDF is too large to return inline",
+                    "detail": (
+                        f"{len(content)} bytes exceeds the {self._PDF_MAX_BYTES} byte "
+                        "limit for a base64 payload"
+                    ),
+                },
+            )
+        number = None
+        st, rec = await self._get(
+            base_url, token, handle=up_id, query=[], accept_language=accept_language, client=client
+        )
+        if st < 400 and isinstance(rec, dict):
+            number = (rec.get("data") or {}).get("documentNumber")
+        # Prefixed with the entity: document numbers are only unique per type, and
+        # a quote and a purchase order on mvp both answer to 100000. Two files
+        # called 100000.pdf in one store are one file.
+        stem = f"{self.manifest.key}-{number or up_id}".replace("/", "-")
+        return self._json(
+            200,
+            {
+                "data": {"id": str(ids[0]), "documentNumber": number},
+                "result": {
+                    "file": {
+                        "filename": f"{stem}.pdf",
+                        "contentType": "application/pdf",
+                        "sizeBytes": len(content),
+                        "contentBase64": base64.b64encode(content).decode("ascii"),
+                    }
+                },
+            },
+        )
 
     async def _tag_action(
         self,
@@ -1812,6 +1905,8 @@ class FacadeAdapterBase:
                 accept_language,
                 client,
             )
+        if action_key == "downloadPdf" and self.renders_pdf:
+            return await self._download_pdf(ids, base_url, token, accept_language, client)
         route = self.action_map.get(action_key)
         if route is None:
             wish = self._wish_reason(action_key)
