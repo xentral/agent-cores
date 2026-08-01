@@ -793,23 +793,46 @@ class FacadeAdapterBase:
             # schema carries no sortable/searchable marks on v1 entities).
             params = [(k, v) for k, v in params if k.startswith("filter[")]
             params += [("page[number]", str(number)), ("page[size]", str(size))]
+        ours = False
         if not any(k == "include" for k, _ in params) and self.include:
             params.append(("include", self.include))
+            ours = True
         url = f"{base_url.rstrip('/')}{path}"
         headers = self._headers(token, accept_language)
 
-        async def _do(c: httpx.AsyncClient) -> httpx.Response:
-            return await c.get(url, params=params, headers=headers)
+        async def _do(c: httpx.AsyncClient, use: list[tuple[str, str]]) -> httpx.Response:
+            return await c.get(url, params=use, headers=headers)
+
+        async def _run(c: httpx.AsyncClient) -> httpx.Response:
+            got = await _do(c, params)
+            # Xentral rejects the WHOLE request when it does not know one of the
+            # requested includes ("Requested include(s) `x` are not allowed"), so
+            # an include this build lacks would take the entity down entirely
+            # rather than cost it some detail. Drop ours and ask again; the
+            # adapters treat a missing include key as "not loaded", not "empty".
+            if got.status_code == 400 and ours and self._include_rejected(got):
+                return await _do(c, [(k, v) for k, v in params if k != "include"])
+            return got
 
         if client is None:
             async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
-                resp = await _do(c)
+                resp = await _run(c)
         else:
-            resp = await _do(client)
+            resp = await _run(client)
         try:
             return resp.status_code, resp.json()
         except ValueError:
             return resp.status_code, {}
+
+    @staticmethod
+    def _include_rejected(resp: httpx.Response) -> bool:
+        """Is this 400 about the ``include`` parameter? Only then is retrying
+        without it meaningful — any other 400 is the caller's own query."""
+        try:
+            text = (resp.content or b"").decode("utf-8", "ignore").lower()
+        except (AttributeError, UnicodeDecodeError):
+            return False
+        return "include" in text
 
     async def request(
         self,

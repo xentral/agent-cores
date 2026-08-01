@@ -20,9 +20,12 @@ Upstream (live, no store — ADR-014):
 Speaking ids encode the upstream store: ``con_<id>``, ``adr_s<id>`` (shipping),
 ``adr_billing`` (the billing singleton) — reversible without lookup (ADR-002).
 
-The shipping rows need a sub-resource call, so they are read on detail reads,
-tiny list pages and EVERY write answer. Everywhere else the set is unknown and
-both collections answer ``null`` — the "not loaded" marker the write sync skips.
+Both collections ride along on the partner read as ``?include=`` (verified on
+mvp: honored, byte-identical to the sub-resource payloads, uncapped, +60ms on a
+25-row page against ~11s for the 51 calls the per-row composition took). The
+sub-resource calls survive as the fallback for a build that does not know the
+includes — worth it for a detail read or a tiny page, not for a big one. Rows
+left unfilled answer ``null``: the "not loaded" marker the write sync skips.
 
 A full-desired-set collection may never be answered TRUNCATED. Main + billing
 alone (the billing row rides in the v3 partner payload, so map_read has it for
@@ -46,8 +49,56 @@ _TIMEOUT = 25.0
 _COMPOSE_LIST_LIMIT = 3
 
 
+# Both sub-resources ride along on the partner read when asked for. Verified on
+# mvp: honored on /suppliers AND /customers, the inline rows are byte-identical
+# to what the sub-resource endpoints return, and nothing is capped (30 contacts
+# inline == 30 paged). One page of 25 costs +60ms with both includes, against
+# ~11s for the 51 calls the per-row composition needed.
+PARTNER_INCLUDES = ("contactPersons", "deliveryAddresses")
+
+
 def _clean(d: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in d.items() if v is not None}
+
+
+def _incomplete(rec: dict[str, Any]) -> bool:
+    """Did the includes fail to deliver, so the sub-calls still have to run?
+
+    ``contacts`` is the signal for both: with the include it is always a list
+    (empty when the partner has none), so ``None`` can only mean the include
+    never arrived. ``addresses`` cannot be used for this — map_read always has
+    the two singletons off the record itself, which is exactly the fragment that
+    must not be mistaken for a complete set."""
+    return rec.get("contacts") is None
+
+
+def contacts_from_include(r: dict[str, Any]) -> list[dict[str, Any]] | None:
+    """The ``contacts`` collection out of an inline ``contactPersons`` include.
+
+    A MISSING key means the include did not arrive (an older build silently
+    dropped it, or the 400-retry stripped it) — that is "not loaded", so answer
+    null. An empty list is a real, complete answer: this partner has none.
+    Getting that distinction wrong is what makes a write delete rows."""
+    rows = r.get("contactPersons")
+    if not isinstance(rows, list):
+        return None
+    return [contact_from_v3(c) for c in rows if isinstance(c, dict)]
+
+
+def addresses_from_include(
+    r: dict[str, Any], singletons: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """The unified ``addresses`` collection: the main address and the billing
+    singleton (both already on the v3 record) plus the inline shipping rows.
+
+    Without the include this is only the singletons — a FRAGMENT, and one that
+    reads as a complete set. It never reaches a caller in that state: the mixin
+    either fills it from the sub-resources or replaces it with null (see
+    ``_incomplete``)."""
+    rows = r.get("deliveryAddresses")
+    if not isinstance(rows, list):
+        return singletons
+    return [*singletons, *[ship_addr_from_v3(a) for a in rows if isinstance(a, dict)]]
 
 
 def contact_from_v3(c: dict[str, Any]) -> dict[str, Any]:
@@ -364,6 +415,8 @@ class PartnerSubresourcesMixin:
         if st == 200:
             rows = (pl.get("data") if isinstance(pl, dict) else None) or []
             rec["contacts"] = [contact_from_v3(c) for c in rows if isinstance(c, dict)]
+        elif st == 404:
+            rec["contacts"] = []
         # billing is already on the mapped record (it rides in the v3 payload);
         # append the shipping rows from the sub-resource.
         addresses: list[dict[str, Any]] = [
@@ -372,8 +425,18 @@ class PartnerSubresourcesMixin:
         st, pl = await self._sub_call(
             "GET", f"{paths['shipping']}?perPage=50", None, base_url, token, accept_language, client
         )
+        if st == 404:
+            # The route does not exist on this build, so there ARE no rows of
+            # this kind — the singletons are the complete set. Verified on
+            # gate56, whose suppliers have no deliveryAddresses endpoint at all
+            # ("Route not found"). Answering null there would hide the main and
+            # billing address, which are known; and the fragment cannot be a
+            # loaded gun, because the same missing store makes the write-side
+            # delete impossible too.
+            rec["addresses"] = addresses
+            return
         if st != 200:
-            # The shipping store did not answer, so the set is UNKNOWN — and
+            # A store that EXISTS but did not answer: the set is UNKNOWN, and
             # main + billing alone look exactly like a complete one. Say null
             # (the "not loaded" convention contacts already uses) rather than
             # hand the caller a short list its own write contract reads as
@@ -569,33 +632,35 @@ class PartnerSubresourcesMixin:
         data = out.get("data")
         if method_u == "GET":
             if handle and isinstance(data, dict):
-                up_id = handle.split("_", 1)[1] if "_" in handle else handle
-                await self._compose(data, up_id, base_url, token, accept_language, client)
+                if _incomplete(data):
+                    up_id = handle.split("_", 1)[1] if "_" in handle else handle
+                    await self._compose(data, up_id, base_url, token, accept_language, client)
                 return self._json(resp.status_code, out)
             if not handle and isinstance(data, list):
-                if 0 < len(data) <= _COMPOSE_LIST_LIMIT:
-                    for rec in data:
-                        if isinstance(rec, dict) and rec.get("id"):
-                            rid = str(rec["id"])
-                            await self._compose(
-                                rec,
-                                rid.split("_", 1)[1] if "_" in rid else rid,
-                                base_url,
-                                token,
-                                accept_language,
-                                client,
-                            )
-                    return self._json(resp.status_code, out)
-                # Bigger pages are NOT composed (2 sub-calls per row is not worth
-                # it), so what map_read built — main + the billing singleton — is
-                # a fragment. It reads as a complete set though, and `addresses`
-                # is a full-desired-set collection: a caller that sends a list row
-                # back deletes every shipping address it never saw. That is not
-                # hypothetical (Studio's mobile entity view PATCHes a whole list
-                # row on any edit). Answer null, the "not loaded" convention
-                # contacts already uses and _sync already skips.
+                # The includes normally deliver both collections with the page, so
+                # there is nothing left to do. They only go missing on a build that
+                # does not know them (the 400-retry strips them) — then fall back
+                # to the per-row sub-calls, which is worth it for a tiny page and
+                # not for a big one. Rows left unfilled keep map_read's null: "not
+                # loaded", never a fragment that a round-trip would read as the
+                # full desired set and delete the rest of.
+                small = 0 < len(data) <= _COMPOSE_LIST_LIMIT
                 for rec in data:
-                    if isinstance(rec, dict):
+                    if not isinstance(rec, dict) or not _incomplete(rec):
+                        continue
+                    if small and rec.get("id"):
+                        rid = str(rec["id"])
+                        await self._compose(
+                            rec,
+                            rid.split("_", 1)[1] if "_" in rid else rid,
+                            base_url,
+                            token,
+                            accept_language,
+                            client,
+                        )
+                    else:
+                        # Nothing loaded them and this page is too big to pay for
+                        # it: drop map_read's singleton fragment for the marker.
                         rec["addresses"] = None
                 return self._json(resp.status_code, out)
             return resp
@@ -606,15 +671,13 @@ class PartnerSubresourcesMixin:
             up_id = rid.split("_", 1)[1] if "_" in rid else rid
             if not collections:
                 # A write that carried NO collection still has to answer with the
-                # WHOLE record: map_read alone reports contacts null and drops the
-                # shipping rows (they live in the sub-resources), and the callers
-                # of a full-desired-set collection read that truncated list back as
-                # "these are all the addresses" — round-tripping a tags-only write
-                # or a plain field update then DELETES every shipping address.
-                # Nothing on the record changed here, so compose in place instead
-                # of paying for a re-read.
+                # WHOLE record, or the caller round-trips a fragment and deletes
+                # what it never saw. The base write re-reads the record, so the
+                # includes normally fill both collections already; only a build
+                # without them needs the sub-calls.
                 if isinstance(data, dict):
-                    await self._compose(data, up_id, base_url, token, accept_language, client)
+                    if _incomplete(data):
+                        await self._compose(data, up_id, base_url, token, accept_language, client)
                     return self._json(resp.status_code, out)
                 return resp
             errors = await self._sync(
