@@ -651,6 +651,30 @@ async def _verify_entity(
         return None, f"read {st}, {len(rows)} rows — left untested"
     schema = adapter.fields()
     fields: dict[str, dict[str, Any]] = {pth: {"read": "pass"} for pth in _field_paths(schema)}
+
+    detail_only = tuple(getattr(adapter, "detail_only_sections", ()) or ())
+
+    def is_detail_only(path: str) -> bool:
+        return any(path == d or path.startswith(d + ".") for d in detail_only)
+
+    # These come from a sub-resource the adapter only calls on the single read, so
+    # the list row this probe samples carries null — for the value AND for the
+    # read-back after a write. Comparing against it would report every one of them
+    # as "accepted but not persisted", which is what it did before.
+    for pth in fields:
+        if is_detail_only(pth):
+            fields[pth]["readNote"] = (
+                "populated on a single-record read only; a list leaves it null and "
+                "names the section in extra.unavailableSections"
+            )
+
+    detail_cache: dict[str, dict[str, Any]] = {}
+
+    async def detail_view(handle: str, fallback: dict[str, Any]) -> dict[str, Any]:
+        if handle not in detail_cache:
+            dst, dpl = await p.req(handle=handle)
+            detail_cache[handle] = (dpl.get("data") or {}) if dst == 200 else fallback
+        return detail_cache[handle]
     # a sample with the most non-null values gives the probes more ammunition
     sample = max(
         rows, key=lambda r: sum(1 for v in (r or {}).values() if v not in (None, "", [], {}))
@@ -795,7 +819,8 @@ async def _verify_entity(
                 handle = str(row.get("id") or "")
                 if not handle:
                     continue
-                orig = _value_at(row, path)
+                view = await detail_view(handle, row) if is_detail_only(path) else row
+                orig = _value_at(view, path)
                 leaf = path.rsplit(".", 1)[-1]
                 if spec.get("type") == "date":
                     if not isinstance(orig, str) or not orig:
@@ -870,7 +895,12 @@ async def _verify_entity(
                 if ust >= 400:
                     last_note = f"PATCH {ust}: {_err(upl)}"
                     continue  # e.g. write-protected — try the next row
-                after = _value_at(upl.get("data") or {}, path)
+                if is_detail_only(path):
+                    detail_cache.pop(handle, None)  # the write just changed it
+                    _ast, apl = await p.req(handle=handle)
+                    after = _value_at(apl.get("data") or {}, path)
+                else:
+                    after = _value_at(upl.get("data") or {}, path)
                 if (
                     isinstance(testv, (int, float))
                     and not isinstance(testv, bool)
@@ -887,6 +917,7 @@ async def _verify_entity(
                     None if took else "upstream accepted the write but the value did not persist",
                 )
                 await p.req("PATCH", handle, body=restore)
+                detail_cache.pop(handle, None)
                 preferred = row
                 done = True
                 break

@@ -480,6 +480,33 @@ class FacadeAdapterBase:
             if isinstance(spec, dict) and not spec.get("description"):
                 spec["description"] = text
 
+    def _apply_detail_only(self, properties: dict[str, Any]) -> None:
+        """Stamp ``detailOnly`` onto the sections a list does not load.
+
+        The response already says it after the fact (``extra.unavailableSections``),
+        which is too late to plan with: a caller looking for "products under 10 €"
+        lists, sees ``prices.sale: null`` on every row and draws the wrong
+        conclusion. In the schema the same fact is available BEFORE the call — read
+        this record singly, or do not ask for this field in a list.
+
+        Derived from ``detail_only_sections`` so the declaration stays single;
+        stamped on the section and everything below it, because a consumer may look
+        only at the leaf it wants.
+        """
+
+        def stamp(spec: Any) -> None:
+            if not isinstance(spec, dict):
+                return
+            spec["detailOnly"] = True
+            sub = spec.get("properties")
+            if not isinstance(sub, dict):
+                sub = (spec.get("node") or {}).get("properties")
+            for child in (sub or {}).values():
+                stamp(child)
+
+        for path in self.detail_only_sections:
+            stamp(self._resolve_path(properties, path) if "." in path else properties.get(path))
+
     def _filterable_keys(self) -> set[str]:
         """Every MODEL path the schema marks ``filterable``, cached per class."""
         cached = type(self).__dict__.get("_filterable_keys_cache")
@@ -547,6 +574,7 @@ class FacadeAdapterBase:
         self._apply_priorities(properties)
         self._apply_verified(properties)
         self._apply_descriptions(properties)
+        self._apply_detail_only(properties)
         meta: dict[str, Any] = {
             "key": self.manifest.key,
             "label": self.manifest.label(accept_language),
@@ -922,6 +950,16 @@ class FacadeAdapterBase:
             )
             return self._json(st, resp if isinstance(resp, dict) else {"data": {"id": handle}})
         if method in ("POST", "PATCH", "PUT"):
+            # Complete a half-set money value HERE, before anything parses the body.
+            # Subclasses read the body themselves to compose sub-resources
+            # (Product's sale price is a salesPrices write, not a field), so
+            # completing it further down inside _write_document leaves exactly those
+            # composers blind to it — measured: a currency-only sale-price update
+            # reached upstream as no price write at all.
+            if method != "POST" and self.money_pairs:
+                body = await self._complete_body_money_pairs(
+                    handle, body, base_url, token, accept_language, client
+                )
             return await self._write(
                 method, handle, query, body, base_url, token, accept_language, client
             )
@@ -1079,6 +1117,14 @@ class FacadeAdapterBase:
             extra["total"] = total
             meta["total"] = total
             meta["lastPage"] = max(1, -(-total // per_page))
+        # Sections this adapter fills from a sub-resource on the single read only.
+        # A list leaves them null, and a null that means "not loaded" is
+        # indistinguishable from one that means "not set" — a caller listing
+        # products would conclude none of them has a sale price. The single read
+        # already says which sections it could not reach; say it here too, for the
+        # ones a list never even attempts.
+        if self.detail_only_sections:
+            extra["unavailableSections"] = list(self.detail_only_sections)
         return {"data": mapped, "meta": meta, "extra": extra}
 
     # ---- write orchestration --------------------------------------------
@@ -1340,6 +1386,29 @@ class FacadeAdapterBase:
     # for the caller to see. Only for master data — a document POSITION has no
     # currency of its own (the header decides), so no document declares any.
     money_pairs: tuple[str, ...] = ()
+    # Model sections this adapter can only fill from a sub-resource on the SINGLE
+    # read (Product: prices.sale from /salesPrices, bom from /parts, …). A list
+    # response names them in `extra.unavailableSections` so a null there is
+    # readable as "not loaded here", never as "not set". Hydrating the list
+    # instead would cost one upstream request per row.
+    detail_only_sections: tuple[str, ...] = ()
+
+    async def _complete_body_money_pairs(  # noqa: ANN001
+        self, handle, body, base_url, token, accept_language, client
+    ) -> bytes | None:
+        """Run the pair completion on the raw request body and hand back the body to
+        use — the original bytes when there was nothing to complete."""
+        try:
+            model = json.loads(body or b"{}")
+        except (ValueError, TypeError):
+            return body
+        if not isinstance(model, dict):
+            return body
+        before = json.dumps(model, sort_keys=True)
+        await self._complete_money_pairs(handle, model, base_url, token, accept_language, client)
+        if json.dumps(model, sort_keys=True) == before:
+            return body
+        return json.dumps(model).encode()
 
     async def _complete_money_pairs(  # noqa: ANN001
         self, handle, model, base_url, token, accept_language, client
@@ -1356,17 +1425,27 @@ class FacadeAdapterBase:
         ]
         if not pending or not handle:
             return
-        st, payload = await self._get(
-            base_url,
-            token,
+        # The adapter's OWN single read, not _get + map_read: a money value can live
+        # in a section the adapter hydrates from a sub-resource (Product.prices.sale
+        # comes from /salesPrices), and map_read alone does not know about those.
+        # Reading the short way found no stored amount and the currency-only write
+        # went out incomplete again — the exact bug this method exists to prevent.
+        resp = await self.request(
+            method="GET",
             handle=handle,
             query=[],
+            body=None,
+            base_url=base_url,
+            token=token,
             accept_language=accept_language,
             client=client,
         )
-        if st >= 400 or not isinstance(payload, dict):
+        if resp.status_code >= 400:
             return  # unreadable → leave the body alone and let upstream answer
-        current = self.map_read(payload.get("data") or {})
+        try:
+            current = json.loads(resp.content or b"{}").get("data") or {}
+        except (ValueError, TypeError):
+            return
         for path in pending:
             stored = self._value_at(current, path)
             amount = stored.get("amount") if isinstance(stored, dict) else None
@@ -1399,10 +1478,6 @@ class FacadeAdapterBase:
             return self._json(400, {"title": "invalid JSON body"})
         if not isinstance(model, dict):
             return self._json(400, {"title": "body must be a JSON object"})
-        if method != "POST" and self.money_pairs:
-            await self._complete_money_pairs(
-                handle, model, base_url, token, accept_language, client
-            )
         v3_payload, rejected = self.map_write(model, creating=(method == "POST"))
         if rejected:
             return self.rejected_response(rejected)

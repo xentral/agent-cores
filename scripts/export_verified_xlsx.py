@@ -161,7 +161,7 @@ def _entity_sheet(wb: Workbook, key: str, meta: dict[str, Any], title: str) -> d
     ws.cell(row=1, column=1, value=f"{key} — {meta.get('label') or ''}").font = _TITLE_FONT
     ws.cell(row=2, column=1, value="Operations: " + ", ".join(meta.get("operations") or []))
 
-    headers = ["Pfad", "Typ", "Label", *FACETS, "Beschreibung", "Notizen"]
+    headers = ["Pfad", "Typ", "Label", *FACETS, "nur Einzelabruf", "Beschreibung", "Notizen"]
     _write_header(ws, 4, headers)
     ws.freeze_panes = "A5"
 
@@ -181,12 +181,16 @@ def _entity_sheet(wb: Workbook, key: str, meta: dict[str, Any], title: str) -> d
             c.alignment = Alignment(horizontal="center")
             if note:
                 notes.append(f"{facet}: {note}")
-        ws.cell(row=row, column=10, value=spec.get("description"))
-        ws.cell(row=row, column=11, value=" | ".join(notes))
+        # Filled from a sub-resource the core reads only for a single record — a
+        # list leaves it null. Its own column, because "the value is null here for
+        # a structural reason" is not a test result and does not belong in a facet.
+        ws.cell(row=row, column=10, value="ja" if spec.get("detailOnly") else "")
+        ws.cell(row=row, column=11, value=spec.get("description"))
+        ws.cell(row=row, column=12, value=" | ".join(notes))
         row += 1
 
     field_rows = row - 5
-    ws.auto_filter.ref = f"A4:K{max(row - 1, 4)}"
+    ws.auto_filter.ref = f"A4:L{max(row - 1, 4)}"
 
     def _block(start: int, heading: str, cols: list[str], rows: list[list[Any]]) -> int:
         ws.cell(row=start, column=1, value=heading).font = _TITLE_FONT
@@ -255,7 +259,10 @@ def _entity_sheet(wb: Workbook, key: str, meta: dict[str, Any], title: str) -> d
         step_rows,
     )
 
-    _autosize(ws, {1: 34, 2: 12, 3: 22, 4: 8, 5: 8, 6: 8, 7: 8, 8: 8, 9: 8, 10: 60, 11: 70})
+    _autosize(
+        ws,
+        {1: 34, 2: 12, 3: 22, 4: 8, 5: 8, 6: 8, 7: 8, 8: 8, 9: 8, 10: 14, 11: 60, 12: 70},
+    )
 
     def _count(rows: list[list[Any]], value: str) -> int:
         return sum(1 for r in rows if r[4] == value)

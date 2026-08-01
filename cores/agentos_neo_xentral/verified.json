@@ -1419,22 +1419,28 @@
     "Product": {
       "fields": {
         "bom": {
-          "read": "pass"
+          "read": "pass",
+          "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "bom.items": {
-          "read": "pass"
+          "read": "pass",
+          "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "bom.items.product": {
-          "read": "pass"
+          "read": "pass",
+          "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "bom.items.quantity": {
-          "read": "pass"
+          "read": "pass",
+          "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "bom.items.reference": {
-          "read": "pass"
+          "read": "pass",
+          "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "bom.items.type": {
-          "read": "pass"
+          "read": "pass",
+          "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "category": {
           "read": "pass"
@@ -1590,7 +1596,7 @@
         },
         "name": {
           "create": "pass",
-          "createNote": "created prd_61995 (labelled 'VT Verify') — no delete endpoint, left in place",
+          "createNote": "created prd_61996 (labelled 'VT Verify') — no delete endpoint, left in place",
           "filter": "pass",
           "read": "pass",
           "search": "pass",
@@ -1625,18 +1631,19 @@
           "read": "pass"
         },
         "prices.sale": {
-          "read": "pass"
+          "read": "pass",
+          "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "prices.sale.amount": {
           "create": "pass",
           "read": "pass",
-          "update": "fail",
-          "updateNote": "upstream accepted the write but the value did not persist"
+          "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections",
+          "update": "pass"
         },
         "prices.sale.currency": {
           "read": "pass",
-          "update": "fail",
-          "updateNote": "upstream accepted the write but the value did not persist"
+          "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections",
+          "update": "pass"
         },
         "production": {
           "read": "pass"
@@ -1657,19 +1664,24 @@
           "updateNote": "only one project on the instance — write accepted, change not provable"
         },
         "properties": {
-          "read": "pass"
+          "read": "pass",
+          "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "properties.name": {
-          "read": "pass"
+          "read": "pass",
+          "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "properties.property": {
-          "read": "pass"
+          "read": "pass",
+          "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "properties.unit": {
-          "read": "pass"
+          "read": "pass",
+          "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "properties.value": {
-          "read": "pass"
+          "read": "pass",
+          "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "status": {
           "filter": "pass",
@@ -1681,37 +1693,48 @@
           "update": "pass"
         },
         "stock": {
-          "read": "pass"
+          "read": "pass",
+          "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "stock.available": {
-          "read": "pass"
+          "read": "pass",
+          "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "stock.belowMinimum": {
-          "read": "pass"
+          "read": "pass",
+          "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "stock.calculated": {
-          "read": "pass"
+          "read": "pass",
+          "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "stock.correction": {
-          "read": "pass"
+          "read": "pass",
+          "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "stock.incoming": {
-          "read": "pass"
+          "read": "pass",
+          "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "stock.openSalesOrders": {
-          "read": "pass"
+          "read": "pass",
+          "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "stock.physical": {
-          "read": "pass"
+          "read": "pass",
+          "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "stock.producible": {
-          "read": "pass"
+          "read": "pass",
+          "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "stock.pseudo": {
-          "read": "pass"
+          "read": "pass",
+          "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "stock.reserved": {
-          "read": "pass"
+          "read": "pass",
+          "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "suppliers": {
           "read": "pass"
@@ -1780,14 +1803,6 @@
         "variant.of": {
           "read": "pass"
         }
-      },
-      "processSteps": {
-        "activate": "pass",
-        "deactivate": "pass"
-      },
-      "processStepsNotes": {
-        "activate": "EXECUTED on the sampled record (200) — created/changed data",
-        "deactivate": "EXECUTED on the sampled record (200) — created/changed data"
       }
     },
     "ProductCategory": {
