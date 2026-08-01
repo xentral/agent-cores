@@ -136,10 +136,27 @@ class QuoteAdapter(FacadeAdapterBase):
                     self.step_cmd(
                         "accept",
                         "Accept",
-                        wish="Quote acceptance has no upstream endpoint — the v3 offers API only offers send/release/cancel.",
+                        wish=(
+                            "No upstream endpoint. v3 offers has exactly release, cancel, "
+                            "send, logActivity, setWriteProtection and removeWriteProtection; "
+                            "UpdateOfferData carries no status, and offers do not exist in "
+                            "v1/v2 at all. The transition happens only in the UI. Worth "
+                            "settling first: the status 'accepted' (angenommen) is written by "
+                            "no code path and occurs in no tenant — the state the ERP really "
+                            "keeps is 'commissioned' (beauftragt), reached as a side effect of "
+                            "converting the quote into a sales order."
+                        ),
                     ),
                     self.step_cmd(
-                        "decline", "Decline", wish="Quote decline has no upstream endpoint."
+                        "decline",
+                        "Decline",
+                        wish=(
+                            "No upstream endpoint. Declining sets angebot.status='abgelehnt' "
+                            "and closes open follow-ups — two SQL updates inside the legacy "
+                            "page controller, with no service class, no API route and no "
+                            "event. The legacy XML API cannot reach it either: ApiBelegEdit "
+                            "whitelists the status values and 'abgelehnt' is not among them."
+                        ),
                     ),
                     self.step_cmd("cancel", "Cancel"),
                 ],
@@ -157,13 +174,45 @@ class QuoteAdapter(FacadeAdapterBase):
             self.action_def(
                 "convertToSalesOrder",
                 "Convert to sales order",
-                wish="No conversion endpoint in the public API — v1 salesOrders/import is a raw import, not a quote conversion.",
+                wish=(
+                    "No conversion endpoint we can reach. v3 has createFromSalesOrder and "
+                    "createFromDeliveryNote for invoices and returns, but no createFromOffer "
+                    "for sales orders, and POST /v3/salesOrders cannot reference a quote "
+                    "(the relation is read-only). v1 salesOrders/import is a raw import, not "
+                    "a conversion. The logic exists — Erpapi::WeiterfuehrenAngebotZuAuftrag "
+                    "copies the document and sets the quote to commissioned — and is exposed "
+                    "once, as the legacy XML API /api/v1/AngebotZuAuftrag. That one is "
+                    "digest-authenticated, hangs on a legacy permission and already sits "
+                    "behind a killswitch, so it is not usable from a bearer-token core."
+                ),
             ),
-            self.action_def("duplicate", "Duplicate", wish="No duplicate endpoint upstream."),
+            self.action_def(
+                "duplicate",
+                "Duplicate",
+                wish=(
+                    "No duplicate endpoint in any API generation — no v3 action, nothing in "
+                    "v1/v2, nothing in the legacy XML API. erpAPI::CopyAngebot() does the "
+                    "work behind the UI only. The same function exists for orders, invoices "
+                    "and delivery notes, so one uniform actions/duplicate would serve every "
+                    "document type at once."
+                ),
+            ),
             self.action_def(
                 "downloadPdf",
                 "Download PDF",
-                wish="No public PDF render endpoint; the archived files at /api/v2/{type}/{id}/files are not yet composed.",
+                wish=(
+                    "Not an upstream gap any more, a build task on our side: "
+                    "GET /api/v3/{document}/{id} with Accept: application/pdf renders the "
+                    "document (documented content negotiation, scope <document>:read; "
+                    "measured on mvp 2026-08-01 for offers, salesOrders, invoices, "
+                    "creditNotes, deliveryNotes and purchaseOrders). What is missing is the "
+                    "way back: the agent surface answers JSON, so the action has to hand the "
+                    "PDF over as a file reference. Note the render serves the archived copy "
+                    "when one exists (written on send / write protection), otherwise it "
+                    "renders fresh; the archived VERSIONS themselves have no API at all. "
+                    "/api/v2/{document}/{id}/files does exist but lists attachments, not the "
+                    "generated document."
+                ),
             ),
         ]
 

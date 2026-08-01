@@ -151,7 +151,19 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
             self.action_def(
                 "downloadPdf",
                 "Download PDF",
-                wish="No public PDF render endpoint; the archived files at /api/v2/{type}/{id}/files are not yet composed.",
+                wish=(
+                    "Not an upstream gap any more, a build task on our side: "
+                    "GET /api/v3/{document}/{id} with Accept: application/pdf renders the "
+                    "document (documented content negotiation, scope <document>:read; "
+                    "measured on mvp 2026-08-01 for offers, salesOrders, invoices, "
+                    "creditNotes, deliveryNotes and purchaseOrders). What is missing is the "
+                    "way back: the agent surface answers JSON, so the action has to hand the "
+                    "PDF over as a file reference. Note the render serves the archived copy "
+                    "when one exists (written on send / write protection), otherwise it "
+                    "renders fresh; the archived VERSIONS themselves have no API at all. "
+                    "/api/v2/{document}/{id}/files does exist but lists attachments, not the "
+                    "generated document."
+                ),
             ),
         ]
 
