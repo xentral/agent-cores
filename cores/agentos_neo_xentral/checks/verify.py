@@ -82,6 +82,7 @@ try:
 except Exception:  # noqa: BLE001, S110 — env file is optional; config may come from the shell
     pass
 
+from ..emulated.base import STATUS_FALLBACKS
 from ..manifest import CORE
 
 _INSTANCE = os.environ.get("DUMP_INSTANCE", "a2ad4180-0d41-4360-8044-9dca0c35608a")
@@ -714,6 +715,35 @@ async def _verify_entity(
         return None, f"read {st}, {len(rows)} rows — left untested"
     schema = adapter.fields()
     fields: dict[str, dict[str, Any]] = {pth: {"read": "pass"} for pth in _field_paths(schema)}
+
+    # A status value the entity's map does not know is reported as the entity's
+    # default — silently. This scan exists to catch that, and it reads its OWN wide
+    # page: the ten sampled rows are luck of the draw, and on mvp the first ten
+    # delivery notes happen to carry no `sent` at all, which is exactly the value
+    # that was missing. One extra list call per entity buys the coverage.
+    STATUS_FALLBACKS.clear()
+    await p.req(query=[("page[size]", "100")])
+    status_misses = sorted(STATUS_FALLBACKS)
+
+    # Report them on the field that carries the status. Which one that is differs
+    # per entity (`status`, `progress`, …), so it is found by its declared options:
+    # the field whose vocabulary contains the value that was substituted.
+    for raw_value, used in status_misses:
+        target = next(
+            (
+                name
+                for name, spec in schema.items()
+                if isinstance(spec, dict)
+                and any((o or {}).get("value") == used for o in spec.get("options") or [])
+            ),
+            None,
+        )
+        if target:
+            fields.setdefault(target, {})["read"] = "fail"
+            fields[target]["readNote"] = (
+                f"upstream sent {raw_value!r}, which the entity's status map does not "
+                f"know — reported as {used!r} instead"
+            )
 
     detail_only = tuple(getattr(adapter, "detail_only_sections", ()) or ())
 

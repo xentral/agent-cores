@@ -1891,10 +1891,25 @@ def _flatten_paths(obj: Any, prefix: str = "") -> list[str]:
 
 
 # Shared status-mapper helper: {upstream: new} with a default passthrough.
+# Raw upstream status values a map did not know, together with the model value that
+# was reported instead. A miss is silent by construction — the default takes over —
+# so unless it is recorded here, nobody learns that `sent` became `draft`. Measured
+# consequence before this existed: 44 dispatched delivery notes on mvp read as
+# drafts, and every `done` return read as still requested. The verify run reads and
+# clears this per entity; nothing else consumes it.
+STATUS_FALLBACKS: set[tuple[str, str]] = set()
+
+
 def status_map(mapping: dict[str, str], value: Any, default: str | None = None) -> str | None:
     if value in (None, ""):
         return default
-    return mapping.get(str(value), default if default is not None else str(value))
+    key = str(value)
+    if key in mapping:
+        return mapping[key]
+    if default is None:
+        return key  # no default to hide behind — the raw value passes through
+    STATUS_FALLBACKS.add((key, default))
+    return default
 
 
 # A read-only computed marker used a lot in the model (totals, holds, documents…).

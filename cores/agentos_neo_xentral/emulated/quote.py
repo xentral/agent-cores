@@ -36,6 +36,13 @@ _STATUS = {
     "draft": "draft",
     "released": "sent",
     "sent": "sent",
+    # OfferStatus upstream also has `commissioned` (beauftragt) and `ordered`
+    # (bestellt); both were missing. `commissioned` is the operational accepted
+    # state — the tenant audit counts 605,663 of them against ZERO `angenommen`,
+    # which no code path writes. mvp happens to carry none, so the verify run
+    # could not see it (docs/08-quote-actions-befund.md).
+    "commissioned": "accepted",
+    "ordered": "accepted",
     "accepted": "accepted",
     "completed": "accepted",
     "declined": "declined",
