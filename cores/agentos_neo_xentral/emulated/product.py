@@ -391,6 +391,7 @@ class ProductAdapter(FacadeAdapterBase):
     # product.updateV2). The base's _send targets this for POST/PATCH; reads stay v3.
     write_path = "/api/v2/products"
     money_pairs = ("prices.sale", "prices.purchase")
+    detail_only_sections = ("stock", "bom", "prices.sale", "properties")
     # customFields carries the per-product free-field VALUES in the v3 payload (works
     # on list AND single read) — cheaper than a hydration round trip.
     include = "project,defaultSupplier,merchandiseGroup,tags,customFields"
