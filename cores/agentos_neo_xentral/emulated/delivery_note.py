@@ -28,6 +28,9 @@ _STATUS = {
     "draft": "draft",
     "released": "picking",
     "picking": "picking",
+    # v3 says `sent` for versendet — the value 44 of mvp's 100 delivery notes
+    # carry. It was missing here, so every dispatched note read as a draft.
+    "sent": "shipped",
     "shipped": "shipped",
     "delivered": "delivered",
     "completed": "delivered",

@@ -33,6 +33,9 @@ _PROGRESS = {
     "announced": "requested",
     "received": "received",
     "checked": "checked",
+    # ReturnOrderProgress upstream is announced|received|checked|done — `done` was
+    # missing, and it is the most common value on mvp (35 of 82).
+    "done": "settled",
     "booked": "settled",
     "settled": "settled",
 }
