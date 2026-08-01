@@ -1530,9 +1530,7 @@
           "update": "pass"
         },
         "logistics.dimensions.unit": {
-          "read": "pass",
-          "update": "fail",
-          "updateNote": "upstream accepted the write but the value did not persist"
+          "read": "pass"
         },
         "logistics.dimensions.width": {
           "read": "pass",
@@ -1552,9 +1550,7 @@
           "read": "pass"
         },
         "logistics.netWeight.unit": {
-          "read": "pass",
-          "update": "fail",
-          "updateNote": "upstream accepted the write but the value did not persist"
+          "read": "pass"
         },
         "logistics.netWeight.value": {
           "read": "pass",
@@ -1573,9 +1569,7 @@
           "read": "pass"
         },
         "logistics.weight.unit": {
-          "read": "pass",
-          "update": "fail",
-          "updateNote": "upstream accepted the write but the value did not persist"
+          "read": "pass"
         },
         "logistics.weight.value": {
           "create": "pass",
@@ -1597,7 +1591,7 @@
         },
         "name": {
           "create": "pass",
-          "createNote": "created prd_61993 (labelled 'VT Verify') — no delete endpoint, left in place",
+          "createNote": "created prd_61994 (labelled 'VT Verify') — no delete endpoint, left in place",
           "filter": "pass",
           "read": "pass",
           "search": "pass",
@@ -1655,7 +1649,8 @@
         },
         "production.mode": {
           "create": "pass",
-          "read": "pass"
+          "read": "pass",
+          "update": "pass"
         },
         "project": {
           "filter": "pass",
@@ -1680,7 +1675,8 @@
         },
         "status": {
           "filter": "pass",
-          "read": "pass"
+          "read": "pass",
+          "update": "pass"
         },
         "statusReason": {
           "read": "pass",
@@ -1742,7 +1738,8 @@
         },
         "tax.rate": {
           "create": "pass",
-          "read": "pass"
+          "read": "pass",
+          "update": "pass"
         },
         "tracking": {
           "read": "pass"
@@ -1757,8 +1754,7 @@
         },
         "tracking.serialNumbers": {
           "read": "pass",
-          "update": "fail",
-          "updateNote": "upstream accepted the write but the value did not persist"
+          "update": "pass"
         },
         "tracking.stock": {
           "create": "pass",

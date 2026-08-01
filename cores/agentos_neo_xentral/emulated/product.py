@@ -308,10 +308,29 @@ _PART_TYPES = ("shopping part", "information part / service", "provision")
 _TAX_TO_V2 = {"standard": "standard", "reduced": "reduced", "exempt": "free"}
 # upstream taxRate/salesTax → model tax.rate (the reverse; unknowns pass through).
 _TAX_FROM_UPSTREAM = {"standard": "standard", "reduced": "reduced", "free": "exempt"}
-# model tracking.serialNumbers → v2 serialNumbersMode enum. The model read passes
-# the upstream value straight through, so canonical modes round-trip; 'none' (the
-# model's "off") maps to the v2 'disabled'.
-_SN_MODES = {"disabled", "user", "product", "productAndWarehouse"}
+# Serial-number tracking is the one field where the two upstream generations use
+# DIFFERENT vocabularies for the same setting, and they do not line up in order.
+# Both map onto the same legacy column, which is what makes the pairing knowable
+# (monorepo: ProductSerialNumberTracking::MAPPING and ProductEntity::
+# SERIAL_NUMBERS_MODE):
+#
+#   legacy               v3 read (serialNumberTracking)  v2 write (serialNumbersMode)
+#   keine                none                            disabled
+#   eigene               stockGenerated                  user
+#   vomprodukteinlagern  stockOriginal                   productAndWarehouse
+#   vomprodukt           trackOriginal                   product
+#
+# Note the crossing in the last two rows — a positional mapping would be wrong.
+# The model speaks the v3 vocabulary, because that is what the read emits.
+_SN_MODEL_TO_V2 = {
+    "none": "disabled",
+    "stockGenerated": "user",
+    "stockOriginal": "productAndWarehouse",
+    "trackOriginal": "product",
+}
+# The v2 spellings are accepted too, so a caller who already speaks that dialect
+# is not punished for it.
+_SN_V2_MODES = set(_SN_MODEL_TO_V2.values())
 
 
 def _kind(r: dict[str, Any]) -> str:
@@ -1044,7 +1063,7 @@ class ProductAdapter(FacadeAdapterBase):
                         "Weight",
                         properties={
                             "value": prop("decimal", "Value", **_CU),
-                            "unit": prop("string", "Unit", **_CU),
+                            "unit": prop("string", "Unit", **RO),
                         },
                     ),
                     "netWeight": prop(
@@ -1052,7 +1071,7 @@ class ProductAdapter(FacadeAdapterBase):
                         "Net weight",
                         properties={
                             "value": prop("decimal", "Value", **_CU),
-                            "unit": prop("string", "Unit", **_CU),
+                            "unit": prop("string", "Unit", **RO),
                         },
                     ),
                     "dimensions": prop(
@@ -1062,7 +1081,7 @@ class ProductAdapter(FacadeAdapterBase):
                             "length": prop("decimal", "Length", **_CU),
                             "width": prop("decimal", "Width", **_CU),
                             "height": prop("decimal", "Height", **_CU),
-                            "unit": prop("string", "Unit", **_CU),
+                            "unit": prop("string", "Unit", **RO),
                         },
                     ),
                     "minimumOrderQuantity": prop("integer", "Minimum order quantity", **_CU),
@@ -1087,7 +1106,22 @@ class ProductAdapter(FacadeAdapterBase):
                 properties={
                     "stock": prop("boolean", "Stock item", **_CU),
                     "batches": prop("boolean", "Batches", **_CU),
-                    "serialNumbers": prop("string", "Serial numbers mode", **_CU),
+                    # Declared options, so a caller (and the verify probe) can see
+                    # the value set instead of guessing at a free string.
+                    "serialNumbers": prop(
+                        "select",
+                        "Serial numbers mode",
+                        **_CU,
+                        options=[
+                            {"value": "none", "label": "Off"},
+                            {"value": "stockGenerated", "label": "Own numbers, kept in stock"},
+                            {"value": "stockOriginal", "label": "Supplier numbers, kept in stock"},
+                            {
+                                "value": "trackOriginal",
+                                "label": "Supplier numbers, on the delivery note",
+                            },
+                        ],
+                    ),
                     "bestBefore": prop("boolean", "Best before", **_CU),
                 },
             ),
@@ -1692,7 +1726,16 @@ class ProductAdapter(FacadeAdapterBase):
                 v2["hasBestBeforeDate"] = bool(tr["bestBefore"])
             sn = tr.get("serialNumbers")
             if sn is not None:
-                v2["serialNumbersMode"] = sn if sn in _SN_MODES else "disabled"
+                # This used to be `sn if sn in <v2 modes> else "disabled"`, which
+                # silently DISABLED tracking on every round-trip: the read hands out
+                # v3 spellings, none of which are v2 modes, so writing back what you
+                # just read turned the setting off. Refuse an unknown value instead
+                # — losing serial-number tracking must never be the quiet default.
+                mapped = _SN_MODEL_TO_V2.get(sn, sn if sn in _SN_V2_MODES else None)
+                if mapped is None:
+                    rejected.add("tracking.serialNumbers")
+                else:
+                    v2["serialNumbersMode"] = mapped
 
         # --- production ----------------------------------------------------
         prod = model.get("production") or {}

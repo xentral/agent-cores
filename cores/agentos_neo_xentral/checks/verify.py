@@ -200,7 +200,12 @@ def _update_targets(props: dict[str, Any], prefix: str = "") -> list[tuple[str, 
         leaf = path.rsplit(".", 1)[-1]
         if spec.get("updatable") and (
             spec.get("type") in ("string", "date", "integer", "decimal", "number", "boolean")
-            or (spec.get("type") == "select" and leaf in _VALID_TOGGLE)
+            # A select is probeable once we can name a second valid value — either
+            # from _VALID_TOGGLE or, better, from the field's own declared options.
+            or (
+                spec.get("type") == "select"
+                and (leaf in _VALID_TOGGLE or len(spec.get("options") or []) >= 2)
+            )
         ):
             out.append((path, spec))
     return out
