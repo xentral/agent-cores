@@ -426,10 +426,9 @@
           "update": "pass"
         },
         "addresses.city": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass",
-          "search": "fail",
-          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is ['email', 'name', 'number'], so a consolidated search never looks at this field",
+          "search": "pass",
           "sort": "accepted",
           "sortNote": "fewer than two distinct values on the page — order not assertable"
         },
@@ -437,10 +436,8 @@
           "read": "pass"
         },
         "addresses.country": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass",
-          "search": "fail",
-          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is ['email', 'name', 'number'], so a consolidated search never looks at this field",
           "sort": "accepted",
           "sortNote": "fewer than two distinct values on the page — order not assertable"
         },
@@ -466,18 +463,15 @@
           "read": "pass"
         },
         "addresses.state": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass",
-          "search": "fail",
-          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is ['email', 'name', 'number'], so a consolidated search never looks at this field",
           "sort": "accepted",
           "sortNote": "fewer than two distinct values on the page — order not assertable"
         },
         "addresses.street": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass",
-          "search": "fail",
-          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is ['email', 'name', 'number'], so a consolidated search never looks at this field",
+          "search": "pass",
           "sort": "accepted",
           "sortNote": "fewer than two distinct values on the page — order not assertable"
         },
@@ -485,10 +479,9 @@
           "read": "pass"
         },
         "addresses.zip": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass",
-          "search": "fail",
-          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is ['email', 'name', 'number'], so a consolidated search never looks at this field",
+          "search": "pass",
           "sort": "accepted",
           "sortNote": "fewer than two distinct values on the page — order not assertable"
         },
@@ -752,7 +745,7 @@
           "update": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:13:14+00:00"
+      "probedAt": "2026-08-02T11:35:16+00:00"
     },
     "DeliveryNote": {
       "actions": {
@@ -1651,8 +1644,7 @@
         "identifiers.ean": {
           "filter": "pass",
           "read": "pass",
-          "search": "fail",
-          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is ['name', 'number'], so a consolidated search never looks at this field",
+          "search": "pass",
           "update": "pass"
         },
         "identifiers.external": {
@@ -1764,7 +1756,7 @@
         },
         "name": {
           "create": "pass",
-          "createNote": "created prd_61998 (labelled 'VT Verify') — no delete endpoint, left in place",
+          "createNote": "created prd_61999 (labelled 'VT Verify') — no delete endpoint, left in place",
           "filter": "pass",
           "read": "pass",
           "search": "pass",
@@ -1967,7 +1959,7 @@
           "readNote": "declared, but none of the 111 sampled records carries a value — nothing proven either way"
         }
       },
-      "probedAt": "2026-08-02T10:15:57+00:00"
+      "probedAt": "2026-08-02T11:13:37+00:00"
     },
     "ProductCategory": {
       "fields": {
@@ -2246,8 +2238,7 @@
         "references.supplierInvoiceNumber": {
           "filter": "pass",
           "read": "pass",
-          "search": "fail",
-          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is empty, so a consolidated search never looks at this field"
+          "search": "pass"
         },
         "status": {
           "read": "pass"
@@ -2281,7 +2272,7 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:12:11+00:00"
+      "probedAt": "2026-08-02T10:59:09+00:00"
     },
     "PurchaseOrder": {
       "actions": {
@@ -4583,10 +4574,9 @@
           "update": "pass"
         },
         "addresses.city": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass",
-          "search": "fail",
-          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is ['email', 'name', 'number'], so a consolidated search never looks at this field",
+          "search": "pass",
           "sort": "accepted",
           "sortNote": "fewer than two distinct values on the page — order not assertable"
         },
@@ -4594,10 +4584,8 @@
           "read": "pass"
         },
         "addresses.country": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass",
-          "search": "fail",
-          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is ['email', 'name', 'number'], so a consolidated search never looks at this field",
           "sort": "accepted",
           "sortNote": "fewer than two distinct values on the page — order not assertable"
         },
@@ -4624,18 +4612,15 @@
           "read": "pass"
         },
         "addresses.state": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass",
-          "search": "fail",
-          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is ['email', 'name', 'number'], so a consolidated search never looks at this field",
           "sort": "accepted",
           "sortNote": "fewer than two distinct values on the page — order not assertable"
         },
         "addresses.street": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass",
-          "search": "fail",
-          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is ['email', 'name', 'number'], so a consolidated search never looks at this field",
+          "search": "pass",
           "sort": "accepted",
           "sortNote": "fewer than two distinct values on the page — order not assertable"
         },
@@ -4643,10 +4628,9 @@
           "read": "pass"
         },
         "addresses.zip": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass",
-          "search": "fail",
-          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is ['email', 'name', 'number'], so a consolidated search never looks at this field",
+          "search": "pass",
           "sort": "accepted",
           "sortNote": "fewer than two distinct values on the page — order not assertable"
         },
@@ -4920,7 +4904,7 @@
           "update": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:14:00+00:00"
+      "probedAt": "2026-08-02T11:36:11+00:00"
     },
     "Tag": {
       "fields": {
@@ -5117,7 +5101,7 @@
       "probedAt": "2026-08-02T10:17:04+00:00"
     }
   },
-  "generatedAt": "2026-08-02T10:27:42+00:00",
+  "generatedAt": "2026-08-02T11:36:11+00:00",
   "instance": "a2ad4180-0d41-4360-8044-9dca0c35608a",
   "schemaVersion": 2
 }

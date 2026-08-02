@@ -717,17 +717,42 @@ class FacadeAdapterBase:
         )
 
     def search_fields(self) -> tuple[str, ...]:
-        """MODEL fields flagged ``searchable`` in the entity's schema — the
+        """MODEL paths flagged ``searchable`` in the entity's schema — the
         consolidated ``search`` filter fans out over exactly these, so the
-        search contract lives next to the field declarations."""
+        search contract lives next to the field declarations.
+
+        Nested paths count. This walked only the top level until now, so twelve
+        leaves the schema advertises as searchable were never reached by a search:
+        `Customer`/`Supplier` `addresses.{street,zip,city,state,country}`,
+        `Product.identifiers.ean`, `PurchaseInvoice.references.supplierInvoiceNumber`
+        — the address and barcode fields a merchant actually searches by. On
+        `PurchaseInvoice` the fan-out was empty altogether, so it had no search at
+        all while its schema said otherwise.
+
+        Measured on mvp before switching this on: every one of the twelve answers a
+        `contains` filter with 200, returns the record the value came from, and
+        narrows the set (customers 20128 → 8 for a city). The fan-out builds exactly
+        that query per field, so a declared path now behaves the way it reads.
+        """
         cached = type(self).__dict__.get("_search_fields_cache")
         if cached is not None:
             return cached
-        fields = tuple(
-            name
-            for name, spec in self.fields().items()
-            if isinstance(spec, dict) and spec.get("searchable")
-        )
+
+        def walk(props: dict[str, Any], prefix: str = ""):
+            for name, spec in (props or {}).items():
+                if not isinstance(spec, dict):
+                    continue
+                path = f"{prefix}{name}"
+                if spec.get("searchable"):
+                    yield path
+                sub = spec.get("properties")
+                if not isinstance(sub, dict):
+                    node = spec.get("node")
+                    sub = node.get("properties") if isinstance(node, dict) else None
+                if isinstance(sub, dict):
+                    yield from walk(sub, f"{path}.")
+
+        fields = tuple(walk(self.fields()))
         type(self)._search_fields_cache = fields
         return fields
 

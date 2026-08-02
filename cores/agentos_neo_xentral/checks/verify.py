@@ -1067,7 +1067,21 @@ async def _verify_entity(
         counts[facet][verdict] += 1
 
     for path, spec in _walk(schema):
-        val = _value_at(sample, path)
+        # The probe value has to come through collections too, or a leaf under one
+        # can never be filtered or searched for want of something to look for — that
+        # is why the five `addresses.*` leaves read "no sample value" for as long as
+        # they existed, `_value_at` stopping at the first list.
+        #
+        # The OWNER travels with the value. Both the filter and the search check
+        # assert that the record the value came from comes back, and widening the
+        # search beyond `sample` without carrying its record would make that anchor
+        # point at the wrong row — turning a working filter into a false `accepted`.
+        val, val_owner = None, sample
+        for _rec in (sample, *seen_records):
+            _picked = next((v for v in _values_at(_rec, path) if _is_filled(v)), None)
+            if _picked is not None:
+                val, val_owner = _picked, _rec
+                break
         if spec.get("filterable"):
             fval = val.get("id") if isinstance(val, dict) else val
             if isinstance(fval, str) and "_" in fval and spec.get("type") == "reference":
@@ -1140,7 +1154,7 @@ async def _verify_entity(
                     # filter entirely (the facade guards against undeclared keys for
                     # exactly this reason) — a status check alone grades that green.
                     hits = fpl.get("data") or []
-                    anchor = sample.get("id")
+                    anchor = (val_owner or {}).get("id")
                     if any((h or {}).get("id") == anchor for h in hits):
                         when_ok = PROVEN
                     elif not hits:
@@ -1208,7 +1222,9 @@ async def _verify_entity(
                     "so a hit could not be asserted",
                     when_ok="accepted",
                 )
-            elif any((h or {}).get("id") == sample.get("id") for h in (spl.get("data") or [])):
+            elif any(
+                (h or {}).get("id") == (val_owner or {}).get("id") for h in (spl.get("data") or [])
+            ):
                 mark(path, "search", True, None)
             else:
                 # The fan-out ORs over every searchable field, so a miss here does not
@@ -1645,30 +1661,47 @@ async def _verify_entity(
                         ust, upl = await p.req(
                             "PATCH", str(new_id), body={"contacts": cons2, "addresses": adrs2}
                         )
-                        # Read the record back rather than trusting the PATCH echo.
-                        # Measured on mvp: this exact call answered 200 and applied
-                        # the change, but its response body omitted the contact's
-                        # new department — one run recorded `contacts.update: fail`
-                        # for a write that had worked, and the next run passed. The
-                        # line-item branch already re-reads for the mirror-image
-                        # reason (an echo that never reached upstream); an echo is
-                        # the wrong thing to grade either way.
+
+                        # Read the record back rather than trusting the PATCH echo —
+                        # an echo reflects the request, not what was stored.
+                        #
+                        # A miss here is `accepted`, NOT `fail`. Measured on mvp over
+                        # five consecutive identical runs: the contact's new
+                        # department shows up on the read-back about half the time,
+                        # and twice more with a second read — while the address
+                        # change in the very same request is there every time. So the
+                        # write works; what cannot be established in one run is that
+                        # it took. Grading that red would flip the cell at random,
+                        # which is the same lie as a false green, and retrying until
+                        # it passes would bury the wobble instead of recording it.
+                        def _has(data: dict[str, Any], key: str, field: str, want: str) -> bool:
+                            return any(
+                                (row or {}).get(field) == want for row in data.get(key) or []
+                            )
+
                         udata: dict[str, Any] = {}
                         if ust == 200:
-                            _rst, rpl = await p.req(handle=str(new_id))
-                            udata = (rpl.get("data") or {}) if isinstance(rpl, dict) else {}
-                        ok_c = ust == 200 and any(
-                            c.get("department") == "Vertrieb" for c in udata.get("contacts") or []
-                        )
-                        ok_a = ust == 200 and any(
-                            a.get("city") == "Bremen" for a in udata.get("addresses") or []
-                        )
-                        mark(
-                            "contacts",
-                            "update",
-                            ok_c,
-                            None if ok_c else f"PATCH {ust}: {_err(upl)}",
-                        )
+                            for _ in range(2):
+                                _rst, rpl = await p.req(handle=str(new_id))
+                                udata = (rpl.get("data") or {}) if isinstance(rpl, dict) else {}
+                                if _has(udata, "contacts", "department", "Vertrieb"):
+                                    break
+                        ok_c = ust == 200 and _has(udata, "contacts", "department", "Vertrieb")
+                        ok_a = ust == 200 and _has(udata, "addresses", "city", "Bremen")
+                        if ust != 200:
+                            mark("contacts", "update", False, f"PATCH {ust}: {_err(upl)}")
+                        elif ok_c:
+                            mark("contacts", "update", True)
+                        else:
+                            mark(
+                                "contacts",
+                                "update",
+                                True,
+                                "accepted, but the change was not visible on two "
+                                "read-backs — upstream applies it late often enough "
+                                "that a single run cannot assert it",
+                                when_ok="accepted",
+                            )
                         mark(
                             "addresses",
                             "update",

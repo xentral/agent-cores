@@ -18,12 +18,44 @@ from xentral_entity_cores.agentos_neo_xentral.emulated.customer import CustomerA
 
 def test_search_fields_derive_from_searchable_flags():
     assert CreditNoteAdapter().search_fields() == ("number",)
-    assert set(CustomerAdapter().search_fields()) == {"number", "name", "email"}
+    assert set(CustomerAdapter().search_fields()) == {
+        "number",
+        "name",
+        "email",
+        "addresses.street",
+        "addresses.zip",
+        "addresses.city",
+    }
+
+
+def test_a_low_cardinality_key_is_filterable_but_not_searchable():
+    """`state`/`country` answer a precise question well and a free-text one badly:
+    the fan-out ORs one `contains` request per field and merges the first page of
+    each, so a two-letter country code returns the first page of every German
+    record and pushes the actual match out. Measured on mvp — the same search found
+    its record on Supplier (32 rows) and lost it on Customer (20128)."""
+    props = CustomerAdapter().fields()["addresses"]["node"]["properties"]
+    for leaf in ("state", "country"):
+        assert props[leaf]["filterable"] is True
+        assert not props[leaf].get("searchable")
+
+
+def test_a_nested_searchable_leaf_reaches_the_fan_out():
+    """The walk used to stop at the top level, so five address leaves the schema
+    advertises as searchable were never searched — and on PurchaseInvoice, whose
+    only searchable field is nested, the fan-out was empty and search did nothing
+    at all. Measured on mvp before switching this on: each of them answers a
+    `contains` filter with 200 and narrows (customers 20128 -> 8 for a city)."""
+    for path in ("addresses.city", "addresses.zip", "addresses.street"):
+        assert path in CustomerAdapter().search_fields()
 
 
 def test_metadata_advertises_search_fields():
+    """`searchFields` is the contract consumers key their record pickers on, so the
+    nested paths have to be visible there too, not just used internally."""
     meta = CustomerAdapter().metadata()
-    assert set(meta["searchFields"]) == {"number", "name", "email"}
+    assert set(meta["searchFields"]) == set(CustomerAdapter().search_fields())
+    assert "addresses.city" in meta["searchFields"]
 
 
 def test_list_envelope_v3_meta_total_lands_in_both_places():
