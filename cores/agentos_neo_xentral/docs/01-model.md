@@ -561,9 +561,15 @@ Batch inline anlegbar: `"batch": {"new": {"number", "bestBefore"}}`.
   "object": "storageLocation", "id": "loc_A-03-2", "name": "A-03-2",
   "status": "active",                           // active | blocked
   "warehouse": { "…": "Ref" },
-  "kind": "picking",                            // picking | bulk | inbound | returns | quarantine
-  "pickingOrder": 312,                          // Laufweg-Sortierung
-  "capacity": { "maxWeight": { "value": 150, "unit": "kg" }, "note": null },
+  // Fünf UNABHÄNGIGE Nutzungen — ein Platz kann Nachschubplatz UND gesperrt sein.
+  // Xentrals eigene Namen (Nachschublager, Verbrauchslager, Sperrlager,
+  // Fertigungszugriff, Kassenplatz) hier so benannt, wie ein Berater danach fragt.
+  "usage": { "replenishment": true, "consumption": false, "blocked": false,
+             "production": false, "pointOfSale": false },
+  "abcCategory": "A",                           // A | B | C — Kommissionierpriorität
+  "pickingOrder": 312,                          // Laufweg-Sortierung (upstream `sort`)
+  "dimensions": { "length": 100, "width": 60, "height": 40 },   // kein Gewichtslimit upstream
+  "description": "Nachschubzone A",             // read-only: upstream lehnt Schreiben ab
   "contents": [{ "product": { "…": "Ref" }, "batch": { "…": "Ref" },
     "quantity": { "value": 118, "unit": "piece" }, "reserved": { "value": 10, "unit": "piece" } }]   // read-only
 }

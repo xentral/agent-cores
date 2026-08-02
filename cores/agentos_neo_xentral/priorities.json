@@ -1402,15 +1402,6 @@
     ],
     "StorageLocation": [
       {
-        "field": "kind",
-        "ops": [
-          "read",
-          "create",
-          "update"
-        ],
-        "reason": "Location kind (picking/bulk/inbound/returns/quarantine) and picking order drive WMS routing — the v1 list exposes only id/designation/warehouse."
-      },
-      {
         "field": "contents.reserved",
         "ops": [
           "read"
@@ -1418,12 +1409,19 @@
         "reason": "Location contents are composed from the StockLevel projection now; the reserved portion per location stays unavailable — upstream reports reservations only as a product total."
       },
       {
-        "field": "capacity",
+        "field": "description",
         "ops": [
-          "read",
+          "create",
           "update"
         ],
-        "reason": "Capacity limits (max weight) for putaway decisions — not exposed via API today."
+        "reason": "Upstream returns the bin description but rejects it on create and update (\"The attribute description is not allowed.\") — the field is read-only for every API generation we have. Measured on mvp 2026-08-02."
+      },
+      {
+        "field": "locationType",
+        "ops": [
+          "read"
+        ],
+        "reason": "v1 accepts a `locationType` on write with 204 but never returns it on any read, so a value written there cannot be verified or shown. Not modelled until upstream reads it back. Measured on mvp 2026-08-02."
       }
     ],
     "StockTake": [

@@ -4461,24 +4461,10 @@
         "stockTransfer": "reachable — 422: storageLocation.stockTransfer: invalid command"
       },
       "fields": {
-        "capacity": {
-          "read": "pass"
-        },
-        "capacity.maxWeight": {
+        "abcCategory": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 60 sampled records carries a value — nothing proven either way"
-        },
-        "capacity.maxWeight.unit": {
-          "read": "unobserved",
-          "readNote": "no sampled record carries 'capacity.maxWeight', so the leaf could not be observed — nothing proven either way"
-        },
-        "capacity.maxWeight.value": {
-          "read": "unobserved",
-          "readNote": "no sampled record carries 'capacity.maxWeight', so the leaf could not be observed — nothing proven either way"
-        },
-        "capacity.note": {
-          "read": "unobserved",
-          "readNote": "declared, but none of the 60 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 60 sampled records carries a value — nothing proven either way",
+          "update": "pass"
         },
         "contents": {
           "read": "unobserved",
@@ -4520,12 +4506,27 @@
           "read": "unobserved",
           "readNote": "declared, but none of the 60 sampled records carries a value — nothing proven either way"
         },
-        "id": {
-          "read": "pass"
-        },
-        "kind": {
+        "description": {
           "read": "unobserved",
           "readNote": "declared, but none of the 60 sampled records carries a value — nothing proven either way"
+        },
+        "dimensions": {
+          "read": "pass"
+        },
+        "dimensions.height": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "dimensions.length": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "dimensions.width": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "id": {
+          "read": "pass"
         },
         "name": {
           "create": "pass",
@@ -4537,8 +4538,8 @@
           "read": "pass"
         },
         "pickingOrder": {
-          "read": "unobserved",
-          "readNote": "declared, but none of the 60 sampled records carries a value — nothing proven either way"
+          "read": "pass",
+          "update": "pass"
         },
         "status": {
           "read": "pass"
@@ -4547,12 +4548,35 @@
           "read": "unobserved",
           "readNote": "declared, but none of the 60 sampled records carries a value — nothing proven either way"
         },
+        "usage": {
+          "read": "pass"
+        },
+        "usage.blocked": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "usage.consumption": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "usage.pointOfSale": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "usage.production": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "usage.replenishment": {
+          "read": "pass",
+          "update": "pass"
+        },
         "warehouse": {
           "filter": "pass",
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T15:58:06+00:00"
+      "probedAt": "2026-08-02T16:27:35+00:00"
     },
     "Supplier": {
       "actions": {
@@ -5099,7 +5123,7 @@
       "probedAt": "2026-08-02T10:17:04+00:00"
     }
   },
-  "generatedAt": "2026-08-02T15:58:15+00:00",
+  "generatedAt": "2026-08-02T16:27:35+00:00",
   "instance": "a2ad4180-0d41-4360-8044-9dca0c35608a",
   "schemaVersion": 2
 }
