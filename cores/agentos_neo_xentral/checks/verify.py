@@ -102,6 +102,7 @@ import base64
 import collections
 import json
 import os
+import re
 from datetime import datetime, UTC
 import secrets
 from typing import Any
@@ -350,11 +351,31 @@ def _line_toggle(spec: dict[str, Any], name: str, orig: Any) -> tuple[Any, Any]:
             return alt, orig
         if (num := _numeric_string_toggle(orig)) is not None:
             return num, orig
+        if (clock := _time_string_toggle(orig)) is not None:
+            return clock, orig
         clean = orig.replace(_MARK, "").strip()
         if not clean:
             return None, None  # an empty string restores to "" — upstream ignores it
         return (clean + _MARK if orig != clean + _MARK else clean), orig
     return None, None  # null: nothing to restore to
+
+
+def _time_string_toggle(orig: Any) -> str | None:
+    """A wall-clock string bumped by an hour, or None if it is not one.
+
+    Without this the generic fallback appends the ``·vt`` marker, which upstream
+    accepts with a 200 and silently normalises to ``00:00:00`` — the probe then
+    reports a writable field as "accepted the write but the value did not
+    persist". Measured on Task.dates.dueTime: `14:30:00` and `23:59:59` both
+    round-trip, `vt-marker` becomes midnight.
+    """
+    if not isinstance(orig, str):
+        return None
+    m = re.fullmatch(r"(\d{2}):(\d{2})(?::(\d{2}))?", orig)
+    if not m:
+        return None
+    hour = (int(m.group(1)) + 1) % 24
+    return f"{hour:02d}:{m.group(2)}:{m.group(3) or '00'}"
 
 
 def _line_eq(got: Any, want: Any) -> bool:
@@ -608,6 +629,68 @@ def _simple_create_payload(
             {"name": "VT-VERIFY-PROBE", "warehouse": {"id": f"wh_{warehouse_id}"}},
             [("name", "eq", "VT-VERIFY-PROBE")],
         )
+    if key == "Task":
+        return {
+            "title": "VT Verify Aufgabe" + _MARK,
+            "description": "VT verify description",
+            "priority": "high",
+            "status": "open",
+            "dates": {"due": "2026-09-01", "dueTime": "14:30:00", "isAllDay": False},
+            "recurrence": {"interval": "weekly"},
+            "visibility": {"isPublic": True, "onStartPage": True, "onBulletinBoard": False},
+            "reminder": {"byEmail": True, "daysBefore": 3, "advanceNoticeDays": 2},
+            "timeTracking": {"hours": "2.50", "required": True, "billable": True},
+            "notes": "VT verify note",
+        }, [
+            ("title", "eq", "VT Verify Aufgabe" + _MARK),
+            ("description", "eq", "VT verify description"),
+            ("priority", "eq", "high"),
+            ("status", "eq", "open"),
+            ("notes", "eq", "VT verify note"),
+            ("dates.due", "eq", "2026-09-01"),
+            ("dates.dueTime", "eq", "14:30:00"),
+            ("dates.isAllDay", "eq", False),
+            ("recurrence.interval", "eq", "weekly"),
+            ("visibility.isPublic", "eq", True),
+            ("visibility.onStartPage", "eq", True),
+            ("reminder.byEmail", "eq", True),
+            ("reminder.daysBefore", "eq", 3),
+            ("reminder.advanceNoticeDays", "eq", 2),
+            ("timeTracking.hours", "num", "2.50"),
+            ("timeTracking.required", "eq", True),
+            ("timeTracking.billable", "eq", True),
+        ]
+    if key == "CustomerGroup":
+        # A price group, not a plain customer group: upstream refuses every
+        # conditions field on `customerGroup`, so probing that kind would leave
+        # the whole conditions block untested.
+        return {
+            "name": "VT Verify Preisgruppe" + _MARK,
+            "kind": "priceGroup",
+            "code": "VTVERIFY",
+            "isActive": True,
+            "internalNote": "VT verify note",
+            "conditions": {
+                "baseDiscount": "5.00",
+                "paymentTermDays": 30,
+                "cashDiscountRate": "2.00",
+                "cashDiscountDays": 10,
+                "freeShippingFrom": "150.00",
+                "freeShippingActive": True,
+            },
+        }, [
+            ("name", "eq", "VT Verify Preisgruppe" + _MARK),
+            ("kind", "eq", "priceGroup"),
+            ("code", "eq", "VTVERIFY"),
+            ("isActive", "eq", True),
+            ("internalNote", "eq", "VT verify note"),
+            ("conditions.baseDiscount", "num", "5.00"),
+            ("conditions.paymentTermDays", "eq", 30),
+            ("conditions.cashDiscountRate", "num", "2.00"),
+            ("conditions.cashDiscountDays", "eq", 10),
+            ("conditions.freeShippingFrom", "num", "150.00"),
+            ("conditions.freeShippingActive", "eq", True),
+        ]
     if key == "PurchaseInvoice":
         # A real accounting document, so this only runs because DELETE is supported
         # and verified — the probe books it and takes it straight back out. Upstream
@@ -1376,6 +1459,12 @@ async def _verify_entity(
                     # on one lax endpoint it PERSISTED, which is what later crashed
                     # the PurchasePrice probe on read-back.
                     testv = num
+                elif (clock := _time_string_toggle(orig)) is not None:
+                    # A wall-clock string. The marker turns "00:00:00" into
+                    # something upstream accepts with a 200 and silently
+                    # normalises back to midnight — a writable field then reads as
+                    # "accepted but did not persist" forever.
+                    testv = clock
                 else:
                     # NEVER toggle to/from empty: upstream IGNORES empty-string
                     # writes, so an ""-restore silently leaves the marker behind
@@ -1798,6 +1887,8 @@ async def _verify_entity(
         "Warehouse",
         "StorageLocation",
         "PurchaseInvoice",
+        "Task",
+        "CustomerGroup",
     )
     if key in _CREATE_PROBED and "create" in adapter.manifest.operations:
         can_delete = "delete" in adapter.manifest.operations
