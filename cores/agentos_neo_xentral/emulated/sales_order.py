@@ -199,6 +199,7 @@ class SalesOrderAdapter(FacadeAdapterBase):
         operations=("list", "read", "create", "update", "delete"),
     )
     v3_path = "/api/v3/salesOrders"
+    renders_pdf = True
     reconciles_line_items = True
     include = "lineItems,lineItems.product,project,address,tags,trafficLights"
     preview_template = "{{number}}"
@@ -363,18 +364,12 @@ class SalesOrderAdapter(FacadeAdapterBase):
             self.action_def(
                 "downloadPdf",
                 "Download PDF",
-                wish=(
-                    "Not an upstream gap any more, a build task on our side: "
-                    "GET /api/v3/{document}/{id} with Accept: application/pdf renders the "
-                    "document (documented content negotiation, scope <document>:read; "
-                    "measured on mvp 2026-08-01 for offers, salesOrders, invoices, "
-                    "creditNotes, deliveryNotes and purchaseOrders). What is missing is the "
-                    "way back: the agent surface answers JSON, so the action has to hand the "
-                    "PDF over as a file reference. Note the render serves the archived copy "
-                    "when one exists (written on send / write protection), otherwise it "
-                    "renders fresh; the archived VERSIONS themselves have no API at all. "
-                    "/api/v2/{document}/{id}/files does exist but lists attachments, not the "
-                    "generated document."
+                description=(
+                    "Fetch the rendered document as a PDF file. Upstream serves the "
+                    "archived copy when one exists (written on send and on write "
+                    "protection) and renders fresh otherwise. Returns the bytes as "
+                    "result.file (base64) — hand it to a file store rather than "
+                    "reading it."
                 ),
             ),
             self.action_def(

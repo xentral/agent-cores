@@ -112,11 +112,13 @@
     "CreditNote": {
       "actions": {
         "addTag": "pass",
+        "downloadPdf": "pass",
         "removeTag": "pass",
         "send": "pass"
       },
       "actionsNotes": {
         "addTag": "fresh title 'verify-probe-64e379' attached — auto-create verified, net-zero",
+        "downloadPdf": "EXECUTED on the sampled record (200) — created/changed data",
         "removeTag": "fresh title removed again — effect verified, net-zero",
         "send": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma"
       },
@@ -698,12 +700,14 @@
         "addTag": "pass",
         "createReturn": "pass",
         "createSalesInvoice": "pass",
+        "downloadPdf": "pass",
         "removeTag": "pass"
       },
       "actionsNotes": {
         "addTag": "fresh title 'verify-probe-23f692' attached — auto-create verified, net-zero",
         "createReturn": "reachable — 400: line items must be present. {\"lineItems\": [\"line items must be present.\"]}",
         "createSalesInvoice": "reachable — 400: All product line items must reference an existing product. {\"lineItems\": [\"All product line items must reference an existing product.\"]}",
+        "downloadPdf": "EXECUTED on the sampled record (200) — created/changed data",
         "removeTag": "fresh title removed again — effect verified, net-zero"
       },
       "fields": {
@@ -2102,11 +2106,13 @@
     "PurchaseOrder": {
       "actions": {
         "addTag": "pass",
+        "downloadPdf": "pass",
         "removeTag": "pass",
         "send": "pass"
       },
       "actionsNotes": {
         "addTag": "fresh title 'verify-probe-afb77a' attached — auto-create verified, net-zero",
+        "downloadPdf": "EXECUTED on the sampled record (200) — created/changed data",
         "removeTag": "fresh title removed again — effect verified, net-zero",
         "send": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma"
       },
@@ -2464,11 +2470,13 @@
     "Quote": {
       "actions": {
         "addTag": "pass",
+        "downloadPdf": "pass",
         "removeTag": "pass",
         "send": "pass"
       },
       "actionsNotes": {
         "addTag": "fresh title 'verify-probe-42f87e' attached — auto-create verified, net-zero",
+        "downloadPdf": "EXECUTED on the sampled record (200) — created/changed data",
         "removeTag": "fresh title removed again — effect verified, net-zero",
         "send": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma"
       },
@@ -2806,12 +2814,14 @@
         "addTag": "pass",
         "createCreditNote": "pass",
         "createFromDeliveryNote": "pass",
+        "downloadPdf": "pass",
         "removeTag": "pass"
       },
       "actionsNotes": {
         "addTag": "fresh title 'verify-probe-c5823c' attached — auto-create verified, net-zero",
         "createCreditNote": "EXECUTED on the sampled record (200) — created/changed data",
         "createFromDeliveryNote": "reachable — 422: createFromDeliveryNote needs command.deliveryNote and command.lineItems=[{deliveryNoteItem, quantity, reason}]",
+        "downloadPdf": "EXECUTED on the sampled record (200) — created/changed data",
         "removeTag": "fresh title removed again — effect verified, net-zero"
       },
       "fields": {
@@ -3038,11 +3048,13 @@
     "SalesInvoice": {
       "actions": {
         "addTag": "pass",
+        "downloadPdf": "pass",
         "removeTag": "pass",
         "send": "pass"
       },
       "actionsNotes": {
         "addTag": "fresh title 'verify-probe-e430b6' attached — auto-create verified, net-zero",
+        "downloadPdf": "EXECUTED on the sampled record (200) — created/changed data",
         "removeTag": "fresh title removed again — effect verified, net-zero",
         "send": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma"
       },
@@ -3393,6 +3405,7 @@
       "actions": {
         "addTag": "pass",
         "createSalesInvoice": "pass",
+        "downloadPdf": "pass",
         "removeTag": "pass",
         "sendConfirmation": "pass",
         "split": "pass",
@@ -3401,6 +3414,7 @@
       "actionsNotes": {
         "addTag": "fresh title 'verify-probe-67d9a1' attached — auto-create verified, net-zero",
         "createSalesInvoice": "EXECUTED on the sampled record (200) — created/changed data",
+        "downloadPdf": "EXECUTED on the sampled record (200) — created/changed data",
         "removeTag": "fresh title removed again — effect verified, net-zero",
         "sendConfirmation": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma",
         "split": "reachable — 400: Generic request validation failed.",
