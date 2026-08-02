@@ -149,5 +149,8 @@ def test_a_searchable_entity_still_advertises_its_fan_out_on_refusal():
     resp = _list(ProductAdapter(), _f("nonsense", "1"))
     assert resp.status_code == 422
     body = json.loads(resp.content)
-    assert body["searchable"] == ["name", "number"]
+    # `identifiers.ean` is in here because the fan-out reaches NESTED searchable
+    # leaves — the refusal advertises what search actually covers, not just the
+    # top level.
+    assert body["searchable"] == ["identifiers.ean", "name", "number"]
     assert "searchable field" not in body["detail"]  # search was not the problem
