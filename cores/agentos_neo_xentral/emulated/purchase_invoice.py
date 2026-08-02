@@ -8,8 +8,23 @@ v1 layer lacked: ``goodsCheckStatus`` + ``invoiceCheckStatus`` (three-way match)
 document). Gap Nr. 6 (docs/05) is therefore covered upstream — what remains is
 OUR write-mapping + live write verification (blue wishes now say so).
 
-BF detail reads route on the record ``uuid`` (not the numeric id) — list+map is
-verified; detail-by-speaking-id needs the uuid lookup composer (wish).
+BF detail reads route on the record ``uuid``, not the numeric id, and NEITHER is
+filterable — so a numeric id cannot be resolved back to a uuid at all. The speaking
+id therefore carries the uuid (as Tag and GoodsReceipt already did): before that
+every detail read answered ``404 Entity not found with uuid 1``, for all 42 records,
+while the manifest showed 39 green ``read`` verdicts — the probe grades ``read``
+from the LIST and nothing ever exercised the single read.
+
+``lineItems`` ride along on the list response and are mapped now; the collection
+answered ``[]`` on every record while upstream carried positions on six of them.
+The node still covers five of a line item's 23 attributes — enough to read what was
+invoiced, not yet enough for the three-way match.
+
+Writes are NOT wired yet. The upstream supports them (``operations`` says
+create/read/update/delete, and a net-zero PATCH on ``internalComment`` was verified
+live), so what remains is our write-mapping. Note that the entity API publishes no
+per-field ``creatable``/``updatable`` flags for ANY entity — absence there is not
+evidence that a field is read-only.
 """
 
 from __future__ import annotations
@@ -47,6 +62,41 @@ def _match_status(r: dict[str, Any]) -> str:
     if gc == "accepted" and ic == "accepted":
         return "matched"
     return "pending"
+
+
+def _item(li: dict[str, Any], doc_currency: str | None) -> dict[str, Any]:
+    """One BF ``lineItems`` row → the model's ``items`` shape.
+
+    These ride along on the LIST response, so mapping them costs no extra call —
+    they were simply never mapped, and the collection answered ``[]`` on all 42
+    records while upstream carried positions on six of them.
+
+    The node covers five of the 23 attributes a BF line item has (description,
+    taxRate, deliveryDate, costCenter, project, purchaseOrder, supplierProductNumber
+    and more are still unmapped) — enough to read what was invoiced, not yet enough
+    for the three-way match. Widening it belongs with the write path.
+    """
+    prod = li.get("product") if isinstance(li.get("product"), dict) else None
+    unit = li.get("unitOfMeasure")
+    unit = unit.get("id") if isinstance(unit, dict) else unit
+    return {
+        "object": "purchaseInvoiceItem",
+        # Same reason as the record id: BF addresses rows by uuid.
+        "id": (
+            f"pii_{li['uuid']}"
+            if li.get("uuid")
+            else (f"pii_{li.get('id')}" if li.get("id") is not None else None)
+        ),
+        "product": ref(
+            "prd_",
+            (prod or {}).get("id"),
+            li.get("supplierProductNumber") or None,
+            li.get("productName") or None,
+            "products",
+        ),
+        "quantity": {"value": li.get("quantity"), "unit": unit or li.get("packageUnit") or None},
+        "unitPrice": {"amount": li.get("netPrice"), "currency": li.get("currency") or doc_currency},
+    }
 
 
 class PurchaseInvoiceAdapter(FacadeAdapterBase):
@@ -319,7 +369,16 @@ class PurchaseInvoiceAdapter(FacadeAdapterBase):
         ]
         return {
             "object": "purchaseInvoice",
-            "id": (f"pi_{r.get('id')}" if r.get("id") is not None else None),
+            # BF entities are fetched by uuid (GET /{id} 404s, GET /{uuid} 200);
+            # encode the uuid so the speaking id round-trips through `get` (F3).
+            # Neither `id` nor `uuid` is filterable on this entity, so a numeric id
+            # cannot be resolved back to a uuid at all — every detail read answered
+            # "Entity not found with uuid 1". Tag and GoodsReceipt already do this.
+            "id": (
+                f"pi_{r['uuid']}"
+                if r.get("uuid")
+                else (f"pi_{r.get('id')}" if r.get("id") is not None else None)
+            ),
             "number": r.get("documentNumber") or None,
             "status": _status(r),
             "supplier": ref(
@@ -344,7 +403,7 @@ class PurchaseInvoiceAdapter(FacadeAdapterBase):
                 "needed": r.get("isInNeedOfClarification"),
                 "reason": r.get("clarificationReason") or None,
             },
-            "items": [],
+            "items": [_item(li, cur) for li in (r.get("lineItems") or []) if isinstance(li, dict)],
             "currency": cur,
             "totals": {"currency": cur, "gross": gross, "paid": paid, "outstanding": outstanding},
             "match": {
