@@ -2144,44 +2144,34 @@
           "read": "pass"
         },
         "items": {
-          "read": "unobserved",
-          "readNote": "declared, but none of the 52 sampled records carries a value — nothing proven either way"
+          "read": "pass"
         },
         "items.id": {
-          "read": "unobserved",
-          "readNote": "no sampled record carries 'items', so the leaf could not be observed — nothing proven either way"
+          "read": "pass"
         },
         "items.object": {
-          "read": "unobserved",
-          "readNote": "no sampled record carries 'items', so the leaf could not be observed — nothing proven either way"
+          "read": "pass"
         },
         "items.product": {
-          "read": "unobserved",
-          "readNote": "no sampled record carries 'items', so the leaf could not be observed — nothing proven either way"
+          "read": "pass"
         },
         "items.quantity": {
-          "read": "unobserved",
-          "readNote": "no sampled record carries 'items', so the leaf could not be observed — nothing proven either way"
+          "read": "pass"
         },
         "items.quantity.unit": {
-          "read": "unobserved",
-          "readNote": "no sampled record carries 'items.quantity', so the leaf could not be observed — nothing proven either way"
+          "read": "pass"
         },
         "items.quantity.value": {
-          "read": "unobserved",
-          "readNote": "no sampled record carries 'items.quantity', so the leaf could not be observed — nothing proven either way"
+          "read": "pass"
         },
         "items.unitPrice": {
-          "read": "unobserved",
-          "readNote": "no sampled record carries 'items', so the leaf could not be observed — nothing proven either way"
+          "read": "pass"
         },
         "items.unitPrice.amount": {
-          "read": "unobserved",
-          "readNote": "no sampled record carries 'items.unitPrice', so the leaf could not be observed — nothing proven either way"
+          "read": "pass"
         },
         "items.unitPrice.currency": {
-          "read": "unobserved",
-          "readNote": "no sampled record carries 'items.unitPrice', so the leaf could not be observed — nothing proven either way"
+          "read": "pass"
         },
         "match": {
           "read": "pass"
@@ -2246,8 +2236,7 @@
           "read": "pass"
         },
         "tags": {
-          "filter": "accepted",
-          "filterNote": "accepted, but returned nothing — the record the value came from is missing",
+          "filterNote": "no sample value on the test instance — filter not probed",
           "read": "unobserved",
           "readNote": "declared, but none of the 52 sampled records carries a value — nothing proven either way"
         },
@@ -2271,7 +2260,7 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:59:09+00:00"
+      "probedAt": "2026-08-02T14:51:51+00:00"
     },
     "PurchaseOrder": {
       "actions": {
@@ -5099,7 +5088,7 @@
       "probedAt": "2026-08-02T10:17:04+00:00"
     }
   },
-  "generatedAt": "2026-08-02T12:24:21+00:00",
+  "generatedAt": "2026-08-02T14:51:51+00:00",
   "instance": "a2ad4180-0d41-4360-8044-9dca0c35608a",
   "schemaVersion": 2
 }
