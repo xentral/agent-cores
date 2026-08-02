@@ -604,6 +604,7 @@ def _simple_create_payload(
     product_id: str | None,
     supplier_id: str | None,
     warehouse_id: str | None = None,
+    customer_id: str | None = None,
 ) -> tuple[dict[str, Any], list[tuple[str, str, Any]]]:
     """Create body + per-path persistence expectations for the price/product master
     entities (Product / PriceList / PurchasePrice), which take a create+verify probe
@@ -628,6 +629,101 @@ def _simple_create_payload(
             # the marker's middle dot with "designation format is invalid".
             {"name": "VT-VERIFY-PROBE", "warehouse": {"id": f"wh_{warehouse_id}"}},
             [("name", "eq", "VT-VERIFY-PROBE")],
+        )
+    if key == "Correspondence":
+        # A CRM log line; harmless to write and deleted again straight away.
+        if not customer_id:
+            return {}, []
+        return {
+            "kind": "note",
+            "customer": {"id": f"cus_{customer_id}"},
+            "subject": "VT Verify" + _MARK,
+            "content": "VT verify content",
+            "date": "2026-01-15",
+            "time": "09:15:00",
+            "internalDesignation": "VT-VERIFY",
+            "sender": {"name": "VT Verify", "company": "VT"},
+            "recipient": {"email": "vt@example.org", "company": "VT GmbH"},
+            "delivery": {"sendAs": "pdf", "emailCc": "cc@example.org", "hasSignature": True},
+        }, [
+            ("kind", "eq", "note"),
+            ("customer", "ref", str(customer_id)),
+            ("subject", "eq", "VT Verify" + _MARK),
+            ("content", "eq", "VT verify content"),
+            ("date", "eq", "2026-01-15"),
+            ("time", "eq", "09:15:00"),
+            ("internalDesignation", "eq", "VT-VERIFY"),
+            ("sender.name", "eq", "VT Verify"),
+            ("sender.company", "eq", "VT"),
+            ("recipient.email", "eq", "vt@example.org"),
+            ("recipient.company", "eq", "VT GmbH"),
+            ("delivery.sendAs", "eq", "pdf"),
+            ("delivery.emailCc", "eq", "cc@example.org"),
+            ("delivery.hasSignature", "eq", True),
+        ]
+    if key == "ProductCategory":
+        # The sixteen posting accounts are the point of this entity, so the probe
+        # writes every one — a silently dropped account would otherwise look fine.
+        return {
+            "name": "VT Verify Warengruppe" + _MARK,
+            "numberRange": {"usesMainRange": False, "nextNumber": "900001"},
+            "accounts": {
+                "revenue": {
+                    "standard": "8400",
+                    "reduced": "8300",
+                    "taxExempt": "8125",
+                    "nonTaxable": "8100",
+                    "intraCommunity": "8125",
+                    "euStandard": "8315",
+                    "euReduced": "8310",
+                    "export": "8120",
+                },
+                "expense": {
+                    "standard": "3400",
+                    "reduced": "3300",
+                    "taxExempt": "3301",
+                    "nonTaxable": "3200",
+                    "intraCommunity": "3425",
+                    "euStandard": "3435",
+                    "euReduced": "3430",
+                    "import": "3550",
+                },
+            },
+            "taxTexts": {"export": "VT export", "intraCommunity": "VT innergemeinschaftlich"},
+        }, (
+            [
+                ("name", "eq", "VT Verify Warengruppe" + _MARK),
+                ("numberRange.usesMainRange", "eq", False),
+                ("numberRange.nextNumber", "eq", "900001"),
+                ("taxTexts.export", "eq", "VT export"),
+                ("taxTexts.intraCommunity", "eq", "VT innergemeinschaftlich"),
+            ]
+            + [
+                (f"accounts.revenue.{k}", "eq", v)
+                for k, v in (
+                    ("standard", "8400"),
+                    ("reduced", "8300"),
+                    ("taxExempt", "8125"),
+                    ("nonTaxable", "8100"),
+                    ("intraCommunity", "8125"),
+                    ("euStandard", "8315"),
+                    ("euReduced", "8310"),
+                    ("export", "8120"),
+                )
+            ]
+            + [
+                (f"accounts.expense.{k}", "eq", v)
+                for k, v in (
+                    ("standard", "3400"),
+                    ("reduced", "3300"),
+                    ("taxExempt", "3301"),
+                    ("nonTaxable", "3200"),
+                    ("intraCommunity", "3425"),
+                    ("euStandard", "3435"),
+                    ("euReduced", "3430"),
+                    ("import", "3550"),
+                )
+            ]
         )
     if key == "Task":
         return {
@@ -1069,6 +1165,7 @@ async def _verify_entity(
     tag_title: str | None = None,
     supplier_id: str | None = None,
     warehouse_id: str | None = None,
+    customer_id: str | None = None,
 ) -> tuple[dict | None, str]:
     p = _Probe(adapter, base_url, token)
     key = adapter.manifest.key
@@ -1889,6 +1986,8 @@ async def _verify_entity(
         "PurchaseInvoice",
         "Task",
         "CustomerGroup",
+        "Correspondence",
+        "ProductCategory",
     )
     if key in _CREATE_PROBED and "create" in adapter.manifest.operations:
         can_delete = "delete" in adapter.manifest.operations
@@ -1899,7 +1998,7 @@ async def _verify_entity(
             )
         else:
             body, expects = _simple_create_payload(
-                key, schema, product_id, supplier_id, warehouse_id
+                key, schema, product_id, supplier_id, warehouse_id, customer_id
             )
             if not body:
                 fields.setdefault("name", {})["createNote"] = (
@@ -2024,6 +2123,7 @@ async def _main() -> None:
     product_id: str | None = None
     supplier_id: str | None = None
     warehouse_id: str | None = None
+    customer_id: str | None = None
     tag_title: str | None = None
     for adapter in CORE.adapters:
         if adapter.manifest.key == "Product" and product_id is None:
@@ -2052,6 +2152,15 @@ async def _main() -> None:
                 if wid:
                     warehouse_id = wid.split("_", 1)[1] if "_" in wid else wid
                     break
+        # A correspondence entry hangs off a partner; there is no standalone one.
+        if adapter.manifest.key == "Customer" and customer_id is None:
+            p = _Probe(adapter, base_url, token)
+            st, pl = await p.req(query=[("page[size]", "3")])
+            for row in (pl.get("data") or []) if st == 200 else []:
+                cid = str(row.get("id") or "")
+                if cid:
+                    customer_id = cid.split("_", 1)[1] if "_" in cid else cid
+                    break
         if adapter.manifest.key == "Tag" and tag_title is None:
             p = _Probe(adapter, base_url, token)
             st, pl = await p.req(query=[("page[size]", "3")])
@@ -2079,7 +2188,14 @@ async def _main() -> None:
             continue
         try:
             result, summary = await _verify_entity(
-                adapter, base_url, token, product_id, tag_title, supplier_id, warehouse_id
+                adapter,
+                base_url,
+                token,
+                product_id,
+                tag_title,
+                supplier_id,
+                warehouse_id,
+                customer_id,
             )
         except _AuthFailed:
             # Deliberately NOT swallowed like a crashed probe: everything after this

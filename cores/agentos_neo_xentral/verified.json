@@ -85,37 +85,175 @@
     "Correspondence": {
       "fields": {
         "content": {
-          "read": "pass"
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "createdAt": {
+          "read": "pass",
+          "sort": "pass"
         },
         "customer": {
+          "create": "pass",
           "filter": "pass",
           "read": "pass"
         },
         "date": {
+          "create": "pass",
           "filter": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "delivery": {
           "read": "pass"
+        },
+        "delivery.emailAddress": {
+          "read": "unobserved",
+          "readNote": "declared, but none of the 30 sampled records carries a value — nothing proven either way",
+          "update": "pass"
+        },
+        "delivery.emailBcc": {
+          "read": "unobserved",
+          "readNote": "declared, but none of the 30 sampled records carries a value — nothing proven either way",
+          "update": "pass"
+        },
+        "delivery.emailCc": {
+          "create": "pass",
+          "read": "unobserved",
+          "readNote": "declared, but none of the 30 sampled records carries a value — nothing proven either way",
+          "update": "pass"
+        },
+        "delivery.hasSignature": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "delivery.isFax": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "delivery.isSent": {
+          "filter": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "delivery.printer": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "delivery.sendAs": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "editor": {
+          "read": "pass",
+          "update": "pass"
         },
         "id": {
           "read": "pass"
         },
-        "isSent": {
-          "read": "pass"
+        "internalDesignation": {
+          "create": "pass",
+          "read": "unobserved",
+          "readNote": "declared, but none of the 30 sampled records carries a value — nothing proven either way",
+          "update": "pass"
+        },
+        "kind": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "update": "pass"
         },
         "object": {
           "read": "pass"
         },
-        "subject": {
+        "project": {
+          "filter": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "recipient": {
           "read": "pass"
         },
-        "time": {
+        "recipient.address": {
           "read": "pass"
         },
-        "type": {
+        "recipient.address.city": {
+          "read": "unobserved",
+          "readNote": "declared, but none of the 30 sampled records carries a value — nothing proven either way",
+          "update": "pass"
+        },
+        "recipient.address.contactPerson": {
+          "read": "unobserved",
+          "readNote": "declared, but none of the 30 sampled records carries a value — nothing proven either way",
+          "update": "pass"
+        },
+        "recipient.address.country": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "recipient.address.name": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "recipient.address.postalCode": {
+          "read": "unobserved",
+          "readNote": "declared, but none of the 30 sampled records carries a value — nothing proven either way",
+          "update": "pass"
+        },
+        "recipient.address.street": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "recipient.company": {
+          "create": "pass",
+          "read": "unobserved",
+          "readNote": "declared, but none of the 30 sampled records carries a value — nothing proven either way",
+          "update": "pass"
+        },
+        "recipient.email": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "sender": {
+          "read": "pass"
+        },
+        "sender.company": {
+          "create": "pass",
+          "read": "unobserved",
+          "readNote": "declared, but none of the 30 sampled records carries a value — nothing proven either way",
+          "searchNote": "no sample text value and no fixture — search not probed",
+          "update": "pass"
+        },
+        "sender.name": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "sender.partner": {
           "filter": "pass",
           "read": "pass"
+        },
+        "subject": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "search": "pass",
+          "update": "pass"
+        },
+        "time": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "updatedAt": {
+          "read": "pass",
+          "sort": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:16:37+00:00"
+      "probedAt": "2026-08-02T18:39:10+00:00"
     },
     "CreditNote": {
       "actions": {
@@ -2051,20 +2189,154 @@
     },
     "ProductCategory": {
       "fields": {
+        "accounts": {
+          "read": "pass"
+        },
+        "accounts.expense": {
+          "read": "pass"
+        },
+        "accounts.expense.euReduced": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "accounts.expense.euStandard": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "accounts.expense.import": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "accounts.expense.intraCommunity": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "accounts.expense.nonTaxable": {
+          "create": "pass",
+          "read": "unobserved",
+          "readNote": "declared, but none of the 36 sampled records carries a value — nothing proven either way",
+          "update": "pass"
+        },
+        "accounts.expense.reduced": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "accounts.expense.standard": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "accounts.expense.taxExempt": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "accounts.revenue": {
+          "read": "pass"
+        },
+        "accounts.revenue.euReduced": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "accounts.revenue.euStandard": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "accounts.revenue.export": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "accounts.revenue.intraCommunity": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "accounts.revenue.nonTaxable": {
+          "create": "pass",
+          "read": "unobserved",
+          "readNote": "declared, but none of the 36 sampled records carries a value — nothing proven either way",
+          "update": "pass"
+        },
+        "accounts.revenue.reduced": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "accounts.revenue.standard": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "accounts.revenue.taxExempt": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "createdAt": {
+          "read": "pass",
+          "sort": "pass"
+        },
         "id": {
           "read": "pass"
         },
         "name": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "search": "pass",
+          "update": "pass"
+        },
+        "numberRange": {
           "read": "pass"
+        },
+        "numberRange.nextNumber": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "numberRange.usesMainRange": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
         },
         "object": {
           "read": "pass"
         },
         "parent": {
           "read": "pass"
+        },
+        "project": {
+          "filter": "pass",
+          "read": "pass",
+          "updateNote": "no project on any sampled record — reference switch not probed"
+        },
+        "taxTexts": {
+          "read": "pass"
+        },
+        "taxTexts.export": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "taxTexts.intraCommunity": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "updatedAt": {
+          "read": "pass",
+          "sort": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:16:58+00:00"
+      "probedAt": "2026-08-02T18:39:47+00:00"
     },
     "ProductFreeField": {
       "fields": {
@@ -5413,7 +5685,7 @@
       "probedAt": "2026-08-02T10:17:04+00:00"
     }
   },
-  "generatedAt": "2026-08-02T17:19:40+00:00",
+  "generatedAt": "2026-08-02T18:39:47+00:00",
   "instance": "a2ad4180-0d41-4360-8044-9dca0c35608a",
   "schemaVersion": 2
 }
