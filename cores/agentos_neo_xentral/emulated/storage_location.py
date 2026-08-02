@@ -1,9 +1,17 @@
 """Xentral V3 facade · storageLocation — Lagerplatz (docs/01-model.md §7.5).
 
 Reads ``GET /v1/storageLocations`` (verified live — thin: id, designation,
-warehouse). The target model's kind/pickingOrder/capacity need the scattered
-v1/v2 fan-in (docs/03) — not yet composed, so those blocks are blue wishes;
-``contents`` is answered by the StockLevel projection (filter[storageLocation]).
+warehouse) and fills every characterising field from the warehouse-scoped
+``/v1/warehouses/{id}/storageLocations``, which is the only endpoint that returns
+them. ``contents`` is answered by the StockLevel projection
+(filter[storageLocation]).
+
+Xentral names its bin properties after its own history — Nachschublager,
+Verbrauchslager, Sperrlager, Fertigungszugriff, Kassenplatz. They are five
+INDEPENDENT booleans, so this model exposes them as a ``usage`` block rather than
+the single-valued ``kind`` it used to declare, four of whose five values existed
+nowhere upstream. Alongside them: ``abcCategory`` (picking priority),
+``pickingOrder`` (upstream ``sort``) and physical ``dimensions``.
 
 This is also WHERE WAREHOUSE WORK HAPPENS: the five stock actions (putaway,
 stockRemoval, stockTransfer, inventoryCount, stockAdjustment) hang off the bin,
@@ -14,6 +22,7 @@ purpose instead of by a type discriminator plus a field combination.
 
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import Any
 
@@ -22,6 +31,8 @@ import httpx
 from entity_registry.core_sdk import AdapterResponse, EmulationManifest
 
 from .base import _TIMEOUT, RO, FacadeAdapterBase, id_from_location, prop, ref
+
+_CU = {"creatable": True, "updatable": True}
 
 
 class StorageLocationAdapter(FacadeAdapterBase):
@@ -234,35 +245,91 @@ class StorageLocationAdapter(FacadeAdapterBase):
                     "endpoint — a location is created underneath its warehouse."
                 ),
             ),
-            "kind": prop(
-                "select",
-                "Kind",
-                **RO,
-                section="general",
-                options=[
-                    {"value": v, "label": v.capitalize()}
-                    for v in ("picking", "bulk", "inbound", "returns", "quarantine")
-                ],
-            ),
-            "pickingOrder": prop("integer", "Picking order", **RO, section="general"),
-            "capacity": prop(
+            # Upstream models the role as FIVE INDEPENDENT FLAGS (StorageType), not
+            # one exclusive kind: a bin can be a replenishment location AND blocked
+            # at the same time. The old single-valued `kind`
+            # (picking|bulk|inbound|returns|quarantine) could express none of that,
+            # and four of its five values do not exist upstream at all — they were
+            # invented here. Named for what a warehouse consultant asks for.
+            "usage": prop(
                 "embedded",
-                "Capacity",
-                **RO,
+                "Usage",
                 section="general",
                 properties={
-                    "maxWeight": prop(
-                        "embedded",
-                        "Max weight",
-                        **RO,
-                        properties={
-                            "value": prop("decimal", "Value", **RO),
-                            "unit": prop("string", "Unit", **RO),
-                        },
+                    "replenishment": prop(
+                        "boolean",
+                        "Replenishment location",
+                        **_CU,
+                        description="Nachschubplatz: stock is pulled from here to refill picking bins.",
                     ),
-                    "note": prop("string", "Note", **RO),
+                    "consumption": prop(
+                        "boolean",
+                        "Consumption location",
+                        **_CU,
+                        description="Verbrauchsplatz: stock booked out here is consumed, not shipped.",
+                    ),
+                    "blocked": prop(
+                        "boolean",
+                        "Blocked stock",
+                        **_CU,
+                        description=(
+                            "Sperrplatz: quarantine/quality hold — its stock is excluded from "
+                            "availability and auto-shipping. Same upstream flag the `status` "
+                            "field reports as blocked/active."
+                        ),
+                    ),
+                    "production": prop(
+                        "boolean",
+                        "Production access",
+                        **_CU,
+                        description="Fertigung darf von hier entnehmen.",
+                    ),
+                    "pointOfSale": prop(
+                        "boolean",
+                        "Point of sale",
+                        **_CU,
+                        description="Kassenplatz: stock sold over the counter.",
+                    ),
                 },
             ),
+            "abcCategory": prop(
+                "select",
+                "ABC category",
+                **_CU,
+                section="general",
+                options=[{"value": v, "label": v} for v in ("A", "B", "C")],
+                description=(
+                    "ABC classification driving picking priority — A = fastest movers, "
+                    "nearest the packing bench."
+                ),
+            ),
+            "pickingOrder": prop(
+                "integer",
+                "Picking order",
+                **_CU,
+                section="general",
+                description="Sequence a picker walks the bins in (upstream `sort`).",
+            ),
+            "dimensions": prop(
+                "embedded",
+                "Dimensions",
+                section="general",
+                description=(
+                    "Physical size of the bin. Upstream carries length/width/height only — "
+                    "there is no weight limit, and the `capacity.maxWeight` this model used "
+                    "to declare did not exist anywhere."
+                ),
+                properties={
+                    "length": prop("decimal", "Length", **_CU),
+                    "width": prop("decimal", "Width", **_CU),
+                    "height": prop("decimal", "Height", **_CU),
+                },
+            ),
+            # Read-only on purpose: upstream returns the field but rejects it on
+            # BOTH create and update with "The attribute description is not
+            # allowed." (measured on mvp 2026-08-02). Declaring it writable would
+            # make every write that carries it fail with a 400.
+            "description": prop("string", "Description", **RO, section="general"),
             "contents": prop(
                 "collection",
                 "Contents",
@@ -394,7 +461,29 @@ class StorageLocationAdapter(FacadeAdapterBase):
         wh_id = wh.get("id") if isinstance(wh, dict) else wh
         if wh_id:
             wire["__warehouse"] = str(wh_id).split("_", 1)[-1]
-        for path in ("kind", "capacity", "contents", "status", "id", "object"):
+        usage = model.get("usage") or {}
+        for mine, theirs in (
+            ("replenishment", "isReplenishmentLocation"),
+            ("consumption", "isConsumptionLocation"),
+            ("blocked", "isRestrictedLocation"),
+            # asymmetric on purpose: read name is `productionAccess`
+            ("production", "allowsProductionAccess"),
+            ("pointOfSale", "isPosLocation"),
+        ):
+            if mine in usage:
+                wire[theirs] = bool(usage[mine])
+        if "abcCategory" in model:
+            wire["abcCategory"] = model["abcCategory"]
+        if "pickingOrder" in model:
+            wire["sort"] = model["pickingOrder"]
+        dims = model.get("dimensions") or {}
+        if dims:
+            wire["dimensions"] = {
+                k: v
+                for k, v in dims.items()
+                if k in ("length", "width", "height") and v is not None
+            }
+        for path in ("contents", "status", "id", "object", "description"):
             if path in model:
                 rejected.add(path)
         return wire, rejected
@@ -413,9 +502,27 @@ class StorageLocationAdapter(FacadeAdapterBase):
                 wh.get("name") if isinstance(wh, dict) else None,
                 "warehouses",
             ),
-            "kind": None,
-            "pickingOrder": None,
-            "capacity": {"maxWeight": None, "note": None},
+            # Upstream returns these on the WAREHOUSE-SCOPED list only; the flat
+            # tenant-wide /v1/storageLocations answers id/designation/warehouse and
+            # nothing else. `_enrich` fills them in for every read path, so this
+            # mapping sees them — but only because of that extra fetch.
+            "usage": {
+                "replenishment": r.get("isReplenishmentLocation"),
+                "consumption": r.get("isConsumptionLocation"),
+                "blocked": r.get("isRestrictedLocation"),
+                # Upstream READS this as `productionAccess` and WRITES it as
+                # `allowsProductionAccess` — measured, not assumed.
+                "production": r.get("productionAccess"),
+                "pointOfSale": r.get("isPosLocation"),
+            },
+            "abcCategory": r.get("abcCategory") or None,
+            "pickingOrder": r.get("sort"),
+            "dimensions": {
+                "length": (r.get("dimensions") or {}).get("length"),
+                "width": (r.get("dimensions") or {}).get("width"),
+                "height": (r.get("dimensions") or {}).get("height"),
+            },
+            "description": r.get("description") or None,
             "contents": [],
             "createdAt": None,
             "updatedAt": None,
@@ -434,9 +541,12 @@ class StorageLocationAdapter(FacadeAdapterBase):
           hand — 3 pages over 102 rows on mvp just to reach 9.
         * ``contents`` on a SINGLE read — composed from the StockLevel
           projection. Not on the list: that would be one extra call per row.
+        * every characterising field (``usage``, ``abcCategory``, ``pickingOrder``,
+          ``dimensions``) on EVERY read path — see :meth:`_enrich`. One extra call
+          per distinct warehouse on the page, not per row.
         """
         if method.upper() != "GET":
-            return await super().request(
+            resp = await super().request(
                 method=method,
                 handle=handle,
                 query=query,
@@ -446,6 +556,12 @@ class StorageLocationAdapter(FacadeAdapterBase):
                 accept_language=accept_language,
                 client=client,
             )
+            # The base reconciles a write by re-reading through the plain list,
+            # which for this entity is the THIN one — a caller who wrote an ABC
+            # class or a usage flag would get back a record that does not show it,
+            # and could reasonably conclude the write was lost. Re-read through
+            # our own GET so a write answers exactly what a read answers.
+            return await self._reread(resp, base_url, token, accept_language, client)
         from .stock_shared import numeric, parse_filters, resolve_location_row
 
         if handle is None:
@@ -454,7 +570,7 @@ class StorageLocationAdapter(FacadeAdapterBase):
                 return await self._by_warehouse(
                     numeric(str(warehouse[1])), query, base_url, token, accept_language, client
                 )
-            return await super().request(
+            listing = await super().request(
                 method=method,
                 handle=handle,
                 query=query,
@@ -464,6 +580,7 @@ class StorageLocationAdapter(FacadeAdapterBase):
                 accept_language=accept_language,
                 client=client,
             )
+            return await self._enrich_listing(listing, base_url, token, accept_language, client)
         # Single read: v1 has NO show route — GET /v1/storageLocations/{id} answers
         # 404 (verified on mvp 2026-07-31), so the entity declared `read` and could
         # not do it. The id filter on the list is the lookup this core already uses
@@ -473,8 +590,143 @@ class StorageLocationAdapter(FacadeAdapterBase):
         )
         if row is None:
             return self._json(404, {"title": f"StorageLocation {handle} not found"})
+        # The id-filtered flat list answers designation + warehouse and NOTHING else
+        # — no usage flags, no ABC class, no dimensions. Those live on the
+        # warehouse-scoped collection, so a single read fetches the row again from
+        # there. One extra call, and it is the difference between a record that
+        # describes the bin and one that only names it.
+        (row,) = await self._enrich([row], base_url, token, accept_language, client)
         resp = self._json(200, {"data": self.map_read(row)})
         return await self._with_contents(resp, handle, base_url, token, accept_language, client)
+
+    # fields the flat list cannot answer, so they are overlaid from the scoped one
+    _SCOPED_ONLY = ("usage", "abcCategory", "pickingOrder", "dimensions", "description", "status")
+
+    async def _enrich_listing(  # noqa: ANN001
+        self, resp, base_url, token, accept_language, client
+    ) -> AdapterResponse:
+        """Overlay the scoped-only fields onto an already-mapped listing."""
+        if resp.status_code != 200:
+            return resp
+        try:
+            payload = json.loads(resp.content or b"{}")
+        except ValueError:
+            return resp
+        mapped = payload.get("data") or []
+        if not isinstance(mapped, list) or not mapped:
+            return resp
+        thin = [
+            {
+                "id": str(r.get("id") or "").removeprefix("loc_"),
+                "warehouse": {
+                    "id": str((r.get("warehouse") or {}).get("id") or "").removeprefix("wh_")
+                },
+            }
+            for r in mapped
+        ]
+        by_id = {
+            str(r["id"]): r
+            for r in await self._enrich(thin, base_url, token, accept_language, client)
+        }
+        for row in mapped:
+            upstream = by_id.get(str(row.get("id") or "").removeprefix("loc_"))
+            # `_enrich` leaves a row untouched when its warehouse is unreachable;
+            # such a row still only carries the two flat keys, and overlaying its
+            # mapping would write nulls over nothing. Skip it instead.
+            if not upstream or "designation" not in upstream:
+                continue
+            fresh = self.map_read(upstream)
+            for key in self._SCOPED_ONLY:
+                row[key] = fresh[key]
+        return self._json(200, payload)
+
+    async def _reread(  # noqa: ANN001
+        self, resp, base_url, token, accept_language, client
+    ) -> AdapterResponse:
+        """Replace a 2xx write body with a full read of the written record."""
+        if resp.status_code >= 300 or resp.status_code == 204:
+            return resp
+        try:
+            written = (json.loads(resp.content or b"{}").get("data") or {}).get("id")
+        except (ValueError, AttributeError):
+            return resp
+        if not written:
+            return resp
+        fresh = await self.request(
+            method="GET",
+            handle=str(written),
+            query=[],
+            body=None,
+            base_url=base_url,
+            token=token,
+            accept_language=accept_language,
+            client=client,
+        )
+        # A failed re-read is not a failed write: keep the original answer.
+        return fresh if fresh.status_code < 300 else resp
+
+    async def _enrich(  # noqa: ANN001
+        self, rows, base_url, token, accept_language, client
+    ):
+        """Fill thin rows from their warehouse-scoped collections.
+
+        The flat tenant-wide list answers ``id``/``designation``/``warehouse``;
+        every field that CHARACTERISES a bin — the usage flags, the ABC class, the
+        picking order, the dimensions — is returned only by
+        ``/v1/warehouses/{id}/storageLocations``. A list built on the flat endpoint
+        alone can name bins but not describe them, which is the wrong half for
+        "show me the blocked ones".
+
+        Cost is one request per DISTINCT warehouse on the page (concurrent), not
+        one per row. Rows are enriched all-or-nothing per warehouse: a partially
+        enriched page would mix a real ``false`` with a not-fetched ``None`` and no
+        caller could tell them apart.
+        """
+        from .stock_shared import get_json
+
+        by_wh: dict[str, list[dict[str, Any]]] = {}
+        for row in rows:
+            wh = row.get("warehouse")
+            wid = wh.get("id") if isinstance(wh, dict) else wh
+            if wid:
+                by_wh.setdefault(str(wid), []).append(row)
+        if not by_wh:
+            return rows
+
+        async def scoped(wid: str) -> dict[str, dict[str, Any]]:
+            """Every location of one warehouse, by id — paged until exhausted."""
+            found: dict[str, dict[str, Any]] = {}
+            page = 1
+            while page <= 20:  # 20 * 50 = 1000 bins per warehouse
+                status, payload = await get_json(
+                    f"{base_url.rstrip('/')}/api/v1/warehouses/{wid}/storageLocations",
+                    [("page[number]", str(page)), ("page[size]", "50")],
+                    self._headers(token, accept_language),
+                    client,
+                )
+                got = (payload.get("data") if isinstance(payload, dict) else None) or []
+                if status >= 400 or not got:
+                    break
+                for r in got:
+                    found[str(r.get("id"))] = r
+                if len(got) < 50:
+                    break
+                page += 1
+            return found
+
+        ids = list(by_wh)
+        results = await asyncio.gather(*(scoped(w) for w in ids), return_exceptions=True)
+        for wid, scoped_rows in zip(ids, results, strict=True):
+            if isinstance(scoped_rows, BaseException) or not scoped_rows:
+                continue  # unreachable warehouse: leave those rows thin, never fail
+            for row in by_wh[wid]:
+                rich = scoped_rows.get(str(row.get("id")))
+                if rich:
+                    # the scoped row omits the warehouse the flat one carries
+                    keep = row.get("warehouse")
+                    row.update(rich)
+                    row["warehouse"] = keep or rich.get("warehouse")
+        return rows
 
     async def _by_warehouse(  # noqa: ANN001
         self, warehouse_id, query, base_url, token, accept_language, client
