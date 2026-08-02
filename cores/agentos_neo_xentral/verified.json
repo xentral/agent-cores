@@ -23,7 +23,8 @@
         "type": {
           "read": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:35:34+00:00"
     },
     "Channel": {
       "fields": {
@@ -73,7 +74,8 @@
           "read": "pass",
           "sort": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:32:53+00:00"
     },
     "Correspondence": {
       "fields": {
@@ -107,7 +109,8 @@
           "filter": "pass",
           "read": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:35:13+00:00"
     },
     "CreditNote": {
       "actions": {
@@ -383,6 +386,7 @@
           "sort": "pass"
         }
       },
+      "probedAt": "2026-08-02T06:30:20+00:00",
       "processSteps": {
         "release": "pass"
       },
@@ -693,7 +697,8 @@
           "read": "pass",
           "update": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T07:20:50+00:00"
     },
     "DeliveryNote": {
       "actions": {
@@ -948,6 +953,7 @@
           "read": "pass"
         }
       },
+      "probedAt": "2026-08-02T06:29:30+00:00",
       "processSteps": {
         "cancel": "pass",
         "markDelivered": "pass",
@@ -971,7 +977,8 @@
         "object": {
           "read": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:35:19+00:00"
     },
     "EmailAccount": {
       "actions": {
@@ -1005,7 +1012,8 @@
         "type": {
           "read": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:35:15+00:00"
     },
     "Employee": {
       "fields": {
@@ -1026,7 +1034,8 @@
         "object": {
           "read": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:35:29+00:00"
     },
     "GoodsReceipt": {
       "fields": {
@@ -1110,7 +1119,8 @@
           "read": "pass",
           "sort": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:31:30+00:00"
     },
     "MerchandiseGroup": {
       "fields": {
@@ -1132,7 +1142,8 @@
         "useMainProductNumberRange": {
           "read": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:35:30+00:00"
     },
     "PaymentMethod": {
       "fields": {
@@ -1153,7 +1164,8 @@
           "filter": "pass",
           "read": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:35:16+00:00"
     },
     "PaymentTermsGroup": {
       "fields": {
@@ -1193,7 +1205,8 @@
         "paymentTerms.postageFreeFrom": {
           "read": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:35:21+00:00"
     },
     "PickingRun": {
       "fields": {
@@ -1297,7 +1310,8 @@
         "warehouse": {
           "read": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:35:08+00:00"
     },
     "PriceList": {
       "fields": {
@@ -1377,7 +1391,8 @@
           "read": "pass",
           "update": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:34:48+00:00"
     },
     "Printer": {
       "actions": {
@@ -1423,7 +1438,8 @@
         "useCase": {
           "read": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:35:14+00:00"
     },
     "Product": {
       "fields": {
@@ -1500,10 +1516,9 @@
           "update": "pass"
         },
         "identifiers.ean": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass",
           "search": "pass",
-          "searchNote": "probed with a fixture value — no sampled record carries this field",
           "update": "pass"
         },
         "identifiers.external": {
@@ -1521,7 +1536,7 @@
           "update": "pass"
         },
         "identifiers.manufacturerNumber": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass",
           "update": "pass"
         },
@@ -1605,7 +1620,7 @@
         },
         "name": {
           "create": "pass",
-          "createNote": "created prd_61996 (labelled 'VT Verify') — no delete endpoint, left in place",
+          "createNote": "created prd_61997 (labelled 'VT Verify') — no delete endpoint, left in place",
           "filter": "pass",
           "read": "pass",
           "search": "pass",
@@ -1812,7 +1827,8 @@
         "variant.of": {
           "read": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:34:38+00:00"
     },
     "ProductCategory": {
       "fields": {
@@ -1828,7 +1844,8 @@
         "parent": {
           "read": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:35:29+00:00"
     },
     "ProductFreeField": {
       "fields": {
@@ -1842,7 +1859,8 @@
         "object": {
           "read": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:35:33+00:00"
     },
     "ProductProperty": {
       "fields": {
@@ -1858,7 +1876,8 @@
         "project": {
           "read": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:35:31+00:00"
     },
     "ProductTag": {
       "fields": {
@@ -1875,7 +1894,8 @@
         "object": {
           "read": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:35:32+00:00"
     },
     "Project": {
       "fields": {
@@ -1921,7 +1941,8 @@
         "storageProcess": {
           "read": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:35:25+00:00"
     },
     "PurchaseInvoice": {
       "fields": {
@@ -2101,7 +2122,8 @@
           "read": "pass",
           "sort": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:31:35+00:00"
     },
     "PurchaseOrder": {
       "actions": {
@@ -2385,6 +2407,7 @@
           "read": "pass"
         }
       },
+      "probedAt": "2026-08-02T06:31:27+00:00",
       "processSteps": {
         "cancel": "pass",
         "close": "pass",
@@ -2465,7 +2488,8 @@
           "read": "pass",
           "updateNote": "no sample date value — not probed (a null date cannot be restored)"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:35:03+00:00"
     },
     "Quote": {
       "actions": {
@@ -2800,6 +2824,7 @@
           "sort": "pass"
         }
       },
+      "probedAt": "2026-08-02T06:26:13+00:00",
       "processSteps": {
         "cancel": "pass",
         "release": "pass"
@@ -3012,6 +3037,7 @@
           "read": "pass"
         }
       },
+      "probedAt": "2026-08-02T06:30:49+00:00",
       "processSteps": {
         "cancel": "pass",
         "release": "pass",
@@ -3043,7 +3069,8 @@
         "project": {
           "read": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:35:18+00:00"
     },
     "SalesInvoice": {
       "actions": {
@@ -3392,6 +3419,7 @@
           "sort": "pass"
         }
       },
+      "probedAt": "2026-08-02T06:28:50+00:00",
       "processSteps": {
         "cancel": "pass",
         "release": "pass"
@@ -3870,6 +3898,7 @@
           "sort": "pass"
         }
       },
+      "probedAt": "2026-08-02T06:27:38+00:00",
       "processSteps": {
         "cancel": "pass",
         "close": "pass",
@@ -3978,7 +4007,8 @@
         "weight.value": {
           "read": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:35:04+00:00"
     },
     "ShippingMethod": {
       "fields": {
@@ -4009,7 +4039,8 @@
         "type": {
           "read": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:35:17+00:00"
     },
     "StockTake": {
       "fields": {
@@ -4116,7 +4147,8 @@
         "warehouse": {
           "read": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:35:07+00:00"
     },
     "StorageLocation": {
       "actions": {
@@ -4205,7 +4237,8 @@
           "filter": "pass",
           "read": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:35:06+00:00"
     },
     "Supplier": {
       "actions": {
@@ -4517,7 +4550,8 @@
           "read": "pass",
           "update": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T07:21:21+00:00"
     },
     "Tag": {
       "fields": {
@@ -4551,7 +4585,8 @@
           "read": "pass",
           "sort": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:35:11+00:00"
     },
     "TaxRate": {
       "fields": {
@@ -4589,7 +4624,8 @@
           "filter": "pass",
           "read": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:35:23+00:00"
     },
     "TextTemplate": {
       "fields": {
@@ -4611,7 +4647,8 @@
         "object": {
           "read": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:35:37+00:00"
     },
     "User": {
       "fields": {
@@ -4649,7 +4686,8 @@
           "filter": "pass",
           "read": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:35:27+00:00"
     },
     "Warehouse": {
       "fields": {
@@ -4666,7 +4704,8 @@
         "project": {
           "read": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:35:24+00:00"
     },
     "Webhook": {
       "fields": {
@@ -4688,7 +4727,8 @@
         "url": {
           "read": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:35:35+00:00"
     },
     "WebhookEventType": {
       "fields": {
@@ -4701,9 +4741,10 @@
         "object": {
           "read": "pass"
         }
-      }
+      },
+      "probedAt": "2026-08-02T06:35:36+00:00"
     }
   },
-  "generatedAt": null,
+  "generatedAt": "2026-08-02T07:21:21+00:00",
   "instance": "a2ad4180-0d41-4360-8044-9dca0c35608a"
 }

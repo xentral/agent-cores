@@ -128,6 +128,33 @@ def _walk(props: Any, prefix: str = "") -> list[tuple[str, dict[str, Any]]]:
 _BAD_TITLE = re.compile(r"[\[\]:*?/\\]")
 
 
+
+def _when(stamp: Any) -> str:
+    """An ISO stamp as `YYYY-MM-DD HH:MM`, empty when never measured.
+
+    A manifest is assembled from many scoped runs, so its entities genuinely have
+    different ages — the seven sales documents were re-probed weeks after the rest.
+    One date for the whole file would hide that.
+    """
+    if not isinstance(stamp, str) or not stamp:
+        return ""
+    try:
+        return dt.datetime.fromisoformat(stamp).strftime("%Y-%m-%d %H:%M")
+    except ValueError:
+        return stamp[:16]
+
+
+
+def _action_when(manifest: dict[str, Any], key: str, verdicts: int) -> str:
+    """Empty means "never probed", `?` means "probed before the run stamped itself".
+    Blank for both would read as never, which is a different claim."""
+    stamp = ((manifest.get("entities") or {}).get(key) or {}).get("actionsProbedAt")
+    when = _when(stamp)
+    if when:
+        return when
+    return "?" if verdicts else ""
+
+
 def _sheet_title(key: str, used: set[str]) -> str:
     """Excel: max 31 chars, no []:*?/\\ , unique. The full key stays on the
     overview sheet, so a shortened tab never loses information."""
@@ -156,10 +183,14 @@ def _autosize(ws: Any, widths: dict[int, int]) -> None:
         ws.column_dimensions[get_column_letter(col)].width = width
 
 
-def _entity_sheet(wb: Workbook, key: str, meta: dict[str, Any], title: str) -> dict[str, Any]:
+def _entity_sheet(
+    wb: Workbook, key: str, meta: dict[str, Any], title: str, probed_at: str = ""
+) -> dict[str, Any]:
     ws = wb.create_sheet(title)
     ws.cell(row=1, column=1, value=f"{key} — {meta.get('label') or ''}").font = _TITLE_FONT
     ws.cell(row=2, column=1, value="Operations: " + ", ".join(meta.get("operations") or []))
+    if probed_at:
+        ws.cell(row=2, column=4, value=f"gemessen: {probed_at}")
 
     headers = ["Pfad", "Typ", "Label", *FACETS, "nur Einzelabruf", "Beschreibung", "Notizen"]
     _write_header(ws, 4, headers)
@@ -297,9 +328,16 @@ def main(core_id: str = "agentos_neo_xentral") -> int:
 
     manifest_path = _CORES / core_id / "verified.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    # verify.py writes generatedAt as None, so the file's mtime is the only
-    # honest timestamp available.
-    stamped = dt.datetime.fromtimestamp(manifest_path.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
+    # The run stamps itself since PR #74. Older manifests carry generatedAt: null —
+    # then the file's mtime is all there is, and it is labelled as the guess it is
+    # (after a fresh clone the mtime is the checkout time).
+    generated = manifest.get("generatedAt")
+    if generated:
+        stamped = f"Lauf beendet: {_when(generated)}"
+    else:
+        mtime = dt.datetime.fromtimestamp(manifest_path.stat().st_mtime)
+        stamped = f"kein Laufstempel — Dateizeit: {mtime.strftime('%Y-%m-%d %H:%M')}"
+    probed = {k: (v or {}).get("probedAt") for k, v in (manifest.get("entities") or {}).items()}
 
     wb = Workbook()
     overview = wb.active
@@ -311,11 +349,11 @@ def main(core_id: str = "agentos_neo_xentral") -> int:
         key = adapter.manifest.key
         meta = adapter.metadata()
         title = _sheet_title(key, used)
-        rows.append((key, title, _entity_sheet(wb, key, meta, title)))
+        rows.append((key, title, _entity_sheet(wb, key, meta, title, _when(probed.get(key)))))
 
     overview.cell(row=1, column=1, value=f"Kern: {core_id}").font = _TITLE_FONT
     overview.cell(row=2, column=1, value=f"Instanz: {manifest.get('instance') or '?'}")
-    overview.cell(row=3, column=1, value=f"verified.json zuletzt geschrieben: {stamped}")
+    overview.cell(row=3, column=1, value=stamped)
     overview.cell(
         row=4,
         column=1,
@@ -337,6 +375,8 @@ def main(core_id: str = "agentos_neo_xentral") -> int:
         "Wunsch",
         "Actions (ok/Fehler)",
         "Steps (ok/Fehler)",
+        "gemessen",
+        "Actions gemessen",
     ]
     _write_header(overview, 6, headers)
     overview.freeze_panes = "A7"
@@ -357,13 +397,18 @@ def main(core_id: str = "agentos_neo_xentral") -> int:
                 t[WISH],
                 f"{a_all} ({a_ok}/{a_fail})",
                 f"{s_all} ({s_ok}/{s_fail})",
+                _when(probed.get(key)),
+                _action_when(manifest, key, a_ok + a_fail),
             ],
             start=1,
         ):
             overview.cell(row=r, column=ci, value=v)
         r += 1
     overview.auto_filter.ref = f"A6:J{max(r - 1, 6)}"
-    _autosize(overview, {1: 28, 2: 28, 3: 9, 4: 8, 5: 9, 6: 8, 7: 6, 8: 9, 9: 20, 10: 20})
+    _autosize(
+        overview,
+        {1: 28, 2: 28, 3: 9, 4: 8, 5: 9, 6: 8, 7: 6, 8: 9, 9: 20, 10: 20, 11: 17, 12: 17},
+    )
 
     out = _CORES / core_id / "verified.xlsx"
     wb.save(out)
