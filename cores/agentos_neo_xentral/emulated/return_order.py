@@ -786,7 +786,7 @@ class ReturnAdapter(FacadeAdapterBase):
             try:
                 qty = float(m.get("quantity"))
             except (TypeError, ValueError):
-                return self._json(422, {"title": f"createFromDeliveryNote: bad quantity in {m}"})
+                return self._refuse(422, f"createFromDeliveryNote: bad quantity in {m}")
             li: dict[str, Any] = {"id": item["id"], "quantity": qty, "returnReason": reason}
             if m.get("description") is not None:
                 li["description"] = m["description"]

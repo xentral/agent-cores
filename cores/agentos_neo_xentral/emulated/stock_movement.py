@@ -408,7 +408,7 @@ class StockMovementAdapter(FacadeAdapterBase):
         )
         sku = (product or {}).get("number")
         if not sku:
-            return self._json(422, {"title": f"product {product_id}: no SKU (number) resolvable"})
+            return self._refuse(422, f"product {product_id}: no SKU (number) resolvable")
 
         async def location(loc_id: str | None) -> tuple[str, str] | None:
             if not loc_id:
@@ -418,9 +418,9 @@ class StockMovementAdapter(FacadeAdapterBase):
         src = await location(from_id)
         dst = await location(to_id)
         if from_id and src is None:
-            return self._json(422, {"title": f"location {from_id}: not resolvable (warehouse?)"})
+            return self._refuse(422, f"location {from_id}: not resolvable (warehouse?)")
         if to_id and dst is None:
-            return self._json(422, {"title": f"location {to_id}: not resolvable (warehouse?)"})
+            return self._refuse(422, f"location {to_id}: not resolvable (warehouse?)")
 
         # Absolute correction (setQuantityTo, Inventur): NOT via the upstream
         # setTotalStock endpoint — that call REMOVES every other product/batch

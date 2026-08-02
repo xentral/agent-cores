@@ -797,6 +797,19 @@ class FacadeAdapterBase:
             headers or {"content-type": "application/json"},
         )
 
+    @classmethod
+    def _refuse(cls, status: int, title: str, **extra: Any) -> AdapterResponse:
+        """A refusal the CORE decided, before the upstream was ever called.
+
+        Marked `source: "core"` so a caller can tell it from an upstream rejection.
+        They look identical otherwise, and the difference is load-bearing: the
+        capability probe grades a 4xx as "the route exists and validated my request",
+        which is a claim about the UPSTREAM. Every 422 in the committed manifest
+        turned out to come from here instead, so nine action verdicts rested on our
+        own input validation having run.
+        """
+        return cls._json(status, {"title": title, "source": "core", **extra})
+
     def _headers(self, token: str, accept_language: str | None) -> dict[str, str]:
         h = {
             "Authorization": f"Bearer {token}",
@@ -1671,7 +1684,7 @@ class FacadeAdapterBase:
         characters. Handing the payload to a file store is the caller's job.
         """
         if not ids:
-            return self._json(422, {"title": "downloadPdf needs a record id"})
+            return self._refuse(422, "downloadPdf needs a record id")
         up_id = str(ids[0]).split("_", 1)[1] if "_" in str(ids[0]) else str(ids[0])
         url = f"{base_url.rstrip('/')}{self.v3_path}/{up_id}"
         headers = {**self._headers(token, accept_language), "Accept": "application/pdf"}
@@ -1761,9 +1774,9 @@ class FacadeAdapterBase:
         instead of a false success when it still does not persist."""
         title = str(command.get("title") or "").strip()
         if not title:
-            return self._json(422, {"title": f"{action_key} requires a non-empty 'title'."})
+            return self._refuse(422, f"{action_key} requires a non-empty 'title'.")
         if not ids:
-            return self._json(422, {"title": f"{action_key} needs a target id (ids[])"})
+            return self._refuse(422, f"{action_key} needs a target id (ids[])")
         handle = str(ids[0])
         current = await self.request(
             method="GET",
@@ -1957,7 +1970,7 @@ class FacadeAdapterBase:
                 },
             )
         if not ids:
-            return self._json(422, {"title": f"{action_key} needs a target id (ids[])"})
+            return self._refuse(422, f"{action_key} needs a target id (ids[])")
         up_id = str(ids[0]).split("_", 1)[1] if "_" in str(ids[0]) else str(ids[0])
         command = envelope.get("command") or {}
         if isinstance(route, dict):
