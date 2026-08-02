@@ -1578,6 +1578,30 @@
         ],
         "reason": "The list needs an anchor filter (product or storageLocation): upstream has no global stock collection, so an unanchored query would mean fanning out over every product of the tenant."
       }
+    ],
+    "Task": [
+      {
+        "field": "assignee",
+        "ops": [
+          "create",
+          "update"
+        ],
+        "reason": "The one thing that would make a task a work item. `assignee` is readOnly upstream: a create or update carrying it answers 2xx and leaves the field null. Measured on mvp 2026-08-02."
+      },
+      {
+        "field": "timeline",
+        "ops": [
+          "read"
+        ],
+        "reason": "The task's comment thread. Declared `readWrite` with a full sub-node and returned by NO read — not the list, not the single read, and no include/expand parameter produces it. Not modelled until it reads back."
+      },
+      {
+        "field": "dates.completed",
+        "ops": [
+          "update"
+        ],
+        "reason": "Completing a task through the API does not stamp its completion date: `status: completed` persists, `completionDate` stays null."
+      }
     ]
   }
 }
