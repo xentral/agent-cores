@@ -1756,7 +1756,6 @@
         },
         "name": {
           "create": "pass",
-          "createNote": "created prd_61999 (labelled 'VT Verify') — no delete endpoint, left in place",
           "filter": "pass",
           "read": "pass",
           "search": "pass",
@@ -1959,7 +1958,7 @@
           "readNote": "declared, but none of the 111 sampled records carries a value — nothing proven either way"
         }
       },
-      "probedAt": "2026-08-02T11:13:37+00:00"
+      "probedAt": "2026-08-02T12:24:21+00:00"
     },
     "ProductCategory": {
       "fields": {
@@ -5100,7 +5099,7 @@
       "probedAt": "2026-08-02T10:17:04+00:00"
     }
   },
-  "generatedAt": "2026-08-02T12:15:38+00:00",
+  "generatedAt": "2026-08-02T12:24:21+00:00",
   "instance": "a2ad4180-0d41-4360-8044-9dca0c35608a",
   "schemaVersion": 2
 }

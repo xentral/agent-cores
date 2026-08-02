@@ -384,12 +384,18 @@ class ProductAdapter(FacadeAdapterBase):
         # Read via v3 (PR #24325, read-only by design); WRITE via v2 products
         # (POST/PATCH /api/v2/products — see write_path). Sale price is a separate
         # resource composed on top of the create (see _write).
-        operations=("list", "read", "create", "update"),
+        operations=("list", "read", "create", "update", "delete"),
     )
     v3_path = "/api/v3/products"
     # v3 products is read-only; create/update go to v2 products (product.createV2 /
     # product.updateV2). The base's _send targets this for POST/PATCH; reads stay v3.
     write_path = "/api/v2/products"
+    # …and a THIRD generation owns the delete: v2 has no DELETE route at all
+    # (measured: 404 "Route not found"), v1 answers 204 and the record is really
+    # gone on a re-read. Declaring it makes the create probe net-zero — without it
+    # every run that exercised create left a labelled record behind, and ten of them
+    # had accumulated on the test instance.
+    delete_path = "/api/products"
     money_pairs = ("prices.sale", "prices.purchase")
     detail_only_sections = ("stock", "bom", "prices.sale", "properties")
     # customFields carries the per-product free-field VALUES in the v3 payload (works
@@ -436,7 +442,15 @@ class ProductAdapter(FacadeAdapterBase):
     async def _send(  # noqa: ANN001
         self, base_url, token, method, up_handle, payload, accept_language, client
     ):
-        path = (self.write_path or self.v3_path) + (f"/{up_handle}" if up_handle else "")
+        # Keep the base's three-generation routing: the delete lives on v1, not on
+        # the v2 write path this override otherwise targets. Restating only the
+        # write path is how the first attempt at declaring `delete` silently 404'd.
+        base_path = self.v3_path
+        if str(method).upper() == "DELETE" and self.delete_path:
+            base_path = self.delete_path
+        elif self.write_path:
+            base_path = self.write_path
+        path = base_path + (f"/{up_handle}" if up_handle else "")
         url = f"{base_url.rstrip('/')}{path}"
         headers = self._headers(token, accept_language)
 
