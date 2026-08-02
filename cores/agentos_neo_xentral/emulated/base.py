@@ -351,9 +351,15 @@ class FacadeAdapterBase:
     # entities read and write the same v3 collection (write_path stays ""); a few
     # read a purpose-built v3 read model but must write through an older
     # generation (Product: reads /api/v3/products, writes /api/v2/products).
-    # ``_send`` (POST/PATCH/PUT/DELETE) targets ``write_path or v3_path``; reads
-    # (_get) always use v3_path.
+    # ``_send`` (POST/PATCH/PUT) targets ``write_path or v3_path``; reads (_get)
+    # always use v3_path.
     write_path: str = ""
+    # …and a THIRD generation can own the delete. Product reads /api/v3/products,
+    # writes /api/v2/products and deletes /api/products/{id} — measured: a DELETE on
+    # the v2 write path answers 404 "Route not found", on v1 it answers 204 and the
+    # record is really gone. Empty falls back to the write path, which is right for
+    # every entity whose upstream keeps writes and deletes together.
+    delete_path: str = ""
     include: str = ""
     sections: dict[str, dict[str, str]] = {}
     preview_template: str = "{{number}}"
@@ -1414,8 +1420,14 @@ class FacadeAdapterBase:
         client: httpx.AsyncClient | None,
     ) -> tuple[int, Any]:
         # Writes go to write_path when the adapter reads and writes different
-        # upstream generations (Product); everyone else falls back to v3_path.
-        path = (self.write_path or self.v3_path) + (f"/{up_handle}" if up_handle else "")
+        # upstream generations (Product); everyone else falls back to v3_path. A
+        # delete can sit on a third one again, so it gets its own override first.
+        base_path = self.v3_path
+        if method.upper() == "DELETE" and self.delete_path:
+            base_path = self.delete_path
+        elif self.write_path:
+            base_path = self.write_path
+        path = base_path + (f"/{up_handle}" if up_handle else "")
         url = f"{base_url.rstrip('/')}{path}"
         headers = self._headers(token, accept_language)
 
