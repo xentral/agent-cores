@@ -17,9 +17,11 @@ from __future__ import annotations
 import json
 from typing import Any
 
+import httpx
+
 from entity_registry.core_sdk import AdapterResponse, EmulationManifest
 
-from .base import RO, FacadeAdapterBase, prop, ref
+from .base import _TIMEOUT, RO, FacadeAdapterBase, id_from_location, prop, ref
 
 
 class StorageLocationAdapter(FacadeAdapterBase):
@@ -30,7 +32,7 @@ class StorageLocationAdapter(FacadeAdapterBase):
         rollout_batch="agentos_neo_xentral",
         adapter="agentos_neo_xentral.storageLocation",
         source_apis=("agentos_neo_xentral",),
-        operations=("list", "read"),
+        operations=("list", "read", "create", "delete"),
     )
     v3_path = "/api/v1/storageLocations"
     include = ""
@@ -210,8 +212,8 @@ class StorageLocationAdapter(FacadeAdapterBase):
             "name": prop(
                 "string",
                 "Name",
-                **RO,
                 section="general",
+                creatable=True,
                 filterable=True,
                 previewable=True,
             ),
@@ -222,10 +224,13 @@ class StorageLocationAdapter(FacadeAdapterBase):
                 renderProperty="name",
                 section="general",
                 previewable=True,
+                creatable=True,
                 filterable=True,
                 description=(
                     "The warehouse this location belongs to. Filtering by it reads the "
-                    "warehouse-scoped upstream collection instead of paging the tenant."
+                    "warehouse-scoped upstream collection instead of paging the tenant. "
+                    "REQUIRED on create: upstream has no standalone storage-location "
+                    "endpoint — a location is created underneath its warehouse."
                 ),
             ),
             "kind": prop(
@@ -301,6 +306,98 @@ class StorageLocationAdapter(FacadeAdapterBase):
             "updatedAt": prop("datetime", "Updated at", **RO),
         }
 
+    async def _warehouse_of(self, handle, base_url, token, accept_language, client):  # noqa: ANN001
+        """Which warehouse a location belongs to.
+
+        Needed because the write routes are nested under the warehouse and there is
+        NO detail read to ask: both `GET /v1/storageLocations/{id}` and the nested
+        `GET /v1/warehouses/{w}/storageLocations/{id}` answer 404. The flat list
+        carries `warehouse` on every row, so it is swept until the id turns up.
+        """
+        for page in range(1, 21):
+            st, payload = await self._get(
+                base_url,
+                token,
+                handle=None,
+                query=[("page[number]", str(page)), ("page[size]", "100")],
+                accept_language=accept_language,
+                client=client,
+            )
+            rows = (payload or {}).get("data") or []
+            if st >= 400 or not rows:
+                return None
+            for row in rows:
+                if str(row.get("id")) == str(handle):
+                    wh = row.get("warehouse")
+                    return str(wh.get("id")) if isinstance(wh, dict) else (str(wh) if wh else None)
+        return None
+
+    async def _send(  # noqa: ANN001
+        self, base_url, token, method, up_handle, payload, accept_language, client
+    ):
+        """Writes go to the warehouse-scoped sub-resource.
+
+        `POST/PATCH/DELETE /api/v1/warehouses/{warehouseId}/storageLocations[/{id}]`
+        is the only write surface: there is no standalone one. The entity API's
+        `storageLocation` looks like one in the catalogue but has no warehouse field,
+        so a location created there is an orphan our own list never returns — swept
+        every page, detail read 404.
+        """
+        method = str(method).upper()
+        wh = None
+        if method == "POST":
+            wh = (payload or {}).pop("__warehouse", None)
+            if not wh:
+                return 422, {
+                    "title": "storageLocation: warehouse is required",
+                    "detail": (
+                        "A storage location is created underneath its warehouse; "
+                        "upstream has no standalone endpoint. Set `warehouse`."
+                    ),
+                }
+        else:
+            wh = await self._warehouse_of(up_handle, base_url, token, accept_language, client)
+            if not wh:
+                return 404, {"title": f"storageLocation {up_handle}: warehouse not resolvable"}
+        path = f"/api/v1/warehouses/{wh}/storageLocations" + (f"/{up_handle}" if up_handle else "")
+        url = f"{base_url.rstrip('/')}{path}"
+        headers = self._headers(token, accept_language)
+
+        async def _do(c):  # noqa: ANN001
+            return await c.request(method, url, json=payload, headers=headers)
+
+        if client is None:
+            async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
+                resp = await _do(c)
+        else:
+            resp = await _do(client)
+        try:
+            out = resp.json()
+        except ValueError:
+            out = {}
+        if resp.status_code < 400 and not (
+            isinstance(out, dict) and (out.get("data") or {}).get("id")
+        ):
+            new_id = id_from_location(resp.headers.get("Location") or resp.headers.get("location"))
+            if new_id:
+                out = {"data": {"id": new_id}}
+        return resp.status_code, out
+
+    def map_write(self, model, *, creating):  # noqa: ANN001
+        """`warehouse` travels as `__warehouse` — it is part of the PATH, not the body."""
+        wire = {}
+        rejected = set()
+        if "name" in model:
+            wire["designation"] = model["name"]
+        wh = model.get("warehouse")
+        wh_id = wh.get("id") if isinstance(wh, dict) else wh
+        if wh_id:
+            wire["__warehouse"] = str(wh_id).split("_", 1)[-1]
+        for path in ("kind", "capacity", "contents", "status", "id", "object"):
+            if path in model:
+                rejected.add(path)
+        return wire, rejected
+
     def map_read(self, r: dict[str, Any]) -> dict[str, Any]:
         wh = r.get("warehouse")
         return {
@@ -322,12 +419,6 @@ class StorageLocationAdapter(FacadeAdapterBase):
             "createdAt": None,
             "updatedAt": None,
         }
-
-    def map_write(
-        self, model: dict[str, Any], *, creating: bool
-    ) -> tuple[dict[str, Any], set[str]]:
-        # v1 CRUD exists upstream but is not orchestrated here yet.
-        return {}, {k for k in model if k not in {"object", "id", "createdAt", "updatedAt"}}
 
     # ---- reads: warehouse scope + contents ---------------------------------
     async def request(  # noqa: ANN001

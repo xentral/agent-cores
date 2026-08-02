@@ -526,7 +526,10 @@ class SalesOrderAdapter(FacadeAdapterBase):
                         },
                     ),
                     "status": prop(
-                        "select", "Payment status", **RO, description="Not filterable — the upstream list endpoint rejects it (verified on mvp)."
+                        "select",
+                        "Payment status",
+                        **RO,
+                        description="Not filterable — the upstream list endpoint rejects it (verified on mvp).",
                     ),
                 },
             ),
@@ -543,7 +546,10 @@ class SalesOrderAdapter(FacadeAdapterBase):
                         **_CU,
                     ),
                     "status": prop(
-                        "select", "Shipping status", **RO, description="Not filterable — the upstream list endpoint rejects it (verified on mvp)."
+                        "select",
+                        "Shipping status",
+                        **RO,
+                        description="Not filterable — the upstream list endpoint rejects it (verified on mvp).",
                     ),
                     "cost": prop(
                         "embedded",
