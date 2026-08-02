@@ -137,7 +137,12 @@ def test_no_facet_is_blanket_green() -> None:
     was inspected. This does not assert a number (mvp's data moves), only that
     something was measured rather than assumed."""
     counts = _verdict_counts()
-    for facet in ("read", "filter", "sort", "search"):
+    # `search` is deliberately not in here. Once every declared searchable field
+    # reaches the fan-out, all of them passing is the CORRECT outcome, and asserting
+    # a non-green tail would make a good state fail forever. What guards that facet
+    # is `test_every_searchable_field_reaches_the_fan_out`, which is stronger: it
+    # checks the contract rather than the shape of one run's results.
+    for facet in ("read", "filter", "sort"):
         verdicts = counts.get(facet) or {}
         assert verdicts, f"{facet}: no verdicts at all"
         assert sum(verdicts.values()) > verdicts.get(PROVEN, 0), (
@@ -146,9 +151,34 @@ def test_no_facet_is_blanket_green() -> None:
         )
 
 
-def test_the_unreachable_search_fields_stay_red() -> None:
-    """Twelve fields the schema flags `searchable` sit outside `search_fields()`, so
-    a consolidated search can never match on them. They are the canary: if the search
-    probe stops asserting its hit, these are the first cells to go quietly green."""
-    reds = (_verdict_counts().get("search") or {}).get("fail", 0)
-    assert reds >= 12, f"expected at least 12 failing search cells, found {reds}"
+def test_every_searchable_field_reaches_the_fan_out() -> None:
+    """A field the schema advertises as searchable must actually be searched.
+
+    `search_fields()` walked only the top level, so twelve declared leaves were
+    unreachable — `Customer`/`Supplier` `addresses.*`, `Product.identifiers.ean`,
+    `PurchaseInvoice.references.supplierInvoiceNumber` — and `PurchaseInvoice` had
+    no fan-out at all while its schema claimed otherwise. The probe reported them
+    red for as long as that was true; this asserts the gap cannot reopen, which is
+    the durable form of the same check."""
+    from xentral_entity_cores.agentos_neo_xentral.manifest import CORE
+
+    def declared(props, prefix=""):
+        for name, spec in (props or {}).items():
+            if not isinstance(spec, dict):
+                continue
+            path = f"{prefix}{name}"
+            if spec.get("searchable"):
+                yield path
+            sub = spec.get("properties")
+            if not isinstance(sub, dict):
+                node = spec.get("node")
+                sub = node.get("properties") if isinstance(node, dict) else None
+            if isinstance(sub, dict):
+                yield from declared(sub, f"{path}.")
+
+    unreachable = {
+        adapter.manifest.key: sorted(set(declared(adapter.fields())) - set(adapter.search_fields()))
+        for adapter in CORE.adapters
+        if set(declared(adapter.fields())) - set(adapter.search_fields())
+    }
+    assert unreachable == {}, unreachable
