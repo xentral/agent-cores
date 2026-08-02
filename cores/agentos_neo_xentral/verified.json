@@ -4530,7 +4530,8 @@
         "name": {
           "create": "pass",
           "filter": "pass",
-          "read": "pass"
+          "read": "pass",
+          "update": "pass"
         },
         "object": {
           "read": "pass"
@@ -4551,7 +4552,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T15:40:47+00:00"
+      "probedAt": "2026-08-02T15:58:06+00:00"
     },
     "Supplier": {
       "actions": {
@@ -5048,7 +5049,8 @@
         "name": {
           "create": "pass",
           "filter": "pass",
-          "read": "pass"
+          "read": "pass",
+          "update": "pass"
         },
         "object": {
           "read": "pass"
@@ -5057,7 +5059,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T15:40:52+00:00"
+      "probedAt": "2026-08-02T15:58:15+00:00"
     },
     "Webhook": {
       "fields": {
@@ -5097,7 +5099,7 @@
       "probedAt": "2026-08-02T10:17:04+00:00"
     }
   },
-  "generatedAt": "2026-08-02T15:40:52+00:00",
+  "generatedAt": "2026-08-02T15:58:15+00:00",
   "instance": "a2ad4180-0d41-4360-8044-9dca0c35608a",
   "schemaVersion": 2
 }

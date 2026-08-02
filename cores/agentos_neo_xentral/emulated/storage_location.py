@@ -32,7 +32,7 @@ class StorageLocationAdapter(FacadeAdapterBase):
         rollout_batch="agentos_neo_xentral",
         adapter="agentos_neo_xentral.storageLocation",
         source_apis=("agentos_neo_xentral",),
-        operations=("list", "read", "create", "delete"),
+        operations=("list", "read", "create", "update", "delete"),
     )
     v3_path = "/api/v1/storageLocations"
     include = ""
@@ -214,6 +214,7 @@ class StorageLocationAdapter(FacadeAdapterBase):
                 "Name",
                 section="general",
                 creatable=True,
+                updatable=True,
                 filterable=True,
                 previewable=True,
             ),
