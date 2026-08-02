@@ -35,7 +35,9 @@ from entity_registry.core_sdk import AdapterResponse, EmulationManifest
 from .base import _TIMEOUT, RO, FacadeAdapterBase, prop, ref
 
 
-def _lookup_manifest(key: str, label: str, *, read: bool = False) -> EmulationManifest:
+def _lookup_manifest(
+    key: str, label: str, *, read: bool = False, create: bool = False, delete: bool = False
+) -> EmulationManifest:
     return EmulationManifest(
         key=key,
         label_en=label,
@@ -43,7 +45,12 @@ def _lookup_manifest(key: str, label: str, *, read: bool = False) -> EmulationMa
         rollout_batch="agentos_neo_xentral",
         adapter=f"agentos_neo_xentral.{key[0].lower()}{key[1:]}",
         source_apis=("agentos_neo_xentral",),
-        operations=("list", "read") if read else ("list",),
+        operations=tuple(
+            ["list"]
+            + (["read"] if read else [])
+            + (["create"] if create else [])
+            + (["delete"] if delete else [])
+        ),
     )
 
 
@@ -254,9 +261,24 @@ class PaymentTermsGroupAdapter(SettingsLookupBase):
 
 
 class WarehouseAdapter(SettingsLookupBase):
+    """Reads AND writes v1 — a warehouse can be opened and closed by name.
+
+    The write goes to the same generation as the read: ``POST /api/v1/warehouses``
+    takes ``designation`` and the new warehouse is in the list immediately, so you
+    can find again what you just opened.
+
+    The entity API also offers ``warehouse`` with full CRUD, and it was the wrong
+    surface: its record is name-only (id/uuid/name/timestamps), it addresses by
+    ``uuid`` while refusing to filter on ``id``, and going there would have split
+    reads and writes across two generations for no gain. Measured before choosing:
+    v1 POST answers 201, DELETE answers 204, and DELETE answers 409 "Warehouse
+    cannot be deleted" while storage locations still hang off it — a guard worth
+    surfacing rather than working around.
+    """
+
     # ``wh_`` is the prefix StorageLocationAdapter already emits in its
     # ``warehouse`` reference — this entity makes that reference resolvable.
-    manifest = _lookup_manifest("Warehouse", "Warehouse")
+    manifest = _lookup_manifest("Warehouse", "Warehouse", create=True, delete=True)
     v3_path = "/api/v1/warehouses"
     v1_paging = True
     query_aliases = {"name": "designation"}
@@ -266,10 +288,31 @@ class WarehouseAdapter(SettingsLookupBase):
             "object": prop("string", "Object", **RO, section="general"),
             "id": prop("string", "ID", **RO, section="general"),
             "name": prop(
-                "string", "Name", **RO, section="general", filterable=True, previewable=True
+                "string",
+                "Name",
+                section="general",
+                creatable=True,
+                filterable=True,
+                previewable=True,
             ),
             "project": _project_prop(),
         }
+
+    def map_write(
+        self, model: dict[str, Any], *, creating: bool
+    ) -> tuple[dict[str, Any], set[str]]:
+        """v1 calls the name ``designation`` and validates it: a body without it
+        answers 400 ``designation is required``."""
+        wire: dict[str, Any] = {}
+        rejected: set[str] = set()
+        if "name" in model:
+            wire["designation"] = model["name"]
+        # `project` sits on the read record but the create endpoint does not take
+        # it — say so instead of letting a caller assume the warehouse landed there.
+        for path in ("project", "id", "object"):
+            if path in model:
+                rejected.add(path)
+        return wire, rejected
 
     def map_read(self, r: dict[str, Any]) -> dict[str, Any]:
         return {
