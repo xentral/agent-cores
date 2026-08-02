@@ -120,6 +120,14 @@ def _item_props() -> dict[str, Any]:
 
 
 class SalesInvoiceAdapter(FacadeAdapterBase):
+    native_search_fields = (
+        "number",
+        "dates.issued",
+        "billingAddress.name",
+        "billingAddress.email",
+        "billingAddress.zip",
+        "references.customerOrderNumber",
+    )
     manifest = EmulationManifest(
         key="SalesInvoice",
         label_en="Sales invoice",

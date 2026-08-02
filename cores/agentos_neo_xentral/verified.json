@@ -258,7 +258,7 @@
         },
         "items.product": {
           "create": "pass",
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass"
         },
         "items.purchasePrice": {
@@ -333,7 +333,7 @@
           "read": "pass"
         },
         "references.customerOrderNumber": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass",
           "update": "pass"
         },
@@ -402,7 +402,7 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:26:33+00:00",
+      "probedAt": "2026-08-02T12:14:13+00:00",
       "processSteps": {
         "release": "reachable"
       },
@@ -899,7 +899,7 @@
           "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way"
         },
         "documents.salesOrder": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass"
         },
         "id": {
@@ -941,7 +941,7 @@
         },
         "items.product": {
           "create": "pass",
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass"
         },
         "items.quantity": {
@@ -1027,7 +1027,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:25:29+00:00",
+      "probedAt": "2026-08-02T12:13:21+00:00",
       "processSteps": {
         "cancel": "reachable",
         "markDelivered": "reachable",
@@ -2337,7 +2337,7 @@
           "update": "pass"
         },
         "dates.requestedDelivery": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass"
         },
         "deliveryAddress": {
@@ -2441,7 +2441,7 @@
         },
         "items.product": {
           "create": "pass",
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass"
         },
         "items.quantity": {
@@ -2530,7 +2530,7 @@
           "read": "pass"
         },
         "references.supplierOfferNumber": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass"
         },
         "status": {
@@ -2572,7 +2572,7 @@
           "readNote": "declared, but none of the 63 sampled records carries a value — nothing proven either way"
         }
       },
-      "probedAt": "2026-08-02T10:27:42+00:00",
+      "probedAt": "2026-08-02T12:15:38+00:00",
       "processSteps": {
         "cancel": "reachable",
         "close": "reachable",
@@ -2826,7 +2826,7 @@
         },
         "items.product": {
           "create": "pass",
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass"
         },
         "items.purchasePrice": {
@@ -2974,8 +2974,7 @@
         },
         "tags": {
           "create": "pass",
-          "filter": "accepted",
-          "filterNote": "accepted, but the page does not contain the record the value came from — the filter may have been ignored",
+          "filter": "pass",
           "read": "pass",
           "update": "pass"
         },
@@ -3011,7 +3010,7 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:21:53+00:00",
+      "probedAt": "2026-08-02T12:09:32+00:00",
       "processSteps": {
         "cancel": "reachable",
         "release": "reachable"
@@ -3123,7 +3122,7 @@
           "read": "pass"
         },
         "documents.salesOrder": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass"
         },
         "id": {
@@ -3157,7 +3156,7 @@
         },
         "items.product": {
           "create": "pass",
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass"
         },
         "items.quantity": {
@@ -3199,7 +3198,7 @@
           "read": "pass"
         },
         "references.customerOrderNumber": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass"
         },
         "references.rmaNumber": {
@@ -3237,7 +3236,7 @@
           "readNote": "declared, but none of the 92 sampled records carries a value — nothing proven either way"
         }
       },
-      "probedAt": "2026-08-02T10:27:05+00:00",
+      "probedAt": "2026-08-02T12:14:51+00:00",
       "processSteps": {
         "cancel": "reachable",
         "release": "reachable",
@@ -3481,7 +3480,7 @@
         },
         "items.product": {
           "create": "pass",
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass"
         },
         "items.purchasePrice": {
@@ -3646,7 +3645,7 @@
           "sortNote": "fewer than two distinct values on the page — order not assertable"
         }
       },
-      "probedAt": "2026-08-02T10:24:45+00:00",
+      "probedAt": "2026-08-02T12:12:41+00:00",
       "processSteps": {
         "cancel": "executed",
         "release": "reachable"
@@ -3770,7 +3769,7 @@
         },
         "dates.requestedDelivery": {
           "create": "pass",
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass",
           "updateNote": "no sample date value — not probed (a null date cannot be restored)"
         },
@@ -3914,7 +3913,7 @@
         },
         "items.product": {
           "create": "pass",
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass"
         },
         "items.purchasePrice": {
@@ -4013,16 +4012,16 @@
           "read": "pass"
         },
         "references.customerOrderNumber": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass",
           "update": "pass"
         },
         "references.externalId": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass"
         },
         "references.externalNumber": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass"
         },
         "references.paymentTransactionId": {
@@ -4167,7 +4166,7 @@
           "sortNote": "fewer than two distinct values on the page — order not assertable"
         }
       },
-      "probedAt": "2026-08-02T10:23:23+00:00",
+      "probedAt": "2026-08-02T12:11:24+00:00",
       "processSteps": {
         "cancel": "reachable",
         "close": "reachable",
@@ -5101,7 +5100,7 @@
       "probedAt": "2026-08-02T10:17:04+00:00"
     }
   },
-  "generatedAt": "2026-08-02T11:36:11+00:00",
+  "generatedAt": "2026-08-02T12:15:38+00:00",
   "instance": "a2ad4180-0d41-4360-8044-9dca0c35608a",
   "schemaVersion": 2
 }

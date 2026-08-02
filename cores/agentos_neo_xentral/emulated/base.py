@@ -33,7 +33,11 @@ from entity_registry.core_sdk import AdapterResponse, EmulationManifest
 # filters, verified live against the same v3 endpoints) — the xentral_api core
 # owns the implementation; reusing it keeps ONE search behavior across cores
 # (weclapp_core → agentos_neo_weclapp precedent for cross-core imports).
-from xentral_entity_cores.xentral_api.emulated._search import extract_search, fan_out_search
+from xentral_entity_cores.xentral_api.emulated._search import (
+    extract_search,
+    fan_out_search,
+    strip_search,
+)
 
 from ..verdicts import is_proven
 
@@ -783,11 +787,15 @@ class FacadeAdapterBase:
         missing = self.missing_field_wishes()
         if missing:
             meta["missingFieldWishes"] = missing
-        # Advertise the consolidated `search` filter only when the schema
-        # actually flags fields — consumers (record pickers, list search) key
-        # their server-search affordance off this list.
-        if self.search_fields():
-            meta["searchFields"] = list(self.search_fields())
+        # Advertise what a search actually MATCHES — consumers (record pickers, list
+        # search) key their server-search affordance off this list. Where the
+        # upstream searches natively that is ITS field set, not the schema flags the
+        # fan-out would have used: our document adapters flag `number` alone, while
+        # the native search also reaches the document address and the customer's
+        # order number, so the flags would understate it by five fields.
+        searchable = list(self.native_search_fields or self.search_fields())
+        if searchable:
+            meta["searchFields"] = searchable
         actions = list(self.actions())
         # Every entity with writable tags automatically gets the addTag/removeTag
         # actions — the base implements them generically (read-modify-write on the
@@ -1204,7 +1212,16 @@ class FacadeAdapterBase:
             if refusal is not None:
                 return refusal
             hit = extract_search(query)
-            if hit is not None and self.search_fields():
+            if hit is not None and self.native_search_fields:
+                # Upstream searches this endpoint itself — hand the term over as the
+                # top-level `?search=` it documents and let it do the OR server-side.
+                # One request instead of N, and it covers what the fan-out cannot:
+                # searching sales orders for the customer's name found 0 through the
+                # emulation and 14 natively.
+                value, _op = hit
+                if value:
+                    query = [*strip_search(query), ("search", value)]
+            elif hit is not None and self.search_fields():
                 value, op = hit
                 if value:
                     resp = await fan_out_search(
@@ -1614,6 +1631,24 @@ class FacadeAdapterBase:
     # negotiation, scope <document>:read). Declaring it wires the generic
     # downloadPdf action below — there is nothing per-document about it.
     renders_pdf: bool = False
+
+    # MODEL paths the UPSTREAM's own `?search=` covers on this endpoint. Non-empty
+    # means the term is handed over natively instead of being emulated by a fan-out
+    # over `search_fields()` — one request, and it reaches fields the emulation
+    # cannot: a sales-order search for the customer's name found 0 through the
+    # fan-out and 14 natively.
+    #
+    # Declare it ONLY where the upstream really searches. Where it does not, the
+    # parameter is not refused but silently ignored — `/api/v3/customers?search=
+    # nonsense` answers 200 with all 20128 rows — so a wrong entry here turns every
+    # search into "return everything", which reads exactly like a working search.
+    # The nine endpoints that have it are listed in schemas/openapi/documents.yml.
+    #
+    # The lists below are what the spec documents AND a live probe on mvp matched a
+    # record by; upstream's own list is broader (it also covers `id`, `customerNumber`
+    # and `internalDesignation`, which our model either does not expose as a path or
+    # had no sample value for). Under-advertising is the safe direction.
+    native_search_fields: tuple[str, ...] = ()
 
     async def _complete_body_money_pairs(  # noqa: ANN001
         self, handle, body, base_url, token, accept_language, client

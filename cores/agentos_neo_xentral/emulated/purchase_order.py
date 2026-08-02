@@ -58,6 +58,13 @@ def _address_props() -> dict[str, Any]:
 
 
 class PurchaseOrderAdapter(FacadeAdapterBase):
+    native_search_fields = (
+        "number",
+        "dates.issued",
+        "deliveryAddress.name",
+        "deliveryAddress.email",
+        "deliveryAddress.zip",
+    )
     manifest = EmulationManifest(
         key="PurchaseOrder",
         label_en="Purchase order",
