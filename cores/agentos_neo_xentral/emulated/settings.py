@@ -36,7 +36,13 @@ from .base import _TIMEOUT, RO, FacadeAdapterBase, prop, ref
 
 
 def _lookup_manifest(
-    key: str, label: str, *, read: bool = False, create: bool = False, delete: bool = False
+    key: str,
+    label: str,
+    *,
+    read: bool = False,
+    create: bool = False,
+    update: bool = False,
+    delete: bool = False,
 ) -> EmulationManifest:
     return EmulationManifest(
         key=key,
@@ -49,6 +55,7 @@ def _lookup_manifest(
             ["list"]
             + (["read"] if read else [])
             + (["create"] if create else [])
+            + (["update"] if update else [])
             + (["delete"] if delete else [])
         ),
     )
@@ -278,7 +285,7 @@ class WarehouseAdapter(SettingsLookupBase):
 
     # ``wh_`` is the prefix StorageLocationAdapter already emits in its
     # ``warehouse`` reference — this entity makes that reference resolvable.
-    manifest = _lookup_manifest("Warehouse", "Warehouse", create=True, delete=True)
+    manifest = _lookup_manifest("Warehouse", "Warehouse", create=True, update=True, delete=True)
     v3_path = "/api/v1/warehouses"
     v1_paging = True
     query_aliases = {"name": "designation"}
@@ -292,6 +299,7 @@ class WarehouseAdapter(SettingsLookupBase):
                 "Name",
                 section="general",
                 creatable=True,
+                updatable=True,
                 filterable=True,
                 previewable=True,
             ),

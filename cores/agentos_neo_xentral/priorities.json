@@ -1424,13 +1424,6 @@
           "update"
         ],
         "reason": "Capacity limits (max weight) for putaway decisions — not exposed via API today."
-      },
-      {
-        "field": "name",
-        "ops": [
-          "update"
-        ],
-        "reason": "Renaming a storage location: the upstream PATCH exists (/api/v1/warehouses/{id}/storageLocations/{id}, answers 204) but the facade cannot address it — there is no detail read, so the location's warehouse has to be found by sweeping the list. Create is built and verified."
       }
     ],
     "StockTake": [
