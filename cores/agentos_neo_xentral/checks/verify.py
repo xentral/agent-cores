@@ -1038,11 +1038,15 @@ async def _verify_entity(
                 f"declared, but none of the {len(seen_records)} sampled records "
                 "carries a value — nothing proven either way"
             )
-    # The fields the consolidated search actually fans out over. A schema can flag a
-    # field `searchable` without it being in here — `search_fields()` only walks the
-    # top level, so every nested leaf is declared-but-unreachable. That gap is a real
-    # one and the probe must report it rather than paper over it.
-    fan_out_fields = set(getattr(adapter, "search_fields", lambda: ())())
+    # The fields a consolidated search actually reaches — the upstream's own set
+    # where it searches natively, the fan-out's otherwise. A schema can flag a field
+    # `searchable` without it being in either, and that gap is real: a declared leaf
+    # nothing searches is a promise the entity does not keep, so the probe reports it
+    # rather than papering over it.
+    searchable_fields = set(
+        getattr(adapter, "native_search_fields", ())
+        or getattr(adapter, "search_fields", lambda: ())()
+    )
 
     counts: dict[str, collections.Counter[str]] = {
         facet: collections.Counter() for facet in ("filter", "sort", "search", "update", "create")
@@ -1188,13 +1192,13 @@ async def _verify_entity(
             # use, so it says nothing about THIS field. Here the probe sends what
             # `build_field_query` builds and asserts the record the value came from
             # comes back.
-            if path not in fan_out_fields:
+            if path not in searchable_fields:
                 mark(
                     path,
                     "search",
                     False,
                     "declared searchable, but not part of this entity's search fan-out — "
-                    f"searchFields is {sorted(fan_out_fields) or 'empty'}, so a consolidated "
+                    f"searchFields is {sorted(searchable_fields) or 'empty'}, so a consolidated "
                     "search never looks at this field",
                 )
                 continue

@@ -74,6 +74,14 @@ def _address_props(*, vat_writable: bool = True) -> dict[str, Any]:
 
 
 class QuoteAdapter(FacadeAdapterBase):
+    native_search_fields = (
+        "number",
+        "dates.issued",
+        "billingAddress.name",
+        "billingAddress.email",
+        "billingAddress.zip",
+        "references.customerInquiryNumber",
+    )
     manifest = EmulationManifest(
         key="Quote",
         label_en="Quote",

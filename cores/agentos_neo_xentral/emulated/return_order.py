@@ -61,6 +61,14 @@ def _address_props() -> dict[str, Any]:
 
 
 class ReturnAdapter(FacadeAdapterBase):
+    native_search_fields = (
+        "number",
+        "dates.issued",
+        "billingAddress.name",
+        "billingAddress.email",
+        "billingAddress.zip",
+        "references.customerOrderNumber",
+    )
     manifest = EmulationManifest(
         key="Return",
         label_en="Return",
