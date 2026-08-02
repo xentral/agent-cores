@@ -2094,10 +2094,12 @@
           "read": "pass"
         },
         "clarification.needed": {
-          "read": "pass"
+          "read": "pass",
+          "update": "pass"
         },
         "clarification.reason": {
-          "read": "pass"
+          "read": "pass",
+          "update": "pass"
         },
         "costCenter": {
           "read": "unobserved",
@@ -2115,15 +2117,18 @@
         },
         "dates.invoiceDate": {
           "filter": "pass",
-          "read": "pass"
+          "read": "pass",
+          "update": "pass"
         },
         "dates.received": {
           "filter": "pass",
-          "read": "pass"
+          "read": "pass",
+          "update": "pass"
         },
         "dates.serviceDate": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 52 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 52 sampled records carries a value — nothing proven either way",
+          "updateNote": "no sample date value — not probed (a null date cannot be restored)"
         },
         "documents": {
           "read": "pass"
@@ -2222,12 +2227,14 @@
           "readNote": "declared, but none of the 52 sampled records carries a value — nothing proven either way"
         },
         "references.externalReference": {
-          "read": "pass"
+          "read": "pass",
+          "update": "pass"
         },
         "references.supplierInvoiceNumber": {
           "filter": "pass",
           "read": "pass",
-          "search": "pass"
+          "search": "pass",
+          "update": "pass"
         },
         "status": {
           "read": "pass"
@@ -2260,7 +2267,7 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-02T14:51:51+00:00"
+      "probedAt": "2026-08-02T15:02:40+00:00"
     },
     "PurchaseOrder": {
       "actions": {
@@ -5088,7 +5095,7 @@
       "probedAt": "2026-08-02T10:17:04+00:00"
     }
   },
-  "generatedAt": "2026-08-02T14:51:51+00:00",
+  "generatedAt": "2026-08-02T15:02:40+00:00",
   "instance": "a2ad4180-0d41-4360-8044-9dca0c35608a",
   "schemaVersion": 2
 }
