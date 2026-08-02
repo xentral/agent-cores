@@ -640,14 +640,59 @@ class FacadeAdapterBase:
 
         ``searchable`` keys are allowed through: the consolidated search fans out
         over exactly those, and it calls back into this method.
+
+        The ``search`` key itself is exempt only where that fan-out EXISTS. An
+        entity with no searchable field never intercepts the key (``request``
+        checks ``search_fields()`` before fanning out), so an exemption would hand
+        ``search`` straight to the upstream as an undeclared filter — the trap
+        above, reached through the one key that was allowed to skip the guard.
+        Most of this core is in that position: 31 of 47 adapters declare no
+        searchable field.
         """
         allowed = self._filterable_keys() | set(self.search_fields())
+        exempt = {"search"} if self.search_fields() else set()
         sent = {
             v
             for k, v in query
-            if k.startswith("filter[") and k.endswith("][key]") and v != "search"
+            if k.startswith("filter[") and k.endswith("][key]") and v not in exempt
         }
         return sorted(sent - allowed)
+
+    def refuse_undeclared_filters(self, query: list[tuple[str, str]]) -> AdapterResponse | None:
+        """The 422 for an undeclared filter key, or ``None`` when the query is clean.
+
+        Public because an adapter that overrides ``request`` for its list path
+        builds its own upstream call and would otherwise skip the guard entirely —
+        which is how ``TaxRate`` and ``TextTemplate`` kept forwarding (and silently
+        DROPPING) unknown keys. Call this before building that call.
+        """
+        refused = self._undeclared_filter_keys(query)
+        if not refused:
+            return None
+        detail = (
+            "This entity does not filter on "
+            f"{', '.join(refused)}. Some upstream list endpoints "
+            "IGNORE an unknown filter and answer 200 with the "
+            "unfiltered collection, which reads as a filtered "
+            "result — so an undeclared key is refused here instead "
+            "of being passed on."
+        )
+        if "search" in refused:
+            detail += (
+                " `search` is refused because this entity declares no searchable "
+                "field: there is nothing to fan out over, so the key would reach "
+                "the upstream as an undeclared filter. See `searchFields` in the "
+                "entity metadata for the entities that do support it."
+            )
+        return self._json(
+            422,
+            {
+                "title": f"{self.manifest.key}: filter(s) not supported",
+                "detail": detail,
+                "filterable": sorted(self._filterable_keys()),
+                "searchable": sorted(self.search_fields()),
+            },
+        )
 
     def search_fields(self) -> tuple[str, ...]:
         """MODEL fields flagged ``searchable`` in the entity's schema — the
@@ -1072,27 +1117,14 @@ class FacadeAdapterBase:
             )
         # Consolidated `search` — the upstream has no cross-field search key
         # (it would 400 as "filter `search` not allowed"), so fan out over the
-        # schema's `searchable` fields and merge. Only intercepts when the
-        # entity declares fields; the metadata advertises `searchFields`, so
-        # well-behaved consumers never send `search` to an entity without them.
+        # schema's `searchable` fields and merge. Only intercepts when the entity
+        # declares such fields; where it declares none the key is refused by the
+        # guard below rather than forwarded, because the metadata advertising
+        # `searchFields` turned out not to be enough to keep callers away.
         if handle is None:
-            refused = self._undeclared_filter_keys(query)
-            if refused:
-                return self._json(
-                    422,
-                    {
-                        "title": f"{self.manifest.key}: filter(s) not supported",
-                        "detail": (
-                            "This entity does not filter on "
-                            f"{', '.join(refused)}. Some upstream list endpoints "
-                            "IGNORE an unknown filter and answer 200 with the "
-                            "unfiltered collection, which reads as a filtered "
-                            "result — so an undeclared key is refused here instead "
-                            "of being passed on."
-                        ),
-                        "filterable": sorted(self._filterable_keys()),
-                    },
-                )
+            refusal = self.refuse_undeclared_filters(query)
+            if refusal is not None:
+                return refusal
             hit = extract_search(query)
             if hit is not None and self.search_fields():
                 value, op = hit
@@ -1993,7 +2025,6 @@ def _flatten_paths(obj: Any, prefix: str = "") -> list[str]:
 # drafts, and every `done` return read as still requested. The verify run reads and
 # clears this per entity; nothing else consumes it.
 STATUS_FALLBACKS: set[tuple[str, str]] = set()
-
 
 
 def custom_fields_to_v3(value: Any) -> list[dict[str, Any]] | None:

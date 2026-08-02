@@ -18,7 +18,11 @@ import json
 import httpx
 
 from xentral_entity_cores.agentos_neo_xentral.emulated.product import ProductAdapter
-from xentral_entity_cores.agentos_neo_xentral.emulated.settings import MerchandiseGroupAdapter
+from xentral_entity_cores.agentos_neo_xentral.emulated.settings import (
+    MerchandiseGroupAdapter,
+    TaxRateAdapter,
+    TextTemplateAdapter,
+)
 
 
 def _no_upstream(request: httpx.Request) -> httpx.Response:
@@ -97,3 +101,53 @@ def test_the_search_key_is_not_treated_as_a_filter():
 
     resp = _list(ProductAdapter(), _f("search", "Zelt"), handler)
     assert resp.status_code == 200
+
+
+def test_search_does_not_leak_upstream_when_there_is_nothing_to_fan_out_over():
+    """The exemption that lets `search` skip the guard is only safe where a fan-out
+    consumes the key. MerchandiseGroup declares no searchable field, so `request`
+    never intercepts — and the exemption used to hand `search` to the upstream as an
+    undeclared filter, through the one endpoint family measured to answer 200 with
+    the whole collection. `_no_upstream` fails the test if anything is forwarded."""
+    assert MerchandiseGroupAdapter().search_fields() == ()
+    resp = _list(MerchandiseGroupAdapter(), _f("search", "Handelsware"))
+    assert resp.status_code == 422
+    body = json.loads(resp.content)
+    assert "searchable field" in body["detail"]
+    assert body["searchable"] == []  # the answer says why, not just that
+
+
+def test_an_adapter_that_overrides_the_list_path_still_guards():
+    """TaxRate builds its own upstream call, so the base class's guard never runs
+    for it — and its alias loop silently DROPS a key it has no alias for, which
+    answers 200 with an unfiltered collection. Both it and TextTemplate (which
+    applies no filter at all) must refuse instead of forwarding."""
+    for adapter in (TaxRateAdapter(), TextTemplateAdapter()):
+        resp = _list(adapter, _f("nonsense", "1"))
+        assert resp.status_code == 422, adapter.manifest.key
+        assert "nonsense" in json.loads(resp.content)["detail"]
+
+
+def test_the_overriding_adapters_still_honour_a_declared_filter():
+    """The guard must not cost them the filtering they really do — TaxRate resolves
+    `country` itself rather than passing it on, so a refusal here would be a
+    regression, not a fix."""
+    seen: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(str(request.url))
+        return httpx.Response(200, json={"data": [], "meta": {"total": 0}})
+
+    resp = _list(TaxRateAdapter(), _f("country", "AT"), handler)
+    assert resp.status_code == 200
+    assert seen and "/AT" in seen[0]
+
+
+def test_a_searchable_entity_still_advertises_its_fan_out_on_refusal():
+    """The refusal payload names both contracts, so a caller that guessed wrong on
+    one can see the other without a second round-trip."""
+    resp = _list(ProductAdapter(), _f("nonsense", "1"))
+    assert resp.status_code == 422
+    body = json.loads(resp.content)
+    assert body["searchable"] == ["name", "number"]
+    assert "searchable field" not in body["detail"]  # search was not the problem
