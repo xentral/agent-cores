@@ -13,10 +13,12 @@ multi-supplier sourcing, which is what the wish is about, has no write path at
 all; retiring it on the flag would erase a real gap. A recorded `pass` cannot be
 argued with: something wrote the value and read it back.
 
-`read` is excluded from that evidence. verify.py stamps `read: pass` on every
-declared path whether or not the instance carried a value, so it says "the schema
-has this field", not "upstream supplies it" — which is exactly what a read wish
-disputes. Taking it as proof retired 50 legitimate wishes in one run.
+Which verdicts count as that proof used to be a hand-maintained allowlist of
+facets, because the probe stamped `read: pass` on every declared path whether or
+not the instance carried a value — taking that as proof retired 50 legitimate
+wishes in one run. The weak claims now say so in the verdict itself, so the rule is
+`is_proven` and nothing else: `accepted`, `unobserved`, `executed` and `reachable`
+retire nothing, whichever facet they sit on.
 
 The other half: a wish for a field the schema does not have (`items.totals.tax`,
 `contacts.address`) had no row to colour and vanished from every view. Those are
@@ -32,6 +34,7 @@ import pytest
 from xentral_entity_cores.agentos_neo_xentral.emulated.product import ProductAdapter
 from xentral_entity_cores.agentos_neo_xentral.emulated.quote import QuoteAdapter
 from xentral_entity_cores.agentos_neo_xentral.manifest import CORE
+from xentral_entity_cores.agentos_neo_xentral.verdicts import PROVEN, VERDICTS, is_proven
 
 
 class _Adapter(QuoteAdapter):
@@ -47,14 +50,12 @@ class _Adapter(QuoteAdapter):
         return self._wishes
 
     def _proven(self, field: str, op: str) -> bool:
-        from xentral_entity_cores.agentos_neo_xentral.emulated.base import _EARNED_VERDICTS
-
-        if op not in _EARNED_VERDICTS:
-            return False
-        if (self._verified.get(field) or {}).get(op) == "pass":
+        """Mirrors the real rule against injected data — it must not restate it, or
+        the test would keep passing after the rule changed underneath it."""
+        if is_proven((self._verified.get(field) or {}).get(op)):
             return True
         return any(
-            p.startswith(f"{field}.") and (f or {}).get(op) == "pass"
+            p.startswith(f"{field}.") and is_proven((f or {}).get(op))
             for p, f in self._verified.items()
         )
 
@@ -75,7 +76,7 @@ def test_an_unproven_wish_still_renders() -> None:
 
 def test_a_proven_op_is_not_stamped() -> None:
     """Otherwise the blue cell buries the green one underneath it."""
-    a = _Adapter(WISH, {"texts.intro": {"update": "pass"}})
+    a = _Adapter(WISH, {"texts.intro": {"update": PROVEN}})
     assert _priority(a, "texts.intro") is None
 
 
@@ -88,30 +89,43 @@ def test_a_failed_probe_leaves_the_wish_alone() -> None:
 def test_only_the_proven_op_is_dropped() -> None:
     a = _Adapter(
         {"texts.intro": {"create": "nope", "update": "nope"}},
-        {"texts.intro": {"update": "pass"}},
+        {"texts.intro": {"update": PROVEN}},
     )
     assert _priority(a, "texts.intro") == {"create": "nope"}
 
 
-def test_a_read_pass_is_no_proof() -> None:
-    """verify.py marks every declared path read-pass by construction."""
+@pytest.mark.parametrize("weak", sorted(VERDICTS - {PROVEN}))
+@pytest.mark.parametrize("op", ["read", "create", "update", "filter", "sort", "search"])
+def test_no_weak_verdict_retires_a_wish(op: str, weak: str) -> None:
+    """The rule this file exists for, stated once over the whole vocabulary rather
+    than per facet. A weak verdict says the probe could not assert the claim — the
+    previous design let three of those (`read` before the allowlist, then `search`
+    and `sort` after it) delete hand-written backlog entries."""
+    a = _Adapter({"texts.intro": {op: "upstream cannot"}}, {"texts.intro": {op: weak}})
+    assert _priority(a, "texts.intro") == {op: "upstream cannot"}
+
+
+def test_an_observed_read_now_does_retire_a_read_wish() -> None:
+    """The flip side, and the reason the allowlist could go: `read: pass` no longer
+    means "the schema declares it" but "a real record carried a value" — which is
+    exactly what a read wish disputes, so it must count."""
     a = _Adapter(
-        {"texts.intro": {"read": "upstream never fills this"}}, {"texts.intro": {"read": "pass"}}
+        {"texts.intro": {"read": "upstream never fills this"}}, {"texts.intro": {"read": PROVEN}}
     )
-    assert _priority(a, "texts.intro") == {"read": "upstream never fills this"}
+    assert _priority(a, "texts.intro") is None
 
 
 def test_a_container_counts_a_proven_leaf() -> None:
     """`items` is editable exactly when a line field has been shown to update."""
     a = _Adapter(
-        {"items": {"update": "no line-item write path"}}, {"items.description": {"update": "pass"}}
+        {"items": {"update": "no line-item write path"}}, {"items.description": {"update": PROVEN}}
     )
     assert _priority(a, "items") is None
 
 
 def test_the_reporter_names_what_the_stamp_skipped() -> None:
     """Dropping it from the view silently would be the same failure in reverse."""
-    a = _Adapter(WISH, {"texts.intro": {"update": "pass"}})
+    a = _Adapter(WISH, {"texts.intro": {"update": PROVEN}})
     assert a.obsolete_wishes() == [{"field": "texts.intro", "ops": ["update"]}]
 
 

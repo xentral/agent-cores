@@ -85,6 +85,7 @@ except Exception:  # noqa: BLE001, S110 — env file is optional; config may com
 
 from ..emulated.base import STATUS_FALLBACKS
 from ..manifest import CORE
+from ..verdicts import PROVEN
 
 _INSTANCE = os.environ.get("DUMP_INSTANCE", "a2ad4180-0d41-4360-8044-9dca0c35608a")
 # Actions + process steps EXECUTE real upstream operations on the sampled record
@@ -142,6 +143,9 @@ _MASTER_CREATE = {
     "language": "EN",
 }
 # Search fixture values for fields no sampled record carries.
+# Kept for the rebuilt search probe: values for fields no sampled record carries, so
+# a search can still be exercised. Unused while the search probe is withdrawn (it
+# measured the wrong contract — see the `searchable` branch in _verify_entity).
 _SEARCH_FIXTURES = {"vatId": "DE123456789", "ean": "4001234567890"}
 # Documents that take a create probe (minimal partner + note, then DELETE).
 _CREATE_PARTNER = {
@@ -728,7 +732,14 @@ async def _verify_entity(
     if st != 200 or not rows:
         return None, f"read {st}, {len(rows)} rows — left untested"
     schema = adapter.fields()
-    fields: dict[str, dict[str, Any]] = {pth: {"read": "pass"} for pth in _field_paths(schema)}
+    # `unobserved`, not `pass`: this stamps every path the SCHEMA declares, before
+    # any payload has been looked at. It says "the core declares this field", never
+    # "upstream supplies it" — and for 1218 paths it was recorded as proof. Checking
+    # the fetched rows for an actual value is the next change; until then no path
+    # may claim more than that it was declared.
+    fields: dict[str, dict[str, Any]] = {
+        pth: {"read": "unobserved"} for pth in _field_paths(schema)
+    }
 
     # A status value the entity's map does not know is reported as the entity's
     # default — silently. This scan exists to catch that, and it reads its OWN wide
@@ -795,9 +806,18 @@ async def _verify_entity(
         "create": [0, 0],
     }
 
-    def mark(path: str, facet: str, ok: bool, note: str | None = None) -> None:
+    def mark(
+        path: str, facet: str, ok: bool, note: str | None = None, *, when_ok: str = PROVEN
+    ) -> None:
+        """``when_ok`` is what a success is WORTH, not merely that there was one.
+
+        `create`/`update` write a value, read it back and compare, so their success
+        is `pass`. `filter`/`sort` only look at the HTTP status today — an upstream
+        that ignores the key answers 200 with the unfiltered collection and would
+        grade green — so they pass `accepted` until the probe checks the effect.
+        """
         f = fields.setdefault(path, {})
-        f[facet] = "pass" if ok else "fail"
+        f[facet] = when_ok if ok else "fail"
         if note:
             f[f"{facet}Note"] = note[:300]
         elif not ok:
@@ -871,29 +891,29 @@ async def _verify_entity(
                     note = f"filter[{path}] {fst}: {_err(fpl)}"
                 elif len(candidates) > 1 and used != candidates[0]:
                     note = "accepts the date part only, not the full timestamp it returns on read"
-                mark(path, "filter", fst == 200, note)
+                mark(path, "filter", fst == 200, note, when_ok="accepted")
         if spec.get("sortable"):
             sst, spl = await p.req(query=[("page[size]", "5"), ("sort", f"-{path}")])
             mark(
-                path, "sort", sst == 200, None if sst == 200 else f"sort -{path} {sst}: {_err(spl)}"
+                path,
+                "sort",
+                sst == 200,
+                None if sst == 200 else f"sort -{path} {sst}: {_err(spl)}",
+                when_ok="accepted",
             )
         if spec.get("searchable"):
-            sval = val if isinstance(val, str) and val else None
-            fixture_used = False
-            if not sval:
-                sval = _SEARCH_FIXTURES.get(path.rsplit(".", 1)[-1])
-                fixture_used = sval is not None
-            if not sval:
-                fields.setdefault(path, {})["searchNote"] = (
-                    "no sample text value — search not probed"
-                )
-                continue
-            sst, spl = await p.req(query=[("page[size]", "5"), ("search", sval[:40])])
-            mark(path, "search", sst == 200, None if sst == 200 else f"search {sst}: {_err(spl)}")
-            if fixture_used and sst == 200:
-                fields[path]["searchNote"] = (
-                    "probed with a fixture value — no sampled record carries this field"
-                )
+            # No verdict: this probe measured the wrong thing. It sent a bare
+            # `search` query param, but the facade recognises a search only as
+            # `filter[i][key]=search` — so `extract_search` returned None, the
+            # fan-out never ran, and the param went to the upstream verbatim. A 200
+            # meant "the upstream tolerated an unknown query param", which says
+            # nothing about whether this field is searchable. Rebuilding it on the
+            # real contract (and asserting the anchor record comes back) is the next
+            # change; until then the honest record is silence plus the reason.
+            fields.setdefault(path, {})["searchNote"] = (
+                "not probed — the previous probe bypassed the facade's search "
+                "contract, so its results were withdrawn rather than downgraded"
+            )
 
     # update roundtrip (net-zero) on EVERY updatable scalar leaf (top-level and
     # nested: texts.intro, dates.issued, billingAddress.street …). Address parents
@@ -1441,10 +1461,13 @@ async def _verify_entity(
                 note_map[akey] = note[:300]
             act_counts[0 if status == "pass" else 1] += 1
 
+    # filter/sort are counted as accepted, not passed — the ✓ means the request went
+    # through, not that the effect was checked. `search` is absent rather than 0✓/0✗:
+    # a zero would read as "probed, nothing worked".
     summary = (
-        f"read {len(rows)} rows | filter {counts['filter'][0]}✓/{counts['filter'][1]}✗ | "
-        f"sort {counts['sort'][0]}✓/{counts['sort'][1]}✗ | "
-        f"search {counts['search'][0]}✓/{counts['search'][1]}✗ | "
+        f"read {len(rows)} rows | filter {counts['filter'][0]}~/{counts['filter'][1]}✗ | "
+        f"sort {counts['sort'][0]}~/{counts['sort'][1]}✗ | "
+        f"search not probed | "
         f"update {counts['update'][0]}✓/{counts['update'][1]}✗ | "
         f"create {counts['create'][0]}✓/{counts['create'][1]}✗"
     )
@@ -1566,7 +1589,12 @@ async def _main() -> None:
                 if merged_notes:
                     result[note_key] = merged_notes
             entities[key] = result
-    out = {"generatedAt": _stamp(), "instance": _INSTANCE, "entities": entities}
+    out = {
+        "generatedAt": _stamp(),
+        "instance": _INSTANCE,
+        "schemaVersion": 2,
+        "entities": entities,
+    }
     with open(path, "w", encoding="utf-8") as fh:  # noqa: ASYNC230 - one-shot generator
         json.dump(out, fh, ensure_ascii=False, indent=2, sort_keys=True)
         fh.write("\n")

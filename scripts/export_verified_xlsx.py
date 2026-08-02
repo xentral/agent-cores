@@ -12,14 +12,23 @@ offline read of the checked-in files.
 
 Cell vocabulary, per field × facet:
 
-    ok       the facet was probed and passed
+    ok       the capability ITSELF was demonstrated — a value observed, a write
+             read back, an action's effect seen
+    schwach  probed, but the claim could not be asserted: an HTTP 200 with nothing
+             checked beyond the status, a declared field no record carried a value
+             for, an action that ran without its effect being read back
     FEHLER   probed and failed — the note says why
-    offen    the core declares the facet, but no run has proven it
+    offen    the core declares the facet, but no run has looked at it
     –        the schema does not declare the facet for this field (not applicable)
     Wunsch   a blue wish: declared as not-possible, with a reason
 
-That distinction is the point of the sheet. "offen" and "–" look the same in the
-JSON (both absent) and mean opposite things.
+Those distinctions are the point of the sheet. "offen" and "–" look the same in the
+JSON (both absent) and mean opposite things; and "schwach" used to be painted "ok",
+which is how 1218 read cells and 34 of 62 action cells came to claim a capability
+nobody had shown. See `cores/agentos_neo_xentral/verdicts.py` for the vocabulary.
+
+"schwach" is not automatically a to-do. Some of it is the final answer: `send`
+mails a real customer, so its effect cannot be verified on a live tenant.
 
 Run (openpyxl is deliberately not a repo dependency — supplied per call, like the
 test runs supply pytest):
@@ -55,6 +64,11 @@ from openpyxl import Workbook  # noqa: E402
 from openpyxl.styles import Alignment, Font, PatternFill  # noqa: E402
 from openpyxl.utils import get_column_letter  # noqa: E402
 
+from xentral_entity_cores.agentos_neo_xentral.verdicts import (  # noqa: E402
+    VERDICTS,
+    is_proven,
+)
+
 # The facet vocabulary the runner records, in the order the backend surfaces it
 # (entity_registry/verification.py::CAPABILITY_FACETS).
 FACETS = ("read", "create", "update", "filter", "sort", "search")
@@ -70,10 +84,17 @@ _FLAG = {
 }
 
 OK, FAIL, OPEN, NA, WISH = "ok", "FEHLER", "offen", "–", "Wunsch"
+# Probed, but the run could not assert the claim itself: an HTTP 200 with nothing
+# checked beyond the status, a declared field no record carried a value for, an
+# action that ran without its effect being read back. Neither green nor a defect —
+# for some of them (`send` mails a real customer) it is the final answer, not a
+# to-do. Distinct from `offen`, which means no run has looked at all.
+WEAK = "schwach"
 
 _FILL = {
     OK: PatternFill("solid", fgColor="C6E0B4"),
     FAIL: PatternFill("solid", fgColor="F4B183"),
+    WEAK: PatternFill("solid", fgColor="FFE699"),
     OPEN: PatternFill("solid", fgColor="EDEDED"),
     NA: PatternFill("solid", fgColor="FFFFFF"),
     WISH: PatternFill("solid", fgColor="BDD7EE"),
@@ -91,10 +112,14 @@ def _cell(spec: dict[str, Any], facet: str) -> tuple[str, str | None]:
     verified = spec.get("verified") or {}
     note = verified.get(f"{facet}Note")
     verdict = verified.get(facet)
-    if verdict == "pass":
+    if is_proven(verdict):
         return OK, note
     if verdict == "fail":
         return FAIL, note or "probe failed"
+    if verdict in VERDICTS:
+        # Probed, but the claim was not asserted. The note carries which of the
+        # weak verdicts it was and why, so it is never dropped here.
+        return WEAK, note or verdict
     flag = _FLAG.get(facet)
     if flag and not spec.get(flag):
         # Not declared for this field — asking whether it was tested is meaningless.
@@ -102,6 +127,30 @@ def _cell(spec: dict[str, Any], facet: str) -> tuple[str, str | None]:
         # for a facet it considered applicable, so it means the schema has since
         # dropped the flag and the manifest is stale on that cell.
         return NA, (f"veraltet? {note}" if note else None)
+    return OPEN, note
+
+
+def _status(entry: dict[str, Any]) -> tuple[str, str | None]:
+    """One action or process-step command → (cell value, note).
+
+    The action twin of `_cell`. Module level rather than a closure so the two can be
+    tested against the same vocabulary — they drifted once already, and the drift is
+    invisible in the sheet.
+    """
+    if entry.get("wish"):
+        return WISH, entry["wish"]
+    verified = entry.get("verified") or {}
+    v = verified.get("status")
+    # The note is what separates "we ran it and saw the effect" from "the route
+    # refused our empty probe". Dropping it made 34 of 62 action cells read as proof
+    # of a capability that was never exercised.
+    note = verified.get("note")
+    if is_proven(v):
+        return OK, note
+    if v == "fail":
+        return FAIL, note
+    if v in VERDICTS:
+        return WEAK, note or v
     return OPEN, note
 
 
@@ -128,7 +177,6 @@ def _walk(props: Any, prefix: str = "") -> list[tuple[str, dict[str, Any]]]:
 _BAD_TITLE = re.compile(r"[\[\]:*?/\\]")
 
 
-
 def _when(stamp: Any) -> str:
     """An ISO stamp as `YYYY-MM-DD HH:MM`, empty when never measured.
 
@@ -142,7 +190,6 @@ def _when(stamp: Any) -> str:
         return dt.datetime.fromisoformat(stamp).strftime("%Y-%m-%d %H:%M")
     except ValueError:
         return stamp[:16]
-
 
 
 def _action_when(manifest: dict[str, Any], key: str, verdicts: int) -> str:
@@ -197,7 +244,7 @@ def _entity_sheet(
     ws.freeze_panes = "A5"
 
     props = (meta.get("rootNode") or {}).get("properties") or {}
-    tally = {v: 0 for v in (OK, FAIL, OPEN, NA, WISH)}
+    tally = {v: 0 for v in (OK, WEAK, FAIL, OPEN, NA, WISH)}
     row = 5
     for path, spec in _walk(props):
         notes: list[str] = []
@@ -238,16 +285,6 @@ def _entity_sheet(
             ws.cell(row=r, column=1, value="(keine)")
             r += 1
         return r + 1
-
-    def _status(entry: dict[str, Any]) -> tuple[str, str | None]:
-        if entry.get("wish"):
-            return WISH, entry["wish"]
-        v = (entry.get("verified") or {}).get("status")
-        if v == "pass":
-            return OK, None
-        if v == "fail":
-            return FAIL, None
-        return OPEN, None
 
     act_rows = []
     for a in meta.get("actions") or []:
@@ -358,7 +395,11 @@ def main(core_id: str = "agentos_neo_xentral") -> int:
         row=4,
         column=1,
         value=(
-            "ok = geprüft und bestanden · FEHLER = geprüft und fehlgeschlagen · "
+            "ok = die Fähigkeit selbst wurde nachgewiesen · "
+            "schwach = geprüft, aber der Nachweis blieb aus (HTTP 200 ohne Wirkungs"
+            "prüfung, Feld nie befüllt gesehen, Action ohne Effektkontrolle) — bei "
+            "manchen, z. B. send, ist das die endgültige Antwort · "
+            "FEHLER = geprüft und fehlgeschlagen · "
             "offen = deklariert, aber ungeprüft · – = laut Schema nicht anwendbar · "
             "Wunsch = bewusst nicht möglich (priorities.json)"
         ),
@@ -369,6 +410,7 @@ def main(core_id: str = "agentos_neo_xentral") -> int:
         "Tab",
         "Felder",
         "ok",
+        "schwach",
         "FEHLER",
         "offen",
         "–",
@@ -391,6 +433,7 @@ def main(core_id: str = "agentos_neo_xentral") -> int:
                 title,
                 stats["fields"],
                 t[OK],
+                t[WEAK],
                 t[FAIL],
                 t[OPEN],
                 t[NA],
@@ -404,10 +447,10 @@ def main(core_id: str = "agentos_neo_xentral") -> int:
         ):
             overview.cell(row=r, column=ci, value=v)
         r += 1
-    overview.auto_filter.ref = f"A6:J{max(r - 1, 6)}"
+    overview.auto_filter.ref = f"A6:K{max(r - 1, 6)}"
     _autosize(
         overview,
-        {1: 28, 2: 28, 3: 9, 4: 8, 5: 9, 6: 8, 7: 6, 8: 9, 9: 20, 10: 20, 11: 17, 12: 17},
+        {1: 28, 2: 28, 3: 9, 4: 8, 5: 10, 6: 9, 7: 8, 8: 6, 9: 9, 10: 20, 11: 20, 12: 17, 13: 17},
     )
 
     out = _CORES / core_id / "verified.xlsx"

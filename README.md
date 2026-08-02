@@ -59,6 +59,21 @@ PYTHONPATH=<agent-os>/backend \
 *absent* from the JSON and mean opposite things — telling them apart is the point
 of the sheet. Regenerate it after every `checks/verify.py` run.
 
+A cell says how strongly the capability was shown, not merely that a request
+succeeded. `cores/agentos_neo_xentral/verdicts.py` defines the words:
+
+| cell | meaning |
+| --- | --- |
+| `ok` | the capability itself was demonstrated — a value observed, a write read back, an action's effect seen |
+| `schwach` | probed, but the claim could not be asserted: HTTP 200 with nothing checked beyond the status, a declared field no record carried a value for, an action that ran without its effect being read back |
+| `FEHLER` | probed and failed; the note says why |
+| `offen` | declared, but no run has looked at it |
+| `–` | not applicable per the schema |
+| `Wunsch` | deliberately not possible (`priorities.json`), with a reason |
+
+`schwach` is not automatically a to-do. For some entries it is the final answer:
+`send` mails a real customer, so its effect cannot be verified on a live tenant.
+
 ## Local development
 
 The backend's `make sync-cores` downloads a pinned tag into
