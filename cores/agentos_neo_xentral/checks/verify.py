@@ -66,6 +66,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+from datetime import datetime, UTC
 import secrets
 from typing import Any
 
@@ -330,6 +331,11 @@ def _numeric_string_toggle(orig: Any) -> str | None:
         return None
     decimals = len(orig.partition(".")[2]) if "." in orig else 0
     return f"{value + 1:.{decimals}f}"
+
+
+def _stamp() -> str:
+    """UTC, seconds — one shape for every timestamp this file writes."""
+    return datetime.now(UTC).replace(microsecond=0).isoformat()
 
 
 def _cmp(kind: str, got: Any, want: Any) -> bool:
@@ -1445,7 +1451,13 @@ async def _verify_entity(
     if _PROBE_ACTIONS:
         summary += f" | actions/steps {act_counts[0]}✓/{act_counts[1]}✗"
 
-    result: dict[str, Any] = {"fields": fields}
+    # When these numbers were taken. Without it the workbook can only show the
+    # file's mtime, which after a fresh clone is the checkout time — and a manifest
+    # assembled from many scoped runs has no single age anyway: the seven sales
+    # documents were re-probed weeks after the rest.
+    result: dict[str, Any] = {"probedAt": _stamp(), "fields": fields}
+    if actions_res or steps_res:
+        result["actionsProbedAt"] = _stamp()
     if actions_res:
         result["actions"] = actions_res
         if actions_notes:
@@ -1514,6 +1526,15 @@ async def _main() -> None:
             print(f"  {key}: probe crashed: {exc}")
             continue
         print(f"  {key}: {summary}")
+        if not result and key in previous:
+            # Unreadable today (a 404/405/422 on the test instance, or a hiccup) —
+            # keep what an earlier run measured instead of deleting it. The block
+            # carries its own probedAt, so the workbook shows its true age rather
+            # than passing it off as fresh.
+            entities[key] = previous[key]
+            print(
+                f"  {key}: kept the previous result (probed {previous[key].get('probedAt', '?')})"
+            )
         if result:
             # A run that did not probe actions/steps must not delete the verdicts a
             # run that did left behind. Re-probing Quote for a field fix silently
@@ -1525,6 +1546,8 @@ async def _main() -> None:
             # was measured would delete the rest. Measured while building the
             # narrow filter: SalesOrder went from six verdicts to one.
             before = previous.get(key) or {}
+            if "actionsProbedAt" not in result and "actionsProbedAt" in before:
+                result["actionsProbedAt"] = before["actionsProbedAt"]
             for res_key, note_key in (
                 ("actions", "actionsNotes"),
                 ("processSteps", "processStepsNotes"),
@@ -1543,7 +1566,7 @@ async def _main() -> None:
                 if merged_notes:
                     result[note_key] = merged_notes
             entities[key] = result
-    out = {"generatedAt": None, "instance": _INSTANCE, "entities": entities}
+    out = {"generatedAt": _stamp(), "instance": _INSTANCE, "entities": entities}
     with open(path, "w", encoding="utf-8") as fh:  # noqa: ASYNC230 - one-shot generator
         json.dump(out, fh, ensure_ascii=False, indent=2, sort_keys=True)
         fh.write("\n")
