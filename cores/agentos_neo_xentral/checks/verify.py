@@ -1178,9 +1178,16 @@ async def _verify_entity(
             # The facade recognises a search only as `filter[i][key]=search`, and
             # fans it out over `search_fields()` as a per-field `contains` filter.
             # The old probe sent a bare `?search=` param, which reaches none of that
-            # and went to the upstream verbatim — a 200 meant "the upstream tolerated
-            # an unknown query param". Here the probe sends what `build_field_query`
-            # builds, and asserts the record the value came from comes back.
+            # and went to the upstream verbatim. What that proved depends on the
+            # endpoint, and the earlier note here got it wrong by generalising:
+            # v3 has a NATIVE `?search=` on the nine document endpoints, so those
+            # 200s were a real search — while on customers/suppliers/products the
+            # parameter is silently ignored (measured: `?search=nonsense` answers 200
+            # with all 20128 customers), so those 200s proved nothing at all. Either
+            # way it was measuring the upstream rather than the contract consumers
+            # use, so it says nothing about THIS field. Here the probe sends what
+            # `build_field_query` builds and asserts the record the value came from
+            # comes back.
             if path not in fan_out_fields:
                 mark(
                     path,

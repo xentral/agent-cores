@@ -1175,12 +1175,30 @@ class FacadeAdapterBase:
             return await self._write(
                 method, handle, query, body, base_url, token, accept_language, client
             )
-        # Consolidated `search` — the upstream has no cross-field search key
-        # (it would 400 as "filter `search` not allowed"), so fan out over the
-        # schema's `searchable` fields and merge. Only intercepts when the entity
-        # declares such fields; where it declares none the key is refused by the
-        # guard below rather than forwarded, because the metadata advertising
-        # `searchFields` turned out not to be enough to keep callers away.
+        # Consolidated `search` — fan out over the schema's `searchable` fields and
+        # merge. Only intercepts when the entity declares such fields.
+        #
+        # This used to say the upstream has no cross-field search key and "would 400
+        # as filter `search` not allowed". Both halves are wrong, checked against
+        # schemas/openapi/documents.yml and measured on mvp:
+        #   * v3 DOES have a native `?search=` on nine document endpoints
+        #     (creditNotes, deliveryNotes, invoices, offers, productions,
+        #     proformaInvoices, purchaseOrders, returnOrders, salesOrders), covering
+        #     9-14 fields each — id, documentNumber, documentAddress.name/email/
+        #     zipCode, customerNumber, customerOrderNumber, …
+        #   * where it does NOT exist (customers, suppliers, products) the parameter
+        #     is not refused but SILENTLY IGNORED: `?search=nonsense` on customers
+        #     answers 200 with all 20128 rows.
+        # So the fan-out is right for partners and products, and strictly worse than
+        # the native call for documents: our document adapters search `number` alone,
+        # and a sales-order search for the customer's name finds 0 where the native
+        # one finds 14. Switching documents over is a separate change.
+        #
+        # Where the entity declares NO searchable fields the key is REFUSED by the
+        # guard below rather than forwarded: advertising `searchFields` in the
+        # metadata turned out not to be enough to keep callers away, and a
+        # forwarded `search` is silently ignored upstream (see above), which a
+        # caller reads as an unfiltered list being a search result.
         if handle is None:
             refusal = self.refuse_undeclared_filters(query)
             if refusal is not None:
