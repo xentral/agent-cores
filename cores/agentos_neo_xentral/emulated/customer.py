@@ -14,7 +14,17 @@ import httpx
 
 from entity_registry.core_sdk import EmulationManifest
 
-from .base import _TIMEOUT, RO, FacadeAdapterBase, map_tags, prop, ref, tags_prop, tags_to_v3
+from .base import (
+    _TIMEOUT,
+    RO,
+    FacadeAdapterBase,
+    custom_fields_to_v3,
+    map_tags,
+    prop,
+    ref,
+    tags_prop,
+    tags_to_v3,
+)
 from .partner_subresources import (
     PartnerSubresourcesMixin,
     addresses_from_include,
@@ -429,24 +439,6 @@ class CustomerAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
         return {"id": ident.split("_", 1)[1] if "_" in ident else ident}
 
     @staticmethod
-    def _custom_fields_to_v3(value: Any) -> list[dict[str, Any]] | None:
-        """Model free-field rows → the v3 ``customFields`` body. ``key`` and ``value``
-        come from the caller; ``label`` is required upstream, so a row without one is
-        refused rather than sent to earn a 400 the caller cannot read. ``type`` is
-        upstream's and never echoed back. None = the whole value is unusable."""
-        if not isinstance(value, list):
-            return None
-        out: list[dict[str, Any]] = []
-        for row in value:
-            if not isinstance(row, dict):
-                return None
-            key, label = row.get("key"), row.get("label")
-            if not key or not label:
-                return None
-            out.append({"key": key, "label": label, "value": row.get("value")})
-        return out
-
-    @staticmethod
     def _addr_to_v3(a: dict[str, Any] | None) -> dict[str, Any]:
         a = a or {}
         return {
@@ -516,7 +508,7 @@ class CustomerAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
         if "notes" in model:
             v3["notes"] = model["notes"]
         if "customFields" in model:
-            cfs = self._custom_fields_to_v3(model["customFields"])
+            cfs = custom_fields_to_v3(model["customFields"])
             if cfs is None:
                 rejected.add("customFields")
             elif cfs:
