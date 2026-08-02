@@ -23,6 +23,7 @@ import os
 import re
 from collections.abc import Callable, Iterator
 from decimal import Decimal, InvalidOperation
+from urllib.parse import unquote
 from typing import Any
 
 import httpx
@@ -104,6 +105,28 @@ def eid(prefix: str, numeric: Any) -> str | None:
     if numeric in (None, ""):
         return None
     return f"{prefix}{numeric}"
+
+
+def id_from_location(location: str | None) -> str | None:
+    """The new record's id out of a ``Location`` header, in the two shapes upstream
+    actually uses.
+
+    v2 products answer ``…/api/v2/products/61997`` — the id is the last segment.
+    v1 warehouses answer ``…/api/warehouses?filter[0][key]=id&filter[0][op]=equals
+    &filter[0][value]=43`` — a QUERY that finds the record rather than a link to it.
+    Both are a 201 with an empty body, so without this the create flow has nothing
+    to read back and the caller gets a success with no id.
+    """
+    if not location:
+        return None
+    head, _, query = location.partition("?")
+    if query:
+        for part in query.split("&"):
+            key, _, value = part.partition("=")
+            if key.endswith("[value]") and value:
+                return unquote(value)
+    tail = head.rstrip("/").rsplit("/", 1)[-1]
+    return tail or None
 
 
 def ref(
@@ -1440,9 +1463,19 @@ class FacadeAdapterBase:
         else:
             resp = await _do(client)
         try:
-            return resp.status_code, resp.json()
+            body = resp.json()
         except ValueError:
-            return resp.status_code, {}
+            body = {}
+        # A create that answers 201 with an EMPTY body puts the new id in the
+        # Location header (v1 warehouses, v2 products). Without this the write flow
+        # has nothing to read back and the caller gets a success with no id.
+        if resp.status_code < 400 and not (
+            isinstance(body, dict) and (body.get("data") or {}).get("id")
+        ):
+            new_id = id_from_location(resp.headers.get("Location") or resp.headers.get("location"))
+            if new_id:
+                body = {"data": {"id": new_id}}
+        return resp.status_code, body
 
     # ---- line items on the v3 sub-resource --------------------------------
     @staticmethod
