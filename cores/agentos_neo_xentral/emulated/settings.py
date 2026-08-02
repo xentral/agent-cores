@@ -727,6 +727,12 @@ class TaxRateAdapter(SettingsLookupBase):
                 accept_language=accept_language,
                 client=client,
             )
+        # This override builds its own upstream call, so the base class's filter
+        # guard never runs here — and the loop below DROPS any key it has no alias
+        # for, which answers 200 with an unfiltered collection. Refuse first.
+        refusal = self.refuse_undeclared_filters(query)
+        if refusal is not None:
+            return refusal
         country = "DE"
         params: list[tuple[str, str]] = []
         # First pass: resolve each filter index to its model key.
@@ -909,6 +915,13 @@ class TextTemplateAdapter(SettingsLookupBase):
                 accept_language=accept_language,
                 client=client,
             )
+        # The list path below returns every template type and applies no filter at
+        # all, so an undeclared key would read as a filtered result. The base
+        # class's guard cannot see this override — run it here.
+        if not handle:
+            refusal = self.refuse_undeclared_filters(query)
+            if refusal is not None:
+                return refusal
         url = f"{base_url.rstrip('/')}{self.v3_path}"
         headers = self._headers(token, accept_language)
 
