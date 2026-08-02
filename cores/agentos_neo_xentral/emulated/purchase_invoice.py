@@ -39,6 +39,7 @@ _STATUS_OPTIONS = [
     {"value": v, "label": v.capitalize()}
     for v in ("received", "matched", "approved", "paid", "rejected")
 ]
+_CU = {"creatable": True, "updatable": True}
 _MATCH_OPTIONS = [{"value": v, "label": v.capitalize()} for v in ("pending", "matched", "mismatch")]
 
 
@@ -110,6 +111,7 @@ class PurchaseInvoiceAdapter(FacadeAdapterBase):
         operations=(
             "list",
             "read",
+            "update",
         ),  # BF has full CRUD; our write-mapping is not built/verified yet
     )
     v3_path = "/api/entity/supplierInvoice"
@@ -205,9 +207,13 @@ class PurchaseInvoiceAdapter(FacadeAdapterBase):
                 section="references",
                 properties={
                     "supplierInvoiceNumber": prop(
-                        "string", "Supplier invoice number", filterable=True, searchable=True
+                        "string",
+                        "Supplier invoice number",
+                        **_CU,
+                        filterable=True,
+                        searchable=True,
                     ),
-                    "externalReference": prop("string", "External reference"),
+                    "externalReference": prop("string", "External reference", **_CU),
                     "creditorAccountNumber": prop("string", "Creditor account"),
                 },
             ),
@@ -216,19 +222,18 @@ class PurchaseInvoiceAdapter(FacadeAdapterBase):
                 "Dates",
                 section="general",
                 properties={
-                    "invoiceDate": prop("date", "Invoice date", filterable=True),
-                    "received": prop("date", "Received", filterable=True),
-                    "serviceDate": prop("date", "Service date"),
+                    "invoiceDate": prop("date", "Invoice date", **_CU, filterable=True),
+                    "received": prop("date", "Received", **_CU, filterable=True),
+                    "serviceDate": prop("date", "Service date", **_CU),
                 },
             ),
             "clarification": prop(
                 "embedded",
                 "Clarification",
-                **RO,
                 section="match",
                 properties={
-                    "needed": prop("boolean", "Needed", **RO),
-                    "reason": prop("string", "Reason", **RO),
+                    "needed": prop("boolean", "Needed", **_CU),
+                    "reason": prop("string", "Reason", **_CU),
                 },
             ),
             "items": prop(
@@ -347,6 +352,60 @@ class PurchaseInvoiceAdapter(FacadeAdapterBase):
             "updatedAt": prop("datetime", "Updated at", **RO, sortable=True),
         }
 
+    def map_write(
+        self, model: dict[str, Any], *, creating: bool
+    ) -> tuple[dict[str, Any], set[str]]:
+        """Model → the entity API's wire shape.
+
+        Only the leaves a live net-zero round-trip actually persisted are mapped.
+        The entity API publishes no ``creatable``/``updatable`` flags for any entity,
+        so the schema here cannot be derived from it — every flag was earned by
+        writing the field, reading it back and restoring it. Two that answer 200 and
+        do NOT persist are deliberately absent: ``documentNumber`` (the number is
+        system-assigned) and ``costCenterValue``.
+        """
+        wire: dict[str, Any] = {}
+        rejected: set[str] = set()
+
+        refs = model.get("references") or {}
+        if "supplierInvoiceNumber" in refs:
+            wire["associatedExternalInvoiceNumber"] = refs["supplierInvoiceNumber"]
+        if "externalReference" in refs:
+            wire["externalReference"] = refs["externalReference"]
+        if "creditorAccountNumber" in refs:
+            rejected.add("references.creditorAccountNumber")
+
+        dates = model.get("dates") or {}
+        for mine, theirs in (
+            ("invoiceDate", "dateOfSupplierInvoice"),
+            ("received", "dateOfEntry"),
+            ("serviceDate", "serviceProvidedOn"),
+        ):
+            if mine in dates:
+                wire[theirs] = dates[mine]
+
+        clar = model.get("clarification") or {}
+        if "needed" in clar:
+            wire["isInNeedOfClarification"] = clar["needed"]
+        if "reason" in clar:
+            wire["clarificationReason"] = clar["reason"]
+
+        pay = model.get("payment") or {}
+        if "dueDate" in pay:
+            wire["payableUntil"] = pay["dueDate"]
+        if "discountUntil" in pay:
+            wire["discountPossibleUntil"] = pay["discountUntil"]
+
+        if "currency" in model:
+            wire["currency"] = model["currency"]
+
+        # Everything the model carries but this mapping does not reach yet — named
+        # so a caller sees its write was dropped instead of assuming it landed.
+        for path in ("items", "match", "totals", "approval", "supplier", "status", "number"):
+            if path in model:
+                rejected.add(path)
+        return wire, rejected
+
     def map_read(self, r: dict[str, Any]) -> dict[str, Any]:
         cur = r.get("currency") or "EUR"
         gross = (money(r.get("grossTotalAmount"), cur) or {}).get("amount")
@@ -429,28 +488,4 @@ class PurchaseInvoiceAdapter(FacadeAdapterBase):
             "documents": {"purchaseOrder": po_ref},
             "createdAt": r.get("createdAt"),
             "updatedAt": r.get("updatedAt"),
-        }
-
-    def map_write(
-        self, model: dict[str, Any], *, creating: bool
-    ) -> tuple[dict[str, Any], set[str]]:
-        # BF supplierInvoice HAS full CRUD — the facade write-mapping to its field
-        # names is the next build step; until it is proven live, writes are wishes.
-        return {}, {
-            k
-            for k in model
-            if k
-            not in {
-                "object",
-                "id",
-                "number",
-                "status",
-                "totals",
-                "match",
-                "clarification",
-                "files",
-                "documents",
-                "createdAt",
-                "updatedAt",
-            }
         }
