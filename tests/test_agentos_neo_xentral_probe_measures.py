@@ -12,6 +12,7 @@ Nothing here talks to a tenant — the probes are driven against canned payloads
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 from typing import Any
 
@@ -270,6 +271,25 @@ def test_a_field_outside_the_fan_out_is_a_failure() -> None:
 # ---- the one action whose effect is free to check ------------------------
 
 
+def _pdf_envelope(raw: bytes, content_type: str = "application/pdf") -> bytes:
+    """What `downloadPdf` actually answers: a JSON envelope carrying the rendered
+    document as base64, NOT raw bytes. Grading the HTTP body for `%PDF-` painted all
+    seven document adapters red on mvp while every render was fine."""
+    return json.dumps(
+        {
+            "data": {"id": "cn_4"},
+            "result": {
+                "file": {
+                    "filename": "CreditNote-900000.pdf",
+                    "contentType": content_type,
+                    "sizeBytes": len(raw),
+                    "contentBase64": base64.b64encode(raw).decode(),
+                }
+            },
+        }
+    ).encode()
+
+
 class _PdfAdapter:
     def __init__(self, status: int, body: bytes) -> None:
         self._status, self._body = status, body
@@ -290,14 +310,23 @@ def _pdf(status: int, body: bytes) -> tuple[str | None, str | None]:
 
 def test_a_rendered_pdf_is_real_proof() -> None:
     """Read-only and net-zero, so unlike `send` this one can reach `pass`."""
-    verdict, note = _pdf(200, b"%PDF-1.7\n...")
+    verdict, note = _pdf(200, _pdf_envelope(b"%PDF-1.3\n3 0 obj"))
     assert verdict == PROVEN
     assert "real PDF" in note
+    assert "CreditNote-900000.pdf" in note
 
 
-def test_a_200_that_is_not_a_pdf_is_a_failure() -> None:
+def test_the_raw_body_is_not_what_gets_checked() -> None:
+    """The regression this exists for: the envelope is JSON, so a body-level `%PDF-`
+    test fails on a perfectly good render."""
+    body = _pdf_envelope(b"%PDF-1.3\n")
+    assert not body.startswith(b"%PDF-")
+    assert _pdf(200, body)[0] == PROVEN
+
+
+def test_a_200_that_rendered_nothing_is_a_failure() -> None:
     """The generic probe would grade this `executed` — the route answered, so it
     looks like it worked."""
-    verdict, note = _pdf(200, b'{"title":"no template configured"}')
+    verdict, note = _pdf(200, _pdf_envelope(b"<html>no template</html>", "text/html"))
     assert verdict == "fail"
-    assert "not a PDF" in note
+    assert "no PDF" in note

@@ -98,6 +98,7 @@ Render the result as a workbook: ``scripts/export_verified_xlsx.py``.
 from __future__ import annotations
 
 import asyncio
+import base64
 import collections
 import json
 import os
@@ -777,10 +778,15 @@ async def _probe_download_pdf(
     """`downloadPdf` is the one action whose effect is free to check.
 
     It renders a document and changes nothing, so unlike `send` or `cancel` the
-    probe can look at what came back instead of trusting the status. A PDF starts
-    with the five bytes `%PDF-`; a 200 carrying anything else means the route
-    answered but did not render, which the generic probe would have graded
-    `executed`.
+    probe can look at what came back instead of trusting the status.
+
+    The action answers a JSON envelope, not raw bytes: the rendered document rides
+    in ``result.file.contentBase64`` next to ``filename``/``contentType``/
+    ``sizeBytes``. Checking the HTTP body for ``%PDF-`` therefore fails on a
+    perfectly good render — measured on mvp, it painted all seven document adapters
+    red before this was corrected. Decode the field and check THAT: a 200 whose
+    payload is not a PDF means the route answered without rendering, which the
+    generic probe grades `executed`.
     """
     envelope = json.dumps({"ids": [sample_id], "command": {}}).encode()
     try:
@@ -797,10 +803,26 @@ async def _probe_download_pdf(
         raise _AuthFailed(f"downloadPdf answered {resp.status_code}")
     if not 200 <= resp.status_code < 300:
         return await _probe_action(adapter, "downloadPdf", sample_id, base_url, token)
-    body = resp.content or b""
-    if body.startswith(b"%PDF-"):
-        return PROVEN, f"rendered a real PDF ({len(body)} bytes) — read-only, net-zero"
-    return "fail", f"answered {resp.status_code} but the body is not a PDF ({body[:24]!r})"
+    try:
+        envelope = json.loads(resp.content or b"{}")
+    except ValueError:
+        return "fail", f"answered {resp.status_code} with a body that is not JSON"
+    file_part = (
+        ((envelope.get("result") or {}).get("file") or {}) if isinstance(envelope, dict) else {}
+    )
+    try:
+        rendered = base64.b64decode(file_part.get("contentBase64") or "")
+    except (ValueError, TypeError):
+        return "fail", "result.file.contentBase64 is not decodable base64"
+    if rendered.startswith(b"%PDF-"):
+        return PROVEN, (
+            f"rendered {file_part.get('filename') or 'a document'} "
+            f"({len(rendered)} bytes of real PDF) — read-only, net-zero"
+        )
+    return "fail", (
+        f"answered {resp.status_code} but result.file carries no PDF "
+        f"(contentType {file_part.get('contentType')!r}, {len(rendered)} bytes)"
+    )
 
 
 async def _probe_tag_actions(

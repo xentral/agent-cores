@@ -24,7 +24,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:49:17+00:00"
+      "probedAt": "2026-08-02T10:17:03+00:00"
     },
     "Channel": {
       "fields": {
@@ -80,7 +80,7 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:46:20+00:00"
+      "probedAt": "2026-08-02T10:14:07+00:00"
     },
     "Correspondence": {
       "fields": {
@@ -115,21 +115,22 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:48:43+00:00"
+      "probedAt": "2026-08-02T10:16:37+00:00"
     },
     "CreditNote": {
       "actions": {
         "addTag": "pass",
-        "downloadPdf": "executed",
+        "downloadPdf": "pass",
         "removeTag": "pass",
         "send": "reachable"
       },
       "actionsNotes": {
         "addTag": "fresh title 'verify-probe-64e379' attached — auto-create verified, net-zero",
-        "downloadPdf": "EXECUTED on the sampled record (200) — created/changed data",
+        "downloadPdf": "rendered CreditNote-900000.pdf (1806 bytes of real PDF) — read-only, net-zero",
         "removeTag": "fresh title removed again — effect verified, net-zero",
         "send": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma"
       },
+      "actionsProbedAt": "2026-08-02T10:26:33+00:00",
       "fields": {
         "billingAddress": {
           "read": "pass"
@@ -401,12 +402,12 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:42:25+00:00",
+      "probedAt": "2026-08-02T10:26:33+00:00",
       "processSteps": {
         "release": "reachable"
       },
       "processStepsNotes": {
-        "release": "reachable — 409: Resource status invalid for requested operation"
+        "release": "reachable — 409 from upstream: Resource status invalid for requested operation"
       }
     },
     "Customer": {
@@ -751,23 +752,24 @@
           "update": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:45:14+00:00"
+      "probedAt": "2026-08-02T10:13:14+00:00"
     },
     "DeliveryNote": {
       "actions": {
         "addTag": "pass",
         "createReturn": "reachable",
         "createSalesInvoice": "reachable",
-        "downloadPdf": "executed",
+        "downloadPdf": "pass",
         "removeTag": "pass"
       },
       "actionsNotes": {
         "addTag": "fresh title 'verify-probe-23f692' attached — auto-create verified, net-zero",
         "createReturn": "reachable — 400: line items must be present. {\"lineItems\": [\"line items must be present.\"]}",
         "createSalesInvoice": "reachable — 400: All product line items must reference an existing product. {\"lineItems\": [\"All product line items must reference an existing product.\"]}",
-        "downloadPdf": "EXECUTED on the sampled record (200) — created/changed data",
+        "downloadPdf": "rendered DeliveryNote-300002.pdf (1950 bytes of real PDF) — read-only, net-zero",
         "removeTag": "fresh title removed again — effect verified, net-zero"
       },
+      "actionsProbedAt": "2026-08-02T10:25:29+00:00",
       "fields": {
         "billingAddress": {
           "read": "pass"
@@ -1032,16 +1034,16 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:41:11+00:00",
+      "probedAt": "2026-08-02T10:25:29+00:00",
       "processSteps": {
         "cancel": "reachable",
         "markDelivered": "reachable",
         "release": "reachable"
       },
       "processStepsNotes": {
-        "cancel": "reachable — 409: Resource status invalid for requested operation",
-        "markDelivered": "reachable — 409: Resource status invalid for requested operation",
-        "release": "reachable — 409: Resource status invalid for requested operation"
+        "cancel": "reachable — 409 from upstream: Resource status invalid for requested operation",
+        "markDelivered": "reachable — 409 from upstream: Resource status invalid for requested operation",
+        "release": "reachable — 409 from upstream: Resource status invalid for requested operation"
       }
     },
     "DeliveryTerm": {
@@ -1057,7 +1059,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:48:52+00:00"
+      "probedAt": "2026-08-02T10:16:43+00:00"
     },
     "EmailAccount": {
       "actions": {
@@ -1092,7 +1094,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:48:46+00:00"
+      "probedAt": "2026-08-02T10:16:38+00:00"
     },
     "Employee": {
       "fields": {
@@ -1114,7 +1116,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:49:09+00:00"
+      "probedAt": "2026-08-02T10:16:57+00:00"
     },
     "GoodsReceipt": {
       "fields": {
@@ -1210,7 +1212,7 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:43:45+00:00"
+      "probedAt": "2026-08-02T10:12:05+00:00"
     },
     "MerchandiseGroup": {
       "fields": {
@@ -1233,7 +1235,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:49:11+00:00"
+      "probedAt": "2026-08-02T10:16:59+00:00"
     },
     "PaymentMethod": {
       "fields": {
@@ -1255,7 +1257,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:48:47+00:00"
+      "probedAt": "2026-08-02T10:16:39+00:00"
     },
     "PaymentTermsGroup": {
       "fields": {
@@ -1300,7 +1302,7 @@
           "readNote": "declared, but none of the 4 sampled records carries a value — nothing proven either way"
         }
       },
-      "probedAt": "2026-08-02T09:48:55+00:00"
+      "probedAt": "2026-08-02T10:16:46+00:00"
     },
     "PickingRun": {
       "fields": {
@@ -1425,7 +1427,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:48:35+00:00"
+      "probedAt": "2026-08-02T10:16:31+00:00"
     },
     "PriceList": {
       "fields": {
@@ -1517,7 +1519,7 @@
           "update": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:48:09+00:00"
+      "probedAt": "2026-08-02T10:16:11+00:00"
     },
     "Printer": {
       "actions": {
@@ -1564,7 +1566,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:48:44+00:00"
+      "probedAt": "2026-08-02T10:16:38+00:00"
     },
     "Product": {
       "fields": {
@@ -1615,6 +1617,7 @@
           "readNote": "no sampled record carries 'customFields', so the leaf could not be observed — nothing proven either way"
         },
         "description": {
+          "create": "pass",
           "read": "pass",
           "update": "pass"
         },
@@ -1622,6 +1625,7 @@
           "read": "pass"
         },
         "documentDefaults.hidePrice": {
+          "create": "pass",
           "read": "pass",
           "update": "pass"
         },
@@ -1640,6 +1644,7 @@
           "read": "pass"
         },
         "identifiers.countryOfOrigin": {
+          "create": "pass",
           "read": "pass",
           "update": "pass"
         },
@@ -1663,6 +1668,7 @@
           "readNote": "no sampled record carries 'identifiers.external', so the leaf could not be observed — nothing proven either way"
         },
         "identifiers.hsCode": {
+          "create": "pass",
           "read": "pass",
           "update": "pass"
         },
@@ -1686,6 +1692,7 @@
           "update": "pass"
         },
         "logistics.dimensions.length": {
+          "create": "pass",
           "read": "pass",
           "update": "pass"
         },
@@ -1697,10 +1704,12 @@
           "update": "pass"
         },
         "logistics.minimumOrderQuantity": {
+          "create": "pass",
           "read": "pass",
           "update": "pass"
         },
         "logistics.minimumStockQuantity": {
+          "create": "pass",
           "read": "pass",
           "update": "pass"
         },
@@ -1736,6 +1745,7 @@
           "read": "pass"
         },
         "logistics.weight.value": {
+          "create": "pass",
           "read": "pass",
           "update": "pass"
         },
@@ -1743,15 +1753,18 @@
           "read": "pass"
         },
         "manufacturer.name": {
+          "create": "pass",
           "read": "pass",
           "update": "pass"
         },
         "manufacturer.website": {
+          "create": "pass",
           "read": "pass",
           "update": "pass"
         },
         "name": {
-          "createNote": "create not probed — no delete endpoint (net-zero impossible); set VERIFY_CREATE_NONZERO=1 to probe and leave a labelled record",
+          "create": "pass",
+          "createNote": "created prd_61998 (labelled 'VT Verify') — no delete endpoint, left in place",
           "filter": "pass",
           "read": "pass",
           "search": "pass",
@@ -1774,6 +1787,7 @@
           "read": "pass"
         },
         "prices.purchase.amount": {
+          "create": "pass",
           "read": "pass",
           "update": "pass"
         },
@@ -1789,6 +1803,7 @@
           "read": "pass"
         },
         "prices.sale.amount": {
+          "create": "pass",
           "read": "pass",
           "update": "pass"
         },
@@ -1804,6 +1819,7 @@
           "update": "pass"
         },
         "production.mode": {
+          "create": "pass",
           "read": "pass",
           "update": "pass"
         },
@@ -1903,6 +1919,7 @@
           "readNote": "declared, but none of the 111 sampled records carries a value — nothing proven either way"
         },
         "tax.rate": {
+          "create": "pass",
           "read": "pass",
           "update": "pass"
         },
@@ -1922,10 +1939,12 @@
           "update": "pass"
         },
         "tracking.stock": {
+          "create": "pass",
           "read": "pass",
           "update": "pass"
         },
         "unit": {
+          "create": "pass",
           "read": "pass",
           "update": "pass"
         },
@@ -1948,7 +1967,7 @@
           "readNote": "declared, but none of the 111 sampled records carries a value — nothing proven either way"
         }
       },
-      "probedAt": "2026-08-02T09:47:58+00:00"
+      "probedAt": "2026-08-02T10:15:57+00:00"
     },
     "ProductCategory": {
       "fields": {
@@ -1965,7 +1984,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:49:10+00:00"
+      "probedAt": "2026-08-02T10:16:58+00:00"
     },
     "ProductFreeField": {
       "fields": {
@@ -1980,7 +1999,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:49:16+00:00"
+      "probedAt": "2026-08-02T10:17:02+00:00"
     },
     "ProductProperty": {
       "fields": {
@@ -1997,7 +2016,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:49:12+00:00"
+      "probedAt": "2026-08-02T10:16:59+00:00"
     },
     "ProductTag": {
       "fields": {
@@ -2015,7 +2034,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:49:14+00:00"
+      "probedAt": "2026-08-02T10:17:00+00:00"
     },
     "Project": {
       "fields": {
@@ -2062,7 +2081,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:49:03+00:00"
+      "probedAt": "2026-08-02T10:16:52+00:00"
     },
     "PurchaseInvoice": {
       "fields": {
@@ -2262,21 +2281,22 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:43:53+00:00"
+      "probedAt": "2026-08-02T10:12:11+00:00"
     },
     "PurchaseOrder": {
       "actions": {
         "addTag": "pass",
-        "downloadPdf": "executed",
+        "downloadPdf": "pass",
         "removeTag": "pass",
         "send": "reachable"
       },
       "actionsNotes": {
         "addTag": "fresh title 'verify-probe-afb77a' attached — auto-create verified, net-zero",
-        "downloadPdf": "EXECUTED on the sampled record (200) — created/changed data",
+        "downloadPdf": "rendered PurchaseOrder-100000.pdf (2230 bytes of real PDF) — read-only, net-zero",
         "removeTag": "fresh title removed again — effect verified, net-zero",
         "send": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma"
       },
+      "actionsProbedAt": "2026-08-02T10:27:42+00:00",
       "fields": {
         "confirmation": {
           "read": "pass"
@@ -2561,16 +2581,16 @@
           "readNote": "declared, but none of the 63 sampled records carries a value — nothing proven either way"
         }
       },
-      "probedAt": "2026-08-02T09:43:39+00:00",
+      "probedAt": "2026-08-02T10:27:42+00:00",
       "processSteps": {
         "cancel": "reachable",
         "close": "reachable",
         "release": "reachable"
       },
       "processStepsNotes": {
-        "cancel": "reachable — 409: Resource status invalid for requested operation",
-        "close": "reachable — 409: Resource status invalid for requested operation",
-        "release": "reachable — 409: Resource status invalid for requested operation"
+        "cancel": "reachable — 409 from upstream: Resource status invalid for requested operation",
+        "close": "reachable — 409 from upstream: Resource status invalid for requested operation",
+        "release": "reachable — 409 from upstream: Resource status invalid for requested operation"
       }
     },
     "PurchasePrice": {
@@ -2649,21 +2669,22 @@
           "updateNote": "no sample date value — not probed (a null date cannot be restored)"
         }
       },
-      "probedAt": "2026-08-02T09:48:26+00:00"
+      "probedAt": "2026-08-02T10:16:26+00:00"
     },
     "Quote": {
       "actions": {
         "addTag": "pass",
-        "downloadPdf": "executed",
+        "downloadPdf": "pass",
         "removeTag": "pass",
         "send": "reachable"
       },
       "actionsNotes": {
         "addTag": "fresh title 'verify-probe-42f87e' attached — auto-create verified, net-zero",
-        "downloadPdf": "EXECUTED on the sampled record (200) — created/changed data",
+        "downloadPdf": "rendered Quote-100000.pdf (2253 bytes of real PDF) — read-only, net-zero",
         "removeTag": "fresh title removed again — effect verified, net-zero",
         "send": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma"
       },
+      "actionsProbedAt": "2026-08-02T10:21:53+00:00",
       "fields": {
         "billingAddress": {
           "read": "pass"
@@ -2999,14 +3020,14 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:37:35+00:00",
+      "probedAt": "2026-08-02T10:21:53+00:00",
       "processSteps": {
         "cancel": "reachable",
         "release": "reachable"
       },
       "processStepsNotes": {
-        "cancel": "reachable — 409: Resource status invalid for requested operation",
-        "release": "reachable — 409: Resource status invalid for requested operation"
+        "cancel": "reachable — 409 from upstream: Resource status invalid for requested operation",
+        "release": "reachable — 409 from upstream: Resource status invalid for requested operation"
       }
     },
     "Return": {
@@ -3014,16 +3035,17 @@
         "addTag": "pass",
         "createCreditNote": "executed",
         "createFromDeliveryNote": "reachable",
-        "downloadPdf": "executed",
+        "downloadPdf": "pass",
         "removeTag": "pass"
       },
       "actionsNotes": {
         "addTag": "fresh title 'verify-probe-c5823c' attached — auto-create verified, net-zero",
         "createCreditNote": "EXECUTED on the sampled record (200) — created/changed data",
         "createFromDeliveryNote": "reachable — 422: createFromDeliveryNote needs command.deliveryNote and command.lineItems=[{deliveryNoteItem, quantity, reason}]",
-        "downloadPdf": "EXECUTED on the sampled record (200) — created/changed data",
+        "downloadPdf": "rendered Return-500001.pdf (1990 bytes of real PDF) — read-only, net-zero",
         "removeTag": "fresh title removed again — effect verified, net-zero"
       },
+      "actionsProbedAt": "2026-08-02T10:27:05+00:00",
       "fields": {
         "billingAddress": {
           "read": "pass"
@@ -3224,16 +3246,16 @@
           "readNote": "declared, but none of the 92 sampled records carries a value — nothing proven either way"
         }
       },
-      "probedAt": "2026-08-02T09:42:54+00:00",
+      "probedAt": "2026-08-02T10:27:05+00:00",
       "processSteps": {
         "cancel": "reachable",
         "release": "reachable",
         "settle": "reachable"
       },
       "processStepsNotes": {
-        "cancel": "reachable — 409: Resource status invalid for requested operation",
-        "release": "reachable — 409: Resource status invalid for requested operation",
-        "settle": "reachable — 409: Resource status invalid for requested operation"
+        "cancel": "reachable — 409 from upstream: Resource status invalid for requested operation",
+        "release": "reachable — 409 from upstream: Resource status invalid for requested operation",
+        "settle": "reachable — 409 from upstream: Resource status invalid for requested operation"
       }
     },
     "ReturnReason": {
@@ -3257,21 +3279,22 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:48:50+00:00"
+      "probedAt": "2026-08-02T10:16:41+00:00"
     },
     "SalesInvoice": {
       "actions": {
         "addTag": "pass",
-        "downloadPdf": "executed",
+        "downloadPdf": "pass",
         "removeTag": "pass",
         "send": "reachable"
       },
       "actionsNotes": {
         "addTag": "fresh title 'verify-probe-e430b6' attached — auto-create verified, net-zero",
-        "downloadPdf": "EXECUTED on the sampled record (200) — created/changed data",
+        "downloadPdf": "rendered SalesInvoice-400002.pdf (2205 bytes of real PDF) — read-only, net-zero",
         "removeTag": "fresh title removed again — effect verified, net-zero",
         "send": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma"
       },
+      "actionsProbedAt": "2026-08-02T10:24:45+00:00",
       "fields": {
         "billingAddress": {
           "read": "pass"
@@ -3632,21 +3655,21 @@
           "sortNote": "fewer than two distinct values on the page — order not assertable"
         }
       },
-      "probedAt": "2026-08-02T09:40:29+00:00",
+      "probedAt": "2026-08-02T10:24:45+00:00",
       "processSteps": {
         "cancel": "executed",
         "release": "reachable"
       },
       "processStepsNotes": {
-        "cancel": "EXECUTED on the sampled record (200) — created/changed data",
-        "release": "reachable — 409: Resource status invalid for requested operation"
+        "cancel": "EXECUTED on the sampled record (200) — effect not read back",
+        "release": "reachable — 409 from upstream: Resource status invalid for requested operation"
       }
     },
     "SalesOrder": {
       "actions": {
         "addTag": "pass",
         "createSalesInvoice": "executed",
-        "downloadPdf": "executed",
+        "downloadPdf": "pass",
         "removeTag": "pass",
         "sendConfirmation": "reachable",
         "split": "reachable",
@@ -3655,12 +3678,13 @@
       "actionsNotes": {
         "addTag": "fresh title 'verify-probe-67d9a1' attached — auto-create verified, net-zero",
         "createSalesInvoice": "EXECUTED on the sampled record (200) — created/changed data",
-        "downloadPdf": "EXECUTED on the sampled record (200) — created/changed data",
+        "downloadPdf": "rendered SalesOrder-200005.pdf (2225 bytes of real PDF) — read-only, net-zero",
         "removeTag": "fresh title removed again — effect verified, net-zero",
         "sendConfirmation": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma",
         "split": "reachable — 400: Generic request validation failed.",
         "splitOrder": "reachable — 422: splitOrder needs command.items = [{lineItem|product, quantity}]"
       },
+      "actionsProbedAt": "2026-08-02T10:23:23+00:00",
       "fields": {
         "billingAddress": {
           "read": "pass"
@@ -4152,7 +4176,7 @@
           "sortNote": "fewer than two distinct values on the page — order not assertable"
         }
       },
-      "probedAt": "2026-08-02T09:39:19+00:00",
+      "probedAt": "2026-08-02T10:23:23+00:00",
       "processSteps": {
         "cancel": "reachable",
         "close": "reachable",
@@ -4160,10 +4184,10 @@
         "release": "reachable"
       },
       "processStepsNotes": {
-        "cancel": "reachable — 409: Resource status invalid for requested operation",
-        "close": "reachable — 409: Resource status invalid for requested operation",
+        "cancel": "reachable — 409 from upstream: Resource status invalid for requested operation",
+        "close": "reachable — 409 from upstream: Resource status invalid for requested operation",
         "dispatch": "reachable — 400: Generic request validation failed.",
-        "release": "reachable — 409: Resource status invalid for requested operation"
+        "release": "reachable — 409 from upstream: Resource status invalid for requested operation"
       }
     },
     "Shipment": {
@@ -4276,7 +4300,7 @@
           "readNote": "no sampled record carries 'weight', so the leaf could not be observed — nothing proven either way"
         }
       },
-      "probedAt": "2026-08-02T09:48:28+00:00"
+      "probedAt": "2026-08-02T10:16:27+00:00"
     },
     "ShippingMethod": {
       "fields": {
@@ -4308,7 +4332,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:48:49+00:00"
+      "probedAt": "2026-08-02T10:16:40+00:00"
     },
     "StockTake": {
       "fields": {
@@ -4434,7 +4458,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:48:33+00:00"
+      "probedAt": "2026-08-02T10:16:30+00:00"
     },
     "StorageLocation": {
       "actions": {
@@ -4541,7 +4565,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:48:31+00:00"
+      "probedAt": "2026-08-02T10:16:29+00:00"
     },
     "Supplier": {
       "actions": {
@@ -4896,7 +4920,7 @@
           "update": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:52:34+00:00"
+      "probedAt": "2026-08-02T10:14:00+00:00"
     },
     "Tag": {
       "fields": {
@@ -4932,7 +4956,7 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:48:40+00:00"
+      "probedAt": "2026-08-02T10:16:35+00:00"
     },
     "TaxRate": {
       "fields": {
@@ -4973,7 +4997,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:48:58+00:00"
+      "probedAt": "2026-08-02T10:16:48+00:00"
     },
     "TextTemplate": {
       "fields": {
@@ -4996,7 +5020,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:49:21+00:00"
+      "probedAt": "2026-08-02T10:17:05+00:00"
     },
     "User": {
       "fields": {
@@ -5035,7 +5059,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:49:07+00:00"
+      "probedAt": "2026-08-02T10:16:55+00:00"
     },
     "Warehouse": {
       "fields": {
@@ -5053,7 +5077,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:48:59+00:00"
+      "probedAt": "2026-08-02T10:16:50+00:00"
     },
     "Webhook": {
       "fields": {
@@ -5076,7 +5100,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:49:19+00:00"
+      "probedAt": "2026-08-02T10:17:04+00:00"
     },
     "WebhookEventType": {
       "fields": {
@@ -5090,10 +5114,10 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T09:49:20+00:00"
+      "probedAt": "2026-08-02T10:17:04+00:00"
     }
   },
-  "generatedAt": "2026-08-02T09:52:34+00:00",
+  "generatedAt": "2026-08-02T10:27:42+00:00",
   "instance": "a2ad4180-0d41-4360-8044-9dca0c35608a",
   "schemaVersion": 2
 }
