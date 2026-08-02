@@ -15,16 +15,27 @@ every detail read answered ``404 Entity not found with uuid 1``, for all 42 reco
 while the manifest showed 39 green ``read`` verdicts — the probe grades ``read``
 from the LIST and nothing ever exercised the single read.
 
-``lineItems`` ride along on the list response and are mapped now; the collection
-answered ``[]`` on every record while upstream carried positions on six of them.
-The node still covers five of a line item's 23 attributes — enough to read what was
-invoiced, not yet enough for the three-way match.
+``lineItems`` ride along on the list response, and they are WRITABLE — upstream
+manages them as a diff inside the document body, where every entry carries an
+``actionIndicator`` of ``Create`` / ``Update`` / ``Delete`` and addresses an
+existing row by ``uuid``. That field is required and appears in NO schema:
+``GET /api/metadata/supplierInvoice`` does not list it, so it can only be learned
+by being rejected for it. Outward the collection keeps the contract the other
+documents use — item with an id updates, without an id adds, omitted deletes —
+and this adapter translates that into the diff.
 
-Writes are NOT wired yet. The upstream supports them (``operations`` says
-create/read/update/delete, and a net-zero PATCH on ``internalComment`` was verified
-live), so what remains is our write-mapping. Note that the entity API publishes no
-per-field ``creatable``/``updatable`` flags for ANY entity — absence there is not
-evidence that a field is read-only.
+Two traps this write path guards against, both measured on mvp 2026-08-02:
+
+* an EMPTY ``POST`` is accepted and books an invoice with no creditor, no date and
+  no position. There are no required fields upstream (``requiredOnCreate`` reports
+  only ``id``). This core therefore requires ``supplier`` itself.
+* ``costCenterValue``, ``documentNumber`` and ``exchangeRate`` answer 2xx and do
+  NOT persist. They are refused or unmapped rather than silently dropped.
+
+Note that the entity API publishes no per-field ``creatable``/``updatable`` flags
+for ANY entity — absence there is not evidence that a field is read-only. Every
+flag in this schema was earned by writing the field, reading it back and
+restoring it.
 """
 
 from __future__ import annotations
@@ -95,8 +106,15 @@ def _item(li: dict[str, Any], doc_currency: str | None) -> dict[str, Any]:
             li.get("productName") or None,
             "products",
         ),
+        # A purchase-invoice line is very often FREE TEXT with no product behind it
+        # (a service, a fee). `product` collapses to null there, so the line's name
+        # has to live on the line — otherwise the only text a caller can set is
+        # unreadable back.
+        "name": li.get("productName") or None,
+        "description": li.get("description") or None,
         "quantity": {"value": li.get("quantity"), "unit": unit or li.get("packageUnit") or None},
         "unitPrice": {"amount": li.get("netPrice"), "currency": li.get("currency") or doc_currency},
+        "taxRate": li.get("taxRate"),
     }
 
 
@@ -108,11 +126,7 @@ class PurchaseInvoiceAdapter(FacadeAdapterBase):
         rollout_batch="agentos_neo_xentral",
         adapter="agentos_neo_xentral.purchaseInvoice",
         source_apis=("agentos_neo_xentral",),
-        operations=(
-            "list",
-            "read",
-            "update",
-        ),  # BF has full CRUD; our write-mapping is not built/verified yet
+        operations=("list", "read", "create", "update", "delete"),
     )
     v3_path = "/api/entity/supplierInvoice"
     include = ""
@@ -195,10 +209,16 @@ class PurchaseInvoiceAdapter(FacadeAdapterBase):
             "supplier": prop(
                 "reference",
                 "Supplier",
+                **_CU,
                 reference="Supplier",
                 renderProperty="name",
                 section="general",
                 previewable=True,
+                description=(
+                    "The creditor. REQUIRED on create by this core, not by upstream: "
+                    "an empty POST is accepted and produces an invoice with no "
+                    "creditor, no dates and no positions."
+                ),
             ),
             "costCenter": prop("string", "Cost center", section="general"),
             "references": prop(
@@ -239,30 +259,55 @@ class PurchaseInvoiceAdapter(FacadeAdapterBase):
             "items": prop(
                 "collection",
                 "Items",
+                **_CU,
                 section="items",
+                description=(
+                    "Collection replace, the same contract the other documents use: "
+                    "an item WITH an id is updated, one WITHOUT an id is added, and "
+                    "an existing item OMITTED from the list is deleted."
+                ),
                 node={
                     "properties": {
                         "object": prop("string", "Object", **RO),
                         "id": prop("string", "Item id", **RO),
                         "product": prop(
-                            "reference", "Product", reference="Product", renderProperty="name"
+                            "reference",
+                            "Product",
+                            **_CU,
+                            reference="Product",
+                            renderProperty="name",
+                            description=(
+                                "Linking a product OVERRIDES the name: upstream fills "
+                                "productName from the product record."
+                            ),
                         ),
+                        "name": prop(
+                            "string",
+                            "Name",
+                            **_CU,
+                            description=(
+                                "The text on the line. Ignored when `product` is set "
+                                "— upstream then fills it from the product record."
+                            ),
+                        ),
+                        "description": prop("string", "Description", **_CU),
                         "quantity": prop(
                             "embedded",
                             "Quantity",
                             properties={
-                                "value": prop("decimal", "Value"),
-                                "unit": prop("string", "Unit"),
+                                "value": prop("decimal", "Value", **_CU),
+                                "unit": prop("string", "Unit", **_CU),
                             },
                         ),
                         "unitPrice": prop(
                             "embedded",
                             "Unit price",
                             properties={
-                                "amount": prop("decimal", "Amount"),
-                                "currency": prop("string", "Currency"),
+                                "amount": prop("decimal", "Amount", **_CU),
+                                "currency": prop("string", "Currency", **_CU),
                             },
                         ),
+                        "taxRate": prop("decimal", "Tax rate", **_CU),
                     }
                 },
             ),
@@ -399,12 +444,162 @@ class PurchaseInvoiceAdapter(FacadeAdapterBase):
         if "currency" in model:
             wire["currency"] = model["currency"]
 
-        # Everything the model carries but this mapping does not reach yet — named
-        # so a caller sees its write was dropped instead of assuming it landed.
-        for path in ("items", "match", "totals", "approval", "supplier", "status", "number"):
+        if "supplier" in model:
+            sup = model["supplier"]
+            sid = sup.get("id") if isinstance(sup, dict) else sup
+            if sid:
+                wire["associatedAddress"] = {"id": str(sid).split("_", 1)[-1]}
+            else:
+                rejected.add("supplier")
+
+        if isinstance(model.get("items"), list):
+            lines = [self._line_to_wire(i) for i in model["items"] if isinstance(i, dict)]
+            # `__removedItems` is filled by `_write`, not by a caller (part of the
+            # PATH the request took, like storage_location's `__warehouse`).
+            lines += [
+                {self._ITEM_ACTION: "Delete", "uuid": u}
+                for u in (model.get("__removedItems") or [])
+            ]
+            wire["lineItems"] = lines
+
+        # Everything the model carries but this mapping does not reach — named so a
+        # caller sees the write was dropped instead of assuming it landed.
+        # `costCenter` and `number` answer 2xx and do NOT persist (measured);
+        # the rest is derived upstream.
+        for path in ("match", "totals", "approval", "status", "number", "costCenter"):
             if path in model:
                 rejected.add(path)
         return wire, rejected
+
+    # Upstream manages line items as a DIFF inside the document body: every entry
+    # carries an `actionIndicator` of Create/Update/Delete. The field is required
+    # and appears in NO schema — `GET /api/metadata/supplierInvoice` does not list
+    # it, so it can only be learned by being rejected (or from the monorepo's own
+    # integration test). Update and Delete address the row by `uuid`.
+    _ITEM_ACTION = "actionIndicator"
+
+    def _line_to_wire(self, item: dict[str, Any]) -> dict[str, Any]:
+        """One model item → one `lineItems` entry, Create or Update."""
+        uuid = str(item.get("id") or "").removeprefix("pii_")
+        wire: dict[str, Any] = {
+            self._ITEM_ACTION: "Update" if uuid else "Create",
+        }
+        if uuid:
+            wire["uuid"] = uuid
+        prod = item.get("product")
+        pid = prod.get("id") if isinstance(prod, dict) else prod
+        if pid:
+            wire["product"] = {"id": str(pid).removeprefix("prd_")}
+        name = item.get("name") or (prod.get("name") if isinstance(prod, dict) else None)
+        if name and not pid:
+            wire["productName"] = name
+        qty = item.get("quantity") or {}
+        if qty.get("value") is not None:
+            wire["quantity"] = str(qty["value"])
+        if qty.get("unit"):
+            wire["packageUnit"] = qty["unit"]
+        price = item.get("unitPrice") or {}
+        if price.get("amount") is not None:
+            wire["netPrice"] = str(price["amount"])
+        if price.get("currency"):
+            wire["currency"] = price["currency"]
+        if item.get("description") is not None:
+            wire["description"] = item["description"]
+        if item.get("taxRate") is not None:
+            wire["taxRate"] = str(item["taxRate"])
+        # netPrice is the ONE required attribute of a new line (measured: a Create
+        # without it is a 400). Default it rather than let the write fail on a line
+        # a caller only wanted to name.
+        if not uuid:
+            wire.setdefault("netPrice", "0")
+        return wire
+
+    def _created_handle(self, resp: Any) -> Any:
+        """This entity is addressed by ``uuid``, never by ``id``.
+
+        `GET /api/entity/supplierInvoice/{id}` answers "Entity not found with uuid
+        1", and `id` is not filterable either, so the id from a create response
+        cannot be turned back into a readable handle. The create response carries
+        the whole record including its uuid — take it from there.
+        """
+        rec = resp.get("data") if isinstance(resp, dict) else None
+        if not isinstance(rec, dict):
+            rec = resp if isinstance(resp, dict) else {}
+        return rec.get("uuid") or rec.get("id")
+
+    async def _write(  # noqa: ANN001
+        self, method, handle, query, body, base_url, token, accept_language, client
+    ):
+        """Two things the synchronous mapping cannot do on its own."""
+        import json as _json
+
+        try:
+            model = _json.loads(body or b"{}")
+        except (ValueError, TypeError):
+            model = {}
+        if not isinstance(model, dict):
+            model = {}
+        model.pop("__removedItems", None)  # never honour it from a caller
+
+        if method.upper() == "POST":
+            # Upstream accepts an EMPTY POST and books an invoice with no creditor,
+            # no date and no position (measured on mvp 2026-08-02, four times). A
+            # facade that passes that through turns a malformed agent call into a
+            # real accounting document, so the creditor is required here.
+            sup = model.get("supplier")
+            if not (sup.get("id") if isinstance(sup, dict) else sup):
+                return self._refuse(
+                    422,
+                    "purchaseInvoice: `supplier` is required to create an invoice",
+                    detail=(
+                        "Upstream would accept this and create an invoice with no "
+                        "creditor. Name the supplier the invoice came from."
+                    ),
+                )
+        elif isinstance(model.get("items"), list):
+            model["__removedItems"] = await self._removed_items(
+                model["items"], handle, base_url, token, accept_language, client
+            )
+            body = _json.dumps(model).encode()
+
+        return await super()._write(
+            method, handle, query, body, base_url, token, accept_language, client
+        )
+
+    async def _removed_items(  # noqa: ANN001
+        self, desired, handle, base_url, token, accept_language, client
+    ) -> list[str]:
+        """Line uuids that exist upstream but are absent from ``desired``.
+
+        `items` is a collection REPLACE — the same contract the sub-resource
+        documents use (see ``_reconcile_line_items``). Upstream expresses removal
+        as an explicit ``Delete`` entry, so the omitted rows have to be looked up
+        before the write. A failed read yields no removals: dropping a line the
+        caller never mentioned is the one outcome worse than keeping it.
+        """
+        keep = {
+            str(i.get("id") or "").removeprefix("pii_")
+            for i in desired
+            if isinstance(i, dict) and i.get("id")
+        }
+        status, payload = await self._get(
+            base_url,
+            token,
+            handle=handle,
+            query=[],
+            accept_language=accept_language,
+            client=client,
+        )
+        if status >= 400 or not isinstance(payload, dict):
+            return []
+        # `_get` answers the RAW upstream record, not the mapped model — so the rows
+        # are `lineItems` carrying a bare `uuid`, not `items` with a `pii_` id.
+        current = (payload.get("data") or {}).get("lineItems") or []
+        return [
+            u
+            for i in current
+            if isinstance(i, dict) and (u := str(i.get("uuid") or "")) and u not in keep
+        ]
 
     def map_read(self, r: dict[str, Any]) -> dict[str, Any]:
         cur = r.get("currency") or "EUR"
