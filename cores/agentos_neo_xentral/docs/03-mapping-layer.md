@@ -106,12 +106,31 @@ Der Kern trägt sein eigenes To-do (Mechanismus aus dem agent-hub-labs-Guide
   mit „warum gebraucht“. Feld-Lücken als Zelle (`salesOrder.desiredDeliveryDate · create`),
   Ressourcen-Lücken auf Entity-Ebene (`stockMovement`, `purchaseInvoice.approve`).
   Bewusste Nicht-Wünsche stehen begründet im `_excluded`-Block.
-- **Grün/Rot/Grau = Ist** (`verified.json`): live-getestet geht (grün), schlägt fehl
-  (rot + Grund), verfügbar-aber-ungetestet (grau). Aus echten Testläufen erzeugt —
-  veraltet nie.
+- **Ist** (`verified.json`): aus echten Testläufen erzeugt — veraltet nie. Das
+  Verdikt sagt, wie *stark* etwas gezeigt wurde, nicht nur ob eine Anfrage durchging
+  (Vokabular und Begründung: `verdicts.py`):
+  - `pass` (grün) — die Fähigkeit selbst wurde nachgewiesen: ein Wert wurde
+    beobachtet, ein Schreibvorgang zurückgelesen, die Wirkung einer Action gesehen.
+  - `accepted` · `unobserved` · `executed` · `reachable` (gelb) — geprüft, aber der
+    Nachweis blieb aus: HTTP 200 ohne Wirkungsprüfung, ein deklariertes Feld, das
+    kein Datensatz befüllt hatte, eine Action ohne Effektkontrolle, eine Route, die
+    unser Probe-Kommando auf Validierung oder Datensatzzustand abgelehnt hat. **Kein
+    Defekt.** Bei manchen ist es die endgültige Antwort: `send` mailt einen echten
+    Kunden, sein Effekt ist auf einer Live-Tenant nicht prüfbar.
+  - `fail` (rot) — geprüft und fehlgeschlagen, mit Grund.
+  - fehlt (grau) — nie getestet.
+
+  Warum die Abstufung: vorher gab es nur `pass`/`fail`, also musste jede Sonde, die
+  eine Facette nur schwach messen konnte, trotzdem `pass` schreiben. So standen
+  1218 `read`-Verdikte grün, bevor je ein Payload angesehen wurde, und 34 von 62
+  Action-Verdikten allein wegen der Existenz ihrer Route. Ein zu starkes Verdikt ist
+  hier besonders teuer, weil es einen blauen Wunsch automatisch tilgt — siehe unten.
 - **Selbst-heilend:** liefert Xentral einen der 16 Endpoints (05-fehlende-apis.csv)
   oder schließt eine der 279 Feld-Lücken (04-backlog-tasks.csv), dreht der nächste
-  Testlauf die Zelle auf grün und der blaue Wunsch verschwindet automatisch.
+  Testlauf die Zelle auf grün und der blaue Wunsch verschwindet automatisch. Nur ein
+  `pass` tut das: ein gelbes Verdikt tilgt nichts, sonst löschte eine unbewiesene
+  Zelle einen berechtigten Backlog-Eintrag (genau das ist einmal passiert — ein Lauf
+  zog 50 Wünsche auf `read`-Verdikte zurück, die nie etwas gemessen hatten).
 
 Damit sind die beiden CSVs die **Initialbefüllung** von `priorities.json` — danach lebt
 der Fortschritt im Produkt (Steckbrief-Grid je Entity), nicht in einer Tabelle, die

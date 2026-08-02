@@ -3,25 +3,25 @@
     "AddressCustomField": {
       "fields": {
         "allowedValues": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "allowedValues.label": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "allowedValues.value": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "name": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "type": {
-          "read": "pass"
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:35:34+00:00"
@@ -29,50 +29,50 @@
     "Channel": {
       "fields": {
         "active": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "createdAt": {
-          "read": "pass",
-          "sort": "pass"
+          "read": "unobserved",
+          "sort": "accepted"
         },
         "defaults": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "defaults.priceList": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "defaults.warehouse": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "name": {
-          "filter": "pass",
-          "read": "pass",
-          "search": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "searchNote": "verdict dropped in the vocabulary migration: the probe sent a bare `search` query param, which never reaches the facade's search fan-out — it proved nothing about this field"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "platform": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "sync": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "sync.lastRunAt": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "sync.status": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "type": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "updatedAt": {
-          "read": "pass",
-          "sort": "pass"
+          "read": "unobserved",
+          "sort": "accepted"
         }
       },
       "probedAt": "2026-08-02T06:32:53+00:00"
@@ -80,34 +80,34 @@
     "Correspondence": {
       "fields": {
         "content": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "customer": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "date": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "isSent": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "subject": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "time": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "type": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:35:13+00:00"
@@ -115,9 +115,9 @@
     "CreditNote": {
       "actions": {
         "addTag": "pass",
-        "downloadPdf": "pass",
+        "downloadPdf": "executed",
         "removeTag": "pass",
-        "send": "pass"
+        "send": "reachable"
       },
       "actionsNotes": {
         "addTag": "fresh title 'verify-probe-64e379' attached — auto-create verified, net-zero",
@@ -127,268 +127,268 @@
       },
       "fields": {
         "billingAddress": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "billingAddress.city": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.country": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.email": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.name": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.phone": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.street": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.vatId": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.zip": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "costCenter": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "createdAt": {
-          "filter": "pass",
-          "read": "pass",
-          "sort": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "sort": "accepted"
         },
         "currency": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "customFields": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "customer": {
           "create": "pass",
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "dates": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "dates.issued": {
           "create": "pass",
-          "filter": "pass",
-          "read": "pass",
-          "sort": "pass",
+          "filter": "accepted",
+          "read": "unobserved",
+          "sort": "accepted",
           "update": "pass"
         },
         "dates.serviceDate": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.return": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.salesInvoice": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.contributionMargin": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.description": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "updateNote": "no sample value for description — not probed (a null line value cannot be restored net-zero)"
         },
         "items.discountPercent": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "items.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.invoiceItem": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.position": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.product": {
           "create": "pass",
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.purchasePrice": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "items.purchasePrice.amount": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.purchasePrice.currency": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.quantity": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "items.quantity.unit": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.quantity.value": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.taxRate": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.totals": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.totals.gross": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.totals.net": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.unitPrice": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "items.unitPrice.amount": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.unitPrice.currency": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "kind": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "note": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "number": {
-          "filter": "pass",
-          "read": "pass",
-          "search": "pass",
-          "sort": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "searchNote": "verdict dropped in the vocabulary migration: the probe sent a bare `search` query param, which never reaches the facade's search fan-out — it proved nothing about this field",
+          "sort": "accepted"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "project": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass",
           "updateNote": "only one project on the instance — write accepted, change not provable"
         },
         "references": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "references.customerOrderNumber": {
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "references.debtorAccountNumber": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "settlement": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "settlement.mode": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "settlement.payments": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "settlement.payments.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "settlement.payments.number": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "settlement.status": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "status": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "tags": {
           "create": "pass",
-          "filter": "pass",
-          "read": "pass",
+          "filter": "accepted",
+          "read": "unobserved",
           "update": "pass"
         },
         "taxation": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "totals": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.currency": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.gross": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.net": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.outstanding": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.settled": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "updatedAt": {
-          "filter": "pass",
-          "read": "pass",
-          "sort": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "sort": "accepted"
         }
       },
       "probedAt": "2026-08-02T06:30:20+00:00",
       "processSteps": {
-        "release": "pass"
+        "release": "reachable"
       },
       "processStepsNotes": {
         "release": "reachable — 409: Resource status invalid for requested operation"
@@ -406,295 +406,295 @@
       "fields": {
         "addresses": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "addresses.city": {
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass",
+          "read": "unobserved",
           "searchNote": "no sample text value — search not probed",
-          "sort": "pass"
+          "sort": "accepted"
         },
         "addresses.contactPerson": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "addresses.country": {
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass",
+          "read": "unobserved",
           "searchNote": "no sample text value — search not probed",
-          "sort": "pass"
+          "sort": "accepted"
         },
         "addresses.email": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "addresses.gln": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "addresses.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "addresses.isDefault": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "addresses.label": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "addresses.name": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "addresses.phone": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "addresses.state": {
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass",
+          "read": "unobserved",
           "searchNote": "no sample text value — search not probed",
-          "sort": "pass"
+          "sort": "accepted"
         },
         "addresses.street": {
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass",
+          "read": "unobserved",
           "searchNote": "no sample text value — search not probed",
-          "sort": "pass"
+          "sort": "accepted"
         },
         "addresses.type": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "addresses.zip": {
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass",
+          "read": "unobserved",
           "searchNote": "no sample text value — search not probed",
-          "sort": "pass"
+          "sort": "accepted"
         },
         "billTo": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "channel": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "channels": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "channels.channel": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "channels.externalId": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "contacts.allowMarketingEmails": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.birthday": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.department": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.email": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.fax": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.internalNote": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.language": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.mobile": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.name": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.phone": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.position": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.remarks": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.salutation": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.subDepartment": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.title": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.type": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "createdAt": {
-          "filter": "pass",
-          "read": "pass",
-          "sort": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "sort": "accepted"
         },
         "customFields": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "customFields.key": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "customFields.label": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "customFields.type": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "customFields.value": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "defaults": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "defaults.currency": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "defaults.language": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "defaults.partialShipping": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "defaults.paymentMethod": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "defaults.paymentTerms": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "defaults.paymentTerms.discountDays": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "defaults.paymentTerms.discountPercent": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "defaults.paymentTerms.dueDays": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "defaults.priceList": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "defaults.shippingMethod": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "defaults.taxation": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "email": {
           "create": "pass",
-          "filter": "pass",
-          "read": "pass",
-          "search": "pass",
+          "filter": "accepted",
+          "read": "unobserved",
+          "searchNote": "verdict dropped in the vocabulary migration: the probe sent a bare `search` query param, which never reaches the facade's search fan-out — it proved nothing about this field",
           "update": "pass"
         },
         "finance": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "finance.creditLimit": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "finance.creditLimit.amount": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "finance.creditLimit.currency": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "finance.debtorAccountNumber": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "finance.dunningBlocked": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "finance.onHold": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "finance.openAmount": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "finance.openAmount.amount": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "finance.openAmount.currency": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "language": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "name": {
           "create": "pass",
-          "filter": "pass",
-          "read": "pass",
-          "search": "pass",
-          "sort": "pass",
+          "filter": "accepted",
+          "read": "unobserved",
+          "searchNote": "verdict dropped in the vocabulary migration: the probe sent a bare `search` query param, which never reaches the facade's search fan-out — it proved nothing about this field",
+          "sort": "accepted",
           "update": "pass"
         },
         "notes": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "number": {
-          "filter": "pass",
-          "read": "pass",
-          "search": "pass",
-          "sort": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "searchNote": "verdict dropped in the vocabulary migration: the probe sent a bare `search` query param, which never reaches the facade's search fan-out — it proved nothing about this field",
+          "sort": "accepted"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "parent": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "phone": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "project": {
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass",
           "updateNote": "only one project on the instance — write accepted, change not provable"
         },
         "status": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "tags": {
-          "filter": "pass",
-          "read": "pass",
+          "filter": "accepted",
+          "read": "unobserved",
           "update": "pass"
         },
         "type": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "updatedAt": {
-          "filter": "pass",
-          "read": "pass",
-          "sort": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "sort": "accepted"
         },
         "vatId": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "website": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         }
       },
@@ -703,9 +703,9 @@
     "DeliveryNote": {
       "actions": {
         "addTag": "pass",
-        "createReturn": "pass",
-        "createSalesInvoice": "pass",
-        "downloadPdf": "pass",
+        "createReturn": "reachable",
+        "createSalesInvoice": "reachable",
+        "downloadPdf": "executed",
         "removeTag": "pass"
       },
       "actionsNotes": {
@@ -717,247 +717,247 @@
       },
       "fields": {
         "billingAddress": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "billingAddress.city": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.country": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.email": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.name": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.phone": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.street": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.vatId": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.zip": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "channel": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "costCenter": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "createdAt": {
-          "filter": "pass",
-          "read": "pass",
-          "sort": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "sort": "accepted"
         },
         "customFields": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "customer": {
           "create": "pass",
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "customs": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "customs.incoterm": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "customs.note": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "customs.totalWeight": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "customs.totalWeight.unit": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "customs.totalWeight.value": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "dates": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "dates.delivered": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "dates.issued": {
           "create": "pass",
-          "filter": "pass",
-          "read": "pass",
-          "sort": "pass",
+          "filter": "accepted",
+          "read": "unobserved",
+          "sort": "accepted",
           "update": "pass"
         },
         "dates.shipped": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.returns": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.returns.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.returns.number": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.salesInvoices": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.salesInvoices.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.salesInvoices.number": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.salesOrder": {
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.batches": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.batches.batch": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.batches.quantity": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.deliveredQuantity": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.description": {
           "create": "pass",
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.orderItem": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.position": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.product": {
           "create": "pass",
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.quantity": {
           "create": "pass",
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.quantity.unit": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.quantity.value": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.serialNumbers": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.serialNumbers.number": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "note": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "number": {
-          "filter": "pass",
-          "read": "pass",
-          "search": "pass",
-          "sort": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "searchNote": "verdict dropped in the vocabulary migration: the probe sent a bare `search` query param, which never reaches the facade's search fan-out — it proved nothing about this field",
+          "sort": "accepted"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "project": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass",
           "updateNote": "only one project on the instance — write accepted, change not provable"
         },
         "references": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "references.customerOrderNumber": {
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "shipments": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "shipments.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "shipments.name": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "shipments.number": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "status": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "tags": {
           "create": "pass",
-          "filter": "pass",
-          "read": "pass",
+          "filter": "accepted",
+          "read": "unobserved",
           "update": "pass"
         },
         "updatedAt": {
-          "filter": "pass",
-          "read": "pass",
-          "sort": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "sort": "accepted"
         },
         "warehouse": {
-          "read": "pass"
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:29:30+00:00",
       "processSteps": {
-        "cancel": "pass",
-        "markDelivered": "pass",
-        "release": "pass"
+        "cancel": "reachable",
+        "markDelivered": "reachable",
+        "release": "reachable"
       },
       "processStepsNotes": {
         "cancel": "reachable — 409: Resource status invalid for requested operation",
@@ -968,49 +968,49 @@
     "DeliveryTerm": {
       "fields": {
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "name": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:35:19+00:00"
     },
     "EmailAccount": {
       "actions": {
-        "sendEmail": "pass"
+        "sendEmail": "reachable"
       },
       "actionsNotes": {
         "sendEmail": "reachable — 422: sendEmail requires command.to, .subject and .body."
       },
       "fields": {
         "email": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "isSystemDefault": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "name": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "projects": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "projects.name": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "type": {
-          "read": "pass"
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:35:15+00:00"
@@ -1018,21 +1018,21 @@
     "Employee": {
       "fields": {
         "email": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "name": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "number": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:35:29+00:00"
@@ -1040,84 +1040,84 @@
     "GoodsReceipt": {
       "fields": {
         "createdAt": {
-          "read": "pass",
-          "sort": "pass"
+          "read": "unobserved",
+          "sort": "accepted"
         },
         "dates": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "dates.posted": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "dates.received": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.parcelReceipt": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.purchaseOrder": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.returnOrder": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.salesOrder": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.product": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.quantity": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.quantity.unit": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.quantity.value": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.storageLocation": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "number": {
-          "filter": "pass",
-          "read": "pass",
-          "search": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "searchNote": "verdict dropped in the vocabulary migration: the probe sent a bare `search` query param, which never reaches the facade's search fan-out — it proved nothing about this field"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "qualityCheck": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "qualityCheck.status": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "references": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "references.supplierDeliveryNoteNumber": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "status": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "supplier": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "updatedAt": {
-          "read": "pass",
-          "sort": "pass"
+          "read": "unobserved",
+          "sort": "accepted"
         }
       },
       "probedAt": "2026-08-02T06:31:30+00:00"
@@ -1125,22 +1125,22 @@
     "MerchandiseGroup": {
       "fields": {
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "lastUsedProductNumber": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "name": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "project": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "useMainProductNumberRange": {
-          "read": "pass"
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:35:30+00:00"
@@ -1148,21 +1148,21 @@
     "PaymentMethod": {
       "fields": {
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "name": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "project": {
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass"
+          "read": "unobserved"
         },
         "type": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:35:16+00:00"
@@ -1170,40 +1170,40 @@
     "PaymentTermsGroup": {
       "fields": {
         "comment": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "isActive": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "key": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "name": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "paymentTerms": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "paymentTerms.basicDiscount": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "paymentTerms.earlyPaymentDiscount": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "paymentTerms.paymentTargetDays": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "paymentTerms.postageFreeFrom": {
-          "read": "pass"
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:35:21+00:00"
@@ -1211,104 +1211,104 @@
     "PickingRun": {
       "fields": {
         "assignedTo": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "assignedTo.name": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "containers": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "containers.barcode": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "containers.name": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "createdAt": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "criteria": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "criteria.channel": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "criteria.shippingMethod": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.deliveryNotes": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.deliveryNotes.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "name": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "number": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "orders": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "orders.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "progress": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "progress.deliveryNotes": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "progress.products": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "progress.totalWeight": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "status": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "strategy": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "tasks": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "tasks.product": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "tasks.quantity": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "tasks.quantity.unit": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "tasks.quantity.value": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "tasks.status": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "tasks.storageLocation": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "updatedAt": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "warehouse": {
-          "read": "pass"
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:35:08+00:00"
@@ -1316,79 +1316,79 @@
     "PriceList": {
       "fields": {
         "createdAt": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "currency": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "entries": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "entries.minQuantity": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "entries.product": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "entries.unitPrice": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "minQuantity": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "product": {
           "create": "pass",
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "remark": {
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "scope": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "scope.customer": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "scope.customerGroup": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "unitPrice": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "unitPrice.amount": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "unitPrice.amountGross": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "unitPrice.currency": {
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "unitPrice.taxRate": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "updatedAt": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "validFrom": {
-          "read": "pass",
+          "read": "unobserved",
           "updateNote": "no sample date value — not probed (a null date cannot be restored)"
         },
         "validUntil": {
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         }
       },
@@ -1396,47 +1396,47 @@
     },
     "Printer": {
       "actions": {
-        "printDocument": "pass"
+        "printDocument": "reachable"
       },
       "actionsNotes": {
         "printDocument": "reachable — 422: printDocument requires command.fileContent (base64 PDF)."
       },
       "fields": {
         "active": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "connection": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "createdAt": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "designation": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "deviceId": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "name": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "printMethod": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "spooler": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "updatedAt": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "useCase": {
-          "read": "pass"
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:35:14+00:00"
@@ -1444,388 +1444,388 @@
     "Product": {
       "fields": {
         "bom": {
-          "read": "pass",
+          "read": "unobserved",
           "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "bom.items": {
-          "read": "pass",
+          "read": "unobserved",
           "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "bom.items.product": {
-          "read": "pass",
+          "read": "unobserved",
           "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "bom.items.quantity": {
-          "read": "pass",
+          "read": "unobserved",
           "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "bom.items.reference": {
-          "read": "pass",
+          "read": "unobserved",
           "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "bom.items.type": {
-          "read": "pass",
+          "read": "unobserved",
           "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "category": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "createdAt": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "customFields": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "customFields.label": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "customFields.number": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "customFields.value": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "description": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "documentDefaults": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documentDefaults.hidePrice": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "documentDefaults.noticeText": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documentDefaults.requiresCustomerApproval": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "identifiers": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "identifiers.countryOfOrigin": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "identifiers.ean": {
-          "filter": "pass",
-          "read": "pass",
-          "search": "pass",
+          "filter": "accepted",
+          "read": "unobserved",
+          "searchNote": "verdict dropped in the vocabulary migration: the probe sent a bare `search` query param, which never reaches the facade's search fan-out — it proved nothing about this field",
           "update": "pass"
         },
         "identifiers.external": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "identifiers.external.channel": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "identifiers.external.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "identifiers.hsCode": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "identifiers.manufacturerNumber": {
-          "filter": "pass",
-          "read": "pass",
+          "filter": "accepted",
+          "read": "unobserved",
           "update": "pass"
         },
         "kind": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "logistics": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "logistics.dimensions": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "logistics.dimensions.height": {
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "logistics.dimensions.length": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "logistics.dimensions.unit": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "logistics.dimensions.width": {
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "logistics.minimumOrderQuantity": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "logistics.minimumStockQuantity": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "logistics.netWeight": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "logistics.netWeight.unit": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "logistics.netWeight.value": {
-          "read": "pass",
+          "read": "unobserved",
           "updateNote": "no sample numeric value — not probed (a null number cannot be restored)"
         },
         "logistics.packagingUnits": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "logistics.packagingUnits.quantity": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "logistics.packagingUnits.unit": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "logistics.weight": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "logistics.weight.unit": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "logistics.weight.value": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "manufacturer": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "manufacturer.name": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "manufacturer.website": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "name": {
           "create": "pass",
           "createNote": "created prd_61997 (labelled 'VT Verify') — no delete endpoint, left in place",
-          "filter": "pass",
-          "read": "pass",
-          "search": "pass",
-          "sort": "pass",
+          "filter": "accepted",
+          "read": "unobserved",
+          "searchNote": "verdict dropped in the vocabulary migration: the probe sent a bare `search` query param, which never reaches the facade's search fan-out — it proved nothing about this field",
+          "sort": "accepted",
           "update": "pass"
         },
         "number": {
-          "filter": "pass",
-          "read": "pass",
-          "search": "pass",
-          "sort": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "searchNote": "verdict dropped in the vocabulary migration: the probe sent a bare `search` query param, which never reaches the facade's search fan-out — it proved nothing about this field",
+          "sort": "accepted"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "prices": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "prices.purchase": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "prices.purchase.amount": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "prices.purchase.currency": {
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "prices.purchase.source": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "prices.sale": {
-          "read": "pass",
+          "read": "unobserved",
           "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "prices.sale.amount": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections",
           "update": "pass"
         },
         "prices.sale.currency": {
-          "read": "pass",
+          "read": "unobserved",
           "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections",
           "update": "pass"
         },
         "production": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "production.hasBillOfMaterials": {
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "production.mode": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "project": {
-          "filter": "pass",
-          "read": "pass",
+          "filter": "accepted",
+          "read": "unobserved",
           "update": "pass",
           "updateNote": "only one project on the instance — write accepted, change not provable"
         },
         "properties": {
-          "read": "pass",
+          "read": "unobserved",
           "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "properties.name": {
-          "read": "pass",
+          "read": "unobserved",
           "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "properties.property": {
-          "read": "pass",
+          "read": "unobserved",
           "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "properties.unit": {
-          "read": "pass",
+          "read": "unobserved",
           "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "properties.value": {
-          "read": "pass",
+          "read": "unobserved",
           "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "status": {
-          "filter": "pass",
-          "read": "pass",
+          "filter": "accepted",
+          "read": "unobserved",
           "update": "pass"
         },
         "statusReason": {
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "stock": {
-          "read": "pass",
+          "read": "unobserved",
           "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "stock.available": {
-          "read": "pass",
+          "read": "unobserved",
           "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "stock.belowMinimum": {
-          "read": "pass",
+          "read": "unobserved",
           "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "stock.calculated": {
-          "read": "pass",
+          "read": "unobserved",
           "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "stock.correction": {
-          "read": "pass",
+          "read": "unobserved",
           "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "stock.incoming": {
-          "read": "pass",
+          "read": "unobserved",
           "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "stock.openSalesOrders": {
-          "read": "pass",
+          "read": "unobserved",
           "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "stock.physical": {
-          "read": "pass",
+          "read": "unobserved",
           "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "stock.producible": {
-          "read": "pass",
+          "read": "unobserved",
           "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "stock.pseudo": {
-          "read": "pass",
+          "read": "unobserved",
           "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "stock.reserved": {
-          "read": "pass",
+          "read": "unobserved",
           "readNote": "populated on a single-record read only; a list leaves it null and names the section in extra.unavailableSections"
         },
         "suppliers": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "suppliers.isDefault": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "suppliers.supplier": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "suppliers.supplierProductNumber": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "tags": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "tax": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "tax.profile": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "tax.rate": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "tracking": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "tracking.batches": {
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "tracking.bestBefore": {
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "tracking.serialNumbers": {
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "tracking.stock": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "unit": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "updatedAt": {
-          "filter": "pass",
-          "read": "pass",
-          "sort": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "sort": "accepted"
         },
         "variant": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "variant.isMatrix": {
-          "filter": "pass",
-          "read": "pass",
+          "filter": "accepted",
+          "read": "unobserved",
           "update": "pass"
         },
         "variant.of": {
-          "read": "pass"
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:34:38+00:00"
@@ -1833,16 +1833,16 @@
     "ProductCategory": {
       "fields": {
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "name": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "parent": {
-          "read": "pass"
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:35:29+00:00"
@@ -1850,14 +1850,14 @@
     "ProductFreeField": {
       "fields": {
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "name": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:35:33+00:00"
@@ -1865,16 +1865,16 @@
     "ProductProperty": {
       "fields": {
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "name": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "project": {
-          "read": "pass"
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:35:31+00:00"
@@ -1882,17 +1882,17 @@
     "ProductTag": {
       "fields": {
         "color": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "name": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:35:32+00:00"
@@ -1900,46 +1900,46 @@
     "Project": {
       "fields": {
         "currency": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "defaultCustomerPaymentMethod": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "defaultShippingMethod": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "defaultSupplierPaymentMethod": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "description": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "keyName": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "name": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "normalTaxRate": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "pickingProcess": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "reducedTaxRate": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "storageProcess": {
-          "read": "pass"
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:35:25+00:00"
@@ -1947,180 +1947,180 @@
     "PurchaseInvoice": {
       "fields": {
         "approval": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "approval.at": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "approval.by": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "approval.status": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "clarification": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "clarification.needed": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "clarification.reason": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "costCenter": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "createdAt": {
-          "read": "pass",
-          "sort": "pass"
+          "read": "unobserved",
+          "sort": "accepted"
         },
         "currency": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "dates": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "dates.invoiceDate": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "dates.received": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "dates.serviceDate": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.purchaseOrder": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "files": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "files.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "files.name": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.product": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.quantity": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.quantity.unit": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.quantity.value": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.unitPrice": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.unitPrice.amount": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.unitPrice.currency": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "match": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "match.goodsCheck": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "match.invoiceCheck": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "match.purchaseOrder": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "match.status": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "number": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.discountUntil": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.dueDate": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.method": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.paidOn": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.status": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "references": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "references.creditorAccountNumber": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "references.externalReference": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "references.supplierInvoiceNumber": {
-          "filter": "pass",
-          "read": "pass",
-          "search": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "searchNote": "verdict dropped in the vocabulary migration: the probe sent a bare `search` query param, which never reaches the facade's search fan-out — it proved nothing about this field"
         },
         "status": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "supplier": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "tags": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "totals": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.currency": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.gross": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.outstanding": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.paid": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "updatedAt": {
-          "read": "pass",
-          "sort": "pass"
+          "read": "unobserved",
+          "sort": "accepted"
         }
       },
       "probedAt": "2026-08-02T06:31:35+00:00"
@@ -2128,9 +2128,9 @@
     "PurchaseOrder": {
       "actions": {
         "addTag": "pass",
-        "downloadPdf": "pass",
+        "downloadPdf": "executed",
         "removeTag": "pass",
-        "send": "pass"
+        "send": "reachable"
       },
       "actionsNotes": {
         "addTag": "fresh title 'verify-probe-afb77a' attached — auto-create verified, net-zero",
@@ -2140,278 +2140,278 @@
       },
       "fields": {
         "confirmation": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "confirmation.confirmedAt": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "confirmation.status": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "confirmation.supplierOrderNumber": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "confirmation.via": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "costCenter": {
           "create": "pass",
-          "read": "pass"
+          "read": "unobserved"
         },
         "createdAt": {
-          "filter": "pass",
-          "read": "pass",
-          "sort": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "sort": "accepted"
         },
         "currency": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "customFields": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "dates": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "dates.confirmedDelivery": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "dates.issued": {
           "create": "pass",
-          "filter": "pass",
-          "read": "pass",
-          "sort": "pass",
+          "filter": "accepted",
+          "read": "unobserved",
+          "sort": "accepted",
           "update": "pass"
         },
         "dates.requestedDelivery": {
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass"
+          "read": "unobserved"
         },
         "deliveryAddress": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "deliveryAddress.city": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "deliveryAddress.country": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "deliveryAddress.email": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "deliveryAddress.name": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "deliveryAddress.phone": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "deliveryAddress.street": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "deliveryAddress.vatId": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "deliveryAddress.zip": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "documents": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.goodsReceipts": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.goodsReceipts.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.goodsReceipts.number": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.purchaseInvoices": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.purchaseInvoices.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.purchaseInvoices.number": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "dropship": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.fulfillment": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.fulfillment.invoiced": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.fulfillment.received": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.position": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.product": {
           "create": "pass",
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.quantity": {
           "create": "pass",
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.quantity.unit": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.quantity.value": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.supplierProductName": {
           "create": "pass",
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.supplierProductNumber": {
           "create": "pass",
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.taxRate": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.unitPrice": {
           "create": "pass",
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.unitPrice.amount": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.unitPrice.currency": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "note": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "number": {
-          "filter": "pass",
-          "read": "pass",
-          "search": "pass",
-          "sort": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "searchNote": "verdict dropped in the vocabulary migration: the probe sent a bare `search` query param, which never reaches the facade's search fan-out — it proved nothing about this field",
+          "sort": "accepted"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.method": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.terms": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.terms.discountDays": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.terms.discountPercent": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.terms.dueDays": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "printSettings": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "printSettings.requestConfirmation": {
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "printSettings.withoutPrices": {
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "project": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "references": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "references.ourCustomerNumber": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "references.supplierOfferNumber": {
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass"
+          "read": "unobserved"
         },
         "status": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "supplier": {
           "create": "pass",
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "tags": {
           "create": "pass",
-          "filter": "pass",
-          "read": "pass",
+          "filter": "accepted",
+          "read": "unobserved",
           "update": "pass"
         },
         "totals": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.currency": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.gross": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.net": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "updatedAt": {
-          "filter": "pass",
-          "read": "pass",
-          "sort": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "sort": "accepted"
         },
         "warehouse": {
-          "read": "pass"
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:31:27+00:00",
       "processSteps": {
-        "cancel": "pass",
-        "close": "pass",
-        "release": "pass"
+        "cancel": "reachable",
+        "close": "reachable",
+        "release": "reachable"
       },
       "processStepsNotes": {
         "cancel": "reachable — 409: Resource status invalid for requested operation",
@@ -2422,70 +2422,70 @@
     "PurchasePrice": {
       "fields": {
         "createdAt": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "isStandardSupplier": {
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "minQuantity": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "packageAmount": {
-          "read": "pass",
+          "read": "unobserved",
           "updateNote": "no sample numeric value — not probed (a null number cannot be restored)"
         },
         "product": {
           "create": "pass",
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "remark": {
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "supplier": {
           "create": "pass",
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "supplierDesignation": {
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "supplierItemNumber": {
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "unitPrice": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "unitPrice.amount": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "unitPrice.currency": {
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "updatedAt": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "validFrom": {
-          "read": "pass",
+          "read": "unobserved",
           "updateNote": "no sample date value — not probed (a null date cannot be restored)"
         },
         "validUntil": {
-          "read": "pass",
+          "read": "unobserved",
           "updateNote": "no sample date value — not probed (a null date cannot be restored)"
         }
       },
@@ -2494,9 +2494,9 @@
     "Quote": {
       "actions": {
         "addTag": "pass",
-        "downloadPdf": "pass",
+        "downloadPdf": "executed",
         "removeTag": "pass",
-        "send": "pass"
+        "send": "reachable"
       },
       "actionsNotes": {
         "addTag": "fresh title 'verify-probe-42f87e' attached — auto-create verified, net-zero",
@@ -2506,328 +2506,328 @@
       },
       "fields": {
         "billingAddress": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "billingAddress.city": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.country": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.email": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.name": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.phone": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.street": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.vatId": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.zip": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "channel": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "costCenter": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "createdAt": {
-          "filter": "pass",
-          "read": "pass",
-          "sort": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "sort": "accepted"
         },
         "currency": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "customFields": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "customer": {
           "create": "pass",
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "dates": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "dates.expectedOrderDate": {
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass"
+          "read": "unobserved"
         },
         "dates.issued": {
           "create": "pass",
-          "filter": "pass",
-          "read": "pass",
-          "sort": "pass",
+          "filter": "accepted",
+          "read": "unobserved",
+          "sort": "accepted",
           "update": "pass"
         },
         "dates.requestedDelivery": {
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass"
+          "read": "unobserved"
         },
         "dates.validUntil": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "documents": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.salesOrders": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.salesOrders.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.salesOrders.number": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.contributionMargin": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.description": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "items.discountPercent": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "items.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.isOptional": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.position": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.priceSource": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.product": {
           "create": "pass",
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.purchasePrice": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "items.purchasePrice.amount": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.purchasePrice.currency": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.quantity": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "items.quantity.unit": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.quantity.value": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.taxRate": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.totals": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.totals.gross": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.totals.net": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.unitPrice": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "items.unitPrice.amount": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.unitPrice.currency": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "note": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "number": {
-          "filter": "pass",
-          "read": "pass",
-          "search": "pass",
-          "sort": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "searchNote": "verdict dropped in the vocabulary migration: the probe sent a bare `search` query param, which never reaches the facade's search fan-out — it proved nothing about this field",
+          "sort": "accepted"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.method": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.terms": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.terms.discountDays": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.terms.discountPercent": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.terms.dueDays": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "project": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "references": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "references.customerInquiryNumber": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "shipping": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "shipping.method": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "shippingAddress": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "shippingAddress.city": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "shippingAddress.country": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "shippingAddress.email": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "shippingAddress.name": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "shippingAddress.phone": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "shippingAddress.street": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "shippingAddress.vatId": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "shippingAddress.zip": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "status": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "tags": {
           "create": "pass",
-          "filter": "pass",
-          "read": "pass",
+          "filter": "accepted",
+          "read": "unobserved",
           "update": "pass"
         },
         "texts": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "texts.intro": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "texts.outro": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "totals": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.currency": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.gross": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.net": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "updatedAt": {
-          "filter": "pass",
-          "read": "pass",
-          "sort": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "sort": "accepted"
         }
       },
       "probedAt": "2026-08-02T06:26:13+00:00",
       "processSteps": {
-        "cancel": "pass",
-        "release": "pass"
+        "cancel": "reachable",
+        "release": "reachable"
       },
       "processStepsNotes": {
         "cancel": "reachable — 409: Resource status invalid for requested operation",
@@ -2837,9 +2837,9 @@
     "Return": {
       "actions": {
         "addTag": "pass",
-        "createCreditNote": "pass",
-        "createFromDeliveryNote": "pass",
-        "downloadPdf": "pass",
+        "createCreditNote": "executed",
+        "createFromDeliveryNote": "reachable",
+        "downloadPdf": "executed",
         "removeTag": "pass"
       },
       "actionsNotes": {
@@ -2851,197 +2851,197 @@
       },
       "fields": {
         "billingAddress": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "billingAddress.city": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.country": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.email": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.name": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.phone": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.street": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.vatId": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.zip": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "createdAt": {
-          "filter": "pass",
-          "read": "pass",
-          "sort": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "sort": "accepted"
         },
         "customFields": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "customer": {
           "create": "pass",
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "dates": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "dates.received": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "dates.requested": {
           "create": "pass",
-          "filter": "pass",
-          "read": "pass",
-          "sort": "pass",
+          "filter": "accepted",
+          "read": "unobserved",
+          "sort": "accepted",
           "update": "pass"
         },
         "dates.settled": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.deliveryNote": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.salesOrder": {
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.action": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.condition": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.creditedQuantity": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.deliveryNoteItem": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.position": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.product": {
           "create": "pass",
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.quantity": {
           "create": "pass",
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.quantity.unit": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.quantity.value": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.reason": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.receivedQuantity": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "note": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "number": {
-          "filter": "pass",
-          "read": "pass",
-          "search": "pass",
-          "sort": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "searchNote": "verdict dropped in the vocabulary migration: the probe sent a bare `search` query param, which never reaches the facade's search fan-out — it proved nothing about this field",
+          "sort": "accepted"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "project": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "references": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "references.customerOrderNumber": {
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass"
+          "read": "unobserved"
         },
         "references.rmaNumber": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "resolution": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "resolution.creditNote": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "resolution.replacementOrder": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "status": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "tags": {
           "create": "pass",
-          "filter": "pass",
-          "read": "pass",
+          "filter": "accepted",
+          "read": "unobserved",
           "update": "pass"
         },
         "updatedAt": {
-          "filter": "pass",
-          "read": "pass",
-          "sort": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "sort": "accepted"
         },
         "warehouse": {
-          "read": "pass"
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:30:49+00:00",
       "processSteps": {
-        "cancel": "pass",
-        "release": "pass",
-        "settle": "pass"
+        "cancel": "reachable",
+        "release": "reachable",
+        "settle": "reachable"
       },
       "processStepsNotes": {
         "cancel": "reachable — 409: Resource status invalid for requested operation",
@@ -3052,22 +3052,22 @@
     "ReturnReason": {
       "fields": {
         "description": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "language": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "name": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "project": {
-          "read": "pass"
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:35:18+00:00"
@@ -3075,9 +3075,9 @@
     "SalesInvoice": {
       "actions": {
         "addTag": "pass",
-        "downloadPdf": "pass",
+        "downloadPdf": "executed",
         "removeTag": "pass",
-        "send": "pass"
+        "send": "reachable"
       },
       "actionsNotes": {
         "addTag": "fresh title 'verify-probe-e430b6' attached — auto-create verified, net-zero",
@@ -3087,342 +3087,342 @@
       },
       "fields": {
         "billingAddress": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "billingAddress.city": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.country": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.email": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.name": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.phone": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.street": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.vatId": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.zip": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "channel": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "costCenter": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "createdAt": {
-          "filter": "pass",
-          "read": "pass",
-          "sort": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "sort": "accepted"
         },
         "currency": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "customFields": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "customer": {
           "create": "pass",
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "dates": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "dates.issued": {
           "create": "pass",
-          "filter": "pass",
-          "read": "pass",
-          "sort": "pass",
+          "filter": "accepted",
+          "read": "unobserved",
+          "sort": "accepted",
           "update": "pass"
         },
         "dates.serviceDate": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "dates.servicePeriod": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.creditNotes": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.creditNotes.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.creditNotes.number": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.deliveryNotes": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.deliveryNotes.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.deliveryNotes.number": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.salesOrder": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "dunning": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "dunning.blocked": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "dunning.lastReminderAt": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "dunning.level": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "dunning.note": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "eInvoice": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "eInvoice.buyerReference": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "eInvoice.downloadUrl": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "eInvoice.format": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "eInvoice.status": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "fixedAt": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.contributionMargin": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.description": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "updateNote": "no sample value for description — not probed (a null line value cannot be restored net-zero)"
         },
         "items.discountPercent": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "items.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.orderItem": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.position": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.product": {
           "create": "pass",
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.purchasePrice": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "items.purchasePrice.amount": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.purchasePrice.currency": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.quantity": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "items.quantity.unit": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.quantity.value": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.taxRate": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.totals": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.totals.gross": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.totals.net": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.unitPrice": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "items.unitPrice.amount": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.unitPrice.currency": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "note": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "number": {
-          "filter": "pass",
-          "read": "pass",
-          "search": "pass",
-          "sort": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "searchNote": "verdict dropped in the vocabulary migration: the probe sent a bare `search` query param, which never reaches the facade's search fan-out — it proved nothing about this field",
+          "sort": "accepted"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.discountDate": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.dueDate": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.method": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.payments": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.payments.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.payments.number": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.status": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "payment.terms": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.terms.discountDays": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.terms.discountPercent": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.terms.dueDays": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "project": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass",
           "updateNote": "only one project on the instance — write accepted, change not provable"
         },
         "references": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "references.customerOrderNumber": {
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "references.debtorAccountNumber": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "status": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "tags": {
           "create": "pass",
-          "filter": "pass",
-          "read": "pass",
+          "filter": "accepted",
+          "read": "unobserved",
           "update": "pass"
         },
         "taxation": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "totals": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.currency": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.gross": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.net": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.outstanding": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.paid": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "updatedAt": {
-          "filter": "pass",
-          "read": "pass",
-          "sort": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "sort": "accepted"
         }
       },
       "probedAt": "2026-08-02T06:28:50+00:00",
       "processSteps": {
-        "cancel": "pass",
-        "release": "pass"
+        "cancel": "executed",
+        "release": "reachable"
       },
       "processStepsNotes": {
         "cancel": "EXECUTED on the sampled record (200) — created/changed data",
@@ -3432,12 +3432,12 @@
     "SalesOrder": {
       "actions": {
         "addTag": "pass",
-        "createSalesInvoice": "pass",
-        "downloadPdf": "pass",
+        "createSalesInvoice": "executed",
+        "downloadPdf": "executed",
         "removeTag": "pass",
-        "sendConfirmation": "pass",
-        "split": "pass",
-        "splitOrder": "pass"
+        "sendConfirmation": "reachable",
+        "split": "reachable",
+        "splitOrder": "reachable"
       },
       "actionsNotes": {
         "addTag": "fresh title 'verify-probe-67d9a1' attached — auto-create verified, net-zero",
@@ -3450,460 +3450,460 @@
       },
       "fields": {
         "billingAddress": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "billingAddress.city": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.country": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.email": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.name": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.phone": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.street": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.vatId": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "billingAddress.zip": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "channel": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "costCenter": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "createdAt": {
-          "filter": "pass",
-          "read": "pass",
-          "sort": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "sort": "accepted"
         },
         "currency": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "customFields": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "customer": {
           "create": "pass",
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "dates": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "dates.confirmedDelivery": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "dates.earliestFulfillment": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "updateNote": "no sample date value — not probed (a null date cannot be restored)"
         },
         "dates.issued": {
           "create": "pass",
-          "filter": "pass",
-          "read": "pass",
-          "sort": "pass",
+          "filter": "accepted",
+          "read": "unobserved",
+          "sort": "accepted",
           "update": "pass"
         },
         "dates.requestedDelivery": {
           "create": "pass",
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass",
+          "read": "unobserved",
           "updateNote": "no sample date value — not probed (a null date cannot be restored)"
         },
         "dates.reservation": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "updateNote": "no sample date value — not probed (a null date cannot be restored)"
         },
         "discounts": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "discounts.amount": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "discounts.description": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "discounts.kind": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.deliveryNotes": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.deliveryNotes.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.deliveryNotes.number": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.quote": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.salesInvoices": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.salesInvoices.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.salesInvoices.number": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "fulfillmentPolicy": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "fulfillmentPolicy.auto": {
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "fulfillmentPolicy.partialShipping": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "fulfillmentPolicy.priority": {
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "holds": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "holds.state": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "holds.type": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.availability": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.availability.deliverable": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.availability.onHand": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.availability.stockManaged": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.contributionMargin": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.description": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "updateNote": "no sample value for description — not probed (a null line value cannot be restored net-zero)"
         },
         "items.discountPercent": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "items.fulfillment": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.fulfillment.invoiced": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.fulfillment.returned": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.fulfillment.shipped": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.position": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.priceSource": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.product": {
           "create": "pass",
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.purchasePrice": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "items.purchasePrice.amount": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.purchasePrice.currency": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.quantity": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "items.quantity.unit": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.quantity.value": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.taxRate": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.totals": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.totals.gross": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.totals.net": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.unitPrice": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "items.unitPrice.amount": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.unitPrice.currency": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "items.warehouse": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "note": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "number": {
-          "filter": "pass",
-          "read": "pass",
-          "search": "pass",
-          "sort": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "searchNote": "verdict dropped in the vocabulary migration: the probe sent a bare `search` query param, which never reaches the facade's search fan-out — it proved nothing about this field",
+          "sort": "accepted"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.method": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.status": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.terms": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.terms.discountDays": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.terms.discountPercent": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "payment.terms.dueDays": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "project": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass",
           "updateNote": "only one project on the instance — write accepted, change not provable"
         },
         "references": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "references.customerOrderNumber": {
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "references.externalId": {
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass"
+          "read": "unobserved"
         },
         "references.externalNumber": {
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass"
+          "read": "unobserved"
         },
         "references.paymentTransactionId": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "shipping": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "shipping.cost": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "shipping.cost.amount": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "shipping.cost.currency": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "shipping.method": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "shipping.status": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "shippingAddress": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "shippingAddress.city": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "shippingAddress.country": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "shippingAddress.email": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "shippingAddress.name": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "shippingAddress.phone": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "shippingAddress.street": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "shippingAddress.vatId": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "shippingAddress.zip": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "status": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "tags": {
           "create": "pass",
-          "filter": "pass",
-          "read": "pass",
+          "filter": "accepted",
+          "read": "unobserved",
           "update": "pass"
         },
         "texts": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "texts.intro": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "texts.outro": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "totals": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.currency": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.gross": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.net": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.taxes": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.taxes.amount": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.taxes.base": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.taxes.percent": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.taxes.rate": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "trafficLights": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "trafficLights.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "trafficLights.state": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "updatedAt": {
-          "filter": "pass",
-          "read": "pass",
-          "sort": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "sort": "accepted"
         }
       },
       "probedAt": "2026-08-02T06:27:38+00:00",
       "processSteps": {
-        "cancel": "pass",
-        "close": "pass",
-        "dispatch": "pass",
-        "release": "pass"
+        "cancel": "reachable",
+        "close": "reachable",
+        "dispatch": "reachable",
+        "release": "reachable"
       },
       "processStepsNotes": {
         "cancel": "reachable — 409: Resource status invalid for requested operation",
@@ -3915,97 +3915,97 @@
     "Shipment": {
       "fields": {
         "additionalPackages": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "additionalPackages.trackingNumber": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "carrier": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "createdAt": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "dates": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "dates.sentAt": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.deliveryNote": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.salesOrder": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "events": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "events.at": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "events.location": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "events.status": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "labelUrl": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "number": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "packages": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "packages.trackingNumber": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "shippingMethod": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "status": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "tracking": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "tracking.carrier": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "tracking.link": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "tracking.number": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "trackingNumber": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "trackingUrl": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "updatedAt": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "weight": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "weight.unit": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "weight.value": {
-          "read": "pass"
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:35:04+00:00"
@@ -4013,31 +4013,31 @@
     "ShippingMethod": {
       "fields": {
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "module": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "name": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "project": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "shippingEmailBehaviour": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "supportsDeliveries": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "supportsReturns": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "type": {
-          "read": "pass"
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:35:17+00:00"
@@ -4045,118 +4045,118 @@
     "StockTake": {
       "fields": {
         "createdAt": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "dates": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "dates.keyDate": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "dates.posted": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "dates.started": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.stockMovements": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documents.stockMovements.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "name": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "people": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "people.controller": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "people.counter": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "positions": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "positions.counted": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "positions.counted.unit": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "positions.counted.value": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "positions.difference": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "positions.difference.unit": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "positions.difference.value": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "positions.expected": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "positions.expected.unit": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "positions.expected.value": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "positions.product": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "positions.storageLocation": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "scope": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "scope.storageLocations": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "status": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.differences": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "totals.positions": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "updatedAt": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "warehouse": {
-          "read": "pass"
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:35:07+00:00"
     },
     "StorageLocation": {
       "actions": {
-        "inventoryCount": "pass",
-        "putaway": "pass",
-        "stockAdjustment": "pass",
-        "stockRemoval": "pass",
-        "stockTransfer": "pass"
+        "inventoryCount": "reachable",
+        "putaway": "reachable",
+        "stockAdjustment": "reachable",
+        "stockRemoval": "reachable",
+        "stockTransfer": "reachable"
       },
       "actionsNotes": {
         "inventoryCount": "reachable — 422: storageLocation.inventoryCount: invalid command",
@@ -4167,75 +4167,75 @@
       },
       "fields": {
         "capacity": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "capacity.maxWeight": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "capacity.maxWeight.unit": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "capacity.maxWeight.value": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "capacity.note": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contents": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contents.batch": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contents.product": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contents.quantity": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contents.quantity.unit": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contents.quantity.value": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contents.reserved": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contents.reserved.unit": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contents.reserved.value": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "createdAt": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "kind": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "name": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "pickingOrder": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "status": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "updatedAt": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "warehouse": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:35:06+00:00"
@@ -4252,302 +4252,302 @@
       "fields": {
         "addresses": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "addresses.city": {
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass",
+          "read": "unobserved",
           "searchNote": "no sample text value — search not probed",
-          "sort": "pass"
+          "sort": "accepted"
         },
         "addresses.contactPerson": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "addresses.country": {
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass",
+          "read": "unobserved",
           "searchNote": "no sample text value — search not probed",
-          "sort": "pass"
+          "sort": "accepted"
         },
         "addresses.email": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "addresses.gln": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "addresses.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "addresses.isDefault": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "addresses.label": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "addresses.name": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "addresses.phone": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "addresses.state": {
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass",
+          "read": "unobserved",
           "searchNote": "no sample text value — search not probed",
-          "sort": "pass"
+          "sort": "accepted"
         },
         "addresses.street": {
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass",
+          "read": "unobserved",
           "searchNote": "no sample text value — search not probed",
-          "sort": "pass"
+          "sort": "accepted"
         },
         "addresses.type": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "addresses.zip": {
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass",
+          "read": "unobserved",
           "searchNote": "no sample text value — search not probed",
-          "sort": "pass"
+          "sort": "accepted"
         },
         "billTo": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "channels": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "channels.channel": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "channels.externalId": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "contacts.allowMarketingEmails": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.birthday": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.department": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.email": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.fax": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.internalNote": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.language": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.mobile": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.name": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.phone": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.position": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.remarks": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.salutation": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.subDepartment": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.title": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "contacts.type": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "createdAt": {
-          "filter": "pass",
-          "read": "pass",
-          "sort": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "sort": "accepted"
         },
         "customFields": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "customFields.key": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "customFields.label": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "customFields.type": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "customFields.value": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "defaults": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "defaults.currency": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "defaults.language": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "defaults.partialShipping": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "defaults.paymentMethod": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "defaults.paymentTerms": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "defaults.paymentTerms.discountDays": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "defaults.paymentTerms.discountPercent": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "defaults.paymentTerms.dueDays": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "defaults.priceList": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "defaults.shippingMethod": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "email": {
           "create": "pass",
-          "filter": "pass",
-          "read": "pass",
-          "search": "pass",
+          "filter": "accepted",
+          "read": "unobserved",
+          "searchNote": "verdict dropped in the vocabulary migration: the probe sent a bare `search` query param, which never reaches the facade's search fan-out — it proved nothing about this field",
           "update": "pass"
         },
         "finance": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "finance.creditorAccountNumber": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "finance.onHold": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "finance.openAmount": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "finance.openAmount.amount": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "finance.openAmount.currency": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "language": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "name": {
           "create": "pass",
-          "filter": "pass",
-          "read": "pass",
-          "search": "pass",
-          "sort": "pass",
+          "filter": "accepted",
+          "read": "unobserved",
+          "searchNote": "verdict dropped in the vocabulary migration: the probe sent a bare `search` query param, which never reaches the facade's search fan-out — it proved nothing about this field",
+          "sort": "accepted",
           "update": "pass"
         },
         "notes": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "number": {
-          "filter": "pass",
-          "read": "pass",
-          "search": "pass",
-          "sort": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "searchNote": "verdict dropped in the vocabulary migration: the probe sent a bare `search` query param, which never reaches the facade's search fan-out — it proved nothing about this field",
+          "sort": "accepted"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "parent": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "phone": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "project": {
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass",
           "updateNote": "only one project on the instance — write accepted, change not provable"
         },
         "purchasing": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "purchasing.confirmationRequired": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "purchasing.deliveryDays": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "purchasing.minimumOrderValue": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "purchasing.minimumOrderValue.amount": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "purchasing.minimumOrderValue.currency": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "purchasing.ourCustomerNumber": {
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "purchasing.sendOrdersVia": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "status": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "tags": {
-          "filter": "pass",
-          "read": "pass",
+          "filter": "accepted",
+          "read": "unobserved",
           "update": "pass"
         },
         "type": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "updatedAt": {
-          "filter": "pass",
-          "read": "pass",
-          "sort": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "sort": "accepted"
         },
         "vatId": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         },
         "website": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
           "update": "pass"
         }
       },
@@ -4556,34 +4556,34 @@
     "Tag": {
       "fields": {
         "color": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "createdAt": {
-          "read": "pass",
-          "sort": "pass"
+          "read": "unobserved",
+          "sort": "accepted"
         },
         "group": {
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "label": {
-          "filter": "pass",
-          "read": "pass",
-          "search": "pass"
+          "filter": "accepted",
+          "read": "unobserved",
+          "searchNote": "verdict dropped in the vocabulary migration: the probe sent a bare `search` query param, which never reaches the facade's search fan-out — it proved nothing about this field"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "slug": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "updatedAt": {
-          "read": "pass",
-          "sort": "pass"
+          "read": "unobserved",
+          "sort": "accepted"
         }
       },
       "probedAt": "2026-08-02T06:35:11+00:00"
@@ -4591,38 +4591,38 @@
     "TaxRate": {
       "fields": {
         "country": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "date": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "name": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "product": {
           "filterNote": "no sample value on the test instance — filter not probed",
-          "read": "pass"
+          "read": "unobserved"
         },
         "project": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "rate": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "source": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "type": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:35:23+00:00"
@@ -4630,22 +4630,22 @@
     "TextTemplate": {
       "fields": {
         "disableStationery": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "documentType": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "footer": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "header": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:35:37+00:00"
@@ -4653,38 +4653,38 @@
     "User": {
       "fields": {
         "contactId": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "createdAt": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "email": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "globalUserId": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "isActive": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "isAdmin": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "locale": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "username": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:35:27+00:00"
@@ -4692,17 +4692,17 @@
     "Warehouse": {
       "fields": {
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "name": {
-          "filter": "pass",
-          "read": "pass"
+          "filter": "accepted",
+          "read": "unobserved"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "project": {
-          "read": "pass"
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:35:24+00:00"
@@ -4710,22 +4710,22 @@
     "Webhook": {
       "fields": {
         "events": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "events.id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "name": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "url": {
-          "read": "pass"
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:35:35+00:00"
@@ -4733,18 +4733,19 @@
     "WebhookEventType": {
       "fields": {
         "group": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "id": {
-          "read": "pass"
+          "read": "unobserved"
         },
         "object": {
-          "read": "pass"
+          "read": "unobserved"
         }
       },
       "probedAt": "2026-08-02T06:35:36+00:00"
     }
   },
   "generatedAt": "2026-08-02T07:21:21+00:00",
-  "instance": "a2ad4180-0d41-4360-8044-9dca0c35608a"
+  "instance": "a2ad4180-0d41-4360-8044-9dca0c35608a",
+  "schemaVersion": 2
 }

@@ -35,6 +35,8 @@ from entity_registry.core_sdk import AdapterResponse, EmulationManifest
 # (weclapp_core → agentos_neo_weclapp precedent for cross-core imports).
 from xentral_entity_cores.xentral_api.emulated._search import extract_search, fan_out_search
 
+from ..verdicts import is_proven
+
 _TIMEOUT = 60.0
 _UA = "xentral-ai-agent"
 # A speaking id — ``<prefix>_<numeric>`` (eid(); e.g. ``cus_20423``, ``prd_61617``).
@@ -326,11 +328,6 @@ def tags_to_v3(value: Any) -> list[dict[str, str]]:
     return out
 
 
-# Facets whose `pass` was earned by an actual probe. `read` is not among them:
-# verify.py marks every declared path read-pass by construction.
-_EARNED_VERDICTS = frozenset({"create", "update", "filter", "sort", "search"})
-
-
 class FacadeAdapterBase:
     """Concrete adapters set ``manifest``, ``v3_path`` (upstream collection),
     ``sections``, ``preview_template``, ``include`` (upstream ?include=), and
@@ -454,24 +451,25 @@ class FacadeAdapterBase:
         writable child (the default supplier maps to v2 standardSupplier) while
         multi-supplier sourcing — what the wish is actually about — has no write
         path at all; dropping that wish because a flag exists would erase a real
-        gap. A recorded `pass` cannot be argued with: something wrote the value and
+        gap. A recorded proof cannot be argued with: something wrote the value and
         read it back.
 
         A container counts as proven when any of its leaves is: `items` is editable
         exactly when a line field has been shown to update.
 
-        `read` is excluded. The probe stamps `read: pass` on every declared path
-        whether or not the instance carried a value, so it says "the schema has
-        this field", not "upstream supplies it" — which is exactly what a read wish
-        disputes. Taking it as proof retired 50 legitimate wishes in one run."""
-        if op not in _EARNED_VERDICTS:
-            return False
+        This used to carry an allowlist of facets whose verdict was trustworthy,
+        because the probe stamped `read: pass` on every declared path whether or not
+        the instance carried a value — taking that as proof retired 50 legitimate
+        wishes in one run. The allowlist is gone: the weak claims now say so in the
+        verdict itself (`verdicts.py`), so `is_proven` carries the whole rule and
+        `read` needs no exception. A facet the probe can only measure weakly can no
+        longer retire anything, whichever facet it is."""
         fields = (_verified().get(self.manifest.key) or {}).get("fields") or {}
-        if (fields.get(field) or {}).get(op) == "pass":
+        if is_proven((fields.get(field) or {}).get(op)):
             return True
         prefix = f"{field}."
         return any(
-            path.startswith(prefix) and (facets or {}).get(op) == "pass"
+            path.startswith(prefix) and is_proven((facets or {}).get(op))
             for path, facets in fields.items()
         )
 
