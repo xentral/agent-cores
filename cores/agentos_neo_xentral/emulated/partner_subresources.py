@@ -324,6 +324,14 @@ def addresses_prop(prop, RO, CU) -> dict[str, Any]:  # noqa: N803 - schema-flag 
     filter/sort/search the record supports on its main address (mapped via the
     adapter's ``query_aliases``: addresses.city → city …)."""
     q = {"filterable": True, "sortable": True, "searchable": True}
+    # `searchable` puts a field into the consolidated search, which ORs one
+    # `contains` request per field and merges the first page of each. A key with a
+    # tiny vocabulary floods that merge: measured on mvp, searching a customer by
+    # country returned the first page of 20128 German records and pushed the record
+    # the term came from out of the result altogether — while the same search on
+    # Supplier (32 records) found it. State and country stay filterable and sortable,
+    # which is the precise question they answer well; they are not free-text search.
+    q_narrow = {"filterable": True, "sortable": True}
     return prop(
         "collection",
         "Addresses",
@@ -349,8 +357,8 @@ def addresses_prop(prop, RO, CU) -> dict[str, Any]:  # noqa: N803 - schema-flag 
                 "street": prop("string", "Street", **CU, **q),
                 "zip": prop("string", "Zip", **CU, **q),
                 "city": prop("string", "City", **CU, **q),
-                "state": prop("string", "State", **CU, **q),
-                "country": prop("string", "Country", **CU, **q),
+                "state": prop("string", "State", **CU, **q_narrow),
+                "country": prop("string", "Country", **CU, **q_narrow),
                 "gln": prop("string", "GLN", **CU),
                 "email": prop("string", "Email", **CU),
                 "phone": prop("string", "Phone", **CU),

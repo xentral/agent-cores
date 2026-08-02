@@ -102,6 +102,7 @@ import base64
 import collections
 import json
 import os
+import re
 from datetime import datetime, UTC
 import secrets
 from typing import Any
@@ -350,11 +351,31 @@ def _line_toggle(spec: dict[str, Any], name: str, orig: Any) -> tuple[Any, Any]:
             return alt, orig
         if (num := _numeric_string_toggle(orig)) is not None:
             return num, orig
+        if (clock := _time_string_toggle(orig)) is not None:
+            return clock, orig
         clean = orig.replace(_MARK, "").strip()
         if not clean:
             return None, None  # an empty string restores to "" — upstream ignores it
         return (clean + _MARK if orig != clean + _MARK else clean), orig
     return None, None  # null: nothing to restore to
+
+
+def _time_string_toggle(orig: Any) -> str | None:
+    """A wall-clock string bumped by an hour, or None if it is not one.
+
+    Without this the generic fallback appends the ``·vt`` marker, which upstream
+    accepts with a 200 and silently normalises to ``00:00:00`` — the probe then
+    reports a writable field as "accepted the write but the value did not
+    persist". Measured on Task.dates.dueTime: `14:30:00` and `23:59:59` both
+    round-trip, `vt-marker` becomes midnight.
+    """
+    if not isinstance(orig, str):
+        return None
+    m = re.fullmatch(r"(\d{2}):(\d{2})(?::(\d{2}))?", orig)
+    if not m:
+        return None
+    hour = (int(m.group(1)) + 1) % 24
+    return f"{hour:02d}:{m.group(2)}:{m.group(3) or '00'}"
 
 
 def _line_eq(got: Any, want: Any) -> bool:
@@ -582,6 +603,7 @@ def _simple_create_payload(
     schema: dict[str, Any],
     product_id: str | None,
     supplier_id: str | None,
+    warehouse_id: str | None = None,
 ) -> tuple[dict[str, Any], list[tuple[str, str, Any]]]:
     """Create body + per-path persistence expectations for the price/product master
     entities (Product / PriceList / PurchasePrice), which take a create+verify probe
@@ -590,6 +612,122 @@ def _simple_create_payload(
     hidePrice, …) so a silently-dropped field surfaces as create=fail."""
     prd = {"id": f"prd_{product_id}"} if product_id else None
     sup = {"id": f"sup_{supplier_id}"} if supplier_id else None
+    if key == "Warehouse":
+        # A DELETED warehouse keeps its designation reserved, so a fixed name answers
+        # 409 "Warehouse already exists" on the second run — measured. Each probe
+        # therefore names its own.
+        label = f"VT Verify Lager {secrets.token_hex(3)}"
+        return {"name": label}, [("name", "eq", label)]
+    if key == "StorageLocation":
+        # A location is created underneath its warehouse; without one upstream has
+        # no endpoint at all, so the probe needs a real warehouse to hang it on.
+        if not warehouse_id:
+            return {}, []
+        return (
+            # No _MARK here: upstream validates the designation format and rejects
+            # the marker's middle dot with "designation format is invalid".
+            {"name": "VT-VERIFY-PROBE", "warehouse": {"id": f"wh_{warehouse_id}"}},
+            [("name", "eq", "VT-VERIFY-PROBE")],
+        )
+    if key == "Task":
+        return {
+            "title": "VT Verify Aufgabe" + _MARK,
+            "description": "VT verify description",
+            "priority": "high",
+            "status": "open",
+            "dates": {"due": "2026-09-01", "dueTime": "14:30:00", "isAllDay": False},
+            "recurrence": {"interval": "weekly"},
+            "visibility": {"isPublic": True, "onStartPage": True, "onBulletinBoard": False},
+            "reminder": {"byEmail": True, "daysBefore": 3, "advanceNoticeDays": 2},
+            "timeTracking": {"hours": "2.50", "required": True, "billable": True},
+            "notes": "VT verify note",
+        }, [
+            ("title", "eq", "VT Verify Aufgabe" + _MARK),
+            ("description", "eq", "VT verify description"),
+            ("priority", "eq", "high"),
+            ("status", "eq", "open"),
+            ("notes", "eq", "VT verify note"),
+            ("dates.due", "eq", "2026-09-01"),
+            ("dates.dueTime", "eq", "14:30:00"),
+            ("dates.isAllDay", "eq", False),
+            ("recurrence.interval", "eq", "weekly"),
+            ("visibility.isPublic", "eq", True),
+            ("visibility.onStartPage", "eq", True),
+            ("reminder.byEmail", "eq", True),
+            ("reminder.daysBefore", "eq", 3),
+            ("reminder.advanceNoticeDays", "eq", 2),
+            ("timeTracking.hours", "num", "2.50"),
+            ("timeTracking.required", "eq", True),
+            ("timeTracking.billable", "eq", True),
+        ]
+    if key == "CustomerGroup":
+        # A price group, not a plain customer group: upstream refuses every
+        # conditions field on `customerGroup`, so probing that kind would leave
+        # the whole conditions block untested.
+        return {
+            "name": "VT Verify Preisgruppe" + _MARK,
+            "kind": "priceGroup",
+            "code": "VTVERIFY",
+            "isActive": True,
+            "internalNote": "VT verify note",
+            "conditions": {
+                "baseDiscount": "5.00",
+                "paymentTermDays": 30,
+                "cashDiscountRate": "2.00",
+                "cashDiscountDays": 10,
+                "freeShippingFrom": "150.00",
+                "freeShippingActive": True,
+            },
+        }, [
+            ("name", "eq", "VT Verify Preisgruppe" + _MARK),
+            ("kind", "eq", "priceGroup"),
+            ("code", "eq", "VTVERIFY"),
+            ("isActive", "eq", True),
+            ("internalNote", "eq", "VT verify note"),
+            ("conditions.baseDiscount", "num", "5.00"),
+            ("conditions.paymentTermDays", "eq", 30),
+            ("conditions.cashDiscountRate", "num", "2.00"),
+            ("conditions.cashDiscountDays", "eq", 10),
+            ("conditions.freeShippingFrom", "num", "150.00"),
+            ("conditions.freeShippingActive", "eq", True),
+        ]
+    if key == "PurchaseInvoice":
+        # A real accounting document, so this only runs because DELETE is supported
+        # and verified — the probe books it and takes it straight back out. Upstream
+        # requires nothing at all (an empty POST creates an invoice), so everything
+        # here is checking OUR mapping, including the line-item `actionIndicator`
+        # diff that no schema documents.
+        if not sup:
+            return {}, []
+        body = {
+            "supplier": sup,
+            "references": {"supplierInvoiceNumber": "VT-VERIFY" + _MARK},
+            "dates": {"invoiceDate": "2026-01-15", "received": "2026-01-16"},
+            "payment": {"dueDate": "2026-02-15", "discountUntil": "2026-01-25"},
+            "currency": "EUR",
+            "clarification": {"needed": True, "reason": "VT verify"},
+            "items": [
+                {
+                    "name": "VT Verify Position",
+                    "description": "VT verify line",
+                    "quantity": {"value": 2, "unit": "Stk"},
+                    "unitPrice": {"amount": "15.00", "currency": "EUR"},
+                    "taxRate": 19,
+                }
+            ],
+        }
+        return body, [
+            ("supplier", "ref", sup["id"]),
+            ("references.supplierInvoiceNumber", "eq", "VT-VERIFY" + _MARK),
+            ("dates.invoiceDate", "eq", "2026-01-15"),
+            ("dates.received", "eq", "2026-01-16"),
+            ("payment.dueDate", "eq", "2026-02-15"),
+            ("payment.discountUntil", "eq", "2026-01-25"),
+            ("currency", "eq", "EUR"),
+            ("clarification.needed", "eq", True),
+            ("clarification.reason", "eq", "VT verify"),
+            ("items", "present", None),
+        ]
     if key == "Product":
         body: dict[str, Any] = {
             "name": "VT Verify Product" + _MARK,
@@ -930,6 +1068,7 @@ async def _verify_entity(
     product_id: str | None = None,
     tag_title: str | None = None,
     supplier_id: str | None = None,
+    warehouse_id: str | None = None,
 ) -> tuple[dict | None, str]:
     p = _Probe(adapter, base_url, token)
     key = adapter.manifest.key
@@ -1038,11 +1177,15 @@ async def _verify_entity(
                 f"declared, but none of the {len(seen_records)} sampled records "
                 "carries a value — nothing proven either way"
             )
-    # The fields the consolidated search actually fans out over. A schema can flag a
-    # field `searchable` without it being in here — `search_fields()` only walks the
-    # top level, so every nested leaf is declared-but-unreachable. That gap is a real
-    # one and the probe must report it rather than paper over it.
-    fan_out_fields = set(getattr(adapter, "search_fields", lambda: ())())
+    # The fields a consolidated search actually reaches — the upstream's own set
+    # where it searches natively, the fan-out's otherwise. A schema can flag a field
+    # `searchable` without it being in either, and that gap is real: a declared leaf
+    # nothing searches is a promise the entity does not keep, so the probe reports it
+    # rather than papering over it.
+    searchable_fields = set(
+        getattr(adapter, "native_search_fields", ())
+        or getattr(adapter, "search_fields", lambda: ())()
+    )
 
     counts: dict[str, collections.Counter[str]] = {
         facet: collections.Counter() for facet in ("filter", "sort", "search", "update", "create")
@@ -1067,7 +1210,21 @@ async def _verify_entity(
         counts[facet][verdict] += 1
 
     for path, spec in _walk(schema):
-        val = _value_at(sample, path)
+        # The probe value has to come through collections too, or a leaf under one
+        # can never be filtered or searched for want of something to look for — that
+        # is why the five `addresses.*` leaves read "no sample value" for as long as
+        # they existed, `_value_at` stopping at the first list.
+        #
+        # The OWNER travels with the value. Both the filter and the search check
+        # assert that the record the value came from comes back, and widening the
+        # search beyond `sample` without carrying its record would make that anchor
+        # point at the wrong row — turning a working filter into a false `accepted`.
+        val, val_owner = None, sample
+        for _rec in (sample, *seen_records):
+            _picked = next((v for v in _values_at(_rec, path) if _is_filled(v)), None)
+            if _picked is not None:
+                val, val_owner = _picked, _rec
+                break
         if spec.get("filterable"):
             fval = val.get("id") if isinstance(val, dict) else val
             if isinstance(fval, str) and "_" in fval and spec.get("type") == "reference":
@@ -1140,7 +1297,7 @@ async def _verify_entity(
                     # filter entirely (the facade guards against undeclared keys for
                     # exactly this reason) — a status check alone grades that green.
                     hits = fpl.get("data") or []
-                    anchor = sample.get("id")
+                    anchor = (val_owner or {}).get("id")
                     if any((h or {}).get("id") == anchor for h in hits):
                         when_ok = PROVEN
                     elif not hits:
@@ -1164,16 +1321,23 @@ async def _verify_entity(
             # The facade recognises a search only as `filter[i][key]=search`, and
             # fans it out over `search_fields()` as a per-field `contains` filter.
             # The old probe sent a bare `?search=` param, which reaches none of that
-            # and went to the upstream verbatim — a 200 meant "the upstream tolerated
-            # an unknown query param". Here the probe sends what `build_field_query`
-            # builds, and asserts the record the value came from comes back.
-            if path not in fan_out_fields:
+            # and went to the upstream verbatim. What that proved depends on the
+            # endpoint, and the earlier note here got it wrong by generalising:
+            # v3 has a NATIVE `?search=` on the nine document endpoints, so those
+            # 200s were a real search — while on customers/suppliers/products the
+            # parameter is silently ignored (measured: `?search=nonsense` answers 200
+            # with all 20128 customers), so those 200s proved nothing at all. Either
+            # way it was measuring the upstream rather than the contract consumers
+            # use, so it says nothing about THIS field. Here the probe sends what
+            # `build_field_query` builds and asserts the record the value came from
+            # comes back.
+            if path not in searchable_fields:
                 mark(
                     path,
                     "search",
                     False,
                     "declared searchable, but not part of this entity's search fan-out — "
-                    f"searchFields is {sorted(fan_out_fields) or 'empty'}, so a consolidated "
+                    f"searchFields is {sorted(searchable_fields) or 'empty'}, so a consolidated "
                     "search never looks at this field",
                 )
                 continue
@@ -1208,7 +1372,9 @@ async def _verify_entity(
                     "so a hit could not be asserted",
                     when_ok="accepted",
                 )
-            elif any((h or {}).get("id") == sample.get("id") for h in (spl.get("data") or [])):
+            elif any(
+                (h or {}).get("id") == (val_owner or {}).get("id") for h in (spl.get("data") or [])
+            ):
                 mark(path, "search", True, None)
             else:
                 # The fan-out ORs over every searchable field, so a miss here does not
@@ -1293,6 +1459,12 @@ async def _verify_entity(
                     # on one lax endpoint it PERSISTED, which is what later crashed
                     # the PurchasePrice probe on read-back.
                     testv = num
+                elif (clock := _time_string_toggle(orig)) is not None:
+                    # A wall-clock string. The marker turns "00:00:00" into
+                    # something upstream accepts with a 200 and silently
+                    # normalises back to midnight — a writable field then reads as
+                    # "accepted but did not persist" forever.
+                    testv = clock
                 else:
                     # NEVER toggle to/from empty: upstream IGNORES empty-string
                     # writes, so an ""-restore silently leaves the marker behind
@@ -1645,30 +1817,47 @@ async def _verify_entity(
                         ust, upl = await p.req(
                             "PATCH", str(new_id), body={"contacts": cons2, "addresses": adrs2}
                         )
-                        # Read the record back rather than trusting the PATCH echo.
-                        # Measured on mvp: this exact call answered 200 and applied
-                        # the change, but its response body omitted the contact's
-                        # new department — one run recorded `contacts.update: fail`
-                        # for a write that had worked, and the next run passed. The
-                        # line-item branch already re-reads for the mirror-image
-                        # reason (an echo that never reached upstream); an echo is
-                        # the wrong thing to grade either way.
+
+                        # Read the record back rather than trusting the PATCH echo —
+                        # an echo reflects the request, not what was stored.
+                        #
+                        # A miss here is `accepted`, NOT `fail`. Measured on mvp over
+                        # five consecutive identical runs: the contact's new
+                        # department shows up on the read-back about half the time,
+                        # and twice more with a second read — while the address
+                        # change in the very same request is there every time. So the
+                        # write works; what cannot be established in one run is that
+                        # it took. Grading that red would flip the cell at random,
+                        # which is the same lie as a false green, and retrying until
+                        # it passes would bury the wobble instead of recording it.
+                        def _has(data: dict[str, Any], key: str, field: str, want: str) -> bool:
+                            return any(
+                                (row or {}).get(field) == want for row in data.get(key) or []
+                            )
+
                         udata: dict[str, Any] = {}
                         if ust == 200:
-                            _rst, rpl = await p.req(handle=str(new_id))
-                            udata = (rpl.get("data") or {}) if isinstance(rpl, dict) else {}
-                        ok_c = ust == 200 and any(
-                            c.get("department") == "Vertrieb" for c in udata.get("contacts") or []
-                        )
-                        ok_a = ust == 200 and any(
-                            a.get("city") == "Bremen" for a in udata.get("addresses") or []
-                        )
-                        mark(
-                            "contacts",
-                            "update",
-                            ok_c,
-                            None if ok_c else f"PATCH {ust}: {_err(upl)}",
-                        )
+                            for _ in range(2):
+                                _rst, rpl = await p.req(handle=str(new_id))
+                                udata = (rpl.get("data") or {}) if isinstance(rpl, dict) else {}
+                                if _has(udata, "contacts", "department", "Vertrieb"):
+                                    break
+                        ok_c = ust == 200 and _has(udata, "contacts", "department", "Vertrieb")
+                        ok_a = ust == 200 and _has(udata, "addresses", "city", "Bremen")
+                        if ust != 200:
+                            mark("contacts", "update", False, f"PATCH {ust}: {_err(upl)}")
+                        elif ok_c:
+                            mark("contacts", "update", True)
+                        else:
+                            mark(
+                                "contacts",
+                                "update",
+                                True,
+                                "accepted, but the change was not visible on two "
+                                "read-backs — upstream applies it late often enough "
+                                "that a single run cannot assert it",
+                                when_ok="accepted",
+                            )
                         mark(
                             "addresses",
                             "update",
@@ -1691,7 +1880,17 @@ async def _verify_entity(
     # null-restore update roundtrip cannot reach — verify each path persisted, then
     # DELETE (net-zero) where supported. Product has NO delete: opt-in via
     # VERIFY_CREATE_NONZERO and the labelled record is left in place.
-    if key in ("Product", "PriceList", "PurchasePrice") and "create" in adapter.manifest.operations:
+    _CREATE_PROBED = (
+        "Product",
+        "PriceList",
+        "PurchasePrice",
+        "Warehouse",
+        "StorageLocation",
+        "PurchaseInvoice",
+        "Task",
+        "CustomerGroup",
+    )
+    if key in _CREATE_PROBED and "create" in adapter.manifest.operations:
         can_delete = "delete" in adapter.manifest.operations
         if not can_delete and not _PROBE_CREATE_NONZERO:
             fields.setdefault("name", {})["createNote"] = (
@@ -1699,7 +1898,9 @@ async def _verify_entity(
                 "VERIFY_CREATE_NONZERO=1 to probe and leave a labelled record"
             )
         else:
-            body, expects = _simple_create_payload(key, schema, product_id, supplier_id)
+            body, expects = _simple_create_payload(
+                key, schema, product_id, supplier_id, warehouse_id
+            )
             if not body:
                 fields.setdefault("name", {})["createNote"] = (
                     "create not probed — missing a product/supplier fixture on the instance"
@@ -1822,6 +2023,7 @@ async def _main() -> None:
     # tag roundtrips (an existing tag keeps the tag catalogue unpolluted).
     product_id: str | None = None
     supplier_id: str | None = None
+    warehouse_id: str | None = None
     tag_title: str | None = None
     for adapter in CORE.adapters:
         if adapter.manifest.key == "Product" and product_id is None:
@@ -1839,6 +2041,16 @@ async def _main() -> None:
                 sid = str(row.get("id") or "")
                 if sid:
                     supplier_id = sid.split("_", 1)[1] if "_" in sid else sid
+                    break
+        # A storage location cannot be created without one — upstream has no
+        # standalone endpoint, the location is created underneath its warehouse.
+        if adapter.manifest.key == "Warehouse" and warehouse_id is None:
+            p = _Probe(adapter, base_url, token)
+            st, pl = await p.req(query=[("page[size]", "3")])
+            for row in (pl.get("data") or []) if st == 200 else []:
+                wid = str(row.get("id") or "")
+                if wid:
+                    warehouse_id = wid.split("_", 1)[1] if "_" in wid else wid
                     break
         if adapter.manifest.key == "Tag" and tag_title is None:
             p = _Probe(adapter, base_url, token)
@@ -1867,7 +2079,7 @@ async def _main() -> None:
             continue
         try:
             result, summary = await _verify_entity(
-                adapter, base_url, token, product_id, tag_title, supplier_id
+                adapter, base_url, token, product_id, tag_title, supplier_id, warehouse_id
             )
         except _AuthFailed:
             # Deliberately NOT swallowed like a crashed probe: everything after this

@@ -56,6 +56,23 @@ def extract_search(query: list[tuple[str, str]]) -> tuple[str, str] | None:
     return None
 
 
+def strip_search(query: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """``query`` without the ``search`` filter group; other filters stay.
+
+    For an endpoint that searches natively the term travels on as the upstream's
+    own top-level ``?search=`` parameter, so the group that carried it has to go.
+    Left in place it would arrive as a filter on a key called ``search``, and
+    several v3 list endpoints ignore an unknown filter while answering 200 with
+    the whole collection — the caller would read that as a search result.
+    """
+    drop = {p for p, parts in _filter_groups(query).items() if parts.get("key") == "search"}
+    return [
+        (k, v)
+        for k, v in query
+        if not (k.startswith("filter[") and "][" in k and k.rsplit("[", 1)[0] in drop)
+    ]
+
+
 def get_page_size(query: list[tuple[str, str]]) -> int:
     for key, value in query:
         if key == "page[size]":

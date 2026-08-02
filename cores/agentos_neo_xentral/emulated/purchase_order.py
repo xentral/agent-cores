@@ -58,6 +58,13 @@ def _address_props() -> dict[str, Any]:
 
 
 class PurchaseOrderAdapter(FacadeAdapterBase):
+    native_search_fields = (
+        "number",
+        "dates.issued",
+        "deliveryAddress.name",
+        "deliveryAddress.email",
+        "deliveryAddress.zip",
+    )
     manifest = EmulationManifest(
         key="PurchaseOrder",
         label_en="Purchase order",
@@ -212,7 +219,9 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
                 section="references",
                 properties={
                     "ourCustomerNumber": prop(
-                        "string", "Our customer number", description="Not filterable — the upstream list endpoint rejects it (verified on mvp)."
+                        "string",
+                        "Our customer number",
+                        description="Not filterable — the upstream list endpoint rejects it (verified on mvp).",
                     ),
                     "supplierOfferNumber": prop("string", "Supplier offer number", filterable=True),
                 },

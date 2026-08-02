@@ -46,7 +46,9 @@ from .emulated.stock_movement import StockMovementAdapter
 from .emulated.stock_take import StockTakeAdapter
 from .emulated.storage_location import StorageLocationAdapter
 from .emulated.supplier import SupplierAdapter
+from .emulated.customer_group import CustomerGroupAdapter
 from .emulated.tag import TagAdapter
+from .emulated.task import TaskAdapter
 
 CORE = CoreManifest(
     id="agentos_neo_xentral",
@@ -81,6 +83,10 @@ CORE = CoreManifest(
         BatchAdapter(),
         SerialNumberAdapter(),
         TagAdapter(),
+        CustomerGroupAdapter(),
+        # Follow-ups: the entity API is the ONLY generation that exposes
+        # tasks at all, so this has no v1/v3 fallback.
+        TaskAdapter(),
         # CRM tab on the customer record (replaces the xentral_crm MCP tool).
         CorrespondenceAdapter(),
         # Real-world device/communication surfaces (replace the xentral_email
