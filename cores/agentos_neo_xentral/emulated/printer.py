@@ -148,7 +148,7 @@ class PrinterAdapter(FacadeAdapterBase):
             envelope = {}
         ids = envelope.get("ids") or ([handle] if handle else [])
         if not ids:
-            return self._json(422, {"title": "printDocument needs a target printer id (ids[])"})
+            return self._refuse(422, "printDocument needs a target printer id (ids[])")
         printer_id = str(ids[0])
         if "_" in printer_id:
             printer_id = printer_id.split("_", 1)[1]
@@ -168,7 +168,7 @@ class PrinterAdapter(FacadeAdapterBase):
             try:
                 payload["quantity"] = int(quantity)
             except (TypeError, ValueError):
-                return self._json(422, {"title": "command.quantity must be an integer."})
+                return self._refuse(422, "command.quantity must be an integer.")
 
         headers = self._headers(token, accept_language)
         url = f"{base_url.rstrip('/')}/api/v1/printJobs"

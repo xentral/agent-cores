@@ -242,7 +242,7 @@ class EmailAccountAdapter(FacadeAdapterBase):
             envelope = {}
         ids = envelope.get("ids") or ([handle] if handle else [])
         if not ids:
-            return self._json(422, {"title": "sendEmail needs the sender account id (ids[])"})
+            return self._refuse(422, "sendEmail needs the sender account id (ids[])")
         account_id = str(ids[0])
         if "_" in account_id:
             account_id = account_id.split("_", 1)[1]
@@ -251,10 +251,10 @@ class EmailAccountAdapter(FacadeAdapterBase):
         subject = str(command.get("subject") or "").strip()
         body_html = command.get("body")
         if not to or not subject or not isinstance(body_html, str) or not body_html.strip():
-            return self._json(422, {"title": "sendEmail requires command.to, .subject and .body."})
+            return self._refuse(422, "sendEmail requires command.to, .subject and .body.")
         attachments, att_error = _normalize_attachments(command.get("attachments"))
         if att_error:
-            return self._json(422, {"title": att_error})
+            return self._refuse(422, att_error)
 
         payload: dict[str, Any] = {
             "to": to,

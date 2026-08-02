@@ -1157,7 +1157,7 @@ class SalesOrderAdapter(FacadeAdapterBase):
         command = envelope.get("command") or {}
         ids = envelope.get("ids") or ([handle] if handle else [])
         if not ids:
-            return self._json(422, {"title": "splitOrder needs a target order id"})
+            return self._refuse(422, "splitOrder needs a target order id")
         src_handle = str(ids[0])
         src_up = src_handle.split("_", 1)[1] if "_" in src_handle else src_handle
         moves = command.get("items")
@@ -1208,12 +1208,12 @@ class SalesOrderAdapter(FacadeAdapterBase):
             try:
                 qty = float(m.get("quantity"))
             except (TypeError, ValueError):
-                return self._json(422, {"title": f"splitOrder: bad quantity in {m}"})
+                return self._refuse(422, f"splitOrder: bad quantity in {m}")
             if qty <= 0:
-                return self._json(422, {"title": f"splitOrder: quantity must be > 0 in {m}"})
+                return self._refuse(422, f"splitOrder: quantity must be > 0 in {m}")
             line = _find(m)
             if line is None:
-                return self._json(422, {"title": f"splitOrder: no matching line for {m}"})
+                return self._refuse(422, f"splitOrder: no matching line for {m}")
             try:
                 have = float((line.get("quantity") or {}).get("value"))
             except (TypeError, ValueError):

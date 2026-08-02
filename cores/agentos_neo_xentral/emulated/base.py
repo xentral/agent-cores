@@ -328,6 +328,13 @@ def tags_to_v3(value: Any) -> list[dict[str, str]]:
     return out
 
 
+# Facets whose verdict describes THIS facade's model rather than the upstream, so a
+# proof there cannot answer a wish about what the upstream can do. `read` is the
+# whole set: the mapping layer synthesises, derives and composes values, so seeing
+# one says nothing about where it came from. See `_proven`.
+_MODEL_ONLY_FACETS = frozenset({"read"})
+
+
 class FacadeAdapterBase:
     """Concrete adapters set ``manifest``, ``v3_path`` (upstream collection),
     ``sections``, ``preview_template``, ``include`` (upstream ?include=), and
@@ -444,6 +451,12 @@ class FacadeAdapterBase:
             node = spec.get("properties") or (spec.get("node") or {}).get("properties") or {}
         return spec
 
+    def _verified_fields(self) -> dict[str, Any]:
+        """This entity's recorded field verdicts. The seam a test overrides to inject
+        data — so the RULE in ``_proven`` is only ever written once and a stub cannot
+        drift away from it."""
+        return (_verified().get(self.manifest.key) or {}).get("fields") or {}
+
     def _proven(self, field: str, op: str) -> bool:
         """Whether a LIVE probe has shown this op working on this field.
 
@@ -457,14 +470,25 @@ class FacadeAdapterBase:
         A container counts as proven when any of its leaves is: `items` is editable
         exactly when a line field has been shown to update.
 
-        This used to carry an allowlist of facets whose verdict was trustworthy,
-        because the probe stamped `read: pass` on every declared path whether or not
-        the instance carried a value — taking that as proof retired 50 legitimate
-        wishes in one run. The allowlist is gone: the weak claims now say so in the
-        verdict itself (`verdicts.py`), so `is_proven` carries the whole rule and
-        `read` needs no exception. A facet the probe can only measure weakly can no
-        longer retire anything, whichever facet it is."""
-        fields = (_verified().get(self.manifest.key) or {}).get("fields") or {}
+        **`read` cannot retire a wish, and the reason is not the one it used to be.**
+        The probe once stamped `read: pass` on every declared path before looking at
+        a payload, and taking that as proof retired 50 legitimate wishes in one run.
+        That is fixed — a read verdict now means a real record carried a value. But
+        it carried it *in THIS facade's model*, and the model invents values:
+        `Customer.addresses.isDefault` is a hard-coded `True` on the main address,
+        `addresses.label` a literal `"Hauptadresse"`, `Channel.platform` a string
+        match against `moduleName`. A read wish disputes what the UPSTREAM supplies,
+        which observing our own output cannot answer. Measured: the first live run
+        under the new vocabulary reported 14 read wishes as obsolete, and every one
+        of them was still true.
+
+        The write and query facets are different in kind and do count: they reach
+        the upstream and come back — a filter it does not support cannot return the
+        record the value came from, and a value we wrote and read back was stored
+        somewhere real."""
+        if op in _MODEL_ONLY_FACETS:
+            return False
+        fields = self._verified_fields()
         if is_proven((fields.get(field) or {}).get(op)):
             return True
         prefix = f"{field}."
@@ -796,6 +820,19 @@ class FacadeAdapterBase:
             json.dumps(payload).encode("utf-8"),
             headers or {"content-type": "application/json"},
         )
+
+    @classmethod
+    def _refuse(cls, status: int, title: str, **extra: Any) -> AdapterResponse:
+        """A refusal the CORE decided, before the upstream was ever called.
+
+        Marked `source: "core"` so a caller can tell it from an upstream rejection.
+        They look identical otherwise, and the difference is load-bearing: the
+        capability probe grades a 4xx as "the route exists and validated my request",
+        which is a claim about the UPSTREAM. Every 422 in the committed manifest
+        turned out to come from here instead, so nine action verdicts rested on our
+        own input validation having run.
+        """
+        return cls._json(status, {"title": title, "source": "core", **extra})
 
     def _headers(self, token: str, accept_language: str | None) -> dict[str, str]:
         h = {
@@ -1671,7 +1708,7 @@ class FacadeAdapterBase:
         characters. Handing the payload to a file store is the caller's job.
         """
         if not ids:
-            return self._json(422, {"title": "downloadPdf needs a record id"})
+            return self._refuse(422, "downloadPdf needs a record id")
         up_id = str(ids[0]).split("_", 1)[1] if "_" in str(ids[0]) else str(ids[0])
         url = f"{base_url.rstrip('/')}{self.v3_path}/{up_id}"
         headers = {**self._headers(token, accept_language), "Accept": "application/pdf"}
@@ -1761,9 +1798,9 @@ class FacadeAdapterBase:
         instead of a false success when it still does not persist."""
         title = str(command.get("title") or "").strip()
         if not title:
-            return self._json(422, {"title": f"{action_key} requires a non-empty 'title'."})
+            return self._refuse(422, f"{action_key} requires a non-empty 'title'.")
         if not ids:
-            return self._json(422, {"title": f"{action_key} needs a target id (ids[])"})
+            return self._refuse(422, f"{action_key} needs a target id (ids[])")
         handle = str(ids[0])
         current = await self.request(
             method="GET",
@@ -1957,7 +1994,7 @@ class FacadeAdapterBase:
                 },
             )
         if not ids:
-            return self._json(422, {"title": f"{action_key} needs a target id (ids[])"})
+            return self._refuse(422, f"{action_key} needs a target id (ids[])")
         up_id = str(ids[0]).split("_", 1)[1] if "_" in str(ids[0]) else str(ids[0])
         command = envelope.get("command") or {}
         if isinstance(route, dict):

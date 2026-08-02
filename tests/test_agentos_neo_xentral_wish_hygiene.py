@@ -34,7 +34,7 @@ import pytest
 from xentral_entity_cores.agentos_neo_xentral.emulated.product import ProductAdapter
 from xentral_entity_cores.agentos_neo_xentral.emulated.quote import QuoteAdapter
 from xentral_entity_cores.agentos_neo_xentral.manifest import CORE
-from xentral_entity_cores.agentos_neo_xentral.verdicts import PROVEN, VERDICTS, is_proven
+from xentral_entity_cores.agentos_neo_xentral.verdicts import PROVEN, VERDICTS
 
 
 class _Adapter(QuoteAdapter):
@@ -49,15 +49,11 @@ class _Adapter(QuoteAdapter):
     def _wishes_by_field(self) -> dict[str, dict[str, str]]:
         return self._wishes
 
-    def _proven(self, field: str, op: str) -> bool:
-        """Mirrors the real rule against injected data — it must not restate it, or
-        the test would keep passing after the rule changed underneath it."""
-        if is_proven((self._verified.get(field) or {}).get(op)):
-            return True
-        return any(
-            p.startswith(f"{field}.") and is_proven((f or {}).get(op))
-            for p, f in self._verified.items()
-        )
+    def _verified_fields(self) -> dict[str, Any]:
+        """Only the DATA is injected. The rule itself stays in `_proven`, so this
+        stub cannot drift away from what the product actually does — an earlier
+        version restated the rule here and kept passing after the real one changed."""
+        return self._verified
 
 
 def _priority(adapter: QuoteAdapter, path: str) -> dict[str, str] | None:
@@ -105,14 +101,27 @@ def test_no_weak_verdict_retires_a_wish(op: str, weak: str) -> None:
     assert _priority(a, "texts.intro") == {op: "upstream cannot"}
 
 
-def test_an_observed_read_now_does_retire_a_read_wish() -> None:
-    """The flip side, and the reason the allowlist could go: `read: pass` no longer
-    means "the schema declares it" but "a real record carried a value" — which is
-    exactly what a read wish disputes, so it must count."""
+def test_even_an_observed_read_does_not_retire_a_read_wish() -> None:
+    """A read verdict observes THIS facade's model, and the model invents values:
+    `Customer.addresses.isDefault` is a hard-coded `True`, `addresses.label` a
+    literal, `Channel.platform` a string match against `moduleName`. A read wish
+    disputes what the UPSTREAM supplies, which our own output cannot answer.
+
+    Measured, and the reason this test exists: the first live run under the new
+    vocabulary reported 14 read wishes as obsolete, and every one was still true."""
     a = _Adapter(
         {"texts.intro": {"read": "upstream never fills this"}}, {"texts.intro": {"read": PROVEN}}
     )
-    assert _priority(a, "texts.intro") is None
+    assert _priority(a, "texts.intro") == {"read": "upstream never fills this"}
+
+
+def test_a_write_or_query_proof_still_retires_its_wish() -> None:
+    """The exclusion is about `read` specifically, not a return to distrusting every
+    verdict. A filter the upstream does not support cannot return the record the
+    value came from, and a value written and read back was stored somewhere real."""
+    for op in ("create", "update", "filter", "sort", "search"):
+        a = _Adapter({"texts.intro": {op: "upstream cannot"}}, {"texts.intro": {op: PROVEN}})
+        assert _priority(a, "texts.intro") is None, op
 
 
 def test_a_container_counts_a_proven_leaf() -> None:

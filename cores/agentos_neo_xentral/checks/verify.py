@@ -1,13 +1,31 @@
 """Full-facet verification for the agentos_neo_xentral facade core — the GREEN/RED side of
 the living backlog (docs/03-mapping-layer.md §5).
 
+Every verdict says how strongly the claim was shown, not merely that a request
+succeeded — the vocabulary and the reasoning live in ``verdicts.py``. A probe that
+can only watch an HTTP status records `accepted`, never `pass`.
+
 Per entity, THROUGH the facade contract (adapter.request — exactly what consumers
 hit):
-  read    — list 10 records; every declared field path → read=pass.
+  read    — list 10 + 100 records (and the sampled record's single read where the
+            entity has detail-only sections); a path is `pass` where some record
+            actually CARRIED a value, else `unobserved`. Collections are walked, so
+            line-item fields are reachable. `unobserved` is not a failure: mvp is a
+            narrow instance and a field nobody fills there is unproven either way.
   filter  — per filterable field: probe filter[0][key]=<model path> with a value
-            from a real sampled record (references probe by stripped id).
-  sort    — per sortable field: probe sort=-<model path>.
-  search  — per searchable field: probe the global search= with a sampled value.
+            from a real sampled record (references probe by stripped id), then
+            require that record back. Several v3 list endpoints answer 200 while
+            ignoring the filter, which a status check grades green — those are
+            `accepted`, with the note saying so.
+  sort    — per sortable field: request BOTH directions and compare. Ordering that
+            survives a reversal is `pass`; an accepted key that changes nothing is
+            `fail`; too few distinct values, or an order we cannot read (a
+            reference sorted by the referent's name) is `accepted`.
+  search  — per searchable field, through the contract the facade actually parses
+            (filter[i][key]=search → per-field `contains` fan-out), requiring the
+            sampled record back. A field the schema flags `searchable` but
+            ``search_fields()`` never reaches is `fail`: a consolidated search
+            cannot match on it.
   update  — SAFE roundtrip on every updatable scalar leaf (string/date/number/
             boolean + toggle-selects): set marker → read back → verify → restore
             (net-zero). Numeric/boolean leaves are probed only where the sample
@@ -19,9 +37,25 @@ hit):
             This runner IS the destructive suite for this core.
 
 actions + process steps (opt-in, VERIFY_ACTIONS=1 — these EXECUTE real upstream
-  operations on a sampled record, so they are NOT net-zero): each action/step is
-  invoked through the facade; pass = reachable (2xx or upstream validation 4xx),
-  fail = 404/501/5xx (broken or not wired), 409-wish stays blue.
+  operations on a sampled record, so they are NOT net-zero): each is invoked
+  through the facade with an empty command.
+    pass       — the effect was seen. Only the net-zero probes reach it: the
+                 addTag/removeTag roundtrip and downloadPdf (which renders a
+                 document and changes nothing, so the body can be checked for
+                 `%PDF-`).
+    executed   — 2xx, effect not read back.
+    reachable  — the route refused our empty command (400/422) or the record's
+                 state (409). The note says whether the refusal came from upstream
+                 or from the core's own validator, which proves far less.
+    fail       — 404/405/501/5xx, or a 200 that did not render a PDF.
+    409-wish   — stays blue, unmeasured.
+  For `send` (mails a real customer) and `cancel` (mutates a document) `pass` is
+  unreachable on a live tenant. That is their final answer, not a to-do.
+
+  A 401/403 anywhere ABORTS the run with exit 2 and writes nothing. It is a broken
+  run, not a property of a capability: it used to grade `pass` ("reachable — 401"),
+  so an expired token painted whole suites green, and grading it `fail` would be as
+  wrong in the other direction.
 
 Failures carry ``<facet>Note`` with the upstream error so the grid explains every
 red cell. Untestable probes (no sample value) stay grey with a note. Re-running
@@ -64,6 +98,8 @@ Render the result as a workbook: ``scripts/export_verified_xlsx.py``.
 from __future__ import annotations
 
 import asyncio
+import base64
+import collections
 import json
 import os
 from datetime import datetime, UTC
@@ -191,6 +227,94 @@ def _value_at(rec: Any, path: str) -> Any:
         else:
             return None
     return node
+
+
+def _is_filled(value: Any) -> bool:
+    """Whether a record actually carried something at this path.
+
+    `False` and `0` count — they are values a merchant set. Only absence counts as
+    nothing, which is why this is not a truth test.
+    """
+    return value is not None and value not in ("", [], {})
+
+
+def _values_at(rec: Any, path: str) -> list[Any]:
+    """Every value ``path`` reaches in one record, fanning out through collections.
+
+    ``_value_at`` stops at the first list, so `items.description` always came back
+    ``None`` — which is why no line-item field could ever be observed. Here a list
+    segment yields one value per element instead.
+    """
+    nodes: list[Any] = [rec]
+    for part in path.split("."):
+        step: list[Any] = []
+        for node in nodes:
+            if isinstance(node, list):
+                step += [item.get(part) for item in node if isinstance(item, dict)]
+            elif isinstance(node, dict):
+                step.append(node.get(part))
+        nodes = step
+    return nodes
+
+
+def _observed(records: list[Any], path: str) -> bool:
+    """Whether ANY of the records carried a value at ``path``."""
+    return any(_is_filled(v) for rec in records for v in _values_at(rec, path))
+
+
+def _sort_key(value: Any) -> Any:
+    """A comparable stand-in for one row's value at the sorted path.
+
+    References arrive as ``{"id": …, "name": …}``; upstream may order them by the
+    referent's name while the row carries only the id, so those are compared on
+    whatever text is there and fall out as unassertable when it is not.
+    """
+    if isinstance(value, dict):
+        value = value.get("name") or value.get("id")
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, (int, float)):
+        return value
+    return str(value).casefold() if value is not None else None
+
+
+def _sort_effect(
+    path: str, desc_payload: Any, asc_payload: Any, asc_status: int
+) -> tuple[str, str | None]:
+    """Did the sort key actually order the page, or was it merely accepted?
+
+    A status check alone cannot tell: an upstream that does not know the key answers
+    200 with its default order. So both directions are requested and compared —
+    ordering that survives a reversal is the claim `sort` makes.
+    """
+    if asc_status != 200:
+        return "accepted", f"descending accepted; ascending answered {asc_status}"
+    desc = [_sort_key(v) for r in (desc_payload.get("data") or []) for v in [_value_at(r, path)]]
+    asc = [_sort_key(v) for r in (asc_payload.get("data") or []) for v in [_value_at(r, path)]]
+    usable = [v for v in desc if v is not None]
+    if len(usable) < 2 or len({v for v in usable}) < 2:
+        return "accepted", "fewer than two distinct values on the page — order not assertable"
+    try:
+        monotone_desc = all(
+            a >= b for a, b in zip(desc, desc[1:], strict=False) if a is not None and b is not None
+        )
+        monotone_asc = all(
+            a <= b for a, b in zip(asc, asc[1:], strict=False) if a is not None and b is not None
+        )
+    except TypeError:  # mixed types on the page — comparing them proves nothing
+        return "accepted", "values on the page are not mutually comparable"
+    if monotone_desc and monotone_asc:
+        return PROVEN, None
+    if desc == asc:
+        return (
+            "fail",
+            "the sort key was accepted but both directions returned the same order — "
+            "it appears to be ignored",
+        )
+    return (
+        "accepted",
+        "the order changed with direction but is not monotone in the value we can read",
+    )
 
 
 def _line_toggle(spec: dict[str, Any], name: str, orig: Any) -> tuple[Any, Any]:
@@ -542,6 +666,17 @@ def _simple_create_payload(
     return {}, []
 
 
+class _AuthFailed(RuntimeError):
+    """The run could not authenticate — not a fact about any capability.
+
+    Raised rather than graded so it cannot be written down. A 401/403 used to be
+    classified `pass` ("reachable — 401"), which meant an expired token painted a
+    whole action suite green; grading it `fail` would be just as wrong in the other
+    direction, since the next reader would take 62 red verdicts as evidence that the
+    capabilities are broken and act on them.
+    """
+
+
 def _err(payload: Any) -> str:
     if not isinstance(payload, dict):
         return "upstream error"
@@ -579,16 +714,30 @@ def _auth() -> tuple[str, str]:
 async def _probe_action(
     adapter: Any, action_key: str, sample_id: str, base_url: str, token: str
 ) -> tuple[str | None, str | None]:
-    """Probe one action / process-step command for availability by invoking it
-    through the facade against upstream. Classifies the ENDPOINT, not full success:
+    """Probe one action / process-step command by invoking it through the facade.
 
-      pass  — 2xx (executed) or an upstream validation 4xx (route reachable)
-      fail  — 404/405 (route gone), 501 (not wired in the facade), 5xx
-      None  — 409 wish (declared-but-not-upstream-yet; stays blue, not a failure)
+    What the answer is WORTH, which is not the same as whether it arrived:
 
-    EXECUTES upstream: a no-input action (confirm, cancel …) will run on the
-    sampled record. Sends an empty command so input-requiring actions get
-    rejected at validation rather than committing."""
+      executed   — 2xx: data changed, but this probe did not read the change back
+      reachable  — the route exists and refused our deliberately empty command, on
+                   validation (400/422) or on the record's state (409). Proof about
+                   the route, no claim about the capability
+      fail       — 404/405 (route gone), 501 (not wired in the facade), 5xx, crash
+      None       — 409 wish (declared-but-not-upstream-yet; stays blue)
+
+    ``pass`` is not reachable from here: seeing an effect needs a net-zero
+    round-trip, which only ``_probe_tag_actions`` does. For `send` (mails a real
+    customer) and `cancel` (mutates a document) it is not reachable at all on a live
+    tenant — `executed` is their final answer, not a to-do.
+
+    A 401/403 raises `_AuthFailed` instead of grading. An expired token is a broken
+    RUN, not a property of the action: recording it per action would write 62
+    capability-shaped verdicts that actually say "we could not log in", and the next
+    reader would retire wishes over them.
+
+    EXECUTES upstream: a no-input action (confirm, cancel …) will run on the sampled
+    record. Sends an empty command so input-requiring actions get rejected at
+    validation rather than committing."""
     envelope = json.dumps({"ids": [sample_id] if sample_id else [], "command": {}}).encode()
     try:
         resp = await adapter.action(
@@ -605,18 +754,75 @@ async def _probe_action(
         payload = json.loads(resp.content or b"{}")
     except ValueError:
         payload = {}
+    if st in (401, 403):
+        raise _AuthFailed(f"{action_key} answered {st}: {_err(payload)}")
     if st == 409 and isinstance(payload, dict) and payload.get("wish"):
         return None, None
     if 200 <= st < 300:
-        return "pass", f"EXECUTED on the sampled record ({st}) — created/changed data"
+        return "executed", f"EXECUTED on the sampled record ({st}) — effect not read back"
     if st == 501:
         return "fail", "not wired to an upstream action in the facade (501)"
     if st in (404, 405) or st >= 500:
         return "fail", f"route not available ({st}): {_err(payload)}"
-    # Other 4xx (400/403/409/422): the route exists and processed the request — it
-    # rejected our empty probe on validation (400/422) or the record's current
-    # state (409). That means the endpoint works; it is NOT broken.
-    return "pass", f"reachable — {st}: {_err(payload)}"
+    # The core's own input validator answers before the upstream is ever called, so
+    # its refusal proves the facade route exists but says nothing about upstream.
+    # Marked separately rather than guessed from the message text.
+    source = payload.get("source") if isinstance(payload, dict) else None
+    where = "the core's own validator" if source == "core" else "upstream"
+    return "reachable", f"reachable — {st} from {where}: {_err(payload)}"
+
+
+async def _probe_download_pdf(
+    adapter: Any, sample_id: str, base_url: str, token: str
+) -> tuple[str | None, str | None]:
+    """`downloadPdf` is the one action whose effect is free to check.
+
+    It renders a document and changes nothing, so unlike `send` or `cancel` the
+    probe can look at what came back instead of trusting the status.
+
+    The action answers a JSON envelope, not raw bytes: the rendered document rides
+    in ``result.file.contentBase64`` next to ``filename``/``contentType``/
+    ``sizeBytes``. Checking the HTTP body for ``%PDF-`` therefore fails on a
+    perfectly good render — measured on mvp, it painted all seven document adapters
+    red before this was corrected. Decode the field and check THAT: a 200 whose
+    payload is not a PDF means the route answered without rendering, which the
+    generic probe grades `executed`.
+    """
+    envelope = json.dumps({"ids": [sample_id], "command": {}}).encode()
+    try:
+        resp = await adapter.action(
+            action_key="downloadPdf",
+            handle=sample_id,
+            body=envelope,
+            base_url=base_url,
+            token=token,
+        )
+    except Exception as exc:  # noqa: BLE001 - one probe must not kill the run
+        return "fail", f"probe crashed: {exc}"
+    if resp.status_code in (401, 403):
+        raise _AuthFailed(f"downloadPdf answered {resp.status_code}")
+    if not 200 <= resp.status_code < 300:
+        return await _probe_action(adapter, "downloadPdf", sample_id, base_url, token)
+    try:
+        envelope = json.loads(resp.content or b"{}")
+    except ValueError:
+        return "fail", f"answered {resp.status_code} with a body that is not JSON"
+    file_part = (
+        ((envelope.get("result") or {}).get("file") or {}) if isinstance(envelope, dict) else {}
+    )
+    try:
+        rendered = base64.b64decode(file_part.get("contentBase64") or "")
+    except (ValueError, TypeError):
+        return "fail", "result.file.contentBase64 is not decodable base64"
+    if rendered.startswith(b"%PDF-"):
+        return PROVEN, (
+            f"rendered {file_part.get('filename') or 'a document'} "
+            f"({len(rendered)} bytes of real PDF) — read-only, net-zero"
+        )
+    return "fail", (
+        f"answered {resp.status_code} but result.file carries no PDF "
+        f"(contentType {file_part.get('contentType')!r}, {len(rendered)} bytes)"
+    )
 
 
 async def _probe_tag_actions(
@@ -729,14 +935,14 @@ async def _verify_entity(
     key = adapter.manifest.key
     st, payload = await p.req(query=[("page[size]", "10")])
     rows = payload.get("data") or []
+    if st in (401, 403):
+        # Not "this entity is unreadable" — the run itself is not authenticated. The
+        # old path returned "left untested", kept every previous block, and still
+        # rewrote generatedAt, dating stale data as fresh.
+        raise _AuthFailed(f"{key} list read answered {st}: {_err(payload)}")
     if st != 200 or not rows:
         return None, f"read {st}, {len(rows)} rows — left untested"
     schema = adapter.fields()
-    # `unobserved`, not `pass`: this stamps every path the SCHEMA declares, before
-    # any payload has been looked at. It says "the core declares this field", never
-    # "upstream supplies it" — and for 1218 paths it was recorded as proof. Checking
-    # the fetched rows for an actual value is the next change; until then no path
-    # may claim more than that it was declared.
     fields: dict[str, dict[str, Any]] = {
         pth: {"read": "unobserved"} for pth in _field_paths(schema)
     }
@@ -747,8 +953,13 @@ async def _verify_entity(
     # delivery notes happen to carry no `sent` at all, which is exactly the value
     # that was missing. One extra list call per entity buys the coverage.
     STATUS_FALLBACKS.clear()
-    await p.req(query=[("page[size]", "100")])
+    _, wide_payload = await p.req(query=[("page[size]", "100")])
     status_misses = sorted(STATUS_FALLBACKS)
+
+    # The corpus every `read` verdict is decided against. The wide page was already
+    # being fetched and thrown away; keeping it costs nothing and is the difference
+    # between "we saw 10 records" and "we saw 100".
+    seen_records: list[Any] = list(rows) + list(wide_payload.get("data") or [])
 
     # Report them on the field that carries the status. Which one that is differs
     # per entity (`status`, `progress`, …), so it is found by its declared options:
@@ -775,17 +986,6 @@ async def _verify_entity(
     def is_detail_only(path: str) -> bool:
         return any(path == d or path.startswith(d + ".") for d in detail_only)
 
-    # These come from a sub-resource the adapter only calls on the single read, so
-    # the list row this probe samples carries null — for the value AND for the
-    # read-back after a write. Comparing against it would report every one of them
-    # as "accepted but not persisted", which is what it did before.
-    for pth in fields:
-        if is_detail_only(pth):
-            fields[pth]["readNote"] = (
-                "populated on a single-record read only; a list leaves it null and "
-                "names the section in extra.unavailableSections"
-            )
-
     detail_cache: dict[str, dict[str, Any]] = {}
 
     async def detail_view(handle: str, fallback: dict[str, Any]) -> dict[str, Any]:
@@ -798,12 +998,54 @@ async def _verify_entity(
     sample = max(
         rows, key=lambda r: sum(1 for v in (r or {}).values() if v not in (None, "", [], {}))
     )
-    counts = {
-        "filter": [0, 0],
-        "sort": [0, 0],
-        "search": [0, 0],
-        "update": [0, 0],
-        "create": [0, 0],
+
+    # Detail-only sections come from a sub-resource the adapter calls only on a
+    # single read, so every list row carries null for them. Grading those against
+    # the list alone would report the whole section unobserved, which is a statement
+    # about this probe rather than about the upstream — so fetch the sample once and
+    # judge them on that. (The same nulls used to make every write to such a field
+    # read back as "accepted but not persisted".)
+    if detail_only and (handle := sample.get("id")):
+        seen_records.append(await detail_view(str(handle), sample))
+
+    # `read` is now a measurement, not a restatement of the schema. Every declared
+    # path starts `unobserved` and is raised only where a record actually carried a
+    # value; 1218 paths used to be stamped `pass` before any payload was read.
+    #
+    # `unobserved` is NOT a failure and must never be rendered as one — mvp is a
+    # narrow instance, and a field nobody there fills is simply unproven either way.
+    # The status-map misses above are the exception: those were observed and WRONG,
+    # so their `fail` outranks anything measured here.
+    for pth, facets in fields.items():
+        if facets.get("read") == "fail":
+            continue
+        if _observed(seen_records, pth):
+            facets["read"] = PROVEN
+            continue
+        if is_detail_only(pth):
+            facets["readNote"] = (
+                "detail-only section: read on the single record too, and no value "
+                "there either — a list always leaves it null and names the section "
+                "in extra.unavailableSections"
+            )
+        elif "." in pth and not _observed(seen_records, pth.rsplit(".", 1)[0]):
+            facets["readNote"] = (
+                f"no sampled record carries {pth.rsplit('.', 1)[0]!r}, so the leaf "
+                "could not be observed — nothing proven either way"
+            )
+        else:
+            facets["readNote"] = (
+                f"declared, but none of the {len(seen_records)} sampled records "
+                "carries a value — nothing proven either way"
+            )
+    # The fields the consolidated search actually fans out over. A schema can flag a
+    # field `searchable` without it being in here — `search_fields()` only walks the
+    # top level, so every nested leaf is declared-but-unreachable. That gap is a real
+    # one and the probe must report it rather than paper over it.
+    fan_out_fields = set(getattr(adapter, "search_fields", lambda: ())())
+
+    counts: dict[str, collections.Counter[str]] = {
+        facet: collections.Counter() for facet in ("filter", "sort", "search", "update", "create")
     }
 
     def mark(
@@ -811,18 +1053,18 @@ async def _verify_entity(
     ) -> None:
         """``when_ok`` is what a success is WORTH, not merely that there was one.
 
-        `create`/`update` write a value, read it back and compare, so their success
-        is `pass`. `filter`/`sort` only look at the HTTP status today — an upstream
-        that ignores the key answers 200 with the unfiltered collection and would
-        grade green — so they pass `accepted` until the probe checks the effect.
+        Callers that assert an effect leave it at `pass`; callers that only saw a
+        request succeed pass `accepted`, so the difference survives into the file
+        instead of being flattened into one green.
         """
         f = fields.setdefault(path, {})
-        f[facet] = when_ok if ok else "fail"
+        verdict = when_ok if ok else "fail"
+        f[facet] = verdict
         if note:
             f[f"{facet}Note"] = note[:300]
         elif not ok:
             f[f"{facet}Note"] = "probe failed"
-        counts[facet][0 if ok else 1] += 1
+        counts[facet][verdict] += 1
 
     for path, spec in _walk(schema):
         val = _value_at(sample, path)
@@ -887,33 +1129,99 @@ async def _verify_entity(
                     if fst == 200:
                         break
                 note = None
+                when_ok = "accepted"
                 if fst != 200:
                     note = f"filter[{path}] {fst}: {_err(fpl)}"
                 elif len(candidates) > 1 and used != candidates[0]:
                     note = "accepts the date part only, not the full timestamp it returns on read"
-                mark(path, "filter", fst == 200, note, when_ok="accepted")
+                else:
+                    # The value came off a sampled record, so that record MUST come
+                    # back. Several v3 list endpoints answer 200 while ignoring the
+                    # filter entirely (the facade guards against undeclared keys for
+                    # exactly this reason) — a status check alone grades that green.
+                    hits = fpl.get("data") or []
+                    anchor = sample.get("id")
+                    if any((h or {}).get("id") == anchor for h in hits):
+                        when_ok = PROVEN
+                    elif not hits:
+                        note = "accepted, but returned nothing — the record the value came from is missing"
+                        when_ok = "accepted"
+                    else:
+                        note = (
+                            "accepted, but the page does not contain the record the value "
+                            "came from — the filter may have been ignored"
+                        )
+                mark(path, "filter", fst == 200, note, when_ok=when_ok)
         if spec.get("sortable"):
-            sst, spl = await p.req(query=[("page[size]", "5"), ("sort", f"-{path}")])
-            mark(
-                path,
-                "sort",
-                sst == 200,
-                None if sst == 200 else f"sort -{path} {sst}: {_err(spl)}",
-                when_ok="accepted",
-            )
+            desc_st, desc_pl = await p.req(query=[("page[size]", "5"), ("sort", f"-{path}")])
+            if desc_st != 200:
+                mark(path, "sort", False, f"sort -{path} {desc_st}: {_err(desc_pl)}")
+            else:
+                asc_st, asc_pl = await p.req(query=[("page[size]", "5"), ("sort", path)])
+                verdict, note = _sort_effect(path, desc_pl, asc_pl, asc_st)
+                mark(path, "sort", verdict != "fail", note, when_ok=verdict)
         if spec.get("searchable"):
-            # No verdict: this probe measured the wrong thing. It sent a bare
-            # `search` query param, but the facade recognises a search only as
-            # `filter[i][key]=search` — so `extract_search` returned None, the
-            # fan-out never ran, and the param went to the upstream verbatim. A 200
-            # meant "the upstream tolerated an unknown query param", which says
-            # nothing about whether this field is searchable. Rebuilding it on the
-            # real contract (and asserting the anchor record comes back) is the next
-            # change; until then the honest record is silence plus the reason.
-            fields.setdefault(path, {})["searchNote"] = (
-                "not probed — the previous probe bypassed the facade's search "
-                "contract, so its results were withdrawn rather than downgraded"
+            # The facade recognises a search only as `filter[i][key]=search`, and
+            # fans it out over `search_fields()` as a per-field `contains` filter.
+            # The old probe sent a bare `?search=` param, which reaches none of that
+            # and went to the upstream verbatim — a 200 meant "the upstream tolerated
+            # an unknown query param". Here the probe sends what `build_field_query`
+            # builds, and asserts the record the value came from comes back.
+            if path not in fan_out_fields:
+                mark(
+                    path,
+                    "search",
+                    False,
+                    "declared searchable, but not part of this entity's search fan-out — "
+                    f"searchFields is {sorted(fan_out_fields) or 'empty'}, so a consolidated "
+                    "search never looks at this field",
+                )
+                continue
+            sval = val if isinstance(val, str) and val else None
+            fixture_used = False
+            if not sval:
+                sval = _SEARCH_FIXTURES.get(path.rsplit(".", 1)[-1])
+                fixture_used = sval is not None
+            if not sval:
+                fields.setdefault(path, {})["searchNote"] = (
+                    "no sample text value and no fixture — search not probed"
+                )
+                continue
+            sst, spl = await p.req(
+                query=[
+                    ("page[size]", "20"),
+                    ("filter[0][key]", "search"),
+                    ("filter[0][op]", "contains"),
+                    ("filter[0][value]", sval[:40]),
+                ]
             )
+            if sst != 200:
+                mark(path, "search", False, f"search {sst}: {_err(spl)}")
+            elif fixture_used:
+                # A fixture value belongs to no sampled record, so there is no anchor
+                # to look for — the request working is all this can show.
+                mark(
+                    path,
+                    "search",
+                    True,
+                    "probed with a fixture value — no sampled record carries this field, "
+                    "so a hit could not be asserted",
+                    when_ok="accepted",
+                )
+            elif any((h or {}).get("id") == sample.get("id") for h in (spl.get("data") or [])):
+                mark(path, "search", True, None)
+            else:
+                # The fan-out ORs over every searchable field, so a miss here does not
+                # single this field out — it says the consolidated search did not find
+                # a record that demonstrably carries the term.
+                mark(
+                    path,
+                    "search",
+                    True,
+                    "the consolidated search accepted the term but did not return the "
+                    "record it was taken from",
+                    when_ok="accepted",
+                )
 
     # update roundtrip (net-zero) on EVERY updatable scalar leaf (top-level and
     # nested: texts.intro, dates.issued, billingAddress.street …). Address parents
@@ -1337,7 +1645,18 @@ async def _verify_entity(
                         ust, upl = await p.req(
                             "PATCH", str(new_id), body={"contacts": cons2, "addresses": adrs2}
                         )
-                        udata = (upl.get("data") or {}) if isinstance(upl, dict) else {}
+                        # Read the record back rather than trusting the PATCH echo.
+                        # Measured on mvp: this exact call answered 200 and applied
+                        # the change, but its response body omitted the contact's
+                        # new department — one run recorded `contacts.update: fail`
+                        # for a write that had worked, and the next run passed. The
+                        # line-item branch already re-reads for the mirror-image
+                        # reason (an echo that never reached upstream); an echo is
+                        # the wrong thing to grade either way.
+                        udata: dict[str, Any] = {}
+                        if ust == 200:
+                            _rst, rpl = await p.req(handle=str(new_id))
+                            udata = (rpl.get("data") or {}) if isinstance(rpl, dict) else {}
                         ok_c = ust == 200 and any(
                             c.get("department") == "Vertrieb" for c in udata.get("contacts") or []
                         )
@@ -1452,6 +1771,8 @@ async def _verify_entity(
                 status, note = tag_results.get(akey) or await _probe_action(
                     adapter, akey, sample_id, base_url, token
                 )
+            elif akey == "downloadPdf" and sample_id:
+                status, note = await _probe_download_pdf(adapter, sample_id, base_url, token)
             else:
                 status, note = await _probe_action(adapter, akey, sample_id, base_url, token)
             if status is None:
@@ -1459,17 +1780,20 @@ async def _verify_entity(
             res_map[akey] = status
             if note:
                 note_map[akey] = note[:300]
-            act_counts[0 if status == "pass" else 1] += 1
+            act_counts[0 if status != "fail" else 1] += 1
 
-    # filter/sort are counted as accepted, not passed — the ✓ means the request went
-    # through, not that the effect was checked. `search` is absent rather than 0✓/0✗:
-    # a zero would read as "probed, nothing worked".
+    # ✓ proven, ~ accepted (the request worked, the effect was not assertable),
+    # ✗ failed. Collapsing the first two is how the old summary made a run look
+    # better than it was.
+    def tally(facet: str) -> str:
+        c = counts[facet]
+        return f"{c[PROVEN]}✓/{c['accepted']}~/{c['fail']}✗"
+
+    observed = sum(1 for f in fields.values() if f.get("read") == PROVEN)
     summary = (
-        f"read {len(rows)} rows | filter {counts['filter'][0]}~/{counts['filter'][1]}✗ | "
-        f"sort {counts['sort'][0]}~/{counts['sort'][1]}✗ | "
-        f"search not probed | "
-        f"update {counts['update'][0]}✓/{counts['update'][1]}✗ | "
-        f"create {counts['create'][0]}✓/{counts['create'][1]}✗"
+        f"read {observed}/{len(fields)} paths observed in {len(seen_records)} records | "
+        f"filter {tally('filter')} | sort {tally('sort')} | search {tally('search')} | "
+        f"update {tally('update')} | create {tally('create')}"
     )
     if _PROBE_ACTIONS:
         summary += f" | actions/steps {act_counts[0]}✓/{act_counts[1]}✗"
@@ -1545,6 +1869,11 @@ async def _main() -> None:
             result, summary = await _verify_entity(
                 adapter, base_url, token, product_id, tag_title, supplier_id
             )
+        except _AuthFailed:
+            # Deliberately NOT swallowed like a crashed probe: everything after this
+            # point would be measuring our own expired token, and writing that down
+            # is worse than writing nothing.
+            raise
         except Exception as exc:  # noqa: BLE001 - one entity must not kill the run
             print(f"  {key}: probe crashed: {exc}")
             continue
@@ -1602,4 +1931,12 @@ async def _main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(_main())
+    try:
+        asyncio.run(_main())
+    except _AuthFailed as exc:
+        # Nothing is written. A partial file stamped with a fresh generatedAt would
+        # claim the run happened, and its verdicts would say "broken" where the
+        # truth is "not logged in".
+        print(f"\nABORTED — not authenticated: {exc}")
+        print("verified.json left untouched. Check XENTRAL_API_KEY / the Auth0 token.")
+        raise SystemExit(2) from exc
