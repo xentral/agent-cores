@@ -321,7 +321,9 @@ class SalesInvoiceAdapter(FacadeAdapterBase):
                         "string", "Customer order number", **_CU, filterable=True
                     ),
                     "debtorAccountNumber": prop(
-                        "string", "Debtor account", description="Not filterable — the upstream list endpoint rejects it (verified on mvp)."
+                        "string",
+                        "Debtor account",
+                        description="Not filterable — the upstream list endpoint rejects it (verified on mvp).",
                     ),
                 },
             ),

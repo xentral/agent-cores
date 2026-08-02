@@ -123,7 +123,12 @@ def id_from_location(location: str | None) -> str | None:
     if query:
         for part in query.split("&"):
             key, _, value = part.partition("=")
-            if key.endswith("[value]") and value:
+            # The key itself may be percent-encoded — warehouses answer
+            # `filter[0][value]=43`, their storage locations
+            # `filter%5B0%5D%5Bvalue%5D=258`. Comparing the raw key finds the first
+            # and misses the second, which is how the id came back as the whole
+            # query string.
+            if unquote(key).endswith("[value]") and value:
                 return unquote(value)
     tail = head.rstrip("/").rsplit("/", 1)[-1]
     return tail or None
@@ -1806,6 +1811,37 @@ class FacadeAdapterBase:
                 client=client,
             )
             rec = rpayload.get("data") if isinstance(rpayload, dict) else None
+            if not isinstance(rec, dict):
+                # Some v1 collections have NO detail endpoint — `GET /v1/warehouses/1`
+                # answers 404 while the record is perfectly readable through a list
+                # filtered by id. Upstream says so itself: the Location header on a
+                # create is that very query, not a link. Without this fallback the
+                # create answers with the bare id it got from the header, and a
+                # caller (or the capability probe) reads "sent but did not persist".
+                _, lpayload = await self._get(
+                    base_url,
+                    token,
+                    handle=None,
+                    query=[
+                        ("page[number]", "1"),
+                        ("page[size]", "5"),
+                        ("filter[0][key]", "id"),
+                        ("filter[0][op]", "equals"),
+                        ("filter[0][value]", str(new_id)),
+                    ],
+                    accept_language=accept_language,
+                    client=client,
+                )
+                rows = lpayload.get("data") if isinstance(lpayload, dict) else None
+                if isinstance(rows, list):
+                    rec = next(
+                        (
+                            r
+                            for r in rows
+                            if isinstance(r, dict) and str(r.get("id")) == str(new_id)
+                        ),
+                        None,
+                    )
             if isinstance(rec, dict):
                 return self._json(201 if method == "POST" else 200, {"data": self.map_read(rec)})
         return self._json(201 if method == "POST" else 200, resp if isinstance(resp, dict) else {})

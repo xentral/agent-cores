@@ -582,6 +582,7 @@ def _simple_create_payload(
     schema: dict[str, Any],
     product_id: str | None,
     supplier_id: str | None,
+    warehouse_id: str | None = None,
 ) -> tuple[dict[str, Any], list[tuple[str, str, Any]]]:
     """Create body + per-path persistence expectations for the price/product master
     entities (Product / PriceList / PurchasePrice), which take a create+verify probe
@@ -590,6 +591,23 @@ def _simple_create_payload(
     hidePrice, …) so a silently-dropped field surfaces as create=fail."""
     prd = {"id": f"prd_{product_id}"} if product_id else None
     sup = {"id": f"sup_{supplier_id}"} if supplier_id else None
+    if key == "Warehouse":
+        # A DELETED warehouse keeps its designation reserved, so a fixed name answers
+        # 409 "Warehouse already exists" on the second run — measured. Each probe
+        # therefore names its own.
+        label = f"VT Verify Lager {secrets.token_hex(3)}"
+        return {"name": label}, [("name", "eq", label)]
+    if key == "StorageLocation":
+        # A location is created underneath its warehouse; without one upstream has
+        # no endpoint at all, so the probe needs a real warehouse to hang it on.
+        if not warehouse_id:
+            return {}, []
+        return (
+            # No _MARK here: upstream validates the designation format and rejects
+            # the marker's middle dot with "designation format is invalid".
+            {"name": "VT-VERIFY-PROBE", "warehouse": {"id": f"wh_{warehouse_id}"}},
+            [("name", "eq", "VT-VERIFY-PROBE")],
+        )
     if key == "Product":
         body: dict[str, Any] = {
             "name": "VT Verify Product" + _MARK,
@@ -930,6 +948,7 @@ async def _verify_entity(
     product_id: str | None = None,
     tag_title: str | None = None,
     supplier_id: str | None = None,
+    warehouse_id: str | None = None,
 ) -> tuple[dict | None, str]:
     p = _Probe(adapter, base_url, token)
     key = adapter.manifest.key
@@ -1735,7 +1754,8 @@ async def _verify_entity(
     # null-restore update roundtrip cannot reach — verify each path persisted, then
     # DELETE (net-zero) where supported. Product has NO delete: opt-in via
     # VERIFY_CREATE_NONZERO and the labelled record is left in place.
-    if key in ("Product", "PriceList", "PurchasePrice") and "create" in adapter.manifest.operations:
+    _CREATE_PROBED = ("Product", "PriceList", "PurchasePrice", "Warehouse", "StorageLocation")
+    if key in _CREATE_PROBED and "create" in adapter.manifest.operations:
         can_delete = "delete" in adapter.manifest.operations
         if not can_delete and not _PROBE_CREATE_NONZERO:
             fields.setdefault("name", {})["createNote"] = (
@@ -1743,7 +1763,9 @@ async def _verify_entity(
                 "VERIFY_CREATE_NONZERO=1 to probe and leave a labelled record"
             )
         else:
-            body, expects = _simple_create_payload(key, schema, product_id, supplier_id)
+            body, expects = _simple_create_payload(
+                key, schema, product_id, supplier_id, warehouse_id
+            )
             if not body:
                 fields.setdefault("name", {})["createNote"] = (
                     "create not probed — missing a product/supplier fixture on the instance"
@@ -1866,6 +1888,7 @@ async def _main() -> None:
     # tag roundtrips (an existing tag keeps the tag catalogue unpolluted).
     product_id: str | None = None
     supplier_id: str | None = None
+    warehouse_id: str | None = None
     tag_title: str | None = None
     for adapter in CORE.adapters:
         if adapter.manifest.key == "Product" and product_id is None:
@@ -1883,6 +1906,16 @@ async def _main() -> None:
                 sid = str(row.get("id") or "")
                 if sid:
                     supplier_id = sid.split("_", 1)[1] if "_" in sid else sid
+                    break
+        # A storage location cannot be created without one — upstream has no
+        # standalone endpoint, the location is created underneath its warehouse.
+        if adapter.manifest.key == "Warehouse" and warehouse_id is None:
+            p = _Probe(adapter, base_url, token)
+            st, pl = await p.req(query=[("page[size]", "3")])
+            for row in (pl.get("data") or []) if st == 200 else []:
+                wid = str(row.get("id") or "")
+                if wid:
+                    warehouse_id = wid.split("_", 1)[1] if "_" in wid else wid
                     break
         if adapter.manifest.key == "Tag" and tag_title is None:
             p = _Probe(adapter, base_url, token)
@@ -1911,7 +1944,7 @@ async def _main() -> None:
             continue
         try:
             result, summary = await _verify_entity(
-                adapter, base_url, token, product_id, tag_title, supplier_id
+                adapter, base_url, token, product_id, tag_title, supplier_id, warehouse_id
             )
         except _AuthFailed:
             # Deliberately NOT swallowed like a crashed probe: everything after this

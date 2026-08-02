@@ -276,7 +276,11 @@ class ReturnAdapter(FacadeAdapterBase):
                 "References",
                 section="references",
                 properties={
-                    "rmaNumber": prop("string", "RMA number", description="Not filterable — the upstream list endpoint rejects it (verified on mvp)."),
+                    "rmaNumber": prop(
+                        "string",
+                        "RMA number",
+                        description="Not filterable — the upstream list endpoint rejects it (verified on mvp).",
+                    ),
                     "customerOrderNumber": prop("string", "Customer order number", filterable=True),
                 },
             ),

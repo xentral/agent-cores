@@ -219,7 +219,9 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
                 section="references",
                 properties={
                     "ourCustomerNumber": prop(
-                        "string", "Our customer number", description="Not filterable — the upstream list endpoint rejects it (verified on mvp)."
+                        "string",
+                        "Our customer number",
+                        description="Not filterable — the upstream list endpoint rejects it (verified on mvp).",
                     ),
                     "supplierOfferNumber": prop("string", "Supplier offer number", filterable=True),
                 },

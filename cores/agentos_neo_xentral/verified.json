@@ -4528,6 +4528,7 @@
           "readNote": "declared, but none of the 60 sampled records carries a value — nothing proven either way"
         },
         "name": {
+          "create": "pass",
           "filter": "pass",
           "read": "pass"
         },
@@ -4550,7 +4551,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:16:29+00:00"
+      "probedAt": "2026-08-02T15:40:47+00:00"
     },
     "Supplier": {
       "actions": {
@@ -5045,6 +5046,7 @@
           "read": "pass"
         },
         "name": {
+          "create": "pass",
           "filter": "pass",
           "read": "pass"
         },
@@ -5055,7 +5057,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:16:50+00:00"
+      "probedAt": "2026-08-02T15:40:52+00:00"
     },
     "Webhook": {
       "fields": {
@@ -5095,7 +5097,7 @@
       "probedAt": "2026-08-02T10:17:04+00:00"
     }
   },
-  "generatedAt": "2026-08-02T15:02:40+00:00",
+  "generatedAt": "2026-08-02T15:40:52+00:00",
   "instance": "a2ad4180-0d41-4360-8044-9dca0c35608a",
   "schemaVersion": 2
 }

@@ -1428,10 +1428,9 @@
       {
         "field": "name",
         "ops": [
-          "create",
           "update"
         ],
-        "reason": "v1 CRUD exists upstream but is not orchestrated in this facade yet."
+        "reason": "Renaming a storage location: the upstream PATCH exists (/api/v1/warehouses/{id}/storageLocations/{id}, answers 204) but the facade cannot address it — there is no detail read, so the location's warehouse has to be found by sweeping the list. Create is built and verified."
       }
     ],
     "StockTake": [
