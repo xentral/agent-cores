@@ -20,7 +20,16 @@ from .partner_subresources import (
     contacts_from_include,
     contacts_prop,
 )
-from .base import RO, FacadeAdapterBase, map_tags, prop, ref, tags_prop, tags_to_v3
+from .base import (
+    RO,
+    FacadeAdapterBase,
+    custom_fields_to_v3,
+    map_tags,
+    prop,
+    ref,
+    tags_prop,
+    tags_to_v3,
+)
 
 _CU = {"creatable": True, "updatable": True}
 
@@ -33,14 +42,14 @@ class SupplierAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
         rollout_batch="agentos_neo_xentral",
         adapter="agentos_neo_xentral.supplier",
         source_apis=("agentos_neo_xentral",),
-        operations=("list", "read", "create", "update"),
+        operations=("list", "read", "create", "update", "delete"),
     )
     v3_path = "/api/v3/suppliers"
     # This collection parses createdAt/updatedAt filters as DATES and rejects the
     # full timestamp it returns on read (400 "not a valid date") — the document
     # collections do the exact opposite. Measured on mvp; reported upstream.
     datetime_filters_take_date_only = True
-    include = "tags,contactPersons,deliveryAddresses"
+    include = "tags,customFields,contactPersons,deliveryAddresses"
     preview_template = "{{name}}"
     # The v3 address filters/sorts act on the record's main address; in the unified
     # model that is the default row of the ``addresses`` list, so the query keys map
@@ -240,6 +249,7 @@ class SupplierAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
                             "currency": prop("string", "Currency", **RO),
                         },
                     ),
+                    "onHold": prop("boolean", "On hold"),
                     "creditorAccountNumber": prop("string", "Creditor account"),
                 },
             ),
@@ -252,7 +262,27 @@ class SupplierAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
                 **_CU,
             ),
             "tags": tags_prop(writable=True),
-            "customFields": prop("embedded", "Custom fields", section="general", properties={}),
+            # Free-text note on the partner — v3 `notes`, writable (measured on mvp:
+            # PATCH 200 and it sticks). Customer has always had this; the supplier
+            # side was simply not carried over.
+            "notes": prop("text", "Notes", section="general", **_CU),
+            # Free-field VALUES. Upstream gives suppliers the same OutputCustomFields
+            # contract as customers (SupplierResource uses the identical trait), and
+            # `include=customFields` answers 200 here too — this used to be declared
+            # as an empty embedded blob that could only ever read {}.
+            "customFields": prop(
+                "collection",
+                "Custom fields",
+                section="general",
+                node={
+                    "properties": {
+                        "key": prop("string", "Key", **_CU),
+                        "label": prop("string", "Label", **_CU),
+                        "type": prop("string", "Type", **RO),
+                        "value": prop("string", "Value", **_CU),
+                    }
+                },
+            ),
             "createdAt": prop("datetime", "Created at", **RO, filterable=True, sortable=True),
             "updatedAt": prop("datetime", "Updated at", **RO, filterable=True, sortable=True),
         }
@@ -329,12 +359,28 @@ class SupplierAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
                 ),
                 "paymentTerms": {"dueDays": None, "discountPercent": None, "discountDays": None},
             },
-            "finance": {"openAmount": None, "creditorAccountNumber": None},
+            "finance": {
+                "openAmount": None,
+                # Same upstream source the customer reads it from: a delivery block
+                # lives in `fulfillment`, not in a field of its own.
+                "onHold": (r.get("fulfillment") or {}).get("deliveryBlock"),
+                "creditorAccountNumber": None,
+            },
             "project": ref(
                 "prj_", mp.get("id") if isinstance(mp, dict) else mp, None, None, "projects"
             ),
             "tags": map_tags(r.get("tags")),
-            "customFields": {},
+            "notes": r.get("notes"),
+            "customFields": [
+                {
+                    "key": cf.get("key"),
+                    "label": cf.get("label"),
+                    "type": cf.get("type"),
+                    "value": cf.get("value"),
+                }
+                for cf in (r.get("customFields") or [])
+                if isinstance(cf, dict)
+            ],
             "createdAt": r.get("createdAt"),
             "updatedAt": r.get("updatedAt"),
         }
@@ -345,6 +391,8 @@ class SupplierAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
     # upstream write coverage is field-verified (ADR-014).
     _WRITABLE = {
         "name",
+        "notes",
+        "customFields",
         "email",
         "phone",
         "website",
@@ -432,6 +480,14 @@ class SupplierAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
             v3["communication"] = comm
         if "tags" in model:
             v3["tags"] = tags_to_v3(model["tags"])
+        if "notes" in model:
+            v3["notes"] = model["notes"]
+        if "customFields" in model:
+            cfs = custom_fields_to_v3(model["customFields"])
+            if cfs is None:
+                rejected.add("customFields")
+            elif cfs:
+                v3["customFields"] = cfs
         if "project" in model:
             v3["mainProject"] = self._ref_to_v3(model["project"])
         purchasing = model.get("purchasing")

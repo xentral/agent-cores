@@ -1995,6 +1995,31 @@ def _flatten_paths(obj: Any, prefix: str = "") -> list[str]:
 STATUS_FALLBACKS: set[tuple[str, str]] = set()
 
 
+
+def custom_fields_to_v3(value: Any) -> list[dict[str, Any]] | None:
+    """Model free-field rows → the v3 ``customFields`` body.
+
+    ``key`` and ``value`` come from the caller; ``label`` is required upstream, so a
+    row without one is refused here rather than sent to earn a 400 the caller
+    cannot read. ``type`` is upstream's and never echoed back. None = the whole
+    value is unusable.
+
+    Shared by Customer and Supplier: upstream gives both the same
+    ``OutputCustomFields`` contract, so the mapping must not drift between them.
+    """
+    if not isinstance(value, list):
+        return None
+    out: list[dict[str, Any]] = []
+    for row in value:
+        if not isinstance(row, dict):
+            return None
+        key, label = row.get("key"), row.get("label")
+        if not key or not label:
+            return None
+        out.append({"key": key, "label": label, "value": row.get("value")})
+    return out
+
+
 def status_map(mapping: dict[str, str], value: Any, default: str | None = None) -> str | None:
     if value in (None, ""):
         return default

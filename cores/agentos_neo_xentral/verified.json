@@ -4355,6 +4355,18 @@
         "customFields": {
           "read": "pass"
         },
+        "customFields.key": {
+          "read": "pass"
+        },
+        "customFields.label": {
+          "read": "pass"
+        },
+        "customFields.type": {
+          "read": "pass"
+        },
+        "customFields.value": {
+          "read": "pass"
+        },
         "defaults": {
           "read": "pass"
         },
@@ -4401,6 +4413,9 @@
         "finance.creditorAccountNumber": {
           "read": "pass"
         },
+        "finance.onHold": {
+          "read": "pass"
+        },
         "finance.openAmount": {
           "read": "pass"
         },
@@ -4420,12 +4435,14 @@
         },
         "name": {
           "create": "pass",
-          "createNote": "created sup_20462 but DELETE returned 405 — manual cleanup needed (record is named 'VT Verify GmbH')",
           "filter": "pass",
           "read": "pass",
           "search": "pass",
           "sort": "pass",
           "update": "pass"
+        },
+        "notes": {
+          "read": "pass"
         },
         "number": {
           "filter": "pass",
