@@ -120,6 +120,14 @@ def _item_props() -> dict[str, Any]:
 
 
 class SalesInvoiceAdapter(FacadeAdapterBase):
+    native_search_fields = (
+        "number",
+        "dates.issued",
+        "billingAddress.name",
+        "billingAddress.email",
+        "billingAddress.zip",
+        "references.customerOrderNumber",
+    )
     manifest = EmulationManifest(
         key="SalesInvoice",
         label_en="Sales invoice",
@@ -313,7 +321,9 @@ class SalesInvoiceAdapter(FacadeAdapterBase):
                         "string", "Customer order number", **_CU, filterable=True
                     ),
                     "debtorAccountNumber": prop(
-                        "string", "Debtor account", description="Not filterable — the upstream list endpoint rejects it (verified on mvp)."
+                        "string",
+                        "Debtor account",
+                        description="Not filterable — the upstream list endpoint rejects it (verified on mvp).",
                     ),
                 },
             ),

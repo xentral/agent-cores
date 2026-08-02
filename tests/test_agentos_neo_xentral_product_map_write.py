@@ -68,10 +68,44 @@ _FULL_MODEL: dict[str, Any] = {
 
 
 def test_operations_and_write_path():
+    """Three upstream generations at once, which is why the delete needs its own
+    path: v2 has no DELETE route (measured: 404 "Route not found") while v1 answers
+    204 and the record is gone on a re-read."""
     a = ProductAdapter()
-    assert set(a.manifest.operations) == {"list", "read", "create", "update"}
+    assert set(a.manifest.operations) == {"list", "read", "create", "update", "delete"}
     assert a.v3_path == "/api/v3/products"  # reads stay v3
     assert a.write_path == "/api/v2/products"  # writes go to v2
+    assert a.delete_path == "/api/products"  # …and the delete to v1
+
+
+def test_a_delete_is_routed_to_the_delete_path():
+    """The base and Product's own `_send` override both have to honour it —
+    restating only the write path in the override is how the first attempt at
+    declaring `delete` silently 404'd against a route that does not exist."""
+    import asyncio
+
+    import httpx
+
+    seen: list[tuple[str, str]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append((request.method, request.url.path))
+        return httpx.Response(204)
+
+    async def go():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            await ProductAdapter().request(
+                method="DELETE",
+                handle="prd_42",
+                query=[],
+                body=None,
+                base_url="https://unit.test",
+                token="t",
+                client=client,
+            )
+
+    asyncio.run(go())
+    assert seen == [("DELETE", "/api/products/42")], seen
 
 
 def test_map_write_full_model_to_v2_body():

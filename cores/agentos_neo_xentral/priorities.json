@@ -1424,14 +1424,6 @@
           "update"
         ],
         "reason": "Capacity limits (max weight) for putaway decisions — not exposed via API today."
-      },
-      {
-        "field": "name",
-        "ops": [
-          "create",
-          "update"
-        ],
-        "reason": "v1 CRUD exists upstream but is not orchestrated in this facade yet."
       }
     ],
     "StockTake": [

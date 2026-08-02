@@ -23,6 +23,7 @@ import os
 import re
 from collections.abc import Callable, Iterator
 from decimal import Decimal, InvalidOperation
+from urllib.parse import unquote
 from typing import Any
 
 import httpx
@@ -33,7 +34,11 @@ from entity_registry.core_sdk import AdapterResponse, EmulationManifest
 # filters, verified live against the same v3 endpoints) — the xentral_api core
 # owns the implementation; reusing it keeps ONE search behavior across cores
 # (weclapp_core → agentos_neo_weclapp precedent for cross-core imports).
-from xentral_entity_cores.xentral_api.emulated._search import extract_search, fan_out_search
+from xentral_entity_cores.xentral_api.emulated._search import (
+    extract_search,
+    fan_out_search,
+    strip_search,
+)
 
 from ..verdicts import is_proven
 
@@ -100,6 +105,33 @@ def eid(prefix: str, numeric: Any) -> str | None:
     if numeric in (None, ""):
         return None
     return f"{prefix}{numeric}"
+
+
+def id_from_location(location: str | None) -> str | None:
+    """The new record's id out of a ``Location`` header, in the two shapes upstream
+    actually uses.
+
+    v2 products answer ``…/api/v2/products/61997`` — the id is the last segment.
+    v1 warehouses answer ``…/api/warehouses?filter[0][key]=id&filter[0][op]=equals
+    &filter[0][value]=43`` — a QUERY that finds the record rather than a link to it.
+    Both are a 201 with an empty body, so without this the create flow has nothing
+    to read back and the caller gets a success with no id.
+    """
+    if not location:
+        return None
+    head, _, query = location.partition("?")
+    if query:
+        for part in query.split("&"):
+            key, _, value = part.partition("=")
+            # The key itself may be percent-encoded — warehouses answer
+            # `filter[0][value]=43`, their storage locations
+            # `filter%5B0%5D%5Bvalue%5D=258`. Comparing the raw key finds the first
+            # and misses the second, which is how the id came back as the whole
+            # query string.
+            if unquote(key).endswith("[value]") and value:
+                return unquote(value)
+    tail = head.rstrip("/").rsplit("/", 1)[-1]
+    return tail or None
 
 
 def ref(
@@ -347,9 +379,15 @@ class FacadeAdapterBase:
     # entities read and write the same v3 collection (write_path stays ""); a few
     # read a purpose-built v3 read model but must write through an older
     # generation (Product: reads /api/v3/products, writes /api/v2/products).
-    # ``_send`` (POST/PATCH/PUT/DELETE) targets ``write_path or v3_path``; reads
-    # (_get) always use v3_path.
+    # ``_send`` (POST/PATCH/PUT) targets ``write_path or v3_path``; reads (_get)
+    # always use v3_path.
     write_path: str = ""
+    # …and a THIRD generation can own the delete. Product reads /api/v3/products,
+    # writes /api/v2/products and deletes /api/products/{id} — measured: a DELETE on
+    # the v2 write path answers 404 "Route not found", on v1 it answers 204 and the
+    # record is really gone. Empty falls back to the write path, which is right for
+    # every entity whose upstream keeps writes and deletes together.
+    delete_path: str = ""
     include: str = ""
     sections: dict[str, dict[str, str]] = {}
     preview_template: str = "{{number}}"
@@ -717,17 +755,42 @@ class FacadeAdapterBase:
         )
 
     def search_fields(self) -> tuple[str, ...]:
-        """MODEL fields flagged ``searchable`` in the entity's schema — the
+        """MODEL paths flagged ``searchable`` in the entity's schema — the
         consolidated ``search`` filter fans out over exactly these, so the
-        search contract lives next to the field declarations."""
+        search contract lives next to the field declarations.
+
+        Nested paths count. This walked only the top level until now, so twelve
+        leaves the schema advertises as searchable were never reached by a search:
+        `Customer`/`Supplier` `addresses.{street,zip,city,state,country}`,
+        `Product.identifiers.ean`, `PurchaseInvoice.references.supplierInvoiceNumber`
+        — the address and barcode fields a merchant actually searches by. On
+        `PurchaseInvoice` the fan-out was empty altogether, so it had no search at
+        all while its schema said otherwise.
+
+        Measured on mvp before switching this on: every one of the twelve answers a
+        `contains` filter with 200, returns the record the value came from, and
+        narrows the set (customers 20128 → 8 for a city). The fan-out builds exactly
+        that query per field, so a declared path now behaves the way it reads.
+        """
         cached = type(self).__dict__.get("_search_fields_cache")
         if cached is not None:
             return cached
-        fields = tuple(
-            name
-            for name, spec in self.fields().items()
-            if isinstance(spec, dict) and spec.get("searchable")
-        )
+
+        def walk(props: dict[str, Any], prefix: str = ""):
+            for name, spec in (props or {}).items():
+                if not isinstance(spec, dict):
+                    continue
+                path = f"{prefix}{name}"
+                if spec.get("searchable"):
+                    yield path
+                sub = spec.get("properties")
+                if not isinstance(sub, dict):
+                    node = spec.get("node")
+                    sub = node.get("properties") if isinstance(node, dict) else None
+                if isinstance(sub, dict):
+                    yield from walk(sub, f"{path}.")
+
+        fields = tuple(walk(self.fields()))
         type(self)._search_fields_cache = fields
         return fields
 
@@ -758,11 +821,15 @@ class FacadeAdapterBase:
         missing = self.missing_field_wishes()
         if missing:
             meta["missingFieldWishes"] = missing
-        # Advertise the consolidated `search` filter only when the schema
-        # actually flags fields — consumers (record pickers, list search) key
-        # their server-search affordance off this list.
-        if self.search_fields():
-            meta["searchFields"] = list(self.search_fields())
+        # Advertise what a search actually MATCHES — consumers (record pickers, list
+        # search) key their server-search affordance off this list. Where the
+        # upstream searches natively that is ITS field set, not the schema flags the
+        # fan-out would have used: our document adapters flag `number` alone, while
+        # the native search also reaches the document address and the customer's
+        # order number, so the flags would understate it by five fields.
+        searchable = list(self.native_search_fields or self.search_fields())
+        if searchable:
+            meta["searchFields"] = searchable
         actions = list(self.actions())
         # Every entity with writable tags automatically gets the addTag/removeTag
         # actions — the base implements them generically (read-modify-write on the
@@ -1150,18 +1217,45 @@ class FacadeAdapterBase:
             return await self._write(
                 method, handle, query, body, base_url, token, accept_language, client
             )
-        # Consolidated `search` — the upstream has no cross-field search key
-        # (it would 400 as "filter `search` not allowed"), so fan out over the
-        # schema's `searchable` fields and merge. Only intercepts when the entity
-        # declares such fields; where it declares none the key is refused by the
-        # guard below rather than forwarded, because the metadata advertising
-        # `searchFields` turned out not to be enough to keep callers away.
+        # Consolidated `search` — fan out over the schema's `searchable` fields and
+        # merge. Only intercepts when the entity declares such fields.
+        #
+        # This used to say the upstream has no cross-field search key and "would 400
+        # as filter `search` not allowed". Both halves are wrong, checked against
+        # schemas/openapi/documents.yml and measured on mvp:
+        #   * v3 DOES have a native `?search=` on nine document endpoints
+        #     (creditNotes, deliveryNotes, invoices, offers, productions,
+        #     proformaInvoices, purchaseOrders, returnOrders, salesOrders), covering
+        #     9-14 fields each — id, documentNumber, documentAddress.name/email/
+        #     zipCode, customerNumber, customerOrderNumber, …
+        #   * where it does NOT exist (customers, suppliers, products) the parameter
+        #     is not refused but SILENTLY IGNORED: `?search=nonsense` on customers
+        #     answers 200 with all 20128 rows.
+        # So the fan-out is right for partners and products, and strictly worse than
+        # the native call for documents: our document adapters search `number` alone,
+        # and a sales-order search for the customer's name finds 0 where the native
+        # one finds 14. Switching documents over is a separate change.
+        #
+        # Where the entity declares NO searchable fields the key is REFUSED by the
+        # guard below rather than forwarded: advertising `searchFields` in the
+        # metadata turned out not to be enough to keep callers away, and a
+        # forwarded `search` is silently ignored upstream (see above), which a
+        # caller reads as an unfiltered list being a search result.
         if handle is None:
             refusal = self.refuse_undeclared_filters(query)
             if refusal is not None:
                 return refusal
             hit = extract_search(query)
-            if hit is not None and self.search_fields():
+            if hit is not None and self.native_search_fields:
+                # Upstream searches this endpoint itself — hand the term over as the
+                # top-level `?search=` it documents and let it do the OR server-side.
+                # One request instead of N, and it covers what the fan-out cannot:
+                # searching sales orders for the customer's name found 0 through the
+                # emulation and 14 natively.
+                value, _op = hit
+                if value:
+                    query = [*strip_search(query), ("search", value)]
+            elif hit is not None and self.search_fields():
                 value, op = hit
                 if value:
                     resp = await fan_out_search(
@@ -1354,8 +1448,14 @@ class FacadeAdapterBase:
         client: httpx.AsyncClient | None,
     ) -> tuple[int, Any]:
         # Writes go to write_path when the adapter reads and writes different
-        # upstream generations (Product); everyone else falls back to v3_path.
-        path = (self.write_path or self.v3_path) + (f"/{up_handle}" if up_handle else "")
+        # upstream generations (Product); everyone else falls back to v3_path. A
+        # delete can sit on a third one again, so it gets its own override first.
+        base_path = self.v3_path
+        if method.upper() == "DELETE" and self.delete_path:
+            base_path = self.delete_path
+        elif self.write_path:
+            base_path = self.write_path
+        path = base_path + (f"/{up_handle}" if up_handle else "")
         url = f"{base_url.rstrip('/')}{path}"
         headers = self._headers(token, accept_language)
 
@@ -1368,9 +1468,19 @@ class FacadeAdapterBase:
         else:
             resp = await _do(client)
         try:
-            return resp.status_code, resp.json()
+            body = resp.json()
         except ValueError:
-            return resp.status_code, {}
+            body = {}
+        # A create that answers 201 with an EMPTY body puts the new id in the
+        # Location header (v1 warehouses, v2 products). Without this the write flow
+        # has nothing to read back and the caller gets a success with no id.
+        if resp.status_code < 400 and not (
+            isinstance(body, dict) and (body.get("data") or {}).get("id")
+        ):
+            new_id = id_from_location(resp.headers.get("Location") or resp.headers.get("location"))
+            if new_id:
+                body = {"data": {"id": new_id}}
+        return resp.status_code, body
 
     # ---- line items on the v3 sub-resource --------------------------------
     @staticmethod
@@ -1572,6 +1682,24 @@ class FacadeAdapterBase:
     # downloadPdf action below — there is nothing per-document about it.
     renders_pdf: bool = False
 
+    # MODEL paths the UPSTREAM's own `?search=` covers on this endpoint. Non-empty
+    # means the term is handed over natively instead of being emulated by a fan-out
+    # over `search_fields()` — one request, and it reaches fields the emulation
+    # cannot: a sales-order search for the customer's name found 0 through the
+    # fan-out and 14 natively.
+    #
+    # Declare it ONLY where the upstream really searches. Where it does not, the
+    # parameter is not refused but silently ignored — `/api/v3/customers?search=
+    # nonsense` answers 200 with all 20128 rows — so a wrong entry here turns every
+    # search into "return everything", which reads exactly like a working search.
+    # The nine endpoints that have it are listed in schemas/openapi/documents.yml.
+    #
+    # The lists below are what the spec documents AND a live probe on mvp matched a
+    # record by; upstream's own list is broader (it also covers `id`, `customerNumber`
+    # and `internalDesignation`, which our model either does not expose as a path or
+    # had no sample value for). Under-advertising is the safe direction.
+    native_search_fields: tuple[str, ...] = ()
+
     async def _complete_body_money_pairs(  # noqa: ANN001
         self, handle, body, base_url, token, accept_language, client
     ) -> bytes | None:
@@ -1683,6 +1811,37 @@ class FacadeAdapterBase:
                 client=client,
             )
             rec = rpayload.get("data") if isinstance(rpayload, dict) else None
+            if not isinstance(rec, dict):
+                # Some v1 collections have NO detail endpoint — `GET /v1/warehouses/1`
+                # answers 404 while the record is perfectly readable through a list
+                # filtered by id. Upstream says so itself: the Location header on a
+                # create is that very query, not a link. Without this fallback the
+                # create answers with the bare id it got from the header, and a
+                # caller (or the capability probe) reads "sent but did not persist".
+                _, lpayload = await self._get(
+                    base_url,
+                    token,
+                    handle=None,
+                    query=[
+                        ("page[number]", "1"),
+                        ("page[size]", "5"),
+                        ("filter[0][key]", "id"),
+                        ("filter[0][op]", "equals"),
+                        ("filter[0][value]", str(new_id)),
+                    ],
+                    accept_language=accept_language,
+                    client=client,
+                )
+                rows = lpayload.get("data") if isinstance(lpayload, dict) else None
+                if isinstance(rows, list):
+                    rec = next(
+                        (
+                            r
+                            for r in rows
+                            if isinstance(r, dict) and str(r.get("id")) == str(new_id)
+                        ),
+                        None,
+                    )
             if isinstance(rec, dict):
                 return self._json(201 if method == "POST" else 200, {"data": self.map_read(rec)})
         return self._json(201 if method == "POST" else 200, resp if isinstance(resp, dict) else {})

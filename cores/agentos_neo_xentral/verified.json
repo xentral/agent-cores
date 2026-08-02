@@ -258,7 +258,7 @@
         },
         "items.product": {
           "create": "pass",
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass"
         },
         "items.purchasePrice": {
@@ -333,7 +333,7 @@
           "read": "pass"
         },
         "references.customerOrderNumber": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass",
           "update": "pass"
         },
@@ -402,7 +402,7 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:26:33+00:00",
+      "probedAt": "2026-08-02T12:14:13+00:00",
       "processSteps": {
         "release": "reachable"
       },
@@ -426,10 +426,9 @@
           "update": "pass"
         },
         "addresses.city": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass",
-          "search": "fail",
-          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is ['email', 'name', 'number'], so a consolidated search never looks at this field",
+          "search": "pass",
           "sort": "accepted",
           "sortNote": "fewer than two distinct values on the page — order not assertable"
         },
@@ -437,10 +436,8 @@
           "read": "pass"
         },
         "addresses.country": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass",
-          "search": "fail",
-          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is ['email', 'name', 'number'], so a consolidated search never looks at this field",
           "sort": "accepted",
           "sortNote": "fewer than two distinct values on the page — order not assertable"
         },
@@ -466,18 +463,15 @@
           "read": "pass"
         },
         "addresses.state": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass",
-          "search": "fail",
-          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is ['email', 'name', 'number'], so a consolidated search never looks at this field",
           "sort": "accepted",
           "sortNote": "fewer than two distinct values on the page — order not assertable"
         },
         "addresses.street": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass",
-          "search": "fail",
-          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is ['email', 'name', 'number'], so a consolidated search never looks at this field",
+          "search": "pass",
           "sort": "accepted",
           "sortNote": "fewer than two distinct values on the page — order not assertable"
         },
@@ -485,10 +479,9 @@
           "read": "pass"
         },
         "addresses.zip": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass",
-          "search": "fail",
-          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is ['email', 'name', 'number'], so a consolidated search never looks at this field",
+          "search": "pass",
           "sort": "accepted",
           "sortNote": "fewer than two distinct values on the page — order not assertable"
         },
@@ -752,7 +745,7 @@
           "update": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:13:14+00:00"
+      "probedAt": "2026-08-02T11:35:16+00:00"
     },
     "DeliveryNote": {
       "actions": {
@@ -906,7 +899,7 @@
           "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way"
         },
         "documents.salesOrder": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass"
         },
         "id": {
@@ -948,7 +941,7 @@
         },
         "items.product": {
           "create": "pass",
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass"
         },
         "items.quantity": {
@@ -1034,7 +1027,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:25:29+00:00",
+      "probedAt": "2026-08-02T12:13:21+00:00",
       "processSteps": {
         "cancel": "reachable",
         "markDelivered": "reachable",
@@ -1651,8 +1644,7 @@
         "identifiers.ean": {
           "filter": "pass",
           "read": "pass",
-          "search": "fail",
-          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is ['name', 'number'], so a consolidated search never looks at this field",
+          "search": "pass",
           "update": "pass"
         },
         "identifiers.external": {
@@ -1764,7 +1756,6 @@
         },
         "name": {
           "create": "pass",
-          "createNote": "created prd_61998 (labelled 'VT Verify') — no delete endpoint, left in place",
           "filter": "pass",
           "read": "pass",
           "search": "pass",
@@ -1967,7 +1958,7 @@
           "readNote": "declared, but none of the 111 sampled records carries a value — nothing proven either way"
         }
       },
-      "probedAt": "2026-08-02T10:15:57+00:00"
+      "probedAt": "2026-08-02T12:24:21+00:00"
     },
     "ProductCategory": {
       "fields": {
@@ -2103,10 +2094,12 @@
           "read": "pass"
         },
         "clarification.needed": {
-          "read": "pass"
+          "read": "pass",
+          "update": "pass"
         },
         "clarification.reason": {
-          "read": "pass"
+          "read": "pass",
+          "update": "pass"
         },
         "costCenter": {
           "read": "unobserved",
@@ -2124,15 +2117,18 @@
         },
         "dates.invoiceDate": {
           "filter": "pass",
-          "read": "pass"
+          "read": "pass",
+          "update": "pass"
         },
         "dates.received": {
           "filter": "pass",
-          "read": "pass"
+          "read": "pass",
+          "update": "pass"
         },
         "dates.serviceDate": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 52 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 52 sampled records carries a value — nothing proven either way",
+          "updateNote": "no sample date value — not probed (a null date cannot be restored)"
         },
         "documents": {
           "read": "pass"
@@ -2153,44 +2149,34 @@
           "read": "pass"
         },
         "items": {
-          "read": "unobserved",
-          "readNote": "declared, but none of the 52 sampled records carries a value — nothing proven either way"
+          "read": "pass"
         },
         "items.id": {
-          "read": "unobserved",
-          "readNote": "no sampled record carries 'items', so the leaf could not be observed — nothing proven either way"
+          "read": "pass"
         },
         "items.object": {
-          "read": "unobserved",
-          "readNote": "no sampled record carries 'items', so the leaf could not be observed — nothing proven either way"
+          "read": "pass"
         },
         "items.product": {
-          "read": "unobserved",
-          "readNote": "no sampled record carries 'items', so the leaf could not be observed — nothing proven either way"
+          "read": "pass"
         },
         "items.quantity": {
-          "read": "unobserved",
-          "readNote": "no sampled record carries 'items', so the leaf could not be observed — nothing proven either way"
+          "read": "pass"
         },
         "items.quantity.unit": {
-          "read": "unobserved",
-          "readNote": "no sampled record carries 'items.quantity', so the leaf could not be observed — nothing proven either way"
+          "read": "pass"
         },
         "items.quantity.value": {
-          "read": "unobserved",
-          "readNote": "no sampled record carries 'items.quantity', so the leaf could not be observed — nothing proven either way"
+          "read": "pass"
         },
         "items.unitPrice": {
-          "read": "unobserved",
-          "readNote": "no sampled record carries 'items', so the leaf could not be observed — nothing proven either way"
+          "read": "pass"
         },
         "items.unitPrice.amount": {
-          "read": "unobserved",
-          "readNote": "no sampled record carries 'items.unitPrice', so the leaf could not be observed — nothing proven either way"
+          "read": "pass"
         },
         "items.unitPrice.currency": {
-          "read": "unobserved",
-          "readNote": "no sampled record carries 'items.unitPrice', so the leaf could not be observed — nothing proven either way"
+          "read": "pass"
         },
         "match": {
           "read": "pass"
@@ -2241,13 +2227,14 @@
           "readNote": "declared, but none of the 52 sampled records carries a value — nothing proven either way"
         },
         "references.externalReference": {
-          "read": "pass"
+          "read": "pass",
+          "update": "pass"
         },
         "references.supplierInvoiceNumber": {
           "filter": "pass",
           "read": "pass",
-          "search": "fail",
-          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is empty, so a consolidated search never looks at this field"
+          "search": "pass",
+          "update": "pass"
         },
         "status": {
           "read": "pass"
@@ -2256,8 +2243,7 @@
           "read": "pass"
         },
         "tags": {
-          "filter": "accepted",
-          "filterNote": "accepted, but returned nothing — the record the value came from is missing",
+          "filterNote": "no sample value on the test instance — filter not probed",
           "read": "unobserved",
           "readNote": "declared, but none of the 52 sampled records carries a value — nothing proven either way"
         },
@@ -2281,7 +2267,7 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:12:11+00:00"
+      "probedAt": "2026-08-02T15:02:40+00:00"
     },
     "PurchaseOrder": {
       "actions": {
@@ -2346,7 +2332,7 @@
           "update": "pass"
         },
         "dates.requestedDelivery": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass"
         },
         "deliveryAddress": {
@@ -2450,7 +2436,7 @@
         },
         "items.product": {
           "create": "pass",
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass"
         },
         "items.quantity": {
@@ -2539,7 +2525,7 @@
           "read": "pass"
         },
         "references.supplierOfferNumber": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass"
         },
         "status": {
@@ -2581,7 +2567,7 @@
           "readNote": "declared, but none of the 63 sampled records carries a value — nothing proven either way"
         }
       },
-      "probedAt": "2026-08-02T10:27:42+00:00",
+      "probedAt": "2026-08-02T12:15:38+00:00",
       "processSteps": {
         "cancel": "reachable",
         "close": "reachable",
@@ -2835,7 +2821,7 @@
         },
         "items.product": {
           "create": "pass",
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass"
         },
         "items.purchasePrice": {
@@ -2983,8 +2969,7 @@
         },
         "tags": {
           "create": "pass",
-          "filter": "accepted",
-          "filterNote": "accepted, but the page does not contain the record the value came from — the filter may have been ignored",
+          "filter": "pass",
           "read": "pass",
           "update": "pass"
         },
@@ -3020,7 +3005,7 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:21:53+00:00",
+      "probedAt": "2026-08-02T12:09:32+00:00",
       "processSteps": {
         "cancel": "reachable",
         "release": "reachable"
@@ -3132,7 +3117,7 @@
           "read": "pass"
         },
         "documents.salesOrder": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass"
         },
         "id": {
@@ -3166,7 +3151,7 @@
         },
         "items.product": {
           "create": "pass",
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass"
         },
         "items.quantity": {
@@ -3208,7 +3193,7 @@
           "read": "pass"
         },
         "references.customerOrderNumber": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass"
         },
         "references.rmaNumber": {
@@ -3246,7 +3231,7 @@
           "readNote": "declared, but none of the 92 sampled records carries a value — nothing proven either way"
         }
       },
-      "probedAt": "2026-08-02T10:27:05+00:00",
+      "probedAt": "2026-08-02T12:14:51+00:00",
       "processSteps": {
         "cancel": "reachable",
         "release": "reachable",
@@ -3490,7 +3475,7 @@
         },
         "items.product": {
           "create": "pass",
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass"
         },
         "items.purchasePrice": {
@@ -3655,7 +3640,7 @@
           "sortNote": "fewer than two distinct values on the page — order not assertable"
         }
       },
-      "probedAt": "2026-08-02T10:24:45+00:00",
+      "probedAt": "2026-08-02T12:12:41+00:00",
       "processSteps": {
         "cancel": "executed",
         "release": "reachable"
@@ -3779,7 +3764,7 @@
         },
         "dates.requestedDelivery": {
           "create": "pass",
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass",
           "updateNote": "no sample date value — not probed (a null date cannot be restored)"
         },
@@ -3923,7 +3908,7 @@
         },
         "items.product": {
           "create": "pass",
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass"
         },
         "items.purchasePrice": {
@@ -4022,16 +4007,16 @@
           "read": "pass"
         },
         "references.customerOrderNumber": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass",
           "update": "pass"
         },
         "references.externalId": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass"
         },
         "references.externalNumber": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass"
         },
         "references.paymentTransactionId": {
@@ -4176,7 +4161,7 @@
           "sortNote": "fewer than two distinct values on the page — order not assertable"
         }
       },
-      "probedAt": "2026-08-02T10:23:23+00:00",
+      "probedAt": "2026-08-02T12:11:24+00:00",
       "processSteps": {
         "cancel": "reachable",
         "close": "reachable",
@@ -4543,8 +4528,10 @@
           "readNote": "declared, but none of the 60 sampled records carries a value — nothing proven either way"
         },
         "name": {
+          "create": "pass",
           "filter": "pass",
-          "read": "pass"
+          "read": "pass",
+          "update": "pass"
         },
         "object": {
           "read": "pass"
@@ -4565,7 +4552,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:16:29+00:00"
+      "probedAt": "2026-08-02T15:58:06+00:00"
     },
     "Supplier": {
       "actions": {
@@ -4583,10 +4570,9 @@
           "update": "pass"
         },
         "addresses.city": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass",
-          "search": "fail",
-          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is ['email', 'name', 'number'], so a consolidated search never looks at this field",
+          "search": "pass",
           "sort": "accepted",
           "sortNote": "fewer than two distinct values on the page — order not assertable"
         },
@@ -4594,10 +4580,8 @@
           "read": "pass"
         },
         "addresses.country": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass",
-          "search": "fail",
-          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is ['email', 'name', 'number'], so a consolidated search never looks at this field",
           "sort": "accepted",
           "sortNote": "fewer than two distinct values on the page — order not assertable"
         },
@@ -4624,18 +4608,15 @@
           "read": "pass"
         },
         "addresses.state": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass",
-          "search": "fail",
-          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is ['email', 'name', 'number'], so a consolidated search never looks at this field",
           "sort": "accepted",
           "sortNote": "fewer than two distinct values on the page — order not assertable"
         },
         "addresses.street": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass",
-          "search": "fail",
-          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is ['email', 'name', 'number'], so a consolidated search never looks at this field",
+          "search": "pass",
           "sort": "accepted",
           "sortNote": "fewer than two distinct values on the page — order not assertable"
         },
@@ -4643,10 +4624,9 @@
           "read": "pass"
         },
         "addresses.zip": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass",
-          "search": "fail",
-          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is ['email', 'name', 'number'], so a consolidated search never looks at this field",
+          "search": "pass",
           "sort": "accepted",
           "sortNote": "fewer than two distinct values on the page — order not assertable"
         },
@@ -4920,7 +4900,7 @@
           "update": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:14:00+00:00"
+      "probedAt": "2026-08-02T11:36:11+00:00"
     },
     "Tag": {
       "fields": {
@@ -5067,8 +5047,10 @@
           "read": "pass"
         },
         "name": {
+          "create": "pass",
           "filter": "pass",
-          "read": "pass"
+          "read": "pass",
+          "update": "pass"
         },
         "object": {
           "read": "pass"
@@ -5077,7 +5059,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:16:50+00:00"
+      "probedAt": "2026-08-02T15:58:15+00:00"
     },
     "Webhook": {
       "fields": {
@@ -5117,7 +5099,7 @@
       "probedAt": "2026-08-02T10:17:04+00:00"
     }
   },
-  "generatedAt": "2026-08-02T10:27:42+00:00",
+  "generatedAt": "2026-08-02T15:58:15+00:00",
   "instance": "a2ad4180-0d41-4360-8044-9dca0c35608a",
   "schemaVersion": 2
 }
