@@ -1768,6 +1768,19 @@ class FacadeAdapterBase:
             node = node.get(part)
         return node
 
+    def _created_handle(self, resp: Any) -> Any:
+        """Upstream handle of a just-created record, used for the read-back.
+
+        Defaults to the ``id`` of the create response. Adapters whose detail read
+        addresses records by something else override this — the entity API reads
+        by ``uuid`` and does not even allow filtering on ``id``, so re-reading a
+        newly created record by its id answers 404 there.
+        """
+        rec = resp.get("data") if isinstance(resp, dict) else None
+        if not isinstance(rec, dict):
+            rec = resp if isinstance(resp, dict) else {}
+        return rec.get("id")
+
     async def _write_document(
         self,
         method: str,
@@ -1798,9 +1811,7 @@ class FacadeAdapterBase:
             return self._json(
                 st, resp if isinstance(resp, dict) else {"title": "upstream write error"}
             )
-        new_id = up_handle or (
-            (resp.get("data") or {}).get("id") if isinstance(resp, dict) else None
-        )
+        new_id = up_handle or self._created_handle(resp)
         if new_id is not None:
             _, rpayload = await self._get(
                 base_url,
@@ -1844,6 +1855,12 @@ class FacadeAdapterBase:
                     )
             if isinstance(rec, dict):
                 return self._json(201 if method == "POST" else 200, {"data": self.map_read(rec)})
+        # Read-back impossible: answer the record the WRITE returned, still mapped.
+        # Returning `resp` verbatim would let a create answer a raw upstream record
+        # while every read answers the model — the same id under two shapes.
+        written = resp.get("data") if isinstance(resp, dict) else None
+        if isinstance(written, dict) and written:
+            return self._json(201 if method == "POST" else 200, {"data": self.map_read(written)})
         return self._json(201 if method == "POST" else 200, resp if isinstance(resp, dict) else {})
 
     # A rendered document can be large, and the caller's transport is JSON. This is

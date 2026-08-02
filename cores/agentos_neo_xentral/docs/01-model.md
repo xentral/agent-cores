@@ -330,9 +330,14 @@ nicht wiederholt — sie existieren in jedem Beleg.
   "references": { "supplierInvoiceNumber": "AT-INV-20441",   // Pflicht: Nummer DES LIEFERANTEN
     "creditorAccountNumber": "70201" },
   "dates": { "invoiceDate": "2026-07-15", "received": "2026-07-16", "serviceDate": "2026-07-14" },
-  "items": [{ "purchaseOrderItem": { "…": "Ref" }, "product": { "…": "Ref" },
+  // Collection replace wie bei den anderen Belegen: Position MIT id wird geändert,
+  // OHNE id angelegt, weggelassene gelöscht. Upstream will dafür pro Zeile einen
+  // `actionIndicator` (Create|Update|Delete) — nirgends dokumentiert, die Fassade
+  // übersetzt. `name` trägt den Zeilentext, weil eine EK-Zeile oft kein Produkt hat.
+  "items": [{ "id": "pii_…", "product": { "…": "Ref" }, "name": "Beratungsleistung",
+    "description": "…",
     "quantity": { "value": 500, "unit": "piece" }, "unitPrice": { "amount": "6.20", "currency": "EUR" },
-    "taxRate": "standard", "totals": { "net": "3100.00", "tax": "589.00", "gross": "3689.00" } }],
+    "taxRate": 19 }],
   "totals": { "…": "+ paid / outstanding" },
   "match": { "status": "matched",               // pending | matched | mismatch — 3-Wege-Abgleich
     "deviations": [],                           // [{type: price|quantity, item, expected, actual}]
@@ -343,6 +348,11 @@ nicht wiederholt — sie existieren in jedem Beleg.
   "available": { "steps": ["approve", "reject"], "actions": ["rematch", "registerPayment", "schedulePayment", "attachFile"] }
 }
 ```
+Schreiben geht über die neue Entity-API (`/api/entity/supplierInvoice`): create,
+update, delete inklusive Positionen. `supplier` ist beim Anlegen **von der Fassade**
+verlangt, nicht von Xentral — dort legt ein leerer POST eine Rechnung ohne
+Kreditor, ohne Datum und ohne Position an. `number` und `costCenter` antworten 2xx
+und persistieren nicht; sie werden abgelehnt statt still verworfen.
 
 ## 6 Stammdaten
 

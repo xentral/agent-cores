@@ -808,16 +808,7 @@
           "create",
           "update"
         ],
-        "reason": "REVISED (docs/05 #6): the BF entity supplierInvoice HAS full CRUD incl. goods/invoice check — the remaining work is OUR facade write-mapping + live write verification, not a new Xentral API."
-      },
-      {
-        "field": "items",
-        "ops": [
-          "read",
-          "create",
-          "update"
-        ],
-        "reason": "BF lineItems exist on the record but are not mapped into the facade yet; write path pending the facade write-mapping."
+        "reason": "The document number is system-assigned: sending `documentNumber` on create answers 201 and the record comes back with an empty number (measured on mvp 2026-08-02). Same behaviour as the other documents."
       },
       {
         "field": "match.status",

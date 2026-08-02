@@ -608,6 +608,43 @@ def _simple_create_payload(
             {"name": "VT-VERIFY-PROBE", "warehouse": {"id": f"wh_{warehouse_id}"}},
             [("name", "eq", "VT-VERIFY-PROBE")],
         )
+    if key == "PurchaseInvoice":
+        # A real accounting document, so this only runs because DELETE is supported
+        # and verified — the probe books it and takes it straight back out. Upstream
+        # requires nothing at all (an empty POST creates an invoice), so everything
+        # here is checking OUR mapping, including the line-item `actionIndicator`
+        # diff that no schema documents.
+        if not sup:
+            return {}, []
+        body = {
+            "supplier": sup,
+            "references": {"supplierInvoiceNumber": "VT-VERIFY" + _MARK},
+            "dates": {"invoiceDate": "2026-01-15", "received": "2026-01-16"},
+            "payment": {"dueDate": "2026-02-15", "discountUntil": "2026-01-25"},
+            "currency": "EUR",
+            "clarification": {"needed": True, "reason": "VT verify"},
+            "items": [
+                {
+                    "name": "VT Verify Position",
+                    "description": "VT verify line",
+                    "quantity": {"value": 2, "unit": "Stk"},
+                    "unitPrice": {"amount": "15.00", "currency": "EUR"},
+                    "taxRate": 19,
+                }
+            ],
+        }
+        return body, [
+            ("supplier", "ref", sup["id"]),
+            ("references.supplierInvoiceNumber", "eq", "VT-VERIFY" + _MARK),
+            ("dates.invoiceDate", "eq", "2026-01-15"),
+            ("dates.received", "eq", "2026-01-16"),
+            ("payment.dueDate", "eq", "2026-02-15"),
+            ("payment.discountUntil", "eq", "2026-01-25"),
+            ("currency", "eq", "EUR"),
+            ("clarification.needed", "eq", True),
+            ("clarification.reason", "eq", "VT verify"),
+            ("items", "present", None),
+        ]
     if key == "Product":
         body: dict[str, Any] = {
             "name": "VT Verify Product" + _MARK,
@@ -1754,7 +1791,14 @@ async def _verify_entity(
     # null-restore update roundtrip cannot reach — verify each path persisted, then
     # DELETE (net-zero) where supported. Product has NO delete: opt-in via
     # VERIFY_CREATE_NONZERO and the labelled record is left in place.
-    _CREATE_PROBED = ("Product", "PriceList", "PurchasePrice", "Warehouse", "StorageLocation")
+    _CREATE_PROBED = (
+        "Product",
+        "PriceList",
+        "PurchasePrice",
+        "Warehouse",
+        "StorageLocation",
+        "PurchaseInvoice",
+    )
     if key in _CREATE_PROBED and "create" in adapter.manifest.operations:
         can_delete = "delete" in adapter.manifest.operations
         if not can_delete and not _PROBE_CREATE_NONZERO:
