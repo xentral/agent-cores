@@ -32,6 +32,10 @@ import httpx
 
 from entity_registry.core_sdk import AdapterResponse, EmulationManifest
 
+# Warengruppe outgrew the read-only lookup shape (full CRUD, sixteen posting
+# accounts) and lives in its own module — still listed here so its placement
+# in the settings group does not move.
+from .product_category import ProductCategoryAdapter
 from .base import _TIMEOUT, RO, FacadeAdapterBase, prop, ref
 
 
@@ -464,43 +468,6 @@ class EmployeeAdapter(SettingsLookupBase):
             "name": r.get("name"),
             "number": r.get("number"),
             "email": r.get("email"),
-        }
-
-
-class ProductCategoryAdapter(SettingsLookupBase):
-    manifest = _lookup_manifest("ProductCategory", "Product category", read=True)
-    v3_path = "/api/v1/productsCategories"
-    query_mode = "none"
-
-    def fields(self) -> dict[str, dict[str, Any]]:
-        return {
-            "object": prop("string", "Object", **RO, section="general"),
-            "id": prop("string", "ID", **RO, section="general"),
-            "name": prop("string", "Name", **RO, section="general", previewable=True),
-            "parent": prop(
-                "reference",
-                "Parent category",
-                reference="ProductCategory",
-                renderProperty="name",
-                section="general",
-                **RO,
-            ),
-        }
-
-    def map_read(self, r: dict[str, Any]) -> dict[str, Any]:
-        parent = r.get("parent")
-        pid = parent.get("id") if isinstance(parent, dict) else parent
-        return {
-            "object": "productCategory",
-            "id": (f"pcat_{r.get('id')}" if r.get("id") is not None else None),
-            "name": r.get("name"),
-            "parent": ref(
-                "pcat_",
-                pid,
-                None,
-                parent.get("name") if isinstance(parent, dict) else None,
-                "productsCategories",
-            ),
         }
 
 

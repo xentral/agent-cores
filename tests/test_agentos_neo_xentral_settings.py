@@ -19,8 +19,8 @@ from xentral_entity_cores.agentos_neo_xentral.emulated.channel import ChannelAda
 from xentral_entity_cores.agentos_neo_xentral.emulated.settings import (
     SETTINGS_ADAPTERS,
     EmployeeAdapter,
+    MerchandiseGroupAdapter,
     PaymentMethodAdapter,
-    ProductCategoryAdapter,
     TaxRateAdapter,
     TextTemplateAdapter,
 )
@@ -93,9 +93,12 @@ def test_paged_dialect_sends_page_and_filters_only():
 
 
 def test_none_dialect_sends_no_query_at_all():
-    up = Upstream({"/api/v1/productsCategories": {"data": []}})
+    # ProductCategory used to stand in here; it moved off the v1 lookup onto the
+    # entity API when it gained CRUD, so the dialect needs a lookup that still
+    # speaks it.
+    up = Upstream({"/api/v1/productsMerchandiseGroups": {"data": []}})
     _run(
-        ProductCategoryAdapter(),
+        MerchandiseGroupAdapter(),
         up,
         query=[("page[number]", "1"), ("page[size]", "25"), ("sort", "name")],
     )

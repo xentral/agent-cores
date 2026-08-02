@@ -114,7 +114,7 @@ def test_create_builds_upstream_payload_with_defaults():
         method="POST",
         body=json.dumps(
             {
-                "type": "note",
+                "kind": "note",
                 "customer": {"id": "cus_20337"},
                 "subject": "Notiz",
                 "time": "09:15",
@@ -127,26 +127,120 @@ def test_create_builds_upstream_payload_with_defaults():
     assert sent["type"] == "note"
     assert sent["time"] == "09:15:00"  # HH:MM padded
     assert sent["date"]  # defaulted to today
-    assert sent["isSent"] is False and sent["isDeleted"] is False
+    # `isSent`/`isDeleted` are no longer forced on every create: they are part of
+    # the delivery block a caller may set, and forcing them made an entry that
+    # records a message ALREADY sent unrepresentable.
+    assert "isSent" not in sent
     rec = json.loads(resp.content)["data"]
     assert rec["id"] == "cor_u-77"  # re-read by uuid, mapped
 
 
-def test_create_rejects_integration_owned_types():
+def test_create_rejects_a_kind_upstream_does_not_have():
+    """The old model advertised eight kinds. Upstream's enum has five, and the
+    other four answer "The selected type is invalid" — they came from the
+    dissolved CRM tool and no record on the instance carries one."""
     up = Upstream({})
-    for bad in ("ticket", "document"):
+    for bad in ("ticket", "document", "follow_up", "appointment"):
         resp = _run(
             up,
             method="POST",
-            body=json.dumps({"type": bad, "customer": "cus_1"}).encode(),
+            body=json.dumps({"kind": bad, "customer": "cus_1"}).encode(),
         )
         assert resp.status_code == 409, bad
-        assert "type" in json.loads(resp.content)["fields"], bad
+        assert "kind" in json.loads(resp.content)["fields"], bad
     assert up.requests == []  # never reached the upstream
 
 
-def test_update_and_delete_not_declared():
-    up = Upstream({})
-    assert _run(up, method="PATCH", handle="cor_43", body=b"{}").status_code == 405
-    assert _run(up, method="DELETE", handle="cor_43").status_code == 405
-    assert up.requests == []
+def test_fax_is_the_kind_the_old_list_forgot():
+    """`letter_fax` creates successfully upstream and was missing entirely."""
+    from xentral_entity_cores.agentos_neo_xentral.emulated.correspondence import (
+        CorrespondenceAdapter,
+    )
+
+    wire, rejected = CorrespondenceAdapter().map_write({"kind": "fax"}, creating=False)
+    assert wire["type"] == "letter_fax"
+    assert not rejected
+    kinds = {o["value"] for o in CorrespondenceAdapter().fields()["kind"]["options"]}
+    assert kinds == {"email", "letter", "fax", "phone", "note"}
+
+
+def test_update_and_delete_are_declared_now():
+    """Upstream had full CRUD all along; only the mapping was missing."""
+    from xentral_entity_cores.agentos_neo_xentral.emulated.correspondence import (
+        CorrespondenceAdapter,
+    )
+
+    ops = CorrespondenceAdapter().manifest.operations
+    assert {"create", "update", "delete"} <= set(ops)
+
+
+def test_the_sort_dialect_is_the_entity_api_pair_not_a_flat_key():
+    """A flat `sort=createdAt` answers 422 "Each sort must have a string key and
+    direction". This adapter used to read that as "no sort surface" and strip the
+    key, so both directions came back in the same order — a `sort: fail` on a
+    field that sorts perfectly well."""
+    from xentral_entity_cores.agentos_neo_xentral.emulated.correspondence import (
+        CorrespondenceAdapter,
+    )
+
+    a = CorrespondenceAdapter()
+    assert a.bf_sort is True
+
+    up = Upstream({"/api/entity/correspondence": {"data": []}})
+    _run(up, query=[("page[number]", "1"), ("page[size]", "5"), ("sort", "-createdAt")])
+    params = dict(_params(up.requests[0]))
+    assert params["sort[0][key]"] == "createdAt"
+    assert params["sort[0][direction]"] == "desc"
+    assert params["limit"] == "5" and params["offset"] == "0"
+    assert "sort" not in params  # the flat key never goes out
+
+
+def test_the_parties_and_delivery_blocks_map_both_ways():
+    from xentral_entity_cores.agentos_neo_xentral.emulated.correspondence import (
+        CorrespondenceAdapter,
+    )
+
+    a = CorrespondenceAdapter()
+    d = a.map_read(
+        {
+            **_ROW,
+            "senderAddress": {"id": "25"},
+            "senderName": "VT",
+            "senderCompany": "Xentral",
+            "recipientEmail": "kunde@example.org",
+            "recipientPostalAddress": {"name": "ACME", "city": "Berlin"},
+            "sendAs": "pdf",
+            "emailCc": "cc@example.org",
+            "printer": 3,
+        }
+    )
+    assert d["sender"]["partner"]["id"] == "cus_25"
+    assert d["sender"]["company"] == "Xentral"
+    assert d["recipient"]["email"] == "kunde@example.org"
+    assert d["recipient"]["address"]["city"] == "Berlin"
+    assert d["delivery"]["sendAs"] == "pdf" and d["delivery"]["printer"] == 3
+
+    wire, rejected = a.map_write(
+        {
+            "sender": {"partner": {"id": "cus_25"}, "company": "Xentral"},
+            "recipient": {"email": "kunde@example.org", "address": {"city": "Berlin"}},
+            "delivery": {"sendAs": "pdf", "emailAddress": "x@example.org"},
+        },
+        creating=False,
+    )
+    assert not rejected
+    assert wire["senderAddress"] == {"id": "25"}
+    assert wire["recipientPostalAddress"] == {"city": "Berlin"}
+    assert wire["email"] == "x@example.org"  # the second, undocumented column
+
+
+def test_a_create_without_a_moment_gets_one():
+    from xentral_entity_cores.agentos_neo_xentral.emulated.correspondence import (
+        CorrespondenceAdapter,
+    )
+
+    wire, _ = CorrespondenceAdapter().map_write({"kind": "note"}, creating=True)
+    assert wire["date"] and wire["time"]
+    # ...but an update must not invent one
+    wire, _ = CorrespondenceAdapter().map_write({"kind": "note"}, creating=False)
+    assert "date" not in wire and "time" not in wire
