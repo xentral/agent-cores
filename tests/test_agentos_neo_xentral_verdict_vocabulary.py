@@ -117,16 +117,38 @@ def test_the_committed_manifest_speaks_the_vocabulary() -> None:
     assert bad == {}, bad
 
 
-def test_the_migrated_manifest_claims_no_unearned_proof() -> None:
-    """The state PR A leaves behind, pinned so a later change cannot quietly restore
-    the overstated verdicts. `create`/`update` keep their proofs — they always wrote
-    a value and read it back; `read`/`filter`/`sort` do not, and `search` was
-    withdrawn outright because its probe bypassed the facade's search contract."""
+def _verdict_counts() -> dict[str, dict[str, int]]:
     manifest = json.loads(_MANIFEST.read_text(encoding="utf-8"))
-    proven: dict[str, int] = {}
+    out: dict[str, dict[str, int]] = {}
     for entity in (manifest.get("entities") or {}).values():
         for facets in (entity.get("fields") or {}).values():
             for facet, verdict in facets.items():
-                if not facet.endswith("Note") and is_proven(verdict):
-                    proven[facet] = proven.get(facet, 0) + 1
-    assert proven == {"create": 199, "update": 203}, proven
+                if not facet.endswith("Note"):
+                    out.setdefault(facet, {}).setdefault(verdict, 0)
+                    out[facet][verdict] += 1
+    return out
+
+
+def test_no_facet_is_blanket_green() -> None:
+    """The shape of a real measurement: some paths earn a facet, some do not.
+
+    A facet that is 100% proven is what a probe stamping by construction looks like
+    — that was the original defect, 1218 `read` verdicts recorded before any payload
+    was inspected. This does not assert a number (mvp's data moves), only that
+    something was measured rather than assumed."""
+    counts = _verdict_counts()
+    for facet in ("read", "filter", "sort", "search"):
+        verdicts = counts.get(facet) or {}
+        assert verdicts, f"{facet}: no verdicts at all"
+        assert sum(verdicts.values()) > verdicts.get(PROVEN, 0), (
+            f"{facet} is proven on every single path ({verdicts}) — the probe is "
+            "stamping, not measuring"
+        )
+
+
+def test_the_unreachable_search_fields_stay_red() -> None:
+    """Twelve fields the schema flags `searchable` sit outside `search_fields()`, so
+    a consolidated search can never match on them. They are the canary: if the search
+    probe stops asserting its hit, these are the first cells to go quietly green."""
+    reds = (_verdict_counts().get("search") or {}).get("fail", 0)
+    assert reds >= 12, f"expected at least 12 failing search cells, found {reds}"

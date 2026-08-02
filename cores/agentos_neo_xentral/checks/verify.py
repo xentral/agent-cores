@@ -1623,7 +1623,18 @@ async def _verify_entity(
                         ust, upl = await p.req(
                             "PATCH", str(new_id), body={"contacts": cons2, "addresses": adrs2}
                         )
-                        udata = (upl.get("data") or {}) if isinstance(upl, dict) else {}
+                        # Read the record back rather than trusting the PATCH echo.
+                        # Measured on mvp: this exact call answered 200 and applied
+                        # the change, but its response body omitted the contact's
+                        # new department — one run recorded `contacts.update: fail`
+                        # for a write that had worked, and the next run passed. The
+                        # line-item branch already re-reads for the mirror-image
+                        # reason (an echo that never reached upstream); an echo is
+                        # the wrong thing to grade either way.
+                        udata: dict[str, Any] = {}
+                        if ust == 200:
+                            _rst, rpl = await p.req(handle=str(new_id))
+                            udata = (rpl.get("data") or {}) if isinstance(rpl, dict) else {}
                         ok_c = ust == 200 and any(
                             c.get("department") == "Vertrieb" for c in udata.get("contacts") or []
                         )

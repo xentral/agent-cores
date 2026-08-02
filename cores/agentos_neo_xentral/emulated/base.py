@@ -328,6 +328,13 @@ def tags_to_v3(value: Any) -> list[dict[str, str]]:
     return out
 
 
+# Facets whose verdict describes THIS facade's model rather than the upstream, so a
+# proof there cannot answer a wish about what the upstream can do. `read` is the
+# whole set: the mapping layer synthesises, derives and composes values, so seeing
+# one says nothing about where it came from. See `_proven`.
+_MODEL_ONLY_FACETS = frozenset({"read"})
+
+
 class FacadeAdapterBase:
     """Concrete adapters set ``manifest``, ``v3_path`` (upstream collection),
     ``sections``, ``preview_template``, ``include`` (upstream ?include=), and
@@ -444,6 +451,12 @@ class FacadeAdapterBase:
             node = spec.get("properties") or (spec.get("node") or {}).get("properties") or {}
         return spec
 
+    def _verified_fields(self) -> dict[str, Any]:
+        """This entity's recorded field verdicts. The seam a test overrides to inject
+        data — so the RULE in ``_proven`` is only ever written once and a stub cannot
+        drift away from it."""
+        return (_verified().get(self.manifest.key) or {}).get("fields") or {}
+
     def _proven(self, field: str, op: str) -> bool:
         """Whether a LIVE probe has shown this op working on this field.
 
@@ -457,14 +470,25 @@ class FacadeAdapterBase:
         A container counts as proven when any of its leaves is: `items` is editable
         exactly when a line field has been shown to update.
 
-        This used to carry an allowlist of facets whose verdict was trustworthy,
-        because the probe stamped `read: pass` on every declared path whether or not
-        the instance carried a value — taking that as proof retired 50 legitimate
-        wishes in one run. The allowlist is gone: the weak claims now say so in the
-        verdict itself (`verdicts.py`), so `is_proven` carries the whole rule and
-        `read` needs no exception. A facet the probe can only measure weakly can no
-        longer retire anything, whichever facet it is."""
-        fields = (_verified().get(self.manifest.key) or {}).get("fields") or {}
+        **`read` cannot retire a wish, and the reason is not the one it used to be.**
+        The probe once stamped `read: pass` on every declared path before looking at
+        a payload, and taking that as proof retired 50 legitimate wishes in one run.
+        That is fixed — a read verdict now means a real record carried a value. But
+        it carried it *in THIS facade's model*, and the model invents values:
+        `Customer.addresses.isDefault` is a hard-coded `True` on the main address,
+        `addresses.label` a literal `"Hauptadresse"`, `Channel.platform` a string
+        match against `moduleName`. A read wish disputes what the UPSTREAM supplies,
+        which observing our own output cannot answer. Measured: the first live run
+        under the new vocabulary reported 14 read wishes as obsolete, and every one
+        of them was still true.
+
+        The write and query facets are different in kind and do count: they reach
+        the upstream and come back — a filter it does not support cannot return the
+        record the value came from, and a value we wrote and read back was stored
+        somewhere real."""
+        if op in _MODEL_ONLY_FACETS:
+            return False
+        fields = self._verified_fields()
         if is_proven((fields.get(field) or {}).get(op)):
             return True
         prefix = f"{field}."
