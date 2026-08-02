@@ -330,9 +330,14 @@ nicht wiederholt — sie existieren in jedem Beleg.
   "references": { "supplierInvoiceNumber": "AT-INV-20441",   // Pflicht: Nummer DES LIEFERANTEN
     "creditorAccountNumber": "70201" },
   "dates": { "invoiceDate": "2026-07-15", "received": "2026-07-16", "serviceDate": "2026-07-14" },
-  "items": [{ "purchaseOrderItem": { "…": "Ref" }, "product": { "…": "Ref" },
+  // Collection replace wie bei den anderen Belegen: Position MIT id wird geändert,
+  // OHNE id angelegt, weggelassene gelöscht. Upstream will dafür pro Zeile einen
+  // `actionIndicator` (Create|Update|Delete) — nirgends dokumentiert, die Fassade
+  // übersetzt. `name` trägt den Zeilentext, weil eine EK-Zeile oft kein Produkt hat.
+  "items": [{ "id": "pii_…", "product": { "…": "Ref" }, "name": "Beratungsleistung",
+    "description": "…",
     "quantity": { "value": 500, "unit": "piece" }, "unitPrice": { "amount": "6.20", "currency": "EUR" },
-    "taxRate": "standard", "totals": { "net": "3100.00", "tax": "589.00", "gross": "3689.00" } }],
+    "taxRate": 19 }],
   "totals": { "…": "+ paid / outstanding" },
   "match": { "status": "matched",               // pending | matched | mismatch — 3-Wege-Abgleich
     "deviations": [],                           // [{type: price|quantity, item, expected, actual}]
@@ -343,6 +348,11 @@ nicht wiederholt — sie existieren in jedem Beleg.
   "available": { "steps": ["approve", "reject"], "actions": ["rematch", "registerPayment", "schedulePayment", "attachFile"] }
 }
 ```
+Schreiben geht über die neue Entity-API (`/api/entity/supplierInvoice`): create,
+update, delete inklusive Positionen. `supplier` ist beim Anlegen **von der Fassade**
+verlangt, nicht von Xentral — dort legt ein leerer POST eine Rechnung ohne
+Kreditor, ohne Datum und ohne Position an. `number` und `costCenter` antworten 2xx
+und persistieren nicht; sie werden abgelehnt statt still verworfen.
 
 ## 6 Stammdaten
 
@@ -561,9 +571,15 @@ Batch inline anlegbar: `"batch": {"new": {"number", "bestBefore"}}`.
   "object": "storageLocation", "id": "loc_A-03-2", "name": "A-03-2",
   "status": "active",                           // active | blocked
   "warehouse": { "…": "Ref" },
-  "kind": "picking",                            // picking | bulk | inbound | returns | quarantine
-  "pickingOrder": 312,                          // Laufweg-Sortierung
-  "capacity": { "maxWeight": { "value": 150, "unit": "kg" }, "note": null },
+  // Fünf UNABHÄNGIGE Nutzungen — ein Platz kann Nachschubplatz UND gesperrt sein.
+  // Xentrals eigene Namen (Nachschublager, Verbrauchslager, Sperrlager,
+  // Fertigungszugriff, Kassenplatz) hier so benannt, wie ein Berater danach fragt.
+  "usage": { "replenishment": true, "consumption": false, "blocked": false,
+             "production": false, "pointOfSale": false },
+  "abcCategory": "A",                           // A | B | C — Kommissionierpriorität
+  "pickingOrder": 312,                          // Laufweg-Sortierung (upstream `sort`)
+  "dimensions": { "length": 100, "width": 60, "height": 40 },   // kein Gewichtslimit upstream
+  "description": "Nachschubzone A",             // read-only: upstream lehnt Schreiben ab
   "contents": [{ "product": { "…": "Ref" }, "batch": { "…": "Ref" },
     "quantity": { "value": 118, "unit": "piece" }, "reserved": { "value": 10, "unit": "piece" } }]   // read-only
 }

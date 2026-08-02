@@ -747,6 +747,95 @@
       },
       "probedAt": "2026-08-02T11:35:16+00:00"
     },
+    "CustomerGroup": {
+      "fields": {
+        "code": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "search": "pass",
+          "update": "pass"
+        },
+        "conditions": {
+          "read": "pass"
+        },
+        "conditions.baseDiscount": {
+          "create": "pass",
+          "read": "pass",
+          "updateNote": "no sample numeric value — not probed (a null number cannot be restored)"
+        },
+        "conditions.cashDiscountDays": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "conditions.cashDiscountRate": {
+          "create": "pass",
+          "read": "pass",
+          "updateNote": "no sample numeric value — not probed (a null number cannot be restored)"
+        },
+        "conditions.freeShippingActive": {
+          "create": "pass",
+          "read": "pass",
+          "updateNote": "no sample boolean value — not probed (a null flag cannot be restored)"
+        },
+        "conditions.freeShippingFrom": {
+          "create": "pass",
+          "read": "pass",
+          "updateNote": "no sample numeric value — not probed (a null number cannot be restored)"
+        },
+        "conditions.paymentTermDays": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "createdAt": {
+          "read": "pass",
+          "sort": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "internalNote": {
+          "create": "pass",
+          "read": "unobserved",
+          "readNote": "declared, but none of the 23 sampled records carries a value — nothing proven either way",
+          "update": "pass"
+        },
+        "isActive": {
+          "create": "pass",
+          "filter": "accepted",
+          "filterNote": "accepted, but returned nothing — the record the value came from is missing",
+          "read": "pass",
+          "update": "pass"
+        },
+        "kind": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "name": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "search": "pass",
+          "update": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "project": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "updatedAt": {
+          "read": "pass",
+          "sort": "pass"
+        }
+      },
+      "probedAt": "2026-08-02T17:19:40+00:00"
+    },
     "DeliveryNote": {
       "actions": {
         "addTag": "pass",
@@ -2094,10 +2183,12 @@
           "read": "pass"
         },
         "clarification.needed": {
+          "create": "pass",
           "read": "pass",
           "update": "pass"
         },
         "clarification.reason": {
+          "create": "pass",
           "read": "pass",
           "update": "pass"
         },
@@ -2110,17 +2201,20 @@
           "sort": "pass"
         },
         "currency": {
+          "create": "pass",
           "read": "pass"
         },
         "dates": {
           "read": "pass"
         },
         "dates.invoiceDate": {
+          "create": "pass",
           "filter": "pass",
           "read": "pass",
           "update": "pass"
         },
         "dates.received": {
+          "create": "pass",
           "filter": "pass",
           "read": "pass",
           "update": "pass"
@@ -2149,16 +2243,26 @@
           "read": "pass"
         },
         "items": {
+          "create": "pass",
           "read": "pass"
+        },
+        "items.description": {
+          "read": "pass",
+          "updateNote": "no sample value for description — not probed (a null line value cannot be restored net-zero)"
         },
         "items.id": {
           "read": "pass"
+        },
+        "items.name": {
+          "read": "pass",
+          "update": "pass"
         },
         "items.object": {
           "read": "pass"
         },
         "items.product": {
-          "read": "pass"
+          "read": "pass",
+          "updateNote": "no sample value for product — not probed (a null line value cannot be restored net-zero)"
         },
         "items.quantity": {
           "read": "pass"
@@ -2168,6 +2272,10 @@
         },
         "items.quantity.value": {
           "read": "pass"
+        },
+        "items.taxRate": {
+          "read": "pass",
+          "update": "pass"
         },
         "items.unitPrice": {
           "read": "pass"
@@ -2204,9 +2312,11 @@
           "read": "pass"
         },
         "payment.discountUntil": {
+          "create": "pass",
           "read": "pass"
         },
         "payment.dueDate": {
+          "create": "pass",
           "read": "pass"
         },
         "payment.method": {
@@ -2231,6 +2341,7 @@
           "update": "pass"
         },
         "references.supplierInvoiceNumber": {
+          "create": "pass",
           "filter": "pass",
           "read": "pass",
           "search": "pass",
@@ -2240,6 +2351,7 @@
           "read": "pass"
         },
         "supplier": {
+          "create": "pass",
           "read": "pass"
         },
         "tags": {
@@ -2267,7 +2379,7 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-02T15:02:40+00:00"
+      "probedAt": "2026-08-02T17:02:50+00:00"
     },
     "PurchaseOrder": {
       "actions": {
@@ -4461,24 +4573,10 @@
         "stockTransfer": "reachable — 422: storageLocation.stockTransfer: invalid command"
       },
       "fields": {
-        "capacity": {
-          "read": "pass"
-        },
-        "capacity.maxWeight": {
+        "abcCategory": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 60 sampled records carries a value — nothing proven either way"
-        },
-        "capacity.maxWeight.unit": {
-          "read": "unobserved",
-          "readNote": "no sampled record carries 'capacity.maxWeight', so the leaf could not be observed — nothing proven either way"
-        },
-        "capacity.maxWeight.value": {
-          "read": "unobserved",
-          "readNote": "no sampled record carries 'capacity.maxWeight', so the leaf could not be observed — nothing proven either way"
-        },
-        "capacity.note": {
-          "read": "unobserved",
-          "readNote": "declared, but none of the 60 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 60 sampled records carries a value — nothing proven either way",
+          "update": "pass"
         },
         "contents": {
           "read": "unobserved",
@@ -4520,12 +4618,27 @@
           "read": "unobserved",
           "readNote": "declared, but none of the 60 sampled records carries a value — nothing proven either way"
         },
-        "id": {
-          "read": "pass"
-        },
-        "kind": {
+        "description": {
           "read": "unobserved",
           "readNote": "declared, but none of the 60 sampled records carries a value — nothing proven either way"
+        },
+        "dimensions": {
+          "read": "pass"
+        },
+        "dimensions.height": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "dimensions.length": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "dimensions.width": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "id": {
+          "read": "pass"
         },
         "name": {
           "create": "pass",
@@ -4537,8 +4650,8 @@
           "read": "pass"
         },
         "pickingOrder": {
-          "read": "unobserved",
-          "readNote": "declared, but none of the 60 sampled records carries a value — nothing proven either way"
+          "read": "pass",
+          "update": "pass"
         },
         "status": {
           "read": "pass"
@@ -4547,12 +4660,35 @@
           "read": "unobserved",
           "readNote": "declared, but none of the 60 sampled records carries a value — nothing proven either way"
         },
+        "usage": {
+          "read": "pass"
+        },
+        "usage.blocked": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "usage.consumption": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "usage.pointOfSale": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "usage.production": {
+          "read": "pass",
+          "update": "pass"
+        },
+        "usage.replenishment": {
+          "read": "pass",
+          "update": "pass"
+        },
         "warehouse": {
           "filter": "pass",
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T15:58:06+00:00"
+      "probedAt": "2026-08-02T16:27:35+00:00"
     },
     "Supplier": {
       "actions": {
@@ -4938,6 +5074,184 @@
       },
       "probedAt": "2026-08-02T10:16:35+00:00"
     },
+    "Task": {
+      "fields": {
+        "assignee": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "createdAt": {
+          "read": "pass",
+          "sort": "pass"
+        },
+        "dates": {
+          "read": "pass"
+        },
+        "dates.completed": {
+          "filter": "pass",
+          "read": "pass",
+          "sort": "accepted",
+          "sortNote": "fewer than two distinct values on the page — order not assertable"
+        },
+        "dates.created": {
+          "filter": "pass",
+          "read": "pass",
+          "sort": "pass"
+        },
+        "dates.due": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "sort": "pass",
+          "update": "pass"
+        },
+        "dates.dueTime": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "dates.isAllDay": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "description": {
+          "create": "pass",
+          "read": "pass",
+          "search": "accepted",
+          "searchNote": "the consolidated search accepted the term but did not return the record it was taken from",
+          "update": "pass"
+        },
+        "id": {
+          "read": "pass"
+        },
+        "links": {
+          "read": "pass"
+        },
+        "links.contactPerson": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "unobserved",
+          "readNote": "declared, but none of the 25 sampled records carries a value — nothing proven either way"
+        },
+        "links.customer": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "unobserved",
+          "readNote": "declared, but none of the 25 sampled records carries a value — nothing proven either way"
+        },
+        "links.project": {
+          "read": "unobserved",
+          "readNote": "declared, but none of the 25 sampled records carries a value — nothing proven either way"
+        },
+        "links.subProject": {
+          "read": "unobserved",
+          "readNote": "declared, but none of the 25 sampled records carries a value — nothing proven either way"
+        },
+        "notes": {
+          "create": "pass",
+          "read": "unobserved",
+          "readNote": "declared, but none of the 25 sampled records carries a value — nothing proven either way",
+          "update": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "priority": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "recurrence": {
+          "read": "pass"
+        },
+        "recurrence.interval": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "reminder": {
+          "read": "pass"
+        },
+        "reminder.advanceNoticeDays": {
+          "create": "pass",
+          "read": "unobserved",
+          "readNote": "declared, but none of the 25 sampled records carries a value — nothing proven either way",
+          "updateNote": "no sample numeric value — not probed (a null number cannot be restored)"
+        },
+        "reminder.byEmail": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "reminder.daysBefore": {
+          "create": "pass",
+          "read": "unobserved",
+          "readNote": "declared, but none of the 25 sampled records carries a value — nothing proven either way",
+          "updateNote": "no sample numeric value — not probed (a null number cannot be restored)"
+        },
+        "status": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "timeTracking": {
+          "read": "pass"
+        },
+        "timeTracking.billable": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "timeTracking.hours": {
+          "create": "pass",
+          "read": "pass",
+          "updateNote": "no sample numeric value — not probed (a null number cannot be restored)"
+        },
+        "timeTracking.loggedAt": {
+          "read": "pass",
+          "sort": "pass"
+        },
+        "timeTracking.required": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "title": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "search": "pass",
+          "update": "pass"
+        },
+        "updatedAt": {
+          "read": "pass",
+          "sort": "pass"
+        },
+        "visibility": {
+          "read": "pass"
+        },
+        "visibility.isPublic": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "visibility.onBulletinBoard": {
+          "filter": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "visibility.onStartPage": {
+          "create": "pass",
+          "filter": "pass",
+          "read": "pass",
+          "update": "pass"
+        }
+      },
+      "probedAt": "2026-08-02T17:19:18+00:00"
+    },
     "TaxRate": {
       "fields": {
         "country": {
@@ -5099,7 +5413,7 @@
       "probedAt": "2026-08-02T10:17:04+00:00"
     }
   },
-  "generatedAt": "2026-08-02T15:58:15+00:00",
+  "generatedAt": "2026-08-02T17:19:40+00:00",
   "instance": "a2ad4180-0d41-4360-8044-9dca0c35608a",
   "schemaVersion": 2
 }
