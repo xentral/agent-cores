@@ -875,6 +875,11 @@
     "color": "Display color of the tag badge.",
     "group": "The tag group / category this tag belongs to."
   },
+  "CostCenter": {
+    "number": "The cost centre's identifier — this is the value a document's costCenter field carries. Unique across the instance and required when creating.",
+    "name": "Human-readable name of the cost centre (Xentral stores it as 'description'). Required when creating.",
+    "internalNote": "Free internal remark; not shown on documents."
+  },
   "PaymentMethod": {
     "type": "Technical payment type (e.g. amazon, paypal, prepayment) — the value documents reference.",
     "project": "Project/client the payment method is bound to; null = instance-wide."

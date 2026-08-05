@@ -30,10 +30,10 @@ hit):
             boolean + toggle-selects): set marker → read back → verify → restore
             (net-zero). Numeric/boolean leaves are probed only where the sample
             carries a value (a null cannot be restored net-zero — create covers those).
-  create  — documents (partner ref + note) and the master price/product entities
-            (Product, PriceList, PurchasePrice): POST a rich record, verify each
-            field persisted, then DELETE it (net-zero). Product has NO delete →
-            opt-in via VERIFY_CREATE_NONZERO, leaving one labelled record behind.
+  create  — documents (partner ref + note) and the master/config entities in
+            ``_CREATE_PROBED``: POST a rich record, verify each field persisted,
+            then DELETE it (net-zero). Product has NO delete → opt-in via
+            VERIFY_CREATE_NONZERO, leaving one labelled record behind.
             This runner IS the destructive suite for this core.
 
 actions + process steps (opt-in, VERIFY_ACTIONS=1 — these EXECUTE real upstream
@@ -606,10 +606,10 @@ def _simple_create_payload(
     warehouse_id: str | None = None,
     customer_id: str | None = None,
 ) -> tuple[dict[str, Any], list[tuple[str, str, Any]]]:
-    """Create body + per-path persistence expectations for the price/product master
-    entities (Product / PriceList / PurchasePrice), which take a create+verify probe
-    outside the document/partner path. The Product body deliberately sets the numeric
-    and boolean fields the null-restore update roundtrip cannot cover (minimumStock,
+    """Create body + per-path persistence expectations for the master/config
+    entities in ``_CREATE_PROBED``, which take a create+verify probe outside the
+    document/partner path. The Product body deliberately sets the numeric and
+    boolean fields the null-restore update roundtrip cannot cover (minimumStock,
     hidePrice, …) so a silently-dropped field surfaces as create=fail."""
     prd = {"id": f"prd_{product_id}"} if product_id else None
     sup = {"id": f"sup_{supplier_id}"} if supplier_id else None
@@ -897,6 +897,20 @@ def _simple_create_payload(
             body["supplier"] = sup
             expects.append(("supplier", "ref", str(supplier_id)))
         return body, expects
+    if key == "CostCenter":
+        # `number` carries a `unique` rule upstream, so a fixed marker would pass
+        # once and then 4xx on every re-run — randomise it per probe.
+        number = f"VT-CC-{secrets.token_hex(3)}"
+        body = {
+            "number": number,
+            "name": "VT Verify Cost Center",
+            "internalNote": "VT verify note",
+        }
+        return body, [
+            ("number", "eq", number),
+            ("name", "eq", "VT Verify Cost Center"),
+            ("internalNote", "eq", "VT verify note"),
+        ]
     return {}, []
 
 
@@ -1972,11 +1986,11 @@ async def _verify_entity(
                 for path, _k, _w in expects:
                     mark(path, "create", False, note3)
 
-    # create + (delete) for the price/product master entities (Product, PriceList,
-    # PurchasePrice): POST a rich body — including the numeric/boolean fields the
-    # null-restore update roundtrip cannot reach — verify each path persisted, then
-    # DELETE (net-zero) where supported. Product has NO delete: opt-in via
-    # VERIFY_CREATE_NONZERO and the labelled record is left in place.
+    # create + (delete) for the master/config entities listed below: POST a rich
+    # body — including the numeric/boolean fields the null-restore update
+    # roundtrip cannot reach — verify each path persisted, then DELETE (net-zero)
+    # where supported. Product has NO delete: opt-in via VERIFY_CREATE_NONZERO
+    # and the labelled record is left in place.
     _CREATE_PROBED = (
         "Product",
         "PriceList",
@@ -1988,6 +2002,7 @@ async def _verify_entity(
         "CustomerGroup",
         "Correspondence",
         "ProductCategory",
+        "CostCenter",
     )
     if key in _CREATE_PROBED and "create" in adapter.manifest.operations:
         can_delete = "delete" in adapter.manifest.operations

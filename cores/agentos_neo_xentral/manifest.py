@@ -20,6 +20,7 @@ from __future__ import annotations
 from entity_registry.core_sdk import CoreManifest, EmulatedOnly
 from .emulated.channel import ChannelAdapter
 from .emulated.correspondence import CorrespondenceAdapter
+from .emulated.cost_center import CostCenterAdapter
 from .emulated.email_account import EmailAccountAdapter
 from .emulated.credit_note import CreditNoteAdapter
 from .emulated.customer import CustomerAdapter
@@ -93,6 +94,10 @@ CORE = CoreManifest(
         # MCP tool; printing ported from the xentral_api core).
         PrinterAdapter(),
         EmailAccountAdapter(),
+        # Configuration the agent may also CHANGE — a settings entity on the BF
+        # entity API with a live-verified write path, unlike the read-only
+        # lookups below.
+        CostCenterAdapter(),
         # Read-only settings/configuration lookups (category "settings") — the
         # instance's setup catalogue as entities, folding the standalone
         # xentral_erp_settings tool's resources into the core.
