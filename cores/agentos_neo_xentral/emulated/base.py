@@ -2289,12 +2289,18 @@ RO: dict[str, Any] = {"access": "readOnly"}
 # dialect native Xentral emits and every consumer already parses it (the
 # workspace form renders the marker, MCP `describe` reports it to an agent).
 #
-# BUSINESS necessity, deliberately NOT "whatever upstream happens to reject":
-# marking a field the upstream actually defaults would block a legitimate create
-# in the form, so this stays a conservative set. Necessity that is *conditional*
-# is left unmarked — StockMovement.quantity has the `setQuantityTo` alternative,
-# and a document position without a product is a legitimate free-text line. Those
-# need a live probe to settle, not a guess here.
+# BUSINESS necessity first, but every entry here is also a field the create path
+# genuinely cannot do without — the set was probed against a live tenant (mvp)
+# rather than reasoned about, because reasoning got it wrong once already:
+# "a document position without a product is a legitimate free-text line" sounded
+# obvious and is false. All seven customer/supplier documents answer
+# `400 lineItems.0.product: product is required`. Only PurchaseInvoice accepts a
+# free-text line (201, `product: null`), which is why it alone is unmarked.
+#
+# Necessity that is *conditional* stays unmarked, and StockMovement.quantity is
+# the reason the rule exists: it is required WITHOUT `setQuantityTo` and rejected
+# WITH it ("correction takes quantity (delta) OR setQuantityTo, not both", see
+# stock_movement's own validator). A flat `required` would contradict the core.
 REQUIRED: dict[str, Any] = {"rules": ["required"]}
 
 # Callable type alias for adapters that build sub-trees.

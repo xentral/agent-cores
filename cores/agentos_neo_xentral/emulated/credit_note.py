@@ -275,6 +275,7 @@ class CreditNoteAdapter(FacadeAdapterBase):
                         "product": prop(
                             "reference",
                             "Product",
+                            **REQUIRED,
                             reference="Product",
                             renderProperty="name",
                             creatable=True,
