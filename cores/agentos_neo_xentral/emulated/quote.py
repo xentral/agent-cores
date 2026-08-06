@@ -316,6 +316,7 @@ class QuoteAdapter(FacadeAdapterBase):
                         "product": prop(
                             "reference",
                             "Product",
+                            **REQUIRED,
                             reference="Product",
                             renderProperty="name",
                             creatable=True,

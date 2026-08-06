@@ -41,15 +41,19 @@ def _required_paths(adapter) -> set[str]:
     }
 
 
-# A record without these is not the thing it claims to be.
+# A record without these is not the thing it claims to be. The document entries
+# were probed against a live tenant (mvp): every one of these answers 400 when
+# the field is omitted.
 EXPECTED = {
-    "SalesOrder": {"customer", "items.quantity"},
-    "Quote": {"customer", "items.quantity"},
-    "SalesInvoice": {"customer", "items.quantity"},
-    "CreditNote": {"customer", "items.quantity"},
-    "DeliveryNote": {"customer", "items.quantity"},
-    "Return": {"customer", "items.quantity", "items.reason"},
-    "PurchaseOrder": {"supplier", "items.quantity"},
+    "SalesOrder": {"customer", "items.product", "items.quantity"},
+    "Quote": {"customer", "items.product", "items.quantity"},
+    "SalesInvoice": {"customer", "items.product", "items.quantity"},
+    "CreditNote": {"customer", "items.product", "items.quantity"},
+    "DeliveryNote": {"customer", "items.product", "items.quantity"},
+    "Return": {"customer", "items.product", "items.quantity", "items.reason"},
+    "PurchaseOrder": {"supplier", "items.product", "items.quantity"},
+    # NOT items.product: this is the one document that accepts a free-text line
+    # (measured: 201 with `product: null`, quantity defaulted to 0).
     "PurchaseInvoice": {"supplier"},
     "Customer": {"name", "contacts.name"},
     "Supplier": {"name", "contacts.name"},
@@ -67,6 +71,21 @@ EXPECTED = {
 def test_entity_declares_its_mandatory_fields(key, expected):
     [adapter] = [a for a in _adapters() if a.manifest.key == key]
     assert expected <= _required_paths(adapter)
+
+
+def test_conditionally_mandatory_fields_stay_unmarked():
+    """A flat `required` would contradict the core's own validator.
+
+    StockMovement.quantity is required WITHOUT `setQuantityTo` and rejected WITH
+    it ("correction takes quantity (delta) OR setQuantityTo, not both"), so it
+    cannot be declared mandatory. PurchaseInvoice takes free-text lines, so its
+    line product is genuinely optional — both measured on mvp.
+    """
+    [movement] = [a for a in _adapters() if a.manifest.key == "StockMovement"]
+    assert "quantity" not in _required_paths(movement)
+
+    [invoice] = [a for a in _adapters() if a.manifest.key == "PurchaseInvoice"]
+    assert "items.product" not in _required_paths(invoice)
 
 
 def test_every_creatable_entity_declares_at_least_one_mandatory_field():

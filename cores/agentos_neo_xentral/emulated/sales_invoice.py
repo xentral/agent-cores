@@ -84,6 +84,7 @@ def _item_props() -> dict[str, Any]:
         "product": prop(
             "reference",
             "Product",
+            **REQUIRED,
             reference="Product",
             renderProperty="name",
             creatable=True,
