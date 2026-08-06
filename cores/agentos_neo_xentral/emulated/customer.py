@@ -15,6 +15,7 @@ import httpx
 from entity_registry.core_sdk import EmulationManifest
 
 from .base import (
+    REQUIRED,
     _TIMEOUT,
     RO,
     FacadeAdapterBase,
@@ -172,6 +173,7 @@ class CustomerAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
             "name": prop(
                 "string",
                 "Name",
+                **REQUIRED,
                 section="general",
                 **_CU,
                 filterable=True,
@@ -197,7 +199,7 @@ class CustomerAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
             # No separate primaryAddress block — the main address is the default row
             # (type "both", isDefault) of the unified addresses list.
             "addresses": addresses_prop(prop, RO, _CU),
-            "contacts": contacts_prop(prop, RO, _CU),
+            "contacts": contacts_prop(prop, RO, _CU, REQUIRED),
             "defaults": prop(
                 "embedded",
                 "Defaults",

@@ -13,6 +13,7 @@ from typing import Any
 from entity_registry.core_sdk import EmulationManifest
 
 from .base import (
+    REQUIRED,
     FacadeAdapterBase,
     line_price_net,
     line_qty,
@@ -195,6 +196,7 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
             "supplier": prop(
                 "reference",
                 "Supplier",
+                **REQUIRED,
                 reference="Supplier",
                 renderProperty="name",
                 section="general",
@@ -284,6 +286,7 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
                         "quantity": prop(
                             "embedded",
                             "Quantity",
+                            **REQUIRED,
                             creatable=True,
                             properties={
                                 "value": prop("decimal", "Value"),

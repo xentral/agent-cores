@@ -21,6 +21,7 @@ from .partner_subresources import (
     contacts_prop,
 )
 from .base import (
+    REQUIRED,
     RO,
     FacadeAdapterBase,
     custom_fields_to_v3,
@@ -158,6 +159,7 @@ class SupplierAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
             "name": prop(
                 "string",
                 "Name",
+                **REQUIRED,
                 section="general",
                 **_CU,
                 filterable=True,
@@ -204,7 +206,7 @@ class SupplierAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
                 },
             ),
             "addresses": addresses_prop(prop, RO, _CU),
-            "contacts": contacts_prop(prop, RO, _CU),
+            "contacts": contacts_prop(prop, RO, _CU, REQUIRED),
             "defaults": prop(
                 "embedded",
                 "Defaults",

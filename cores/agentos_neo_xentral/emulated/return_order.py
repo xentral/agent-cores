@@ -17,6 +17,7 @@ import httpx
 from entity_registry.core_sdk import EmulationManifest
 
 from .base import (
+    REQUIRED,
     _TIMEOUT,
     FacadeAdapterBase,
     RO,
@@ -256,6 +257,7 @@ class ReturnAdapter(FacadeAdapterBase):
             "customer": prop(
                 "reference",
                 "Customer",
+                **REQUIRED,
                 reference="Customer",
                 renderProperty="name",
                 section="general",
@@ -331,6 +333,7 @@ class ReturnAdapter(FacadeAdapterBase):
                         "quantity": prop(
                             "embedded",
                             "Quantity",
+                            **REQUIRED,
                             creatable=True,
                             properties={
                                 "value": prop("decimal", "Value"),
@@ -343,7 +346,7 @@ class ReturnAdapter(FacadeAdapterBase):
                             reference="ReturnReason",
                             renderProperty="name",
                             creatable=True,
-                            required=True,
+                            **REQUIRED,
                         ),
                         "condition": prop("select", "Condition"),
                         "action": prop("select", "Action"),

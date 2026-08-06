@@ -2277,5 +2277,18 @@ def status_map(mapping: dict[str, str], value: Any, default: str | None = None) 
 # A read-only computed marker used a lot in the model (totals, holds, documents…).
 RO: dict[str, Any] = {"access": "readOnly"}
 
+# A field the record is meaningless without — a sales order with no customer, a
+# product with no name. Spelled as a Laravel validation rule because that is the
+# dialect native Xentral emits and every consumer already parses it (the
+# workspace form renders the marker, MCP `describe` reports it to an agent).
+#
+# BUSINESS necessity, deliberately NOT "whatever upstream happens to reject":
+# marking a field the upstream actually defaults would block a legitimate create
+# in the form, so this stays a conservative set. Necessity that is *conditional*
+# is left unmarked — StockMovement.quantity has the `setQuantityTo` alternative,
+# and a document position without a product is a legitimate free-text line. Those
+# need a live probe to settle, not a guess here.
+REQUIRED: dict[str, Any] = {"rules": ["required"]}
+
 # Callable type alias for adapters that build sub-trees.
 FieldBuilder = Callable[[], dict[str, dict[str, Any]]]

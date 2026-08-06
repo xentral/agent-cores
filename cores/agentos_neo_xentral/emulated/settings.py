@@ -36,7 +36,7 @@ from entity_registry.core_sdk import AdapterResponse, EmulationManifest
 # accounts) and lives in its own module — still listed here so its placement
 # in the settings group does not move.
 from .product_category import ProductCategoryAdapter
-from .base import _TIMEOUT, RO, FacadeAdapterBase, prop, ref
+from .base import FacadeAdapterBase, REQUIRED, RO, prop, ref, _TIMEOUT
 
 
 def _lookup_manifest(
@@ -301,6 +301,7 @@ class WarehouseAdapter(SettingsLookupBase):
             "name": prop(
                 "string",
                 "Name",
+                **REQUIRED,
                 section="general",
                 creatable=True,
                 updatable=True,

@@ -51,7 +51,10 @@ def test_schema_marks_link_and_reason_creatable():
     assert docs["salesOrder"].get("creatable") and docs["deliveryNote"].get("creatable")
     reason = fields["items"]["node"]["properties"]["reason"]
     assert reason.get("creatable")
-    assert reason.get("required")  # reason is mandatory per return policy
+    # Mandatory per return policy. Spelled as a validation rule (the dialect
+    # native Xentral emits and every consumer parses) — a bare `required: True`
+    # is silently invisible to the workspace form.
+    assert "required" in (reason.get("rules") or [])
 
 
 class _Resp:

@@ -12,6 +12,7 @@ from typing import Any
 from entity_registry.core_sdk import EmulationManifest
 
 from .base import (
+    REQUIRED,
     FacadeAdapterBase,
     line_price_net,
     contribution_margin_prop,
@@ -245,6 +246,7 @@ class QuoteAdapter(FacadeAdapterBase):
             "customer": prop(
                 "reference",
                 "Customer",
+                **REQUIRED,
                 reference="Customer",
                 renderProperty="name",
                 section="general",
@@ -325,6 +327,7 @@ class QuoteAdapter(FacadeAdapterBase):
                         "quantity": prop(
                             "embedded",
                             "Quantity",
+                            **REQUIRED,
                             creatable=True,
                             updatable=True,
                             properties={

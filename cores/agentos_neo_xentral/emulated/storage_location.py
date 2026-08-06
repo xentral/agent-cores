@@ -30,7 +30,7 @@ import httpx
 
 from entity_registry.core_sdk import AdapterResponse, EmulationManifest
 
-from .base import _TIMEOUT, RO, FacadeAdapterBase, id_from_location, prop, ref
+from .base import FacadeAdapterBase, REQUIRED, RO, id_from_location, prop, ref, _TIMEOUT
 
 _CU = {"creatable": True, "updatable": True}
 
@@ -223,6 +223,7 @@ class StorageLocationAdapter(FacadeAdapterBase):
             "name": prop(
                 "string",
                 "Name",
+                **REQUIRED,
                 section="general",
                 creatable=True,
                 updatable=True,
@@ -232,6 +233,7 @@ class StorageLocationAdapter(FacadeAdapterBase):
             "warehouse": prop(
                 "reference",
                 "Warehouse",
+                **REQUIRED,
                 reference="Warehouse",
                 renderProperty="name",
                 section="general",
