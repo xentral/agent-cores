@@ -803,6 +803,13 @@ class FacadeAdapterBase:
         meta: dict[str, Any] = {
             "key": self.manifest.key,
             "label": self.manifest.label(accept_language),
+            # Which group the entity is filed under (documents / masterdata /
+            # crm / settings). It rides along here, not only in the catalogue,
+            # because a consumer that already knows the key goes straight to
+            # this schema — and "settings" is what tells it this is a
+            # configuration catalogue to read valid values from rather than a
+            # business record to work on.
+            "category": self.manifest.category,
             "operations": list(self.manifest.operations),
             "previewTemplateString": self.preview_template,
             "sections": self.sections or {"general": {"label": "General"}},
