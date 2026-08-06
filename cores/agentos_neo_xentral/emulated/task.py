@@ -29,7 +29,7 @@ from typing import Any
 
 from entity_registry.core_sdk import EmulationManifest
 
-from .base import RO, FacadeAdapterBase, prop, ref
+from .base import FacadeAdapterBase, REQUIRED, RO, prop, ref
 
 _CU = {"creatable": True, "updatable": True}
 _PRIORITY = [{"value": v, "label": v.capitalize()} for v in ("low", "normal", "high")]
@@ -102,6 +102,7 @@ class TaskAdapter(FacadeAdapterBase):
             "title": prop(
                 "string",
                 "Title",
+                **REQUIRED,
                 **_CU,
                 section="general",
                 filterable=True,

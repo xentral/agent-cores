@@ -277,7 +277,7 @@ def bill_addr_to_dba(m: dict[str, Any]) -> dict[str, Any]:
     )
 
 
-def contacts_prop(prop, RO, CU) -> dict[str, Any]:  # noqa: N803 - schema-flag bundles
+def contacts_prop(prop, RO, CU, REQUIRED) -> dict[str, Any]:  # noqa: N803 - schema-flag bundles
     """Schema fragment for the ``contacts`` collection (shared customer/supplier)."""
     return prop(
         "collection",
@@ -296,7 +296,7 @@ def contacts_prop(prop, RO, CU) -> dict[str, Any]:  # noqa: N803 - schema-flag b
                         for v in ("mr", "mrs", "company", "other")
                     ],
                 ),
-                "name": prop("string", "Name", **CU),
+                "name": prop("string", "Name", **CU, **REQUIRED),
                 "title": prop("string", "Title", **CU),
                 "salutation": prop("string", "Salutation", **CU),
                 "position": prop("string", "Position", **CU),

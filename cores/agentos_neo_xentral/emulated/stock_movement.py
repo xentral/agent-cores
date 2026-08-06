@@ -40,7 +40,7 @@ import httpx
 
 from entity_registry.core_sdk import AdapterResponse, EmulationManifest
 
-from .base import RO, FacadeAdapterBase, prop
+from .base import FacadeAdapterBase, REQUIRED, RO, prop
 from .stock_shared import resolve_location_pair
 
 _TYPE_OPTIONS = [
@@ -106,6 +106,7 @@ class StockMovementAdapter(FacadeAdapterBase):
             "type": prop(
                 "select",
                 "Type",
+                **REQUIRED,
                 section="general",
                 options=_TYPE_OPTIONS,
                 filterable=True,
@@ -115,6 +116,7 @@ class StockMovementAdapter(FacadeAdapterBase):
             "product": prop(
                 "reference",
                 "Product",
+                **REQUIRED,
                 reference="Product",
                 renderProperty="name",
                 section="general",

@@ -52,7 +52,7 @@ import httpx
 
 from entity_registry.core_sdk import EmulationManifest
 
-from .base import _TIMEOUT, RO, FacadeAdapterBase, map_tags, money, prop, ref, tags_prop
+from .base import FacadeAdapterBase, REQUIRED, RO, map_tags, money, prop, ref, tags_prop, _TIMEOUT
 
 # ---- detail hydration (issue #23) -----------------------------------------
 # `describe` advertises stock, bom and prices.sale, but the v3 product payload
@@ -953,6 +953,7 @@ class ProductAdapter(FacadeAdapterBase):
             "name": prop(
                 "string",
                 "Name",
+                **REQUIRED,
                 **_CU,
                 section="general",
                 filterable=True,

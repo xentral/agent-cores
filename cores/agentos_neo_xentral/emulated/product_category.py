@@ -40,7 +40,7 @@ from typing import Any
 
 from entity_registry.core_sdk import EmulationManifest
 
-from .base import RO, FacadeAdapterBase, prop, ref
+from .base import FacadeAdapterBase, REQUIRED, RO, prop, ref
 
 _CU = {"creatable": True, "updatable": True}
 
@@ -122,6 +122,7 @@ class ProductCategoryAdapter(FacadeAdapterBase):
             "name": prop(
                 "string",
                 "Name",
+                **REQUIRED,
                 **_CU,
                 section="general",
                 filterable=True,

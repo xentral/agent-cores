@@ -13,6 +13,7 @@ from typing import Any
 from entity_registry.core_sdk import EmulationManifest
 
 from .base import (
+    REQUIRED,
     FacadeAdapterBase,
     RO,
     line_qty,
@@ -77,6 +78,7 @@ def _item_props() -> dict[str, Any]:
         "quantity": prop(
             "embedded",
             "Quantity",
+            **REQUIRED,
             creatable=True,
             properties={"value": prop("decimal", "Value"), "unit": prop("string", "Unit")},
         ),
@@ -253,6 +255,7 @@ class DeliveryNoteAdapter(FacadeAdapterBase):
             "customer": prop(
                 "reference",
                 "Customer",
+                **REQUIRED,
                 reference="Customer",
                 renderProperty="name",
                 section="general",

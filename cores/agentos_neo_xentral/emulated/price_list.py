@@ -27,7 +27,7 @@ import httpx
 
 from entity_registry.core_sdk import EmulationManifest
 
-from .base import _TIMEOUT, RO, FacadeAdapterBase, money, prop, ref
+from .base import FacadeAdapterBase, REQUIRED, RO, money, prop, ref, _TIMEOUT
 
 # create+update vs create-only field-flag shorthands (mirror product.py's _CU/_C).
 _CU: dict[str, Any] = {"creatable": True, "updatable": True}
@@ -130,6 +130,7 @@ class PriceListAdapter(FacadeAdapterBase):
             "product": prop(
                 "reference",
                 "Product",
+                **REQUIRED,
                 **_C,
                 reference="Product",
                 renderProperty="name",

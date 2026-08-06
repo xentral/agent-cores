@@ -14,6 +14,7 @@ from typing import Any
 from entity_registry.core_sdk import EmulationManifest
 
 from .base import (
+    REQUIRED,
     FacadeAdapterBase,
     line_price_net,
     contribution_margin_prop,
@@ -92,6 +93,7 @@ def _item_props() -> dict[str, Any]:
         "quantity": prop(
             "embedded",
             "Quantity",
+            **REQUIRED,
             creatable=True,
             updatable=True,
             properties={"value": prop("decimal", "Value"), "unit": prop("string", "Unit")},
@@ -285,6 +287,7 @@ class SalesInvoiceAdapter(FacadeAdapterBase):
             "customer": prop(
                 "reference",
                 "Customer",
+                **REQUIRED,
                 reference="Customer",
                 renderProperty="name",
                 section="general",

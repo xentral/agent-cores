@@ -44,7 +44,7 @@ from typing import Any
 
 from entity_registry.core_sdk import EmulationManifest
 
-from .base import RO, FacadeAdapterBase, map_tags, money, prop, ref, tags_prop
+from .base import FacadeAdapterBase, REQUIRED, RO, map_tags, money, prop, ref, tags_prop
 
 _STATUS_OPTIONS = [
     {"value": v, "label": v.capitalize()}
@@ -209,6 +209,7 @@ class PurchaseInvoiceAdapter(FacadeAdapterBase):
             "supplier": prop(
                 "reference",
                 "Supplier",
+                **REQUIRED,
                 **_CU,
                 reference="Supplier",
                 renderProperty="name",

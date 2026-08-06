@@ -39,7 +39,7 @@ import httpx
 
 from entity_registry.core_sdk import EmulationManifest
 
-from .base import RO, FacadeAdapterBase, prop, ref
+from .base import FacadeAdapterBase, REQUIRED, RO, prop, ref
 
 _CU = {"creatable": True, "updatable": True}
 # The model's vocabulary → upstream's. Only these five exist; see the module docstring.
@@ -152,6 +152,7 @@ class CorrespondenceAdapter(FacadeAdapterBase):
             "customer": prop(
                 "reference",
                 "Customer",
+                **REQUIRED,
                 **_CU,
                 reference="Customer",
                 renderProperty="name",

@@ -53,7 +53,7 @@ from typing import Any
 
 from entity_registry.core_sdk import EmulationManifest
 
-from .base import RO, FacadeAdapterBase, prop
+from .base import FacadeAdapterBase, REQUIRED, RO, prop
 
 _CU: dict[str, Any] = {"creatable": True, "updatable": True}
 
@@ -141,6 +141,7 @@ class CostCenterAdapter(FacadeAdapterBase):
             "name": prop(
                 "string",
                 "Name",
+                **REQUIRED,
                 **_CU,
                 section="general",
                 filterable=True,

@@ -25,6 +25,7 @@ from .base import (
     item_totals_prop,
     line_purchase_price_net,
     line_qty,
+    REQUIRED,
     RO,
     map_item_totals,
     map_purchase_price,
@@ -137,6 +138,7 @@ def _item_props() -> dict[str, Any]:
         "quantity": prop(
             "embedded",
             "Quantity",
+            **REQUIRED,
             creatable=True,
             updatable=True,
             properties={"value": prop("decimal", "Value"), "unit": prop("string", "Unit")},
@@ -419,6 +421,7 @@ class SalesOrderAdapter(FacadeAdapterBase):
             "customer": prop(
                 "reference",
                 "Customer",
+                **REQUIRED,
                 reference="Customer",
                 renderProperty="name",
                 section="general",

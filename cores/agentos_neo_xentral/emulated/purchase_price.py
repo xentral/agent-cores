@@ -27,7 +27,7 @@ import httpx
 
 from entity_registry.core_sdk import EmulationManifest
 
-from .base import _TIMEOUT, RO, FacadeAdapterBase, money, prop, ref
+from .base import FacadeAdapterBase, REQUIRED, RO, money, prop, ref, _TIMEOUT
 
 _CU: dict[str, Any] = {"creatable": True, "updatable": True}
 _C: dict[str, Any] = {"creatable": True}
@@ -70,6 +70,7 @@ class PurchasePriceAdapter(FacadeAdapterBase):
             "product": prop(
                 "reference",
                 "Product",
+                **REQUIRED,
                 **_C,
                 reference="Product",
                 renderProperty="name",
@@ -80,6 +81,7 @@ class PurchasePriceAdapter(FacadeAdapterBase):
             "supplier": prop(
                 "reference",
                 "Supplier",
+                **REQUIRED,
                 **_CU,
                 reference="Supplier",
                 renderProperty="name",
