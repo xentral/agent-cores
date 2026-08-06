@@ -47,6 +47,7 @@ def _lookup_manifest(
     create: bool = False,
     update: bool = False,
     delete: bool = False,
+    description: str = "",
 ) -> EmulationManifest:
     return EmulationManifest(
         key=key,
@@ -62,6 +63,7 @@ def _lookup_manifest(
             + (["update"] if update else [])
             + (["delete"] if delete else [])
         ),
+        description=description,
     )
 
 
@@ -551,7 +553,19 @@ class ProductTagAdapter(SettingsLookupBase):
 
 
 class ProductFreeFieldAdapter(SettingsLookupBase):
-    manifest = _lookup_manifest("ProductFreeField", "Product free field", read=True)
+    manifest = _lookup_manifest(
+        "ProductFreeField",
+        "Product free-field definition",
+        read=True,
+        description=(
+            "DEFINITIONS ONLY — which of the 40 product free fields (Freifelder) "
+            "exist on this instance and what each is called. It carries NO values: "
+            "the value a given article has in a slot lives on the Product entity "
+            "under customFields, matched by `number` (this catalogue's `pff_13` is "
+            "free field 13). Read this to learn which slot holds a business concept "
+            "('Artikelgruppe' → 13), then read the products for the values."
+        ),
+    )
     v3_path = "/api/v1/productsFreeFields"
     v1_paging = True
 
@@ -573,7 +587,16 @@ class ProductFreeFieldAdapter(SettingsLookupBase):
 
 
 class AddressCustomFieldAdapter(SettingsLookupBase):
-    manifest = _lookup_manifest("AddressCustomField", "Address custom field")
+    manifest = _lookup_manifest(
+        "AddressCustomField",
+        "Address custom-field definition",
+        description=(
+            "DEFINITIONS ONLY — which custom fields exist on partner addresses, "
+            "with their input type and, for a select, the permitted values. It "
+            "carries no values: what a given partner has in a field lives on the "
+            "Customer / Supplier entity under customFields."
+        ),
+    )
     v3_path = "/api/v2/settings/masterdata/addressCustomFields"
     query_mode = "none"
 

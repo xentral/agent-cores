@@ -715,7 +715,11 @@
     "suppliers": "Suppliers from whom the product can be purchased.",
     "suppliers.supplier": "The supplier of the product.",
     "suppliers.supplierProductNumber": "The supplier's own article number for this product.",
-    "suppliers.isDefault": "Marks the standard (preferred) supplier for the product."
+    "suppliers.isDefault": "Marks the standard (preferred) supplier for the product.",
+    "customFields": "The VALUES of this product's free fields (Freifelder) — the per-article extra fields an operator configured, e.g. an article group kept in free field 13. This is where those values live; the ProductFreeField entity only lists which slots exist and what they are called. Match a slot by `number`, not by position in the list: only slots that carry a value appear, so the list is short and its order says nothing. Filled on both `list` and `get`. NOT filterable upstream — a question like 'which articles are in group X' means paging the catalogue and matching here, and for a document line it means reading the line's product.",
+    "customFields.number": "Which free field this is — the slot number 1..40 from the product form (free field 13 → `number: 13`, catalogue id `pff_13`). This is the stable key; write it together with `value` to set a slot.",
+    "customFields.label": "The slot's configured name, e.g. 'Artikelgruppe' — the same name the ProductFreeField catalogue carries. Read-only here: renaming a free field happens in the Xentral settings, not on a product.",
+    "customFields.value": "The value stored in that slot for THIS product, always as a string (a checkbox arrives as '0'/'1', a select as its configured value). Compare case-insensitively and trimmed — operators type these by hand."
   },
   "PriceList": {
     "currency": "Currency of the price entry.",
@@ -935,7 +939,8 @@
     "color": "Display color of the tag badge. Distinct from the document Tag catalogue."
   },
   "ProductFreeField": {
-    "name": "Free-field name as it appears on the product form; values live on each product."
+    "id": "Catalogue id of the slot, `pff_<n>` where n is the free-field number 1..40 — `pff_13` is free field 13, and its values sit under `number: 13` in each product's customFields.",
+    "name": "How the slot is LABELLED on the product form, e.g. 'Artikelgruppe' — never a value. An empty name means the operator has not configured that slot. A select-type free field encodes its options into this one string as `Label|Option=>value|Option=>value`."
   },
   "AddressCustomField": {
     "type": "Input type of the custom field (single_line, multi_line, date, checkbox, select).",
