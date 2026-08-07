@@ -37,7 +37,22 @@ KNOWN_DEVIATIONS = {
     # written through their own endpoints after all — no adapter carries them in
     # `_WRITABLE` and no `_write` override composes them, so every write naming
     # them answered 409. They are declared read-only now, which is what they are.
-    # StockMovement composes its create outside map_write.
+    #
+    # StockMovement has it exactly backwards, and the endpoint that is arriving
+    # proves it. xentral/xentral#24580 adds GET /api/v3/stockMovements — the
+    # warehouse ledger (`lager_bewegung`), READ-ONLY, scope `stockMovement:read`,
+    # no POST. So:
+    #
+    #   * `create` is declared and will NEVER work there — these eight fields
+    #     have nothing to reach, now or after that PR ships.
+    #   * `list`/`read` are deliberately NOT declared, on the reasoning that
+    #     "there is no stock-ledger API upstream (verified 404 on mvp)" — which is
+    #     precisely what #24580 provides.
+    #
+    # Left as-is until that PR lands: declaring list/read today would 404. When it
+    # does land, swap the operations (drop `create`, declare `list`/`read` with
+    # the filters it exposes: product.id, storageLocation.id, warehouse.id,
+    # direction, postedAt, causedBy.*) and these eight entries go with it.
     ("StockMovement", "type", "create"),
     ("StockMovement", "product", "create"),
     ("StockMovement", "quantity", "create"),
