@@ -23,15 +23,18 @@ from xentral_entity_cores.agentos_neo_xentral import CORE
 # Model values that share an upstream value, measured today. A filter on any one
 # of them returns all of them.
 #
-# DeliveryNote and Return used to be here and are NOT any more: #89 fixed them
-# once upstream turned out to have distinct values. That is the list working —
-# the sweep noticed they had stopped deviating before a human did.
+# DeliveryNote, Return and Quote used to be here. Each turned out to have
+# distinct upstream values and was fixed (#89, and `declined`/`expired` on Quote).
+# That is the list working: it named them, and the second test refuses to keep an
+# entry once it stops deviating.
 #
-# The three below are unexamined. Each needs the same live check on the upstream
-# vocabulary before it can be called a bug or an inherent limit.
+# What remains is the other answer the same question can have.
 KNOWN_COLLISIONS = {
-    ("Quote", "status", "completed"): ("accepted", "expired"),
-    ("Quote", "status", "cancelled"): ("declined",),
+    # Both are upstream LIMITS, not bugs: `closed` on salesOrders and `received`
+    # on purchaseOrders are rejected with a 400, so those model states have no
+    # upstream value of their own to filter on. Two model states genuinely share
+    # `completed`, and a filter cannot tell them apart. That belongs in the
+    # field's description, not in a map — measured on mvp.
     ("SalesOrder", "status", "completed"): ("closed", "fulfilled"),
     ("PurchaseOrder", "status", "completed"): ("closed", "received"),
 }
