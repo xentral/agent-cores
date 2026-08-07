@@ -283,7 +283,10 @@ def contacts_prop(prop, RO, CU, REQUIRED) -> dict[str, Any]:  # noqa: N803 - sch
         "collection",
         "Contact persons",
         section="contacts",
-        **CU,
+        # READ-ONLY: `map_write` rejects a write naming `contacts`
+        # — no adapter carries it in `_WRITABLE`, so the declaration
+        # promised a write path that answers 409.
+        **RO,
         node={
             "properties": {
                 "id": prop("string", "ID", **RO),
@@ -336,7 +339,16 @@ def addresses_prop(prop, RO, CU) -> dict[str, Any]:  # noqa: N803 - schema-flag 
         "collection",
         "Addresses",
         section="address",
-        **CU,
+        # READ-ONLY, and it always was in practice: `map_write` rejects a write
+        # naming `addresses` with a 409 (ADR-014), because only `primaryAddress`
+        # sits in the adapters' `_WRITABLE`. Declaring the collection writable
+        # sent every caller that read `describe` into that rejection.
+        **RO,
+        description=(
+            "All addresses of the partner, read-only as a collection. The main "
+            "address is written through `primaryAddress` instead; deviating "
+            "billing and shipping rows have no write path yet."
+        ),
         node={
             "properties": {
                 "id": prop("string", "ID", **RO),
