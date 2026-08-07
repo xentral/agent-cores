@@ -283,10 +283,9 @@ def contacts_prop(prop, RO, CU, REQUIRED) -> dict[str, Any]:  # noqa: N803 - sch
         "collection",
         "Contact persons",
         section="contacts",
-        # READ-ONLY: `map_write` rejects a write naming `contacts`
-        # — no adapter carries it in `_WRITABLE`, so the declaration
-        # promised a write path that answers 409.
-        **RO,
+        # Writable through the mixin, like `addresses` — synced to the contacts
+        # sub-resource, not through `map_write`.
+        **CU,
         node={
             "properties": {
                 "id": prop("string", "ID", **RO),
@@ -339,15 +338,18 @@ def addresses_prop(prop, RO, CU) -> dict[str, Any]:  # noqa: N803 - schema-flag 
         "collection",
         "Addresses",
         section="address",
-        # READ-ONLY, and it always was in practice: `map_write` rejects a write
-        # naming `addresses` with a 409 (ADR-014), because only `primaryAddress`
-        # sits in the adapters' `_WRITABLE`. Declaring the collection writable
-        # sent every caller that read `describe` into that rejection.
-        **RO,
+        # Writable, and it always was: `PartnerSubresourcesMixin.request` splits
+        # this collection off BEFORE the base write, routes the default row onto
+        # the record as `primaryAddress` and syncs billing + shipping through
+        # their own endpoints. `map_write` never sees it in real use — which is
+        # why probing that function alone reported a rejection that does not
+        # happen, and why this was briefly and wrongly marked read-only.
+        **CU,
         description=(
-            "All addresses of the partner, read-only as a collection. The main "
-            "address is written through `primaryAddress` instead; deviating "
-            "billing and shipping rows have no write path yet."
+            "All addresses of the partner. Writing the collection REPLACES it: "
+            "the default row updates the main address, a billing row upserts the "
+            "deviating billing address, shipping rows are synced, and an omitted "
+            "row is deleted. Send the full desired set."
         ),
         node={
             "properties": {

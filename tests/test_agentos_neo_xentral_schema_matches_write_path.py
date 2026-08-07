@@ -33,10 +33,6 @@ from xentral_entity_cores.agentos_neo_xentral import CORE
 # may compose that field outside `map_write` (salesOrder splits its line items
 # off before delegating, and a probe cannot see that from here).
 KNOWN_DEVIATIONS = {
-    # Customer/Supplier `addresses` and `contacts` used to be here. They were not
-    # written through their own endpoints after all — no adapter carries them in
-    # `_WRITABLE` and no `_write` override composes them, so every write naming
-    # them answered 409. They are declared read-only now, which is what they are.
     #
     # StockMovement has it exactly backwards, and the endpoint that is arriving
     # proves it. xentral/xentral#24580 adds GET /api/v3/stockMovements — the
@@ -102,11 +98,26 @@ def _sample(spec: dict):
     return "x"
 
 
+# `map_write` is not the only write path. `PartnerSubresourcesMixin.request`
+# splits `contacts` and `addresses` off BEFORE the base write and syncs them
+# through their own endpoints, so probing `map_write` alone sees a rejection that
+# never happens. Skipped explicitly rather than listed as deviations — the sweep
+# has to be honest about what it cannot see, or it invites exactly the wrong fix
+# (these were briefly marked read-only on the strength of that false positive).
+_WRITTEN_ABOVE_MAP_WRITE = {"contacts", "addresses"}
+
+
+def _uses_subresource_mixin(adapter) -> bool:  # noqa: ANN001
+    return any(base.__name__ == "PartnerSubresourcesMixin" for base in type(adapter).__mro__)
+
+
 def _cases():
     for adapter in CORE.emulated_adapters():
         ops = adapter.manifest.operations
         for name, spec in (adapter.fields() or {}).items():
             if not isinstance(spec, dict) or spec.get("access") == "readOnly":
+                continue
+            if name in _WRITTEN_ABOVE_MAP_WRITE and _uses_subresource_mixin(adapter):
                 continue
             for flag, creating, op in (
                 ("creatable", True, "create"),
