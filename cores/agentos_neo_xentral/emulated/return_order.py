@@ -46,6 +46,11 @@ _STATUS_OPTIONS = [
     {"value": v, "label": v.capitalize()}
     for v in ("requested", "received", "checked", "settled", "cancelled")
 ]
+# The four `status` values that come from upstream `progress` — everything except
+# `cancelled`, which is a document status and has no progress equivalent.
+_PROGRESS_OPTIONS = [
+    {"value": v, "label": v.capitalize()} for v in ("requested", "received", "checked", "settled")
+]
 _CU = {"creatable": True, "updatable": True}
 
 
@@ -95,9 +100,10 @@ class ReturnAdapter(FacadeAdapterBase):
         "references.customerOrderNumber": "customerOrderNumber",
         "tags": "tags",
     }
-    filter_value_maps = {
-        "status": {"requested": "released", "checked": "completed", "settled": "completed"}
-    }
+    # Upstream `progress` vocabulary, measured on mvp: announced | received |
+    # checked | done. `status` carries no map any more — its only filterable
+    # value, `cancelled`, is already the upstream spelling.
+    filter_value_maps = {"progress": {"requested": "announced", "settled": "done"}}
     sections = {
         "general": {"label": "General"},
         "references": {"label": "References"},
@@ -264,8 +270,34 @@ class ReturnAdapter(FacadeAdapterBase):
                 **RO,
                 section="general",
                 options=_STATUS_OPTIONS,
+                # Filterable, but ONLY `cancelled` filters meaningfully: this
+                # field merges two upstream ones — `cancelled` comes from the
+                # document status, the other four from `progress`. Filtering by
+                # one of those four reaches upstream as a document status it does
+                # not know, which is a loud rejection rather than a wrong result.
+                # Filter `progress` for the lifecycle.
                 filterable=True,
                 previewable=True,
+                description=(
+                    "Lifecycle of the return, merged from two upstream fields: "
+                    "`cancelled` is the document status, the other four mirror "
+                    "`progress`. Filter on `progress` for those — this field can "
+                    "only filter `cancelled`."
+                ),
+            ),
+            "progress": prop(
+                "select",
+                "Progress",
+                **RO,
+                section="general",
+                options=_PROGRESS_OPTIONS,
+                filterable=True,
+                description=(
+                    "How far the return has come: requested -> received -> "
+                    "checked -> settled. This is the filterable half of `status` "
+                    "and the one to query on; `status` additionally folds in "
+                    "`cancelled`, which has no progress value."
+                ),
             ),
             "customer": prop(
                 "reference",
@@ -507,6 +539,7 @@ class ReturnAdapter(FacadeAdapterBase):
             "id": (f"ret_{r.get('id')}" if r.get("id") is not None else None),
             "number": r.get("documentNumber"),
             "status": status,
+            "progress": status_map(_PROGRESS, r.get("progress"), "requested"),
             "customer": ref(
                 "cus_",
                 (r.get("address") or {}).get("id"),
