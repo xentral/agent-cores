@@ -69,7 +69,7 @@ quo_      so_          │    dn_              ship_                          po
 | `SalesInvoice` | Rechnung | `release`, `cancel`, `send` |
 | `DeliveryNote` | Lieferschein | `release`, `markDelivered`, `cancel`, `createReturn`, `createSalesInvoice` |
 | `CreditNote` | Gutschrift | `release`, `send` — **no cancel once released** |
-| `Return` | Retoure | `createFromDeliveryNote`, `createCreditNote`, `release`, `settle`, `cancel` |
+| `Return` | Retoure | `createFromDeliveryNote`, `createCreditNote`, **`restock`**, `release`, `settle`, `cancel` |
 | `PurchaseOrder` | Bestellung | `release`, `close`, `cancel`, `send`, **`createGoodsReceipt`** |
 | `GoodsReceipt` / `PurchaseInvoice` | Wareneingang / Eingangsrechnung | **nothing** — booked from the order, see §3; `PurchaseInvoice` has no action at all |
 | `StorageLocation` | Lagerplatz | `putaway`, `stockRemoval`, `stockTransfer`, `inventoryCount`, `stockAdjustment` |
@@ -128,8 +128,12 @@ route a human task — they and `holds` are read-only, and there is no way to cl
 **Return → credit note.** `DeliveryNote.createReturn command={"lineItems":[…]}` (or
 `Return.createFromDeliveryNote` with `deliveryNote` + `lineItems`) → `release` → `settle` →
 `createCreditNote command={"isApproved":true,"isPaid":false}`. Statuses `received`/`checked`
-are UI-only — observe them, you cannot set them. Restocking goes through
-`StorageLocation.putaway`, not through the return.
+are UI-only — observe them, you cannot set them.
+
+**Wieder einlagern** is `run key=Return op="restock"` — same shape as the purchase-order
+receipt (§3 Purchasing), differing only in `returnItem` instead of `orderItem`. It books
+the goods back and counts up `items[].receivedQuantity`; `date` required, no `dryRun`.
+Measured: 3 restocked → the location goes 5 → 8.
 
 **Storno — two different models.** `Quote`, `SalesOrder`, `DeliveryNote`, `Return`,
 `PurchaseOrder` cancel via `cancel`. A **`SalesInvoice`** cancels too, but the financial

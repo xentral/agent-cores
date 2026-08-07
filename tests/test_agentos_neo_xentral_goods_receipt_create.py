@@ -233,3 +233,84 @@ def test_bad_commands_are_refused_before_they_reach_upstream(command, expected):
     )
     assert resp.status_code == 422
     assert expected in resp.content.decode()
+
+
+# --- the return side --------------------------------------------------------
+# Same endpoint family, same translation (shared in base), one difference: v1
+# calls the line `returnPosition` here and `purchaseOrderPosition` there, and the
+# model mirrors that with `returnItem` / `orderItem`. Verified live on mvp against
+# the same probe article: 3 restocked → the location goes 5 → 8.
+
+
+def _return_adapter():
+    from xentral_entity_cores.agentos_neo_xentral.emulated.return_order import ReturnAdapter
+
+    return ReturnAdapter()
+
+
+def test_restock_is_executable_and_mirrors_the_receipt_command():
+    adapter = _return_adapter()
+    actions = {a["key"]: a for a in adapter.metadata(None).get("actions") or []}
+    restock = actions["restock"]
+    assert not restock.get("wish")
+    assert restock["destructive"] is True
+    assert sorted(restock["command"]["required"]) == ["date", "items"]
+    item = restock["command"]["properties"]["items"]["items"]["properties"]
+    # The line field is named for THIS document, not copied from the order side.
+    assert "returnItem" in item and "orderItem" not in item
+
+
+def test_restock_translates_onto_the_returns_endpoint():
+    import asyncio
+
+    adapter = _return_adapter()
+    captured: dict = {}
+
+    class _Client:
+        async def post(self, url, json=None, headers=None):  # noqa: ANN001, A002
+            captured["url"] = url
+            captured["payload"] = json
+
+            class _R:
+                status_code = 201
+                headers = {"Location": "https://x.test/api/v1/goodsReceipts/204"}
+
+                @staticmethod
+                def json():
+                    return {}
+
+            return _R()
+
+    body = json.dumps(
+        {
+            "ids": ["ret_140"],
+            "command": {
+                "date": "2026-08-07",
+                "items": [
+                    {
+                        "product": "prd_62006",
+                        "quantity": 3,
+                        "returnItem": "190",
+                        "putaways": [
+                            {"quantity": 3, "warehouse": "wh_20", "storageLocation": "loc_163"}
+                        ],
+                    }
+                ],
+            },
+        }
+    ).encode()
+    resp = asyncio.run(
+        adapter.action(
+            action_key="restock",
+            handle="ret_140",
+            body=body,
+            base_url="https://x.test",
+            token="t",
+            client=_Client(),
+        )
+    )
+    assert captured["url"].endswith("/api/v1/returns/140/goodsReceipts")
+    position = captured["payload"]["positions"][0]
+    assert position["returnPosition"] == {"id": "190"}
+    assert "purchaseOrderPosition" not in position
+    assert json.loads(resp.content)["data"]["id"] == "gr_204"

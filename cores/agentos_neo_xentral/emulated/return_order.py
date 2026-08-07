@@ -20,6 +20,8 @@ from .base import (
     REQUIRED,
     _TIMEOUT,
     FacadeAdapterBase,
+    goods_receipt_command,
+    goods_receipt_payload,
     RO,
     line_qty,
     map_tags,
@@ -219,7 +221,15 @@ class ReturnAdapter(FacadeAdapterBase):
             self.action_def(
                 "restock",
                 "Restock",
-                wish="Restocking runs through goods receipt — no direct endpoint.",
+                destructive=True,
+                description=(
+                    "Book the returned goods back into stock (v1 goodsReceipts for a "
+                    "return). This IS the posting, and there is no dryRun: the first real "
+                    "call moves stock, and stock movements are append-only. `putaways` "
+                    "says where each item lands and carries batch / bestBefore / serial "
+                    "numbers; omit it to receive without assigning a location."
+                ),
+                command=goods_receipt_command("returnItem", "Return line being restocked"),
             ),
             self.action_def(
                 "downloadPdf",
@@ -679,6 +689,8 @@ class ReturnAdapter(FacadeAdapterBase):
     async def action(  # noqa: ANN001
         self, *, action_key, handle, body, base_url, token, accept_language=None, client=None
     ):
+        if action_key == "restock":
+            return await self._restock(handle, body, base_url, token, accept_language, client)
         if action_key == "createFromDeliveryNote":
             return await self._create_from_delivery_note(
                 body, base_url, token, accept_language, client
@@ -842,3 +854,54 @@ class ReturnAdapter(FacadeAdapterBase):
         if isinstance(rec, dict):
             return self._json(201, {"data": self.map_read(rec)})
         return self._json(resp.status_code, rbody if isinstance(rbody, dict) else {})
+
+    async def _restock(  # noqa: ANN001
+        self, handle, body, base_url, token, accept_language, client
+    ):
+        """POST /api/v1/returns/{id}/goodsReceipts — receive the returned goods and
+        BOOK them back. Same shape as PurchaseOrder.createGoodsReceipt (shared
+        translation in base), differing only in the line key: v1 calls it
+        ``returnPosition`` here and ``purchaseOrderPosition`` there."""
+        try:
+            envelope = json.loads(body or b"{}")
+        except (ValueError, TypeError):
+            envelope = {}
+        ids = envelope.get("ids") or ([handle] if handle else [])
+        ret = self._ref_id(ids[0] if ids else None)
+        if ret is None:
+            return self._refuse(422, "restock needs the return id")
+        payload, error = goods_receipt_payload(
+            envelope.get("command") or {},
+            line_field="returnItem",
+            line_key="returnPosition",
+            ref_id=self._ref_id,
+        )
+        if error:
+            return self._json(422, {"title": f"restock {error}"})
+
+        url = f"{base_url.rstrip('/')}/api/v1/returns/{ret['id']}/goodsReceipts"
+        headers = self._headers(token, accept_language)
+
+        async def _do(c):  # noqa: ANN001, ANN202
+            return await c.post(url, json=payload, headers=headers)
+
+        if client is None:
+            async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
+                resp = await _do(c)
+        else:
+            resp = await _do(client)
+        try:
+            rbody = resp.json()
+        except ValueError:
+            rbody = {}
+        if resp.status_code >= 400:
+            return self._json(
+                resp.status_code,
+                rbody if isinstance(rbody, dict) else {"title": "restock failed"},
+            )
+        location = resp.headers.get("Location") or ""
+        created = location.rstrip("/").rsplit("/", 1)[-1] if location else None
+        return self._json(
+            201,
+            {"data": {"object": "goodsReceipt", "id": f"gr_{created}" if created else None}},
+        )

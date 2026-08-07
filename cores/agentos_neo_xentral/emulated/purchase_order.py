@@ -19,6 +19,8 @@ from .base import (
     REQUIRED,
     _TIMEOUT,
     FacadeAdapterBase,
+    goods_receipt_command,
+    goods_receipt_payload,
     line_price_net,
     line_qty,
     RO,
@@ -156,67 +158,7 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
                     "item lands and carries batch / bestBefore / serial numbers; omit it to "
                     "receive without assigning a location."
                 ),
-                command={
-                    "type": "object",
-                    "required": ["date", "items"],
-                    "properties": {
-                        "date": {
-                            "type": "string",
-                            "label": "Posting date (YYYY-MM-DD)",
-                            "description": (
-                                "Required, although the OpenAPI spec marks it optional — "
-                                "measured: v1 answers 400 without it. Not defaulted here on "
-                                "purpose: the posting date of a stock booking is a decision, "
-                                "not a convenience."
-                            ),
-                        },
-                        "items": {
-                            "type": "array",
-                            "label": "Received items",
-                            "items": {
-                                "type": "object",
-                                "required": ["product", "quantity"],
-                                "properties": {
-                                    "product": {"type": "string", "label": "Product id (prd_…)"},
-                                    "quantity": {"type": "number", "label": "Received quantity"},
-                                    "orderItem": {
-                                        "type": "string",
-                                        "label": "Order line this delivers against",
-                                    },
-                                    "putaways": {
-                                        "type": "array",
-                                        "label": "Where the quantity is stored",
-                                        "items": {
-                                            "type": "object",
-                                            "required": ["quantity"],
-                                            "properties": {
-                                                "quantity": {"type": "number", "label": "Quantity"},
-                                                "warehouse": {
-                                                    "type": "string",
-                                                    "label": "Warehouse id (wh_…)",
-                                                },
-                                                "storageLocation": {
-                                                    "type": "string",
-                                                    "label": "Storage location id (loc_…)",
-                                                },
-                                                "batch": {"type": "string", "label": "Batch / lot"},
-                                                "bestBefore": {
-                                                    "type": "string",
-                                                    "label": "Best-before date",
-                                                },
-                                                "serialNumbers": {
-                                                    "type": "array",
-                                                    "label": "Serial numbers",
-                                                    "items": {"type": "string"},
-                                                },
-                                            },
-                                        },
-                                    },
-                                },
-                            },
-                        },
-                    },
-                },
+                command=goods_receipt_command("orderItem", "Order line this delivers against"),
             ),
             self.action_def(
                 "createPurchaseInvoice",
@@ -789,85 +731,18 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
             envelope = json.loads(body or b"{}")
         except (ValueError, TypeError):
             envelope = {}
-        command = envelope.get("command") or {}
         ids = envelope.get("ids") or ([handle] if handle else [])
         order = self._ref_id(ids[0] if ids else None)
         if order is None:
             return self._refuse(422, "createGoodsReceipt needs the purchase order id")
-
-        if not command.get("date"):
-            return self._refuse(
-                422,
-                "createGoodsReceipt needs command.date (YYYY-MM-DD) — upstream rejects a "
-                "receipt without a posting date",
-            )
-        items = command.get("items")
-        if not isinstance(items, list) or not items:
-            return self._json(
-                422,
-                {
-                    "title": (
-                        "createGoodsReceipt needs command.date and command.items="
-                        "[{product, quantity, orderItem?, putaways?}]"
-                    )
-                },
-            )
-
-        positions: list[dict[str, Any]] = []
-        for m in items:
-            if not isinstance(m, dict):
-                continue
-            product = self._ref_id(m.get("product"))
-            if product is None:
-                return self._refuse(422, f"createGoodsReceipt: missing product in {m}")
-            try:
-                qty = float(m.get("quantity"))
-            except (TypeError, ValueError):
-                return self._refuse(422, f"createGoodsReceipt: bad quantity in {m}")
-            if qty <= 0:
-                return self._refuse(422, f"createGoodsReceipt: quantity must be > 0 in {m}")
-            pos: dict[str, Any] = {"product": product, "quantity": qty}
-            order_item = self._ref_id(m.get("orderItem"))
-            if order_item is not None:
-                pos["purchaseOrderPosition"] = order_item
-
-            movements: list[dict[str, Any]] = []
-            for p in m.get("putaways") or []:
-                if not isinstance(p, dict):
-                    continue
-                try:
-                    pqty = float(p.get("quantity", qty))
-                except (TypeError, ValueError):
-                    return self._refuse(422, f"createGoodsReceipt: bad putaway quantity in {p}")
-                mv: dict[str, Any] = {"quantity": pqty}
-                for model_key, up_key in (
-                    ("warehouse", "warehouse"),
-                    ("storageLocation", "storageLocation"),
-                ):
-                    target = self._ref_id(p.get(model_key))
-                    if target is not None:
-                        mv[up_key] = target
-                # Flat in the model, nested upstream — the model has no
-                # "quality control" concept, it has batches and serial numbers.
-                qc: dict[str, Any] = {}
-                if p.get("batch") is not None:
-                    qc["batch"] = p["batch"]
-                if p.get("bestBefore") is not None:
-                    qc["bestBeforeDate"] = p["bestBefore"]
-                serials = [s for s in (p.get("serialNumbers") or []) if s]
-                if serials:
-                    qc["serialNumbers"] = [
-                        {"number": s.get("number") if isinstance(s, dict) else str(s)}
-                        for s in serials
-                    ]
-                if qc:
-                    mv["qualityControlAttributes"] = qc
-                movements.append(mv)
-            if movements:
-                pos["stockMovements"] = movements
-            positions.append(pos)
-
-        payload: dict[str, Any] = {"date": command["date"], "positions": positions}
+        payload, error = goods_receipt_payload(
+            envelope.get("command") or {},
+            line_field="orderItem",
+            line_key="purchaseOrderPosition",
+            ref_id=self._ref_id,
+        )
+        if error:
+            return self._json(422, {"title": f"createGoodsReceipt {error}"})
 
         url = f"{base_url.rstrip('/')}/api/v1/purchaseOrders/{order['id']}/goodsReceipts"
         headers = self._headers(token, accept_language)
