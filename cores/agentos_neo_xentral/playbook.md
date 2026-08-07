@@ -101,15 +101,15 @@ German term → entity, for mapping what a user asks for:
 
 | Entity | German | Required to create | Notable |
 |---|---|---|---|
-| `Quote` | Angebot | `customer`, `items.quantity` | `release`, `cancel`, `send`, `downloadPdf` |
-| `SalesOrder` | Auftrag | `customer`, `items.quantity` | the hub: `release`/`close`/`cancel`, `dispatch`, `createSalesInvoice`, `split`/`splitOrder` |
-| `SalesInvoice` | Rechnung | `customer`, `items.quantity` | `release`, `cancel`, `send`; carries `payment.*` and `dunning.*` |
-| `DeliveryNote` | Lieferschein | `customer`, `items.quantity` | `release`, `markDelivered`, `cancel`, `createReturn`, `createSalesInvoice` |
-| `CreditNote` | Gutschrift | `customer`, `items.quantity` | `release`, `send`; **no cancel** once released |
-| `Return` | Retoure | `customer`, `items.quantity`, `items.reason` | `createFromDeliveryNote`, `createCreditNote`, `release`, `settle`, `cancel` |
-| `PurchaseOrder` | Bestellung | `supplier`, `items.quantity` | `release`/`close`/`cancel`, `send` |
+| `Quote` | Angebot | `customer`, `items.product`, `items.quantity` | `release`, `cancel`, `send`, `downloadPdf` |
+| `SalesOrder` | Auftrag | `customer`, `items.product`, `items.quantity` | the hub: `release`/`close`/`cancel`, `dispatch`, `createSalesInvoice`, `split`/`splitOrder` |
+| `SalesInvoice` | Rechnung | `customer`, `items.product`, `items.quantity` | `release`, `cancel`, `send`; carries `payment.*` and `dunning.*` |
+| `DeliveryNote` | Lieferschein | `customer`, `items.product`, `items.quantity` | `release`, `markDelivered`, `cancel`, `createReturn`, `createSalesInvoice` |
+| `CreditNote` | Gutschrift | `customer`, `items.product`, `items.quantity` | `release`, `send`; **no cancel** once released |
+| `Return` | Retoure | `customer`, `items.product`, `items.quantity`, `items.reason` | `createFromDeliveryNote`, `createCreditNote`, `release`, `settle`, `cancel` |
+| `PurchaseOrder` | Bestellung | `supplier`, `items.product`, `items.quantity` | `release`/`close`/`cancel`, `send` |
 | `GoodsReceipt` | Wareneingang | — | **read-only**, no executable action |
-| `PurchaseInvoice` | Eingangsrechnung | `customer` | CRUD, but **zero executable actions or steps** |
+| `PurchaseInvoice` | Eingangsrechnung | `supplier` | CRUD, but **zero executable actions or steps** |
 | `Shipment` | Sendung | — | **read-only, and not filterable at all** (§6) |
 | `Payment` | Zahlung | — | **read-only**, immutable booking record |
 | `StockMovement` | Buchung | `type`, `product` | **create-only**, append-only primitive — prefer the `StorageLocation` actions |
@@ -124,10 +124,15 @@ German term → entity, for mapping what a user asks for:
 | `Product` | `name` | `activate` / `deactivate` executable; `prices.sale` is the **standard** price only |
 | `PriceList` | `product` | customer-, group- and scale (Staffel) **sales** prices |
 | `PurchasePrice` | `product`, `supplier` | the EK per supplier |
-| `StorageLocation` | — | the richest executable surface in the core (§4 P8) |
+| `StorageLocation` | `name`, `warehouse` | the richest executable surface in the core (§4 P8) |
 | `StockLevel` | — | read-only stock anchors |
 | `CustomerGroup`, `Task`, `Correspondence`, `CostCenter` | `name` / `title` / `customer` / `name` | plain CRUD, no actions |
 | `Tag`, `Channel` | — | read-only |
+
+**Every line item needs a product.** `items.product` is mandatory on all seven document
+types — a live probe refuted the assumption that a free-text position (description +
+price, no article) is possible. If you need one, create a service/fee `Product` for it
+(`kind: "service"` or `"fee"`) and reference that.
 
 **Dead ends — do not design around these.** `Batch` and `SerialNumber` declare fields but
 have **no operations at all**: Xentral exposes no batch or serial resource, they exist only
@@ -332,6 +337,47 @@ Only `addTag`/`removeTag` are executable — `archive`, `reactivate`, `setHold`,
 
 `Product.activate` / `deactivate` are executable; `archive` is not (v2 rejects `isDeleted`).
 `adjustStock` is **not executable** — book stock through `StorageLocation` (P8).
+
+### P7b — Labels/Tags setzen und entfernen
+
+Two different things are called "Label" in German. This recipe is about **tags**
+(Schlagwörter on a record); for a **Paketmarke / carrier label** see P3 — those are all
+wishes and go through the `shiplabel` node.
+
+Tags are the workhorse of any automation that needs state the ERP cannot store: a quote
+that was accepted (P1), a customer on hold (P7), an invoice already chased. `addTag` and
+`removeTag` are executable on nine entities — `Quote`, `SalesOrder`, `SalesInvoice`,
+`DeliveryNote`, `CreditNote`, `Return`, `PurchaseOrder`, `Customer`, `Supplier`.
+
+```
+xentral_erp_core action="run" key="SalesOrder" handle="so_123" op="addTag" \
+                 command={"title": "express"}
+xentral_erp_core action="run" key="SalesOrder" handle="so_123" op="removeTag" \
+                 command={"title": "express"}
+```
+
+Both take exactly `{"title": "<tag>"}` (required). **A tag that does not exist yet is
+created automatically** — you do not pre-create it, and there is no create path on the
+`Tag` entity anyway (it is `list`/`read` only, exposing `label`, `slug`, `color`, `group`).
+
+Three things worth knowing:
+
+- **Address by title, not by id.** `removeTag` also takes the title, so a workflow never
+  has to resolve a `tag_…` id.
+- **Do NOT plan on finding records by tag.** `tags` is *declared* filterable on the
+  documents, and the filter is accepted (200) — but measured on a live order carrying the
+  tag, it returns **zero rows**, by title and by tag id alike. Only `Product` really
+  filters by tag (the facade emulates it by scanning pages). So a tag is a reliable
+  *marker on a record you already have*, not a reliable *index to find records by*. If a
+  workflow must re-find what it marked, keep the ids itself, or filter on something that
+  demonstrably works (`status`, `customer`, `documents.salesOrder`) and check the tag per
+  record.
+- **The `tags` field is writable on create and update too.** `addTag`/`removeTag` change
+  one entry; writing the `tags` field on an `update` replaces the set. Prefer the actions
+  in an automation — a blind `update` silently drops tags someone else added.
+
+In a workflow this is a `business-entity` node with `params.addTag.path.uuid` (the record
+id) and `params.addTag.body = {"title": "…"}`.
 
 ### P8 — Lager
 
@@ -603,24 +649,31 @@ statuses:
   Customer.addresses.type: [billing, shipping, both]
   Customer.contacts.type: [mr, mrs, company, other]
 requiredForCreate:
-  Quote: [customer, items.quantity]
-  SalesOrder: [customer, items.quantity]
-  SalesInvoice: [customer, items.quantity]
-  DeliveryNote: [customer, items.quantity]
-  CreditNote: [customer, items.quantity]
-  Return: [customer, items.quantity, items.reason]
-  PurchaseOrder: [supplier, items.quantity]
+  Quote: [customer, items.product, items.quantity]
+  SalesOrder: [customer, items.product, items.quantity]
+  SalesInvoice: [customer, items.product, items.quantity]
+  DeliveryNote: [customer, items.product, items.quantity]
+  CreditNote: [customer, items.product, items.quantity]
+  Return: [customer, items.product, items.quantity, items.reason]
+  PurchaseOrder: [supplier, items.product, items.quantity]
+  PurchaseInvoice: [supplier]
   Customer: [name, contacts.name]
+  Supplier: [name, contacts.name]
   Product: [name]
   PriceList: [product]
   PurchasePrice: [product, supplier]
   StockMovement: [type, product]
+  StorageLocation: [name, warehouse]
   Task: [title]
   Correspondence: [customer]
   CostCenter: [name]
   Warehouse: [name]
   CustomerGroup: [name]
+  ProductCategory: [name]
 filterable:
+  # NOTE: `tags` is declared filterable on every document but measurably returns
+  # nothing (P7b) — deliberately NOT claimed here, because this block is what a
+  # builder trusts. Only Product's tag filter is emulated and real.
   SalesInvoice: [status, customer, payment.status, documents.salesOrder]
   DeliveryNote: [status, customer, documents.salesOrder]
   SalesOrder: [status, customer, references.customerOrderNumber]
@@ -678,6 +731,10 @@ fields:
   - Customer.addresses.isDefault
   - Customer.contacts.salutation
 commands:
+  SalesOrder.addTag: [title]
+  SalesOrder.removeTag: [title]
+  Customer.addTag: [title]
+  Customer.removeTag: [title]
   StorageLocation.putaway: [product, quantity]
   StorageLocation.stockRemoval: [product, quantity]
   StorageLocation.stockTransfer: [product, quantity, target]
