@@ -155,6 +155,59 @@ slots exist, never what a record has in them.
 
 ## §4 Process playbooks
 
+### P0 — Find the customer, then let the order inherit from them
+
+**Does this customer already exist?** `Customer` filters on `number`, `name`, `email` and
+`addresses.street/zip/city/state/country`, and `search` (op `contains`) spans number, name,
+email and the address. For a duplicate check before creating, query `email` first (exact,
+cheap) and fall back to `name` + `addresses.zip`:
+
+```
+xentral_erp_core action="records" key="Customer" \
+  filters=[{"key": "email", "op": "equals", "value": "einkauf@kunde.de"}]
+```
+
+Note the tenant may legitimately carry the same `number` twice (measured on the reference
+instance) — treat `number` as a lookup key, not as a unique id. `id` (`cus_…`) is the id.
+Not found? `create` needs only `name` and `contacts.name`.
+
+**Then create the order with almost nothing.** This is the important one, and it is
+measured, not inferred. A `SalesOrder` created with *only* a customer and one line item:
+
+```
+xentral_erp_core action="create" key="SalesOrder" body={
+  "customer": "cus_20448",
+  "items": [{"product": "prd_61976", "quantity": {"value": 1, "unit": "piece"}}]}
+```
+
+comes back with all of this filled in by Xentral:
+
+| Filled automatically | Measured value |
+|---|---|
+| `billingAddress` | complete from the customer's default address (name, street, zip, city, country, email, phone) |
+| `payment.method` | the customer's payment method |
+| `payment.terms` | `dueDays`, `discountPercent`, `discountDays` |
+| `shipping.method` | the customer's carrier |
+| `currency`, `items[].unitPrice` | price found from the master data / price list |
+| `items[].taxRate`, `purchasePrice`, `contributionMargin`, `totals` | computed |
+| `dates.issued` | today |
+| `fulfillmentPolicy` | `auto`, `priority`, `partialShipping` |
+| `status`, `trafficLights` | `draft`, and the traffic lights are live immediately |
+
+**`shippingAddress` is the one thing NOT filled** — it stays `null` and the billing address
+is used. Set it explicitly whenever the parcel goes somewhere else.
+
+So the answer to *"I only have a customer number"* is: pass the customer and the items, and
+**do not try to set payment method or terms yourself** — you cannot (P2b), and you do not
+need to.
+
+**The trap.** You cannot *read* those defaults back from the customer to pre-fill anything:
+`Customer.defaults.*` (except `language`) and every `Customer.finance.*` field read as
+`null` on this core — measured across the whole customer base, on `get` as well as `list`,
+including for customers whose orders demonstrably carry a payment method and terms. So
+`defaults`/`finance` are a read gap, not an empty tenant. Do not branch on them; create the
+order and read what it inherited.
+
 ### P1 — Angebot → Auftrag (quote to order)
 
 **Chain.** `Quote.create` → `release` → `send` → *(customer accepts)* → `SalesOrder.create`.
@@ -200,6 +253,80 @@ SalesInvoice.send
   position got; `items.availability.deliverable` says whether it can ship at all.
 - `SalesOrder.addHold` / `releaseHold` are **not executable** (holds map to `trafficLights`,
   readable only). A blocking workflow must model the block outside the ERP.
+
+### P2b — What you may still change after the order exists
+
+The single most common support question, answered from the field flags:
+
+| Field | Change it later? |
+|---|---|
+| `dates.requestedDelivery` (Wunschlieferdatum) | **yes** — create and update |
+| `shipping.method` (Versandart) | **yes** — create and update |
+| `items[].quantity`, `items[].discountPercent` | **yes** |
+| `shippingAddress.*`, `billingAddress.*` (the leaves) | **yes** |
+| `references.customerOrderNumber` | **yes** |
+| `note`, `texts.intro`/`outro`, `tags` | **yes** |
+| `customer` | **no** — settable on create only. A wrong customer means a new order |
+| `payment.method`, `payment.terms.*` (Zahlungsart, Zahlungskonditionen) | **no — not writable at all**, neither on create nor update. They come from the customer (P0). Changing them is a UI-only operation today |
+| `status` | **no** — read-only; it moves through `release` / `close` / `cancel` |
+| `fulfillmentPolicy.partialShipping`, `shipping.cost`, `totals.*` | **no** — read-only |
+| `references.externalId` / `externalNumber` (shop/marketplace) | **no** — filterable, but not writable |
+
+**Write protection (Schreibschutz) does not exist on this core.** There is no
+`setWriteProtection` / `removeWriteProtection` action and no write-protection field on any
+entity — v3 `offers` has the endpoints, the core does not expose them. If a document is
+write-protected in Xentral, an update will simply be refused upstream and you cannot lift
+it from here.
+
+### P2c — Teilauftrag: ship what is available, keep the rest
+
+`items[].availability.deliverable` per line says what can go out now. Move those into a new
+partial order with **`splitOrder`** — one call that creates the partial, moves the given
+quantities into it, and reduces this order to the remainder (a line moved in full
+disappears here). Together the two orders equal the original demand.
+
+```
+xentral_erp_core action="run" key="SalesOrder" handle="so_123" op="splitOrder" \
+  command={"items": [{"lineItem": "150999", "quantity": 3},
+                     {"product": "prd_61975", "quantity": 1}]}
+```
+
+Each entry needs `quantity` plus either `lineItem` (the source line id) or `product`.
+`split` is the raw sibling: it creates an **empty** partial order and you fill it yourself
+— prefer `splitOrder` unless you really want the empty shell.
+
+### P2d — Finding the right order from whatever number you were given
+
+Four different "numbers" reach a clerk, and they are four different fields:
+
+| You were given | Filter on |
+|---|---|
+| the Xentral document number (Belegnummer) | `number` |
+| the customer's own order number (Bestellnummer des Kunden) | `references.customerOrderNumber` |
+| a shop / marketplace order number | `references.externalNumber` |
+| the shop's internal id | `references.externalId` |
+
+```
+xentral_erp_core action="records" key="SalesOrder" \
+  filters=[{"key": "references.externalNumber", "op": "equals", "value": "AMZ-302-1"}]
+```
+
+`number` is `null` until the order is released — a draft has no document number yet, so
+never look a fresh order up by it. `channel` is neither filterable nor writable, so you
+cannot ask "all orders from Amazon" through the core; go by `references.externalNumber`
+patterns or a tag you set yourself (P7b).
+
+### P2e — Why is this order stuck? Read the traffic lights
+
+`trafficLights` is populated from the moment the order is created and is the fastest
+answer to "why is nothing shipping". The ids seen live: `stock`,
+`stockAvailableOpenSupply`, `stockAvailableFifo`, `vat`, `payment`, `cashOnDelivery`,
+`autoShipping`, `customerCheck`, `dateOfDelivery`, `creditLimit`, `deliveryBlock`,
+`addressValidation`, `production`, plus numbered custom checks.
+
+Read them, do not try to write them: `holds` and `trafficLights` are read-only, and
+`addHold`/`releaseHold` are wishes (§7). A workflow can *diagnose* and route a human task;
+it cannot clear a block.
 
 ### P3 — Versandarten, Sendungen und Labels
 
@@ -536,6 +663,15 @@ reason. Design around them; do not discover them at runtime.
 | `Channel` | `syncOrders`, `syncStock`, `syncProducts`, `testConnection`, `pause`, `resume` | read-only |
 | `Batch`, `SerialNumber` | everything, including reading | not queryable at all |
 
+Three gaps are not actions at all and are easy to miss:
+
+- **Write protection** — no `setWriteProtection`/`removeWriteProtection` anywhere (P2b).
+- **`SalesOrder.payment.method` / `payment.terms.*`** — not writable on create or update.
+  They are inherited from the customer and changeable only in the UI (P0, P2b).
+- **`Customer.defaults.*` and `Customer.finance.*`** — declared, but read as `null` across
+  the board. Credit limit, open amount, hold flag and the commercial defaults are not
+  readable through the core today (P0).
+
 If a needed capability is on this list, say so and stop rather than routing around the core
 with a raw API call — the gap is reported automatically so the core can gain the capability,
 which is the only fix that also helps the next tenant.
@@ -676,7 +812,8 @@ filterable:
   # builder trusts. Only Product's tag filter is emulated and real.
   SalesInvoice: [status, customer, payment.status, documents.salesOrder]
   DeliveryNote: [status, customer, documents.salesOrder]
-  SalesOrder: [status, customer, references.customerOrderNumber]
+  SalesOrder: [status, customer, references.customerOrderNumber, references.externalNumber, references.externalId, number]
+  Customer: [number, name, email, addresses.zip, addresses.city]
   Return: [status, customer, dates.requested, documents.salesOrder]
   PurchaseOrder: [status, supplier]
   Product: [number, status, name, identifiers.ean]
@@ -731,6 +868,7 @@ fields:
   - Customer.addresses.isDefault
   - Customer.contacts.salutation
 commands:
+  SalesOrder.splitOrder: [items]
   SalesOrder.addTag: [title]
   SalesOrder.removeTag: [title]
   Customer.addTag: [title]

@@ -127,7 +127,15 @@ def _entity(core: dict, key: str) -> dict:
 # on a call an agent makes early and once. A playbook that grows into a reference
 # manual stops being read at all — so the budget is a design constraint, not a
 # formality. Raise it deliberately, with a reason, never to make a commit pass.
-PLAYBOOK_BUDGET_BYTES = 48_000
+#
+# Moved once, from 48k, when the Neo playbook gained the back-office recipes a real
+# clerk needs: find the customer, create an order that inherits from them, what is
+# still changeable afterwards, partial orders, which number finds which document,
+# traffic lights. That is the coverage the file exists for, not drift — and the
+# alternative was cutting the filter contract or the status vocabularies, which are
+# exactly what stop a workflow from silently matching nothing. Treat the recipes as
+# the ceiling: next time, cut.
+PLAYBOOK_BUDGET_BYTES = 56_000
 
 
 def test_playbook_stays_within_its_budget(core):
