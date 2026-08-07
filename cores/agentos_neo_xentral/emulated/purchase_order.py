@@ -8,13 +8,19 @@ upstream-writable fields are creatable/updatable; the rest are blue wishes.
 
 from __future__ import annotations
 
+import json
 from typing import Any
+
+import httpx
 
 from entity_registry.core_sdk import EmulationManifest
 
 from .base import (
     REQUIRED,
+    _TIMEOUT,
     FacadeAdapterBase,
+    goods_receipt_command,
+    goods_receipt_payload,
     line_price_net,
     line_qty,
     RO,
@@ -104,6 +110,9 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
     }
 
     action_map = {
+        # v3 exposes both on every business document type.
+        "setWriteProtection": ("PATCH", "setWriteProtection"),
+        "removeWriteProtection": ("PATCH", "removeWriteProtection"),
         # Release / freigeben from draft (v3 release) — uniform across documents.
         "release": ("PATCH", "release"),
         "close": ("PATCH", "complete"),
@@ -140,7 +149,16 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
             self.action_def(
                 "createGoodsReceipt",
                 "Create goods receipt",
-                wish="The BF goodsReceipt entity is read-only — no create endpoint (05 #9).",
+                destructive=True,
+                description=(
+                    "Book the arriving goods against this order (v1 goodsReceipts). This IS "
+                    "the posting — there is no separate post step, and unlike the "
+                    "StorageLocation actions it has no dryRun: the first real call moves "
+                    "stock, and stock movements are append-only. `putaways` says where each "
+                    "item lands and carries batch / bestBefore / serial numbers; omit it to "
+                    "receive without assigning a location."
+                ),
+                command=goods_receipt_command("orderItem", "Order line this delivers against"),
             ),
             self.action_def(
                 "createPurchaseInvoice",
@@ -387,6 +405,11 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
                 },
             ),
             "tags": tags_prop(writable=True),
+            # v3 exposes it on every business document (BusinessDocumentResource:
+            # `writeProtection => isWriteProtected()`) and filters on it. Flip it with
+            # the setWriteProtection / removeWriteProtection actions — a protected
+            # document refuses every update until it is released.
+            "writeProtection": prop("boolean", "Write protection", **RO, filterable=True),
             "printSettings": prop(
                 "embedded",
                 "Print settings",
@@ -532,6 +555,7 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
             "note": r.get("internalComment"),
             "documents": {"goodsReceipts": [], "purchaseInvoices": []},
             "tags": map_tags(r.get("tags")),
+            "writeProtection": r.get("writeProtection"),
             "customFields": r.get("customFields") or {},
             "printSettings": {
                 "withoutPrices": (r.get("printSettings") or {}).get("withoutPrices"),
@@ -672,3 +696,79 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
         if price is not None:
             out["price"] = price
         return out
+
+    # ---- goods receipt -----------------------------------------------------
+    async def action(  # noqa: ANN001
+        self, *, action_key, handle, body, base_url, token, accept_language=None, client=None
+    ):
+        if action_key == "createGoodsReceipt":
+            return await self._create_goods_receipt(
+                handle, body, base_url, token, accept_language, client
+            )
+        return await super().action(
+            action_key=action_key,
+            handle=handle,
+            body=body,
+            base_url=base_url,
+            token=token,
+            accept_language=accept_language,
+            client=client,
+        )
+
+    async def _create_goods_receipt(  # noqa: ANN001
+        self, handle, body, base_url, token, accept_language, client
+    ):
+        """POST /api/v1/purchaseOrders/{id}/goodsReceipts — receive and BOOK.
+
+        The model's vocabulary is translated onto v1's: ``items`` → ``positions``,
+        ``orderItem`` → ``purchaseOrderPosition``, ``putaways`` → ``stockMovements``,
+        and the flat ``batch``/``bestBefore``/``serialNumbers`` back into upstream's
+        nested ``qualityControlAttributes``. `putaway` is the core's own word for
+        booking stock onto a location (StorageLocation.putaway), so a goods receipt
+        uses it too rather than importing v1's generic ``stockMovements``.
+        """
+        try:
+            envelope = json.loads(body or b"{}")
+        except (ValueError, TypeError):
+            envelope = {}
+        ids = envelope.get("ids") or ([handle] if handle else [])
+        order = self._ref_id(ids[0] if ids else None)
+        if order is None:
+            return self._refuse(422, "createGoodsReceipt needs the purchase order id")
+        payload, error = goods_receipt_payload(
+            envelope.get("command") or {},
+            line_field="orderItem",
+            line_key="purchaseOrderPosition",
+            ref_id=self._ref_id,
+        )
+        if error:
+            return self._json(422, {"title": f"createGoodsReceipt {error}"})
+
+        url = f"{base_url.rstrip('/')}/api/v1/purchaseOrders/{order['id']}/goodsReceipts"
+        headers = self._headers(token, accept_language)
+
+        async def _do(c):  # noqa: ANN001, ANN202
+            return await c.post(url, json=payload, headers=headers)
+
+        if client is None:
+            async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
+                resp = await _do(c)
+        else:
+            resp = await _do(client)
+        try:
+            rbody = resp.json()
+        except ValueError:
+            rbody = {}
+        if resp.status_code >= 400:
+            return self._json(
+                resp.status_code,
+                rbody if isinstance(rbody, dict) else {"title": "createGoodsReceipt failed"},
+            )
+        # v1 answers 201 with an empty body and a Location header; report the id so a
+        # workflow can read the receipt back instead of having to search for it.
+        location = resp.headers.get("Location") or ""
+        created = location.rstrip("/").rsplit("/", 1)[-1] if location else None
+        return self._json(
+            201,
+            {"data": {"object": "goodsReceipt", "id": f"gr_{created}" if created else None}},
+        )

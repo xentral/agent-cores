@@ -68,7 +68,12 @@ class GoodsReceiptAdapter(FacadeAdapterBase):
                     self.step_cmd(
                         "post",
                         "Post",
-                        wish="The BF goodsReceipt entity is read-only — posting is not exposed.",
+                        wish=(
+                            "There is no posting TRANSITION: a goods receipt is booked at "
+                            "creation — PurchaseOrder.createGoodsReceipt (or the return's "
+                            "equivalent) moves the stock as it writes the document. Nothing "
+                            "to wait for here."
+                        ),
                     ),
                     self.step_cmd(
                         "cancel",

@@ -21,6 +21,7 @@ from .base import (
     FacadeAdapterBase,
     custom_fields_to_v3,
     map_tags,
+    money,
     prop,
     ref,
     tags_prop,
@@ -304,6 +305,8 @@ class CustomerAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
         pa = r.get("primaryAddress") or {}
         comm = r.get("communication") or {}
         fin = r.get("financials") or {}
+        ful = r.get("fulfillment") or {}
+        terms = fin.get("paymentTerms") or {}
         mp = r.get("mainProject")
         ch = r.get("originSalesChannel")
         return {
@@ -361,16 +364,33 @@ class CustomerAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
                     None,
                     "paymentMethods",
                 ),
-                "paymentTerms": {"dueDays": None, "discountPercent": None, "discountDays": None},
-                "taxation": None,
-                "shippingMethod": None,
+                # v3 financials.paymentTerms — the terms an order inherits when it is
+                # created without its own (see the order's payment block).
+                "paymentTerms": {
+                    "dueDays": terms.get("paymentTargetDays"),
+                    "discountPercent": terms.get("paymentTargetDiscount"),
+                    "discountDays": terms.get("paymentTargetDiscountDays"),
+                },
+                "taxation": (fin.get("tax") or {}).get("taxation"),
+                "shippingMethod": ref(
+                    "ship_",
+                    (ful.get("shippingMethod") or {}).get("id"),
+                    None,
+                    None,
+                    "shippingMethods",
+                ),
+                # No slot on the v3 customer resource — the price list a customer is
+                # assigned to, and whether partial shipping is allowed, are not part of
+                # this payload. Blue wishes rather than silent nulls.
                 "priceList": None,
                 "partialShipping": None,
             },
             "finance": {
+                # Open receivables are a computed A/R figure, not a customer field —
+                # nothing on this resource carries them.
                 "openAmount": None,
-                "creditLimit": None,
-                "onHold": (r.get("fulfillment") or {}).get("deliveryBlock"),
+                "creditLimit": money(fin.get("creditLimit"), fin.get("defaultCurrency")),
+                "onHold": ful.get("deliveryBlock"),
                 "dunningBlocked": None,
                 "debtorAccountNumber": r.get("deviatingDebtorAccountNumber"),
             },

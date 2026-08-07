@@ -327,6 +327,10 @@ def tags_prop(*, writable: bool = False, filterable: bool = True) -> dict[str, A
     write, so the string form round-trips; color/group live on the Tag entity."""
     # Not every upstream list accepts a tag filter — v3 products rejects it
     # outright, so the entity that cannot filter says so instead of promising it.
+    # The documents DO filter by tag (measured on mvp: one tagged sales order in,
+    # one row out). An earlier probe read as "declared but broken" only because the
+    # tagged order was a DRAFT, and the v3 list endpoints exclude drafts unless the
+    # status filter is set explicitly — see the default-status trap in the playbook.
     flags: dict[str, Any] = {"filterable": True} if filterable else {}
     if writable:
         flags["creatable"] = True
@@ -871,6 +875,40 @@ class FacadeAdapterBase:
                     "destructive": False,
                     "description": "Remove a tag from this record.",
                     "command": tag_command,
+                },
+            ]
+        # Declaring the `writeProtection` field opts an entity into the two v3
+        # actions that flip it — the same "the field is the switch" convention the
+        # tag actions use above. v3 ships them on every business document type
+        # (setWriteProtection / removeWriteProtection); the routes live in each
+        # adapter's action_map, the catalogue text stays here so the wording cannot
+        # drift across seven documents.
+        if isinstance(properties.get("writeProtection"), dict):
+            wp_path = f"/api/entity/{self.manifest.key}/actions"
+            actions += [
+                {
+                    "key": "setWriteProtection",
+                    "label": "Set write protection",
+                    "bulk": False,
+                    "method": "PATCH",
+                    "path": f"{wp_path}/setWriteProtection",
+                    "destructive": False,
+                    "description": (
+                        "Protect this document against changes: an update then answers "
+                        "409 write-protected. TWO fields still go through — the internal "
+                        "note and the status (upstream's writeProtectionBypassFields), so "
+                        "a successful note write is NOT evidence the document is "
+                        "unprotected. Read the `writeProtection` field for that."
+                    ),
+                },
+                {
+                    "key": "removeWriteProtection",
+                    "label": "Remove write protection",
+                    "bulk": False,
+                    "method": "PATCH",
+                    "path": f"{wp_path}/removeWriteProtection",
+                    "destructive": False,
+                    "description": "Lift the write protection so the document can be edited again.",
                 },
             ]
         if actions:
@@ -2305,3 +2343,148 @@ REQUIRED: dict[str, Any] = {"rules": ["required"]}
 
 # Callable type alias for adapters that build sub-trees.
 FieldBuilder = Callable[[], dict[str, dict[str, Any]]]
+
+
+# --- goods receipts ---------------------------------------------------------
+# Two v1 endpoints receive goods and BOOK them in one call:
+#   POST /api/v1/purchaseOrders/{id}/goodsReceipts   (line key: purchaseOrderPosition)
+#   POST /api/v1/returns/{id}/goodsReceipts          (line key: returnPosition)
+# They differ only in that key, so the model→wire translation lives here once
+# rather than being copied into both adapters and drifting.
+#
+# The model's vocabulary is deliberately NOT v1's: `items` because every document
+# in this core has items, and `putaways` because booking stock onto a location is
+# what StorageLocation.putaway is called — one concept, one word. Upstream's
+# nested `qualityControlAttributes` is flat here (`batch`, `bestBefore`,
+# `serialNumbers`), because the model has batches and serial numbers, not a
+# quality-control concept. (v1's returns variant also accepts a QC sub-quantity;
+# it is not exposed — its semantics next to the movement's own quantity are not
+# documented, and a field nobody can explain is worse than a missing one.)
+
+
+def goods_receipt_command(line_field: str, line_label: str) -> dict[str, Any]:
+    """The `command` schema for a receive-and-book action.
+
+    ``line_field`` is the MODEL name for the document line the receipt books
+    against — ``orderItem`` on a purchase order (matching DeliveryNote and
+    SalesInvoice, which already call the originating line that), ``returnItem`` on
+    a return. Same slot, entity-appropriate word.
+    """
+    return {
+        "type": "object",
+        "required": ["date", "items"],
+        "properties": {
+            "date": {
+                "type": "string",
+                "label": "Posting date (YYYY-MM-DD)",
+                "description": (
+                    "Required, although the OpenAPI spec marks it optional — measured: v1 "
+                    "answers 400 without it. Not defaulted here on purpose: the posting "
+                    "date of a stock booking is a decision, not a convenience."
+                ),
+            },
+            "items": {
+                "type": "array",
+                "label": "Received items",
+                "items": {
+                    "type": "object",
+                    "required": ["product", "quantity"],
+                    "properties": {
+                        "product": {"type": "string", "label": "Product id (prd_…)"},
+                        "quantity": {"type": "number", "label": "Received quantity"},
+                        line_field: {"type": "string", "label": line_label},
+                        "putaways": {
+                            "type": "array",
+                            "label": "Where the quantity is stored",
+                            "items": {
+                                "type": "object",
+                                "required": ["quantity"],
+                                "properties": {
+                                    "quantity": {"type": "number", "label": "Quantity"},
+                                    "warehouse": {"type": "string", "label": "Warehouse (wh_…)"},
+                                    "storageLocation": {
+                                        "type": "string",
+                                        "label": "Storage location (loc_…)",
+                                    },
+                                    "batch": {"type": "string", "label": "Batch / lot"},
+                                    "bestBefore": {"type": "string", "label": "Best-before date"},
+                                    "serialNumbers": {
+                                        "type": "array",
+                                        "label": "Serial numbers",
+                                        "items": {"type": "string"},
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    }
+
+
+def goods_receipt_payload(
+    command: dict[str, Any], *, line_field: str, line_key: str, ref_id
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Model command → v1 body. Returns ``(payload, error_message)``.
+
+    Validation happens before the call rather than after: a stock booking is not
+    the place to let a malformed payload through and read the upstream's error.
+    """
+    if not command.get("date"):
+        return None, (
+            "needs command.date (YYYY-MM-DD) — upstream rejects a receipt without a posting date"
+        )
+    items = command.get("items")
+    if not isinstance(items, list) or not items:
+        return None, (f"needs command.items=[{{product, quantity, {line_field}?, putaways?}}]")
+
+    positions: list[dict[str, Any]] = []
+    for m in items:
+        if not isinstance(m, dict):
+            continue
+        product = ref_id(m.get("product"))
+        if product is None:
+            return None, f"missing product in {m}"
+        try:
+            qty = float(m.get("quantity"))
+        except (TypeError, ValueError):
+            return None, f"bad quantity in {m}"
+        if qty <= 0:
+            return None, f"quantity must be > 0 in {m}"
+        pos: dict[str, Any] = {"product": product, "quantity": qty}
+        line = ref_id(m.get(line_field))
+        if line is not None:
+            pos[line_key] = line
+
+        movements: list[dict[str, Any]] = []
+        for p in m.get("putaways") or []:
+            if not isinstance(p, dict):
+                continue
+            try:
+                pqty = float(p.get("quantity", qty))
+            except (TypeError, ValueError):
+                return None, f"bad putaway quantity in {p}"
+            mv: dict[str, Any] = {"quantity": pqty}
+            for key in ("warehouse", "storageLocation"):
+                target = ref_id(p.get(key))
+                if target is not None:
+                    mv[key] = target
+            qc: dict[str, Any] = {}
+            if p.get("batch") is not None:
+                qc["batch"] = p["batch"]
+            if p.get("bestBefore") is not None:
+                qc["bestBeforeDate"] = p["bestBefore"]
+            serials = [s for s in (p.get("serialNumbers") or []) if s]
+            if serials:
+                qc["serialNumbers"] = [
+                    {"number": s.get("number") if isinstance(s, dict) else str(s)} for s in serials
+                ]
+            if qc:
+                mv["qualityControlAttributes"] = qc
+            movements.append(mv)
+        if movements:
+            pos["stockMovements"] = movements
+        positions.append(pos)
+
+    return {"date": command["date"], "positions": positions}, None

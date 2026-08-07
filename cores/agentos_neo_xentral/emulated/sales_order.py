@@ -241,6 +241,9 @@ class SalesOrderAdapter(FacadeAdapterBase):
     }
 
     action_map = {
+        # v3 exposes both on every business document type.
+        "setWriteProtection": ("PATCH", "setWriteProtection"),
+        "removeWriteProtection": ("PATCH", "removeWriteProtection"),
         # Release / freigeben from draft (v3 release) — the document becomes valid
         # and gets its number. Uniform 'release' op across all documents.
         "release": ("PATCH", "release"),
@@ -436,9 +439,10 @@ class SalesOrderAdapter(FacadeAdapterBase):
                 reference="Channel",
                 renderProperty="name",
                 section="general",
+                **_CU,
                 description=(
-                    "Not filterable — the upstream list endpoint rejects a channel "
-                    "filter on this document (verified on mvp)."
+                    "Writable (v3 salesChannel). Not filterable — the upstream list "
+                    "endpoint rejects a channel filter on this document (verified on mvp)."
                 ),
             ),
             "project": prop(
@@ -458,8 +462,8 @@ class SalesOrderAdapter(FacadeAdapterBase):
                     "customerOrderNumber": prop(
                         "string", "Customer order number", **_CU, filterable=True
                     ),
-                    "externalId": prop("string", "External id", filterable=True),
-                    "externalNumber": prop("string", "External number", filterable=True),
+                    "externalId": prop("string", "External id", **_CU, filterable=True),
+                    "externalNumber": prop("string", "External number", **_CU, filterable=True),
                     "paymentTransactionId": prop("string", "Payment transaction id"),
                 },
             ),
@@ -518,15 +522,19 @@ class SalesOrderAdapter(FacadeAdapterBase):
                 section="financials",
                 properties={
                     "method": prop(
-                        "reference", "Method", reference="PaymentMethod", renderProperty="name"
+                        "reference",
+                        "Method",
+                        reference="PaymentMethod",
+                        renderProperty="name",
+                        **_CU,
                     ),
                     "terms": prop(
                         "embedded",
                         "Terms",
                         properties={
-                            "dueDays": prop("integer", "Due days"),
-                            "discountPercent": prop("decimal", "Discount %"),
-                            "discountDays": prop("integer", "Discount days"),
+                            "dueDays": prop("integer", "Due days", **_CU),
+                            "discountPercent": prop("decimal", "Discount %", **_CU),
+                            "discountDays": prop("integer", "Discount days", **_CU),
                         },
                     ),
                     "status": prop(
@@ -646,6 +654,11 @@ class SalesOrderAdapter(FacadeAdapterBase):
                 },
             ),
             "tags": tags_prop(writable=True),
+            # v3 exposes it on every business document (BusinessDocumentResource:
+            # `writeProtection => isWriteProtected()`) and filters on it. Flip it with
+            # the setWriteProtection / removeWriteProtection actions — a protected
+            # document refuses every update until it is released.
+            "writeProtection": prop("boolean", "Write protection", **RO, filterable=True),
             "discounts": prop(
                 "collection",
                 "Discounts",
@@ -845,6 +858,7 @@ class SalesOrderAdapter(FacadeAdapterBase):
                 "salesInvoices": [],
             },
             "tags": map_tags(r.get("tags")),
+            "writeProtection": r.get("writeProtection"),
             "customFields": r.get("customFields") or {},
             "createdAt": r.get("createdAt"),
             "updatedAt": r.get("updatedAt"),
@@ -867,6 +881,8 @@ class SalesOrderAdapter(FacadeAdapterBase):
         "tags",
         "references",
         "shipping",
+        "payment",
+        "channel",
         "fulfillmentPolicy",
     }
     _IGNORE = {
@@ -958,6 +974,43 @@ class SalesOrderAdapter(FacadeAdapterBase):
             refs = model["references"] or {}
             if "customerOrderNumber" in refs:  # v3 customerOrderNumber (API-731 parity)
                 v3["customerOrderNumber"] = refs["customerOrderNumber"]
+            # Shop / marketplace references. Both are plain strings on the v3 body and
+            # were readable + filterable but not writable, so an order imported from a
+            # channel could be found but never labelled with where it came from.
+            if "externalNumber" in refs:
+                v3["externalOrderNumber"] = refs["externalNumber"]
+            if "externalId" in refs:
+                v3["externalOrderId"] = refs["externalId"]
+            if "paymentTransactionId" in refs:
+                v3["transactionNumber"] = refs["paymentTransactionId"]
+        if "channel" in model:
+            # v3 salesChannel {id}; null detaches the order from its channel.
+            v3["salesChannel"] = self._ref_id(model["channel"])
+        if "payment" in model:
+            # financials.paymentMethod {id} + financials.paymentTerms, both accepted on
+            # create AND update. Omitted on create they default from the customer, which
+            # is what makes the "order from a customer number alone" flow work — so only
+            # emit the keys the caller actually set.
+            pay = model["payment"] or {}
+            if "method" in pay:
+                v3.setdefault("financials", {})["paymentMethod"] = self._ref_id(pay["method"])
+            if "terms" in pay:
+                terms = pay["terms"] or {}
+                upstream = {
+                    up: terms[k]
+                    for k, up in (
+                        ("dueDays", "paymentTargetDays"),
+                        ("discountPercent", "paymentTargetDiscount"),
+                        ("discountDays", "paymentTargetDiscountDays"),
+                    )
+                    if k in terms
+                }
+                if upstream:
+                    v3.setdefault("financials", {})["paymentTerms"] = upstream
+            # Derived upstream from the booked payments; echoing it back is a no-op,
+            # changing it is reported rather than silently dropped.
+            if "status" in pay and pay["status"] is not None:
+                rejected.add("payment.status")
         if "shipping" in model:
             sh = model["shipping"] or {}
             if "method" in sh:  # v3 shippingMethod {id} (API-729 parity)

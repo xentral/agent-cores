@@ -1,0 +1,188 @@
+# Machine-checked claims for playbook.md
+#
+# Lives beside the playbook rather than inside it: this is what CI replays
+# against the core's metadata (tests/test_core_playbooks.py), not something a
+# human or an agent reads. Keeping it out of the prose is what lets the
+# playbook stay short enough to actually be read.
+#
+# Rules: an `executable` entry must be a real action or step command carrying
+# NO wish; a `wishes` entry must still be one; per named entity
+# `executable + wishes` must cover EVERY capability, so a newly built one
+# cannot go unmentioned.
+
+executable:
+  Quote: [send, downloadPdf, addTag, removeTag, release, cancel, setWriteProtection, removeWriteProtection]
+  SalesOrder: [createSalesInvoice, split, splitOrder, downloadPdf, sendConfirmation, addTag, removeTag, release, close, cancel, dispatch, setWriteProtection, removeWriteProtection]
+  SalesInvoice: [send, downloadPdf, addTag, removeTag, release, cancel, setWriteProtection, removeWriteProtection]
+  DeliveryNote: [createReturn, createSalesInvoice, downloadPdf, addTag, removeTag, release, markDelivered, cancel, setWriteProtection, removeWriteProtection]
+  CreditNote: [send, downloadPdf, addTag, removeTag, release, setWriteProtection, removeWriteProtection]
+  Return: [createFromDeliveryNote, createCreditNote, downloadPdf, addTag, removeTag, release, settle, cancel, setWriteProtection, removeWriteProtection, restock]
+  PurchaseOrder: [send, downloadPdf, addTag, removeTag, release, close, cancel, setWriteProtection, removeWriteProtection, createGoodsReceipt]
+  Customer: [addTag, removeTag]
+  Supplier: [addTag, removeTag]
+  Product: [activate, deactivate]
+  StorageLocation: [putaway, stockRemoval, stockTransfer, inventoryCount, stockAdjustment]
+  Printer: [printDocument]
+  EmailAccount: [sendEmail]
+wishes:
+  Quote: [convertToSalesOrder, duplicate, accept, decline]
+  SalesOrder: [createDeliveryNote, createPickingRun, addHold, releaseHold, allocateStock, duplicate]
+  SalesInvoice: [registerPayment, remind, writeOff, downloadEInvoice]
+  DeliveryNote: [createShipment, printLabels, startPicking]
+  CreditNote: [registerRefund, offsetAgainstInvoice, cancel]
+  Return: [sendReturnLabel, createReplacementOrder, receive, check]
+  PurchaseOrder: [recordConfirmation, requestConfirmation, createPurchaseInvoice, updateDeliveryDates]
+  GoodsReceipt: [post, cancel, proposeStorageLocations, printProductLabels, printBatchLabels]
+  PurchaseInvoice: [approve, reject, rematch, registerPayment, schedulePayment, attachFile]
+  Customer: [archive, reactivate, setHold, releaseHold, mergeInto, runCreditCheck, statement]
+  Supplier: [archive, reactivate, setHold, releaseHold, mergeInto, runCreditCheck, statement]
+  Product: [adjustStock, duplicate, recalculatePurchasePrice, syncToChannel, mergeInto, archive]
+  PriceList: [duplicate, bulkAdjust, activate, deactivate]
+  Shipment: [createLabel, cancelLabel, downloadLabel, refreshTracking]
+  Payment: [allocate, unallocate, refund]
+  StorageLocation: [block, release, printLabel]
+  StockTake: [startCounting, submit, post, cancel, exportCountingList, recount, addPosition]
+  PickingRun: [release, start, pause, complete, cancel, assign, reprioritize, printPickList]
+  Channel: [syncOrders, syncStock, syncProducts, testConnection, pause, resume]
+  Batch: [traceReport, block, release]
+  SerialNumber: [traceReport, block, release]
+operations:
+  GoodsReceipt: [list, read]
+  Shipment: [list, read]
+  Payment: [list, read]
+  StockLevel: [list, read]
+  StockTake: [list, read]
+  PickingRun: [list, read]
+  Tag: [list, read]
+  Channel: [list, read]
+  StockMovement: [create]
+  Batch: []
+  SerialNumber: []
+  Warehouse: [list, create, update, delete]
+  ShippingMethod: [list, read]
+  PaymentMethod: [list]
+statuses:
+  Quote.status: [draft, sent, accepted, declined, expired, cancelled]
+  SalesOrder.status: [draft, confirmed, fulfilled, closed, cancelled]
+  SalesInvoice.status: [draft, open, paid, partiallyCancelled, cancelled]
+  SalesInvoice.payment.status: [unpaid, partiallyPaid, paid]
+  DeliveryNote.status: [draft, picking, shipped, delivered, cancelled]
+  CreditNote.status: [draft, open, settled, cancelled]
+  CreditNote.kind: [correction, cancellation]
+  CreditNote.settlement.mode: [refund, offset]
+  Return.status: [requested, received, checked, settled, cancelled]
+  PurchaseOrder.status: [draft, sent, confirmed, received, closed, cancelled]
+  GoodsReceipt.status: [open, posted, closed, cancelled]
+  PurchaseInvoice.status: [received, matched, approved, paid, rejected]
+  PurchaseInvoice.match.status: [pending, matched, mismatch]
+  Shipment.status: [label, handedOver, inTransit, delivered, exception, returned]
+  Payment.direction: [incoming, outgoing]
+  Payment.kind: [incoming, outgoing, refund, chargeback]
+  Customer.status: [active, archived]
+  Supplier.status: [active, archived]
+  Product.status: [active, inactive, archived]
+  StorageLocation.status: [active, blocked]
+  StockTake.status: [draft, counting, review, posted, cancelled]
+  PickingRun.status: [draft, released, inProgress, picked, completed, cancelled]
+  StockMovement.type: [receipt, issue, transfer, correction]
+  Task.status: [open, inProgress, completed]
+  Task.priority: [low, normal, high]
+  Correspondence.kind: [email, letter, fax, phone, note]
+  Customer.addresses.type: [billing, shipping, both]
+  Customer.contacts.type: [mr, mrs, company, other]
+requiredForCreate:
+  Quote: [customer, items.product, items.quantity]
+  SalesOrder: [customer, items.product, items.quantity]
+  SalesInvoice: [customer, items.product, items.quantity]
+  DeliveryNote: [customer, items.product, items.quantity]
+  CreditNote: [customer, items.product, items.quantity]
+  Return: [customer, items.product, items.quantity, items.reason]
+  PurchaseOrder: [supplier, items.product, items.quantity]
+  PurchaseInvoice: [supplier]
+  Customer: [name, contacts.name]
+  Supplier: [name, contacts.name]
+  Product: [name]
+  PriceList: [product]
+  PurchasePrice: [product, supplier]
+  StockMovement: [type, product]
+  StorageLocation: [name, warehouse]
+  Task: [title]
+  Correspondence: [customer]
+  CostCenter: [name]
+  Warehouse: [name]
+  CustomerGroup: [name]
+  ProductCategory: [name]
+filterable:
+  SalesInvoice: [status, customer, payment.status, documents.salesOrder, tags]
+  DeliveryNote: [status, customer, documents.salesOrder]
+  SalesOrder: [status, customer, references.customerOrderNumber, references.externalNumber, references.externalId, number, writeProtection, tags]
+  Customer: [number, name, email, addresses.zip, addresses.city]
+  Return: [status, customer, dates.requested, documents.salesOrder]
+  PurchaseOrder: [status, supplier]
+  Product: [number, status, name, identifiers.ean]
+  StockLevel: [product, warehouse, storageLocation]
+  PriceList: [product]
+  Payment: [kind, bookedAt]
+  GoodsReceipt: [number, status]
+notFilterable:
+  Shipment: [status, documents.salesOrder]
+  ShippingMethod: [name]
+  PurchaseInvoice: [status]
+  SalesInvoice: [payment.dueDate]
+  Customer: [status]
+fields:
+  - SalesOrder.writeProtection
+  - SalesInvoice.writeProtection
+  - SalesOrder.shipping.method
+  - SalesOrder.shipping.status
+  - SalesOrder.items.fulfillment.shipped
+  - SalesOrder.items.availability.deliverable
+  - SalesOrder.documents.deliveryNotes
+  - SalesOrder.documents.salesInvoices
+  - SalesOrder.trafficLights
+  - SalesInvoice.payment.dueDate
+  - SalesInvoice.payment.discountDate
+  - SalesInvoice.payment.terms.dueDays
+  - SalesInvoice.payment.payments
+  - SalesInvoice.totals.paid
+  - SalesInvoice.totals.outstanding
+  - SalesInvoice.dunning.level
+  - SalesInvoice.dunning.blocked
+  - SalesInvoice.dunning.lastReminderAt
+  - SalesInvoice.dunning.note
+  - DeliveryNote.shipments
+  - Shipment.trackingNumber
+  - Shipment.trackingUrl
+  - Shipment.labelUrl
+  - Shipment.packages.trackingNumber
+  - Shipment.events.location
+  - Shipment.documents.deliveryNote
+  - ShippingMethod.supportsDeliveries
+  - ShippingMethod.supportsReturns
+  - ShippingMethod.shippingEmailBehaviour
+  - Payment.allocations.invoice
+  - Payment.unallocated
+  - Return.items.reason
+  - Return.items.receivedQuantity
+  - Return.items.creditedQuantity
+  - Return.resolution.creditNote
+  - PurchaseOrder.confirmation.supplierOrderNumber
+  - Product.prices.sale
+  - StockLevel.available
+  - StockLevel.reserved
+  - Customer.addresses.isDefault
+  - Customer.contacts.salutation
+commands:
+  PurchaseOrder.createGoodsReceipt: [date, items]
+  Return.restock: [date, items]
+  SalesOrder.splitOrder: [items]
+  SalesOrder.addTag: [title]
+  SalesOrder.removeTag: [title]
+  Customer.addTag: [title]
+  Customer.removeTag: [title]
+  StorageLocation.putaway: [product, quantity]
+  StorageLocation.stockRemoval: [product, quantity]
+  StorageLocation.stockTransfer: [product, quantity, target]
+  Return.createFromDeliveryNote: [deliveryNote, lineItems]
+  DeliveryNote.createReturn: [lineItems]
+  Quote.addTag: [title]
