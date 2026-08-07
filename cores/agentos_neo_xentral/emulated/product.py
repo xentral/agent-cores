@@ -289,6 +289,7 @@ _PRODUCTION_OPTIONS = [
 
 # Field-flag shorthands (mirror customer.py's _CU): created+updated vs create-only.
 _CU: dict[str, Any] = {"creatable": True, "updatable": True}
+_U: dict[str, Any] = {"updatable": True}
 _C: dict[str, Any] = {"creatable": True}
 
 # v2 products REQUIRES a project on create; the model's project is optional, so an
@@ -962,7 +963,10 @@ class ProductAdapter(FacadeAdapterBase):
             "status": prop(
                 "select",
                 "Status",
-                **_CU,
+                # UPDATE-only: the v2 create body carries no status field, so a
+                # create naming it was accepted and then silently dropped. The
+                # product is created active and disabled afterwards.
+                **_U,
                 section="general",
                 options=_STATUS_OPTIONS,
                 previewable=True,
@@ -1000,7 +1004,8 @@ class ProductAdapter(FacadeAdapterBase):
             "project": prop(
                 "reference",
                 "Project",
-                **_CU,
+                # UPDATE-only, same as `status`: not part of the v2 create body.
+                **_U,
                 reference="Project",
                 renderProperty="name",
                 section="general",

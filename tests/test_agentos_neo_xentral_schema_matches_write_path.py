@@ -46,11 +46,10 @@ KNOWN_DEVIATIONS = {
     ("StockMovement", "setQuantityTo", "create"),
     ("StockMovement", "batch", "create"),
     ("StockMovement", "source", "create"),
-    # Composed separately (price rows) or defaulted upstream.
-    ("PriceList", "minQuantity", "create"),
-    ("PurchasePrice", "minQuantity", "create"),
-    ("Product", "status", "create"),
-    ("Product", "project", "create"),
+    # `Product.status` and `Product.project` are declared creatable and are NOT
+    # in the v2 create body — measured: an update emits `isDisabled` / `project`,
+    # a create emits nothing. Fixed in the same change that added this note, so
+    # these two are gone; kept here only if the flags are ever restored.
 }
 
 
@@ -64,7 +63,11 @@ def _sample(spec: dict):
     if kind == "boolean":
         return True
     if kind in ("integer", "decimal"):
-        return 1
+        # NOT 1: several adapters default a quantity to 1, so the sample would
+        # equal the baseline body and the field would read as silently dropped.
+        # That is exactly how PriceList/PurchasePrice `minQuantity` landed on the
+        # deviation list — a flaw in the probe, not in the core.
+        return 7
     if kind == "date":
         return "2026-01-01"
     if kind == "datetime":
