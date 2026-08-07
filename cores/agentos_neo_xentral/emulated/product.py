@@ -162,6 +162,20 @@ def map_stock(payload: Any, minimum: Any) -> dict[str, Any] | None:
     }
 
 
+def _purchase_price(cpp: dict[str, Any], price: dict[str, Any]) -> dict[str, Any] | None:
+    """``calculatedPurchasePrice`` -> the model's ``prices.purchase``.
+
+    Carries ``source`` so the value survives a round trip: ``"calculated"`` is
+    what Xentral's ``hasCalculatedPurchasePrice`` means, and it is what
+    ``map_write`` reads back to set it again.
+    """
+    out = money(price.get("amount"), price.get("currency") or "EUR")
+    if out is None:
+        return None
+    out["source"] = "calculated" if cpp.get("hasCalculatedPurchasePrice") else "manual"
+    return out
+
+
 def map_bom_items(payload: Any) -> list[dict[str, Any]]:
     """``/products/{id}/parts`` rows → ``bom.items``. One level only.
 
@@ -620,7 +634,17 @@ class ProductAdapter(FacadeAdapterBase):
         out: dict[str, Any] = {"data": rec}
         if unavailable:
             # An empty section and an unreachable one are not the same answer.
+            #
+            # Said in BOTH places on purpose. `extra` is the envelope, which is
+            # what a direct API consumer reads — but a workflow's business-entity
+            # node hands its box the RECORD (ADR-0002), so anything left in the
+            # envelope never reaches the author. That gap is not academic: a BOM
+            # cost roll-up whose `/parts` call failed sees `bom.items == []`,
+            # concludes "purchased article", and writes a wrong purchase price
+            # without a single error anywhere. Mirrors the `_warnings` key a
+            # partial WRITE already puts on the record.
             out["extra"] = {"unavailableSections": unavailable}
+            rec["_unavailableSections"] = unavailable
         return self._json(200, out)
 
     @staticmethod
@@ -1048,7 +1072,22 @@ class ProductAdapter(FacadeAdapterBase):
                         properties={
                             "amount": prop("string", "Amount", **_CU),
                             "currency": prop("string", "Currency", **_CU),
-                            "source": prop("string", "Source", **RO),
+                            # NOT read-only, however much it looks like a derived
+                            # field: `source: "calculated"` is the only way to set
+                            # Xentral's `hasCalculatedPurchasePrice`, and `map_write`
+                            # has always honoured it. Marked read-only, it told
+                            # every schema reader that the flag could not be set,
+                            # while the write silently defaulted it to "manual" —
+                            # the same number with a different meaning to the ERP.
+                            "source": prop(
+                                "select",
+                                "Source",
+                                **_CU,
+                                options=[
+                                    {"value": "calculated", "label": "Calculated"},
+                                    {"value": "manual", "label": "Manual"},
+                                ],
+                            ),
                         },
                     ),
                 },
@@ -1484,7 +1523,11 @@ class ProductAdapter(FacadeAdapterBase):
             "manufacturer": {"name": man_name or None, "website": man_url},
             "prices": {
                 "sale": None,
-                "purchase": money(pp_price.get("amount"), pp_price.get("currency") or "EUR"),
+                # `source` completes the round trip. Without it a read-edit-write
+                # cycle drops the flag: the caller sends back what it was given,
+                # `map_write` sees no source, and a CALCULATED purchase price
+                # silently becomes a manually maintained one.
+                "purchase": _purchase_price(cpp, pp_price),
             },
             "tax": {
                 "rate": _tax_rate(r),
