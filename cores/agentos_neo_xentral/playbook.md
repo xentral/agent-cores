@@ -93,9 +93,11 @@ needs a product, so model a service/fee article for one.
 
 ## §3 The everyday jobs
 
-**Customer service — find the customer, then the order.** `Customer` filters on `number`,
-`name`, `email`, `addresses.*`; query `email` first for a duplicate check. Orders are found
-by four *different* numbers: `number` (Belegnummer), `references.customerOrderNumber` (the
+### Sales & customer service (Vertrieb, Kundenservice)
+
+**Find the customer, then the order.** `Customer` filters on `number`, `name`, `email` and
+`addresses.*`; query `email` first for a duplicate check. Orders are found by four
+*different* numbers: `number` (Belegnummer), `references.customerOrderNumber` (the
 customer's PO), `references.externalNumber` (shop/marketplace) and `references.externalId`
 (the shop's technical id). All four are writable.
 
@@ -121,6 +123,8 @@ the original to the remainder. (`split` makes an *empty* partial; prefer `splitO
 `creditLimit`, `deliveryBlock`, `addressValidation`, `vat`, … Read them to diagnose and
 route a human task — they and `holds` are read-only, and there is no way to clear a block.
 
+### Returns, credit notes and storno (Retoure, Gutschrift)
+
 **Return → credit note.** `DeliveryNote.createReturn command={"lineItems":[…]}` (or
 `Return.createFromDeliveryNote` with `deliveryNote` + `lineItems`) → `release` → `settle` →
 `createCreditNote command={"isApproved":true,"isPaid":false}`. Statuses `received`/`checked`
@@ -132,7 +136,9 @@ are UI-only — observe them, you cannot set them. Restocking goes through
 storno is a **`CreditNote` with `kind: "cancellation"`**. A released credit note cannot be
 cancelled at all; only a draft can be `delete`d.
 
-**Finance — payment status and dunning.** Filter `SalesInvoice` on `status` + `payment.status`
+### Finance (Zahlungsstatus, Mahnwesen)
+
+**Read the status.** Filter `SalesInvoice` on `status` + `payment.status`
 (`unpaid | partiallyPaid | paid`) — the one payment query the core does well. The money is
 in `totals.paid` / `totals.outstanding`; dunning in `dunning.level` / `blocked` /
 `lastReminderAt`. **Do not rely on `payment.dueDate`** — measured null on every invoice;
@@ -140,13 +146,17 @@ derive it from `dates.issued` + `payment.terms.dueDays`. Booking is impossible h
 (`registerPayment`, `remind`, `writeOff` are all gaps), so a dunning workflow *reads* and
 then acts outside the ERP: `EmailAccount.sendEmail`, a `Task`, a `Correspondence` entry.
 
-**Purchasing.** `PurchaseOrder` create → `release` → `send`; write `confirmation.*` with a
-normal `update`. Then it stops: `GoodsReceipt` is read-only and `PurchaseInvoice` has no
-executable action at all, so there is no goods-receipt posting and no invoice approval to
-build on today.
+### Purchasing (Einkauf)
 
-**Warehouse.** All five `StorageLocation` actions take `product` + `quantity` (transfer also
-`target`) and accept **`dryRun: true`** — use it while building. `putaway` = Einlagern,
+`PurchaseOrder` create → `release` → `send`; write `confirmation.*` with a normal `update`.
+Then it stops: `GoodsReceipt` is read-only and `PurchaseInvoice` has no executable action at
+all, so there is no goods-receipt posting and no invoice approval to build on today.
+
+### Warehouse & shipping (Lager, Versand)
+
+**Stock bookings.** All five `StorageLocation` actions take `product` + `quantity`
+(transfer also `target`) and accept **`dryRun: true`** — use it while building.
+`putaway` = Einlagern,
 `stockRemoval` = Auslagern (destructive), `stockTransfer` = Umlagern (not atomic upstream),
 plus `inventoryCount` and `stockAdjustment`. Read stock from `StockLevel` (filter `product`,
 `warehouse`, `storageLocation`): `quantity`, `reserved`, `available` — take `available` as
@@ -158,9 +168,11 @@ given, it is **not** `quantity − reserved`.
 Carrier labels are not in this core: use the workflow's **`shiplabel` node**; to print an
 existing PDF use `Printer.printDocument`.
 
-**Triggering from the ERP.** `trigger-erp-event` fires only after activation — saving a graph
-subscribes nothing. Get real ids from `action="events"`; never hardcode one. One business
-action emits several events, and the subscription is scoped by core *and* connection.
+### Triggering a workflow from the ERP
+
+`trigger-erp-event` fires only after activation — saving a graph subscribes nothing. Get
+real ids from `action="events"`; never hardcode one. One business action emits several
+events, and the subscription is scoped by core *and* connection.
 
 ---
 
