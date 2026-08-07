@@ -386,7 +386,7 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
                     ),
                 },
             ),
-            "tags": tags_prop(writable=True),
+            "tags": tags_prop(writable=True, filterable=False),
             "printSettings": prop(
                 "embedded",
                 "Print settings",

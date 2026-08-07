@@ -393,7 +393,7 @@ class PurchaseInvoiceAdapter(FacadeAdapterBase):
                     "at": prop("datetime", "At", **RO),
                 },
             ),
-            "tags": tags_prop(writable=False),
+            "tags": tags_prop(writable=False, filterable=False),
             "createdAt": prop("datetime", "Created at", **RO, sortable=True),
             "updatedAt": prop("datetime", "Updated at", **RO, sortable=True),
         }

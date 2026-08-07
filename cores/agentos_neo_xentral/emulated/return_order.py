@@ -408,7 +408,7 @@ class ReturnAdapter(FacadeAdapterBase):
                     ),
                 },
             ),
-            "tags": tags_prop(writable=True),
+            "tags": tags_prop(writable=True, filterable=False),
             "customFields": prop("embedded", "Custom fields", section="general", properties={}),
             "createdAt": prop(
                 "datetime",

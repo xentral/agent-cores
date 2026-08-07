@@ -650,7 +650,7 @@ class SalesOrderAdapter(FacadeAdapterBase):
                     ),
                 },
             ),
-            "tags": tags_prop(writable=True),
+            "tags": tags_prop(writable=True, filterable=False),
             "discounts": prop(
                 "collection",
                 "Discounts",
