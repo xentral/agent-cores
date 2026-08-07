@@ -33,15 +33,10 @@ from xentral_entity_cores.agentos_neo_xentral import CORE
 # may compose that field outside `map_write` (salesOrder splits its line items
 # off before delegating, and a probe cannot see that from here).
 KNOWN_DEVIATIONS = {
-    # Sub-resources: written through their own endpoints, not the document body.
-    ("Customer", "addresses", "create"),
-    ("Customer", "addresses", "update"),
-    ("Customer", "contacts", "create"),
-    ("Customer", "contacts", "update"),
-    ("Supplier", "addresses", "create"),
-    ("Supplier", "addresses", "update"),
-    ("Supplier", "contacts", "create"),
-    ("Supplier", "contacts", "update"),
+    # Customer/Supplier `addresses` and `contacts` used to be here. They were not
+    # written through their own endpoints after all — no adapter carries them in
+    # `_WRITABLE` and no `_write` override composes them, so every write naming
+    # them answered 409. They are declared read-only now, which is what they are.
     # StockMovement composes its create outside map_write.
     ("StockMovement", "type", "create"),
     ("StockMovement", "product", "create"),
