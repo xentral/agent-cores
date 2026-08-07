@@ -138,8 +138,14 @@ class DeliveryNoteAdapter(FacadeAdapterBase):
         "references.customerOrderNumber": "customerOrderNumber",
         "tags": "tags",
     }
+    # Measured on mvp: upstream `status` accepts draft | released | sent |
+    # completed | cancelled, and REJECTS `shipped`/`delivered` with a 400 — those
+    # are model-only names. `shipped` mapped to `completed`, which reads back as
+    # `delivered` (see _STATUS), so asking for shipped returned the delivered
+    # ones and none of the 25 that actually were shipped. The read map already
+    # knew `sent` is the value; the filter map was never nudged along with it.
     filter_value_maps = {
-        "status": {"picking": "released", "shipped": "completed", "delivered": "completed"}
+        "status": {"picking": "released", "shipped": "sent", "delivered": "completed"}
     }
     sections = {
         "general": {"label": "General"},
