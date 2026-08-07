@@ -201,12 +201,24 @@ So the answer to *"I only have a customer number"* is: pass the customer and the
 **do not try to set payment method or terms yourself** — you cannot (P2b), and you do not
 need to.
 
-**The trap.** You cannot *read* those defaults back from the customer to pre-fill anything:
-`Customer.defaults.*` (except `language`) and every `Customer.finance.*` field read as
-`null` on this core — measured across the whole customer base, on `get` as well as `list`,
-including for customers whose orders demonstrably carry a payment method and terms. So
-`defaults`/`finance` are a read gap, not an empty tenant. Do not branch on them; create the
-order and read what it inherited.
+**The trap.** Most of what the customer decides is not readable back from the customer.
+The core maps only `defaults.currency`, `defaults.language`, `defaults.paymentMethod`,
+`finance.onHold` and `finance.debtorAccountNumber`. These eight are **hardcoded to `null`**
+in the adapter and will never carry a value:
+
+`defaults.paymentTerms.*`, `defaults.taxation`, `defaults.shippingMethod`,
+`defaults.priceList`, `defaults.partialShipping`, `finance.openAmount`,
+`finance.creditLimit`, `finance.dunningBlocked`.
+
+Five of them exist on the v3 customer resource and could be mapped —
+`paymentTerms.{paymentTargetDays, paymentTargetDiscount, paymentTargetDiscountDays}`,
+`taxation`, `fulfillment.shippingMethod`, `financials.creditLimit`. So this is a **core
+mapping gap, not an upstream limit**. Three genuinely are not on that resource:
+`priceList`, `partialShipping` and `openAmount` (the latter is a computed A/R figure, not
+a customer field).
+
+Either way, today: do not branch on `defaults`/`finance`. Create the order and read what
+it actually inherited.
 
 ### P1 — Angebot → Auftrag (quote to order)
 
@@ -267,16 +279,18 @@ The single most common support question, answered from the field flags:
 | `references.customerOrderNumber` | **yes** |
 | `note`, `texts.intro`/`outro`, `tags` | **yes** |
 | `customer` | **no** — settable on create only. A wrong customer means a new order |
-| `payment.method`, `payment.terms.*` (Zahlungsart, Zahlungskonditionen) | **no — not writable at all**, neither on create nor update. They come from the customer (P0). Changing them is a UI-only operation today |
+| `payment.method`, `payment.terms.*` (Zahlungsart, Zahlungskonditionen) | **not through this core** — `payment` is missing from the adapter's writable set. v3 *does* accept `financials.paymentMethod` and `financials.paymentTerms` on create and update, so this is a core gap, not an upstream limit |
 | `status` | **no** — read-only; it moves through `release` / `close` / `cancel` |
 | `fulfillmentPolicy.partialShipping`, `shipping.cost`, `totals.*` | **no** — read-only |
-| `references.externalId` / `externalNumber` (shop/marketplace) | **no** — filterable, but not writable |
+| `references.externalId` / `externalNumber` (shop/marketplace) | **not through this core** — filterable but not mapped for write. v3 takes `externalOrderId` / `externalOrderNumber` on create |
 
-**Write protection (Schreibschutz) does not exist on this core.** There is no
-`setWriteProtection` / `removeWriteProtection` action and no write-protection field on any
-entity — v3 `offers` has the endpoints, the core does not expose them. If a document is
-write-protected in Xentral, an update will simply be refused upstream and you cannot lift
-it from here.
+**Write protection (Schreibschutz) is not reachable through this core** — no action, no
+field, on any entity. That is a core gap and a wide one: v3 ships
+`setWriteProtection` / `removeWriteProtection` on **all eight** document types
+(salesOrders, offers, invoices, creditNotes, deliveryNotes, proformaInvoices,
+purchaseOrders, returnOrders), none deprecated. Until the core exposes them, a
+write-protected document simply refuses updates and you cannot lift the protection from
+here.
 
 ### P2c — Teilauftrag: ship what is available, keep the rest
 
@@ -312,9 +326,10 @@ xentral_erp_core action="records" key="SalesOrder" \
 ```
 
 `number` is `null` until the order is released — a draft has no document number yet, so
-never look a fresh order up by it. `channel` is neither filterable nor writable, so you
-cannot ask "all orders from Amazon" through the core; go by `references.externalNumber`
-patterns or a tag you set yourself (P7b).
+never look a fresh order up by it. `channel` is neither filterable nor writable through the
+core, so you cannot ask "all orders from Amazon" here; go by `references.externalNumber`
+patterns instead. (v3 does take `salesChannel: {id}` on create — another core mapping gap,
+not an upstream one.)
 
 ### P2e — Why is this order stuck? Read the traffic lights
 
@@ -493,7 +508,8 @@ Three things worth knowing:
   has to resolve a `tag_…` id.
 - **Do NOT plan on finding records by tag.** `tags` is *declared* filterable on the
   documents, and the filter is accepted (200) — but measured on a live order carrying the
-  tag, it returns **zero rows**, by title and by tag id alike. Only `Product` really
+  tag, it returns **zero rows** — with `equals` and with `contains`, by title and by tag
+  id alike. Only `Product` really
   filters by tag (the facade emulates it by scanning pages). So a tag is a reliable
   *marker on a record you already have*, not a reliable *index to find records by*. If a
   workflow must re-find what it marked, keep the ids itself, or filter on something that
@@ -663,14 +679,25 @@ reason. Design around them; do not discover them at runtime.
 | `Channel` | `syncOrders`, `syncStock`, `syncProducts`, `testConnection`, `pause`, `resume` | read-only |
 | `Batch`, `SerialNumber` | everything, including reading | not queryable at all |
 
-Three gaps are not actions at all and are easy to miss:
+**A different class of gap: THIS CORE, not the upstream.** Everything above is a genuine
+Xentral limit. The following four are things v3 can do and the core simply does not map —
+so the honest answer to a user is "not yet, and it is on our side", and the fix is a core
+change rather than an upstream wait:
 
-- **Write protection** — no `setWriteProtection`/`removeWriteProtection` anywhere (P2b).
-- **`SalesOrder.payment.method` / `payment.terms.*`** — not writable on create or update.
-  They are inherited from the customer and changeable only in the UI (P0, P2b).
-- **`Customer.defaults.*` and `Customer.finance.*`** — declared, but read as `null` across
-  the board. Credit limit, open amount, hold flag and the commercial defaults are not
-  readable through the core today (P0).
+| Not available here | But v3 has |
+|---|---|
+| Write protection, on every document | `setWriteProtection` / `removeWriteProtection` on all 8 document types |
+| `SalesOrder.payment.method`, `payment.terms.*` on write | `financials.paymentMethod`, `financials.paymentTerms` on create and update |
+| `SalesOrder.references.externalId` / `externalNumber` on write, `channel` at all | `externalOrderId`, `externalOrderNumber`, `salesChannel` on create |
+| `Customer.defaults.paymentTerms`/`taxation`/`shippingMethod`, `finance.creditLimit` on read | all four on the v3 customer resource |
+
+Genuinely absent upstream, for contrast: `Customer.defaults.priceList`,
+`defaults.partialShipping`, `finance.openAmount`.
+
+Also measured and worth knowing: the **`tags` filter on documents is declared, accepted
+with 200, and matches nothing** — with `equals` and with `contains`, by title and by tag
+id, against an order that demonstrably carries the tag. Only `Product` filters by tag for
+real (the facade emulates it by scanning pages). See P7b.
 
 If a needed capability is on this list, say so and stop rather than routing around the core
 with a raw API call — the gap is reported automatically so the core can gain the capability,
