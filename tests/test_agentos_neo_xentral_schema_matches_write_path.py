@@ -1,0 +1,138 @@
+"""Does every entity's schema agree with its own write path?
+
+Almost every defect found while rebuilding the workflow library had one shape: a
+declaration says A and the code beside it does B. `prices.purchase.source` was
+marked read-only and was honoured by `map_write`. `dunning` was advertised as
+writable and rejected outright. `Return.status` was filterable against a field it
+is not read from. Each was found by hand, days apart, by someone tripping over it.
+
+This asks all fifty at once, and it is deliberately narrow: for every field the
+schema declares writable, `map_write` must accept it AND put something in the
+upstream body — in the mode that declaration applies to.
+
+Two things the probe learned the hard way, both encoded here:
+
+* "not rejected" is NOT "written". `id`, `object` and `createdAt` sit in the
+  adapters' `_IGNORE` list and are dropped on purpose so a caller may echo a
+  record back. Comparing the body against an empty write is what separates them.
+* A `creatable`-only field is SUPPOSED to be refused on an update. Testing every
+  flag in one mode reported fifteen healthy fields as broken.
+"""
+
+from __future__ import annotations
+
+import pytest
+
+from xentral_entity_cores.agentos_neo_xentral import CORE
+
+# Deviations as measured today. Every entry is a field whose declaration and
+# write path disagree — either refused, or accepted and silently dropped.
+#
+# They are listed, not silenced: the point of the sweep is that no NEW one can
+# appear unnoticed. Each still needs confirming per entity, because an adapter
+# may compose that field outside `map_write` (salesOrder splits its line items
+# off before delegating, and a probe cannot see that from here).
+KNOWN_DEVIATIONS = {
+    # Sub-resources: written through their own endpoints, not the document body.
+    ("Customer", "addresses", "create"),
+    ("Customer", "addresses", "update"),
+    ("Customer", "contacts", "create"),
+    ("Customer", "contacts", "update"),
+    ("Supplier", "addresses", "create"),
+    ("Supplier", "addresses", "update"),
+    ("Supplier", "contacts", "create"),
+    ("Supplier", "contacts", "update"),
+    # StockMovement composes its create outside map_write.
+    ("StockMovement", "type", "create"),
+    ("StockMovement", "product", "create"),
+    ("StockMovement", "quantity", "create"),
+    ("StockMovement", "from", "create"),
+    ("StockMovement", "to", "create"),
+    ("StockMovement", "setQuantityTo", "create"),
+    ("StockMovement", "batch", "create"),
+    ("StockMovement", "source", "create"),
+    # Composed separately (price rows) or defaulted upstream.
+    ("PriceList", "minQuantity", "create"),
+    ("PurchasePrice", "minQuantity", "create"),
+    ("Product", "status", "create"),
+    ("Product", "project", "create"),
+}
+
+
+def _sample(spec: dict):
+    """A plausible value for a field, derived from its own declared type."""
+    kind = spec.get("type")
+    if kind == "select":
+        options = spec.get("options") or []
+        first = options[0] if options else None
+        return (first.get("value") if isinstance(first, dict) else first) or "x"
+    if kind == "boolean":
+        return True
+    if kind in ("integer", "decimal"):
+        return 1
+    if kind == "date":
+        return "2026-01-01"
+    if kind == "datetime":
+        return "2026-01-01T00:00:00+00:00"
+    if kind == "reference":
+        return {"id": "ref_1"}
+    if kind == "tag":
+        return ["x"]
+    if kind == "embedded":
+        nested = {
+            k: _sample(v) for k, v in (spec.get("properties") or {}).items() if isinstance(v, dict)
+        }
+        return nested or {"x": "y"}
+    if kind == "collection":
+        node = (spec.get("node") or {}).get("properties") or {}
+        return [{k: _sample(v) for k, v in node.items() if isinstance(v, dict)}]
+    return "x"
+
+
+def _cases():
+    for adapter in CORE.emulated_adapters():
+        ops = adapter.manifest.operations
+        for name, spec in (adapter.fields() or {}).items():
+            if not isinstance(spec, dict) or spec.get("access") == "readOnly":
+                continue
+            for flag, creating, op in (
+                ("creatable", True, "create"),
+                ("updatable", False, "update"),
+            ):
+                if spec.get(flag) and op in ops:
+                    yield adapter.manifest.key, adapter, name, spec, creating, op
+
+
+@pytest.mark.parametrize(
+    ("key", "adapter", "name", "spec", "creating", "op"),
+    [pytest.param(*c, id=f"{c[0]}.{c[2]}.{c[5]}") for c in _cases()],
+)
+def test_a_field_the_schema_calls_writable_reaches_the_upstream_body(
+    key, adapter, name, spec, creating, op
+):
+    """Declared writable must mean written — in the mode that declaration is for.
+
+    A field that is refused, or accepted and then dropped, is a schema that lies
+    to every reader: an agent planning a write believes it can set the field, and
+    the run reports success while the value never leaves the building.
+    """
+    if (key, name, op) in KNOWN_DEVIATIONS:
+        pytest.skip("known deviation — see KNOWN_DEVIATIONS")
+    baseline, _ = adapter.map_write({}, creating=creating)
+    body, rejected = adapter.map_write({name: _sample(spec)}, creating=creating)
+    assert name not in (rejected or set()), f"{key}.{name} is declared {op}-able but refused"
+    assert body != baseline, f"{key}.{name} is declared {op}-able but never reaches the body"
+
+
+def test_the_deviation_list_has_no_stale_entries():
+    """An entry that no longer deviates must be deleted, or the list turns into
+    a place where a fixed field is quietly still excused."""
+    stale = []
+    for key, adapter, name, spec, creating, op in _cases():
+        if (key, name, op) not in KNOWN_DEVIATIONS:
+            continue
+        baseline, _ = adapter.map_write({}, creating=creating)
+        body, rejected = adapter.map_write({name: _sample(spec)}, creating=creating)
+        if name not in (rejected or set()) and body != baseline:
+            stale.append((key, name, op))
+    assert not stale, f"no longer deviating — remove from KNOWN_DEVIATIONS: {stale}"
