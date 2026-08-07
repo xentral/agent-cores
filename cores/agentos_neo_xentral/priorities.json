@@ -19,25 +19,9 @@
       {
         "field": "references.externalNumber",
         "ops": [
-          "create",
-          "update"
-        ],
-        "reason": "Shop / marketplace order number — required to link an ERP order back to its source system."
-      },
-      {
-        "field": "references.externalNumber",
-        "ops": [
           "search"
         ],
         "reason": "Support finds shop orders by the SHOP number the customer has."
-      },
-      {
-        "field": "references.externalId",
-        "ops": [
-          "create",
-          "update"
-        ],
-        "reason": "Technical shop / marketplace order id — today only the shop importer sets it; integrations need to set it too."
       },
       {
         "field": "references.externalId",
@@ -54,52 +38,12 @@
         "reason": "Desired delivery date — core fulfilment field; one of the first things entered on an order. Not writable upstream today."
       },
       {
-        "field": "channel",
-        "ops": [
-          "create",
-          "update"
-        ],
-        "reason": "Sales channel the order belongs to — essential for multi-channel reporting/routing; not settable upstream today."
-      },
-      {
         "field": "shipping.method",
         "ops": [
           "create",
           "update"
         ],
         "reason": "Carrier / shipping method — core to fulfilment; must be selectable per order."
-      },
-      {
-        "field": "payment.method",
-        "ops": [
-          "create",
-          "update"
-        ],
-        "reason": "How the customer pays this order — central to order-to-cash, frequently overridden from the customer default."
-      },
-      {
-        "field": "payment.terms.dueDays",
-        "ops": [
-          "create",
-          "update"
-        ],
-        "reason": "Net payment term in days — drives due date and dunning; regularly set per order."
-      },
-      {
-        "field": "payment.terms.discountPercent",
-        "ops": [
-          "create",
-          "update"
-        ],
-        "reason": "Cash-discount (Skonto) percentage — standard DACH B2B, negotiated per order."
-      },
-      {
-        "field": "payment.terms.discountDays",
-        "ops": [
-          "create",
-          "update"
-        ],
-        "reason": "Cash-discount period in days — pairs with the discount; incomplete without it."
       },
       {
         "field": "customFields",
