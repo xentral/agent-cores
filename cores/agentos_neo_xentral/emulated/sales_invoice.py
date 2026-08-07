@@ -122,6 +122,17 @@ def _item_props() -> dict[str, Any]:
     }
 
 
+# Upstream `dunningSettings.level` vocabulary (UpdateInvoiceData, documents spec).
+_DUNNING_LEVELS = (
+    "paymentReminder1",
+    "reminder1",
+    "reminder2",
+    "reminder3",
+    "debtCollection",
+    "lossOfReceivables",
+)
+
+
 class SalesInvoiceAdapter(FacadeAdapterBase):
     native_search_fields = (
         "number",
@@ -241,7 +252,15 @@ class SalesInvoiceAdapter(FacadeAdapterBase):
                 "Register payment",
                 wish="The payments API is not public — no endpoint to register an incoming payment.",
             ),
-            self.action_def("remind", "Send reminder", wish="Dunning has no public API."),
+            self.action_def(
+                "remind",
+                "Send reminder",
+                wish=(
+                    "No endpoint SENDS a reminder. The dunning LEVEL is writable "
+                    "though - PATCH the invoice's dunning.level - so an escalation "
+                    "workflow can record the step even where the mail cannot be sent."
+                ),
+            ),
             self.action_def("writeOff", "Write off", wish="Write-offs have no public endpoint."),
             self.action_def(
                 "downloadPdf",
@@ -405,10 +424,24 @@ class SalesInvoiceAdapter(FacadeAdapterBase):
                 "Dunning",
                 section="dunning",
                 properties={
-                    "level": prop("integer", "Level", **RO),
-                    "blocked": prop("boolean", "Blocked"),
+                    # NOT an integer and NOT read-only, however much the previous
+                    # declaration said so. Upstream `dunningSettings.level` is a
+                    # string enum and sits in `UpdateInvoiceData`, so a PATCH can
+                    # set it — the read even passed the string straight through,
+                    # contradicting the declared type on every single record.
+                    "level": prop(
+                        "select",
+                        "Level",
+                        **_CU,
+                        options=[{"value": v, "label": v} for v in _DUNNING_LEVELS],
+                        description=(
+                            "Dunning level. Escalate by writing the next value; "
+                            "`blocked` suspends dunning for this invoice."
+                        ),
+                    ),
+                    "blocked": prop("boolean", "Blocked", **_CU),
                     "lastReminderAt": prop("datetime", "Last reminder", **RO),
-                    "note": prop("string", "Note"),
+                    "note": prop("string", "Note", **_CU),
                 },
             ),
             "eInvoice": prop(
@@ -657,6 +690,7 @@ class SalesInvoiceAdapter(FacadeAdapterBase):
         "dates",
         "tags",
         "references",
+        "dunning",
     }
     _IGNORE = {
         "object",
@@ -712,6 +746,16 @@ class SalesInvoiceAdapter(FacadeAdapterBase):
             v3["project"] = self._ref_id(model["project"])
         if "costCenter" in model:
             v3["costCenter"] = model["costCenter"]
+        dunning = model.get("dunning")
+        if isinstance(dunning, dict):
+            # Model note -> upstream comment; the other two keep their names.
+            settings = {
+                wire: dunning[key]
+                for key, wire in (("level", "level"), ("blocked", "blocked"), ("note", "comment"))
+                if key in dunning
+            }
+            if settings:
+                v3["dunningSettings"] = settings
         if "currency" in model:
             v3.setdefault("financials", {})["currency"] = model["currency"]
         if "taxation" in model:
