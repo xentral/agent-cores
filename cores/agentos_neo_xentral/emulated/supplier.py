@@ -441,11 +441,17 @@ class SupplierAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
             k: a.get(src)
             for k, src in (
                 ("name", "name"),
+                ("contactPerson", "contactPerson"),
                 ("street", "street"),
                 ("zipCode", "zip"),
                 ("city", "city"),
                 ("state", "state"),
                 ("country", "country"),
+                ("gln", "gln"),
+                # Also settable as flat `email`/`phone` on the record; the
+                # address row wins, because it is the more specific statement.
+                ("email", "email"),
+                ("phone", "phone"),
             )
             if a.get(src) is not None
         }

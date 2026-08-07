@@ -85,6 +85,25 @@ def contacts_from_include(r: dict[str, Any]) -> list[dict[str, Any]] | None:
     return [contact_from_v3(c) for c in rows if isinstance(c, dict)]
 
 
+# The address row's content fields, as the read side emits them (`id`, `type`,
+# `label` and `isDefault` are structural). The main row is routed onto the record
+# as `primaryAddress`; upstream accepts all of these and eight more the model
+# does not carry yet (type, title, salutation, department, subDepartment,
+# addressSupplement, mobile, fax).
+_MAIN_ADDRESS_KEYS = (
+    "name",
+    "contactPerson",
+    "street",
+    "zip",
+    "city",
+    "state",
+    "country",
+    "gln",
+    "email",
+    "phone",
+)
+
+
 def addresses_from_include(
     r: dict[str, Any], singletons: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
@@ -628,9 +647,15 @@ class PartnerSubresourcesMixin:
                             None,
                         )
                         if isinstance(main, dict):
+                            # Every content field the READ side puts on this row.
+                            # It used to forward six of ten, so `contactPerson`,
+                            # `gln`, `email` and `phone` were dropped for the main
+                            # address while the billing row kept them — a
+                            # read-edit-write on the default row silently lost
+                            # them. Upstream `primaryAddress` accepts all four.
                             payload["primaryAddress"] = {
                                 k: main.get(k)
-                                for k in ("name", "street", "zip", "city", "state", "country")
+                                for k in _MAIN_ADDRESS_KEYS
                                 if main.get(k) is not None
                             }
                         collections["addresses"] = [a for a in addrs if a is not main]
