@@ -151,6 +151,9 @@ class DeliveryNoteAdapter(FacadeAdapterBase):
     }
 
     action_map = {
+        # v3 exposes both on every business document type.
+        "setWriteProtection": ("PATCH", "setWriteProtection"),
+        "removeWriteProtection": ("PATCH", "removeWriteProtection"),
         # Release / freigeben from draft (v3 release) — uniform across documents.
         "release": ("PATCH", "release"),
         "markDelivered": ("PATCH", "complete"),
@@ -391,6 +394,11 @@ class DeliveryNoteAdapter(FacadeAdapterBase):
                 },
             ),
             "tags": tags_prop(writable=True, filterable=False),
+            # v3 exposes it on every business document (BusinessDocumentResource:
+            # `writeProtection => isWriteProtected()`) and filters on it. Flip it with
+            # the setWriteProtection / removeWriteProtection actions — a protected
+            # document refuses every update until it is released.
+            "writeProtection": prop("boolean", "Write protection", **RO, filterable=True),
             "customFields": prop("embedded", "Custom fields", section="general", properties={}),
             "createdAt": prop(
                 "datetime",
@@ -503,6 +511,7 @@ class DeliveryNoteAdapter(FacadeAdapterBase):
                 "returns": [],
             },
             "tags": map_tags(r.get("tags")),
+            "writeProtection": r.get("writeProtection"),
             "customFields": r.get("customFields") or {},
             "createdAt": r.get("createdAt"),
             "updatedAt": r.get("updatedAt"),

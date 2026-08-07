@@ -284,13 +284,21 @@ The single most common support question, answered from the field flags:
 | `fulfillmentPolicy.partialShipping`, `shipping.cost`, `totals.*` | **no** — read-only |
 | `references.externalId` / `externalNumber` (shop/marketplace) | **not through this core** — filterable but not mapped for write. v3 takes `externalOrderId` / `externalOrderNumber` on create |
 
-**Write protection (Schreibschutz) is not reachable through this core** — no action, no
-field, on any entity. That is a core gap and a wide one: v3 ships
-`setWriteProtection` / `removeWriteProtection` on **all eight** document types
-(salesOrders, offers, invoices, creditNotes, deliveryNotes, proformaInvoices,
-purchaseOrders, returnOrders), none deprecated. Until the core exposes them, a
-write-protected document simply refuses updates and you cannot lift the protection from
-here.
+**Schreibschutz — read it, set it, lift it.** `writeProtection` is a read-only boolean on
+all seven document types and **is filterable**, so "all protected invoices" is a normal
+query. Flip it with two actions:
+
+```
+xentral_erp_core action="run" key="SalesOrder" handle="so_123" op="setWriteProtection"
+xentral_erp_core action="run" key="SalesOrder" handle="so_123" op="removeWriteProtection"
+```
+
+A protected document answers **409 `write-protected`** on update. **Two fields still get
+through**: the internal note (`note`) and the status. That is upstream's
+`writeProtectionBypassFields`, and it is a trap worth knowing — a successful `note` write
+proves nothing about whether the document is protected. Read `writeProtection` for that.
+Both actions are available on `Quote`, `SalesOrder`, `SalesInvoice`, `DeliveryNote`,
+`CreditNote`, `Return` and `PurchaseOrder`.
 
 ### P2c — Teilauftrag: ship what is available, keep the rest
 
@@ -684,20 +692,24 @@ Xentral limit. The following four are things v3 can do and the core simply does 
 so the honest answer to a user is "not yet, and it is on our side", and the fix is a core
 change rather than an upstream wait:
 
-| Not available here | But v3 has |
-|---|---|
-| Write protection, on every document | `setWriteProtection` / `removeWriteProtection` on all 8 document types |
-| `SalesOrder.payment.method`, `payment.terms.*` on write | `financials.paymentMethod`, `financials.paymentTerms` on create and update |
-| `SalesOrder.references.externalId` / `externalNumber` on write, `channel` at all | `externalOrderId`, `externalOrderNumber`, `salesChannel` on create |
-| `Customer.defaults.paymentTerms`/`taxation`/`shippingMethod`, `finance.creditLimit` on read | all four on the v3 customer resource |
+Still missing here, though v3 offers it: `Customer.defaults.priceList` and
+`defaults.partialShipping` have no slot on the v3 customer resource either, and
+`finance.openAmount` is a computed A/R figure rather than a customer field — those three
+are genuine upstream gaps, not ours.
 
-Genuinely absent upstream, for contrast: `Customer.defaults.priceList`,
-`defaults.partialShipping`, `finance.openAmount`.
+**Recently closed**, so do not trust an older copy of this file: write protection
+(`setWriteProtection` / `removeWriteProtection` on all seven documents, P2b), the sales
+order's `payment.method` / `payment.terms.*`, its shop references and `channel` (P2b), and
+`Customer.defaults.paymentTerms` / `taxation` / `shippingMethod` / `finance.creditLimit`
+(P0).
 
-Also measured and worth knowing: the **`tags` filter on documents is declared, accepted
-with 200, and matches nothing** — with `equals` and with `contains`, by title and by tag
-id, against an order that demonstrably carries the tag. Only `Product` filters by tag for
-real (the facade emulates it by scanning pages). See P7b.
+Also measured and worth knowing: the **`tags` filter on documents is declared upstream,
+accepted with 200, and matches nothing** — `equals` and `contains`, by title and by tag id,
+against an order that demonstrably carries the tag; five combinations, zero rows. The
+Xentral source looks correct end to end (`QueryFilter::string('tags', 'tags.title')`, the
+`label_type.title` column, and a morph constraint on `reference_table`), so this is an
+upstream defect rather than a mapping gap. The documents therefore no longer declare the
+filter at all. Only `Product` filters by tag for real (the facade emulates it). See P7b.
 
 If a needed capability is on this list, say so and stop rather than routing around the core
 with a raw API call — the gap is reported automatically so the core can gain the capability,
@@ -732,13 +744,13 @@ It doubles as the compact index: if you only need "what can I call on X", read t
 
 ```yaml
 executable:
-  Quote: [send, downloadPdf, addTag, removeTag, release, cancel]
-  SalesOrder: [createSalesInvoice, split, splitOrder, downloadPdf, sendConfirmation, addTag, removeTag, release, close, cancel, dispatch]
-  SalesInvoice: [send, downloadPdf, addTag, removeTag, release, cancel]
-  DeliveryNote: [createReturn, createSalesInvoice, downloadPdf, addTag, removeTag, release, markDelivered, cancel]
-  CreditNote: [send, downloadPdf, addTag, removeTag, release]
-  Return: [createFromDeliveryNote, createCreditNote, downloadPdf, addTag, removeTag, release, settle, cancel]
-  PurchaseOrder: [send, downloadPdf, addTag, removeTag, release, close, cancel]
+  Quote: [send, downloadPdf, addTag, removeTag, release, cancel, setWriteProtection, removeWriteProtection]
+  SalesOrder: [createSalesInvoice, split, splitOrder, downloadPdf, sendConfirmation, addTag, removeTag, release, close, cancel, dispatch, setWriteProtection, removeWriteProtection]
+  SalesInvoice: [send, downloadPdf, addTag, removeTag, release, cancel, setWriteProtection, removeWriteProtection]
+  DeliveryNote: [createReturn, createSalesInvoice, downloadPdf, addTag, removeTag, release, markDelivered, cancel, setWriteProtection, removeWriteProtection]
+  CreditNote: [send, downloadPdf, addTag, removeTag, release, setWriteProtection, removeWriteProtection]
+  Return: [createFromDeliveryNote, createCreditNote, downloadPdf, addTag, removeTag, release, settle, cancel, setWriteProtection, removeWriteProtection]
+  PurchaseOrder: [send, downloadPdf, addTag, removeTag, release, close, cancel, setWriteProtection, removeWriteProtection]
   Customer: [addTag, removeTag]
   Supplier: [addTag, removeTag]
   Product: [activate, deactivate]
@@ -839,7 +851,7 @@ filterable:
   # builder trusts. Only Product's tag filter is emulated and real.
   SalesInvoice: [status, customer, payment.status, documents.salesOrder]
   DeliveryNote: [status, customer, documents.salesOrder]
-  SalesOrder: [status, customer, references.customerOrderNumber, references.externalNumber, references.externalId, number]
+  SalesOrder: [status, customer, references.customerOrderNumber, references.externalNumber, references.externalId, number, writeProtection]
   Customer: [number, name, email, addresses.zip, addresses.city]
   Return: [status, customer, dates.requested, documents.salesOrder]
   PurchaseOrder: [status, supplier]
@@ -855,6 +867,8 @@ notFilterable:
   SalesInvoice: [payment.dueDate]
   Customer: [status]
 fields:
+  - SalesOrder.writeProtection
+  - SalesInvoice.writeProtection
   - SalesOrder.shipping.method
   - SalesOrder.shipping.status
   - SalesOrder.items.fulfillment.shipped

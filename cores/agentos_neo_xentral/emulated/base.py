@@ -879,6 +879,40 @@ class FacadeAdapterBase:
                     "command": tag_command,
                 },
             ]
+        # Declaring the `writeProtection` field opts an entity into the two v3
+        # actions that flip it — the same "the field is the switch" convention the
+        # tag actions use above. v3 ships them on every business document type
+        # (setWriteProtection / removeWriteProtection); the routes live in each
+        # adapter's action_map, the catalogue text stays here so the wording cannot
+        # drift across seven documents.
+        if isinstance(properties.get("writeProtection"), dict):
+            wp_path = f"/api/entity/{self.manifest.key}/actions"
+            actions += [
+                {
+                    "key": "setWriteProtection",
+                    "label": "Set write protection",
+                    "bulk": False,
+                    "method": "PATCH",
+                    "path": f"{wp_path}/setWriteProtection",
+                    "destructive": False,
+                    "description": (
+                        "Protect this document against changes: an update then answers "
+                        "409 write-protected. TWO fields still go through — the internal "
+                        "note and the status (upstream's writeProtectionBypassFields), so "
+                        "a successful note write is NOT evidence the document is "
+                        "unprotected. Read the `writeProtection` field for that."
+                    ),
+                },
+                {
+                    "key": "removeWriteProtection",
+                    "label": "Remove write protection",
+                    "bulk": False,
+                    "method": "PATCH",
+                    "path": f"{wp_path}/removeWriteProtection",
+                    "destructive": False,
+                    "description": "Lift the write protection so the document can be edited again.",
+                },
+            ]
         if actions:
             self._apply_verified_capabilities(actions, "actions", "actionsNotes")
             meta["actions"] = actions
