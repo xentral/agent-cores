@@ -23,15 +23,16 @@ from xentral_entity_cores.agentos_neo_xentral import CORE
 # Model values that share an upstream value, measured today. A filter on any one
 # of them returns all of them.
 #
-# DeliveryNote and Return are fixed on `fix/status-filter-mapping` (#89), where
-# upstream turned out to have distinct values. The other three are unexamined —
-# each needs the same live check before it can be called a bug or a limit.
+# DeliveryNote and Return used to be here and are NOT any more: #89 fixed them
+# once upstream turned out to have distinct values. That is the list working —
+# the sweep noticed they had stopped deviating before a human did.
+#
+# The three below are unexamined. Each needs the same live check on the upstream
+# vocabulary before it can be called a bug or an inherent limit.
 KNOWN_COLLISIONS = {
     ("Quote", "status", "completed"): ("accepted", "expired"),
     ("Quote", "status", "cancelled"): ("declined",),
     ("SalesOrder", "status", "completed"): ("closed", "fulfilled"),
-    ("DeliveryNote", "status", "completed"): ("delivered", "shipped"),
-    ("Return", "status", "completed"): ("checked", "settled"),
     ("PurchaseOrder", "status", "completed"): ("closed", "received"),
 }
 
