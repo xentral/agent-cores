@@ -17,7 +17,7 @@ executable:
   DeliveryNote: [createReturn, createSalesInvoice, downloadPdf, addTag, removeTag, release, markDelivered, cancel, setWriteProtection, removeWriteProtection]
   CreditNote: [send, downloadPdf, addTag, removeTag, release, setWriteProtection, removeWriteProtection]
   Return: [createFromDeliveryNote, createCreditNote, downloadPdf, addTag, removeTag, release, settle, cancel, setWriteProtection, removeWriteProtection]
-  PurchaseOrder: [send, downloadPdf, addTag, removeTag, release, close, cancel, setWriteProtection, removeWriteProtection]
+  PurchaseOrder: [send, downloadPdf, addTag, removeTag, release, close, cancel, setWriteProtection, removeWriteProtection, createGoodsReceipt]
   Customer: [addTag, removeTag]
   Supplier: [addTag, removeTag]
   Product: [activate, deactivate]
@@ -31,7 +31,7 @@ wishes:
   DeliveryNote: [createShipment, printLabels, startPicking]
   CreditNote: [registerRefund, offsetAgainstInvoice, cancel]
   Return: [sendReturnLabel, createReplacementOrder, restock, receive, check]
-  PurchaseOrder: [recordConfirmation, requestConfirmation, createGoodsReceipt, createPurchaseInvoice, updateDeliveryDates]
+  PurchaseOrder: [recordConfirmation, requestConfirmation, createPurchaseInvoice, updateDeliveryDates]
   GoodsReceipt: [post, cancel, proposeStorageLocations, printProductLabels, printBatchLabels]
   PurchaseInvoice: [approve, reject, rematch, registerPayment, schedulePayment, attachFile]
   Customer: [archive, reactivate, setHold, releaseHold, mergeInto, runCreditCheck, statement]
@@ -173,6 +173,7 @@ fields:
   - Customer.addresses.isDefault
   - Customer.contacts.salutation
 commands:
+  PurchaseOrder.createGoodsReceipt: [date, items]
   SalesOrder.splitOrder: [items]
   SalesOrder.addTag: [title]
   SalesOrder.removeTag: [title]

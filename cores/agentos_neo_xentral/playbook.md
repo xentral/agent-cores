@@ -70,8 +70,8 @@ quo_      so_          │    dn_              ship_                          po
 | `DeliveryNote` | Lieferschein | `release`, `markDelivered`, `cancel`, `createReturn`, `createSalesInvoice` |
 | `CreditNote` | Gutschrift | `release`, `send` — **no cancel once released** |
 | `Return` | Retoure | `createFromDeliveryNote`, `createCreditNote`, `release`, `settle`, `cancel` |
-| `PurchaseOrder` | Bestellung | `release`, `close`, `cancel`, `send` |
-| `GoodsReceipt` / `PurchaseInvoice` | Wareneingang / Eingangsrechnung | **nothing** — read-only resp. CRUD with zero actions |
+| `PurchaseOrder` | Bestellung | `release`, `close`, `cancel`, `send`, **`createGoodsReceipt`** |
+| `GoodsReceipt` / `PurchaseInvoice` | Wareneingang / Eingangsrechnung | **nothing** — booked from the order, see §3; `PurchaseInvoice` has no action at all |
 | `StorageLocation` | Lagerplatz | `putaway`, `stockRemoval`, `stockTransfer`, `inventoryCount`, `stockAdjustment` |
 | `Product` | Artikel | `activate`, `deactivate` |
 | `Printer` / `EmailAccount` | — | `printDocument` / `sendEmail` |
@@ -149,8 +149,28 @@ then acts outside the ERP: `EmailAccount.sendEmail`, a `Task`, a `Correspondence
 ### Purchasing (Einkauf)
 
 `PurchaseOrder` create → `release` → `send`; write `confirmation.*` with a normal `update`.
-Then it stops: `GoodsReceipt` is read-only and `PurchaseInvoice` has no executable action at
-all, so there is no goods-receipt posting and no invoice approval to build on today.
+
+**Wareneingang buchen** happens on the order, not on the receipt — there is no standalone
+create and no posting step, because writing the document *is* the booking:
+
+```
+run key=PurchaseOrder handle="po_185" op="createGoodsReceipt" command={
+  "date": "2026-08-07",
+  "items": [{"product": "prd_1", "quantity": 5, "orderItem": "150",
+             "putaways": [{"quantity": 5, "warehouse": "wh_20", "storageLocation": "loc_163",
+                           "batch": "L-42", "bestBefore": "2027-01-31"}]}]}
+```
+
+`date` is required (upstream rejects a receipt without one, whatever the spec says), and
+there is **no `dryRun`** — unlike the `StorageLocation` actions, the first real call moves
+stock, and stock movements cannot be undone, only counter-booked. `orderItem` links the
+line so `items[].fulfillment.received` counts up; partial receipts are normal. `putaways`
+is the only place in this core where **batch, best-before and serial numbers can be
+captured** at all. Measured: 5 of 7 booked → `StockLevel` shows 5 on the location and the
+order's `received` goes 0 → 5.
+
+`PurchaseInvoice` still has no executable action, so there is no invoice approval to build
+on today.
 
 ### Warehouse & shipping (Lager, Versand)
 
@@ -207,7 +227,8 @@ endpoint upstream, refused at runtime with the reason. The ones that change a de
 | `SalesOrder.createDeliveryNote`, `addHold`/`releaseHold` | `dispatch`; model blocks outside the ERP |
 | `SalesInvoice.registerPayment`, `remind`, `writeOff` | read status, act by mail/task |
 | every carrier-label action | the `shiplabel` node |
-| `GoodsReceipt.post`, `PurchaseInvoice.approve`/`reject` | not possible — no receipt posting, no invoice approval |
+| `GoodsReceipt.post`, `cancel` | posting is not a transition — `PurchaseOrder.createGoodsReceipt` books it (§3). No storno |
+| `PurchaseInvoice.approve`/`reject` | not possible today |
 | `Customer.archive`, `setHold`, `mergeInto`, `runCreditCheck` | tags for state you control |
 | `Product.adjustStock` | the `StorageLocation` actions |
 | `PriceList.activate`, `bulkAdjust`, `duplicate` | create a new entry with its own `validFrom` |

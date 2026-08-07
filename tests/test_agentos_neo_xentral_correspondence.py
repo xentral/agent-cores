@@ -95,7 +95,9 @@ def test_list_translates_paging_and_strips_sort():
 
 def test_read_by_speaking_id():
     # BF fetches by uuid — the speaking id encodes it (F3, like Tag).
-    up = Upstream({"/api/entity/correspondence/0195cb5b-c928-7bf9-a973-9ce799f95672": {"data": _ROW}})
+    up = Upstream(
+        {"/api/entity/correspondence/0195cb5b-c928-7bf9-a973-9ce799f95672": {"data": _ROW}}
+    )
     resp = _run(up, handle="cor_0195cb5b-c928-7bf9-a973-9ce799f95672")
     assert json.loads(resp.content)["data"]["subject"] == "Reklamation"
 
