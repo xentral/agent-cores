@@ -7,10 +7,14 @@ while it is true, and it is exactly the kind of file that rots quietly — the c
 gains an action, an upstream gap closes, a status is renamed, and the document goes
 on confidently instructing people to build the wrong thing.
 
-So a playbook ends in a machine-checkable claims block (``## §9``), and this test is
-what makes the prose trustworthy: every claim is replayed against the core's own
-``metadata()``. It discovers playbooks rather than naming one, so a second core
-gains the same guarantee by dropping the file in.
+So a playbook ships a machine-checkable ``playbook.claims.yaml`` beside it, and this
+test is what makes the prose trustworthy: every claim is replayed against the core's
+own ``metadata()``. It discovers playbooks rather than naming one, so a second core
+gains the same guarantee by dropping the files in.
+
+The claims sit in their own file on purpose. They were a fenced block at the end of
+the playbook until that block reached ~9 KB — machine-only content bloating a
+document whose entire value is being short enough to read in one pass.
 
 The rules that carry the most weight:
 
@@ -30,7 +34,6 @@ The rules that carry the most weight:
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 import pytest
@@ -38,6 +41,7 @@ import yaml
 
 CORES_DIR = Path(__file__).resolve().parent.parent / "cores"
 PLAYBOOK = "playbook.md"
+CLAIMS = "playbook.claims.yaml"
 
 # Sections of the claims block and what each asserts. Anything else is a typo,
 # not a new rule — see test_no_unknown_claim_sections.
@@ -74,13 +78,18 @@ def _walk(props, prefix=""):
 
 
 def _claims(core_id: str) -> dict:
-    text = (CORES_DIR / core_id / PLAYBOOK).read_text("utf-8")
-    blocks = re.findall(r"```yaml\n(.*?)```", text, flags=re.S)
-    if not blocks:
+    """The claims live in a sibling `playbook.claims.yaml`, not inside the prose.
+
+    They used to be a fenced block at the end of the playbook, which put ~9 KB of
+    machine-only content into a document whose whole point is being short enough to
+    be read in one pass. A core may ship prose without claims (nothing to check);
+    claims without a playbook are a packaging accident and fail loudly.
+    """
+    path = CORES_DIR / core_id / CLAIMS
+    if not path.is_file():
         return {}
-    assert len(blocks) == 1, f"{core_id}: expected one ```yaml claims block, found {len(blocks)}"
-    parsed = yaml.safe_load(blocks[0])
-    assert isinstance(parsed, dict) and parsed, f"{core_id}: claims block must be a mapping"
+    parsed = yaml.safe_load(path.read_text("utf-8"))
+    assert isinstance(parsed, dict) and parsed, f"{core_id}: {CLAIMS} must be a mapping"
     return parsed
 
 
@@ -126,16 +135,14 @@ def _entity(core: dict, key: str) -> dict:
 # `help` returns the generic entities guide (~9 KB) plus this file, in one response,
 # on a call an agent makes early and once. A playbook that grows into a reference
 # manual stops being read at all — so the budget is a design constraint, not a
-# formality. Raise it deliberately, with a reason, never to make a commit pass.
+# formality.
 #
-# Moved once, from 48k, when the Neo playbook gained the back-office recipes a real
-# clerk needs: find the customer, create an order that inherits from them, what is
-# still changeable afterwards, partial orders, which number finds which document,
-# traffic lights. That is the coverage the file exists for, not drift — and the
-# alternative was cutting the filter contract or the status vocabularies, which are
-# exactly what stop a workflow from silently matching nothing. Treat the recipes as
-# the ceiling: next time, cut.
-PLAYBOOK_BUDGET_BYTES = 56_000
+# It went 48k → 56k once while the recipes were being written, then back to 18k when
+# the machine-only claims moved out to playbook.claims.yaml and the prose was
+# rewritten to the 80 % an e-commerce back office actually does. Roughly three A4
+# pages. That is the target shape: everything past it belongs in `describe`, which
+# is live and always right, or in the claims file, which nobody reads.
+PLAYBOOK_BUDGET_BYTES = 18_000
 
 
 def test_playbook_stays_within_its_budget(core):
@@ -157,7 +164,7 @@ def test_a_dynamic_roster_core_makes_no_claims(core):
         return
     assert not core["claims"], (
         f"{core['id']}: this core resolves its roster live (adapters_factory), so nothing "
-        f"here can check a claim about it — drop the claims block and keep the prose general"
+        f"here can check a claim about it — drop {CLAIMS} and keep the prose general"
     )
 
 
