@@ -109,12 +109,17 @@ class QuoteAdapter(FacadeAdapterBase):
         "dates.expectedOrderDate": "plannedOrderDate",
         "tags": "tags",
     }
+    # `declined` and `expired` are upstream values in their own right — measured
+    # on mvp, a filter on `declined` answers 200 and returns a record that reads
+    # back as `declined`. Remapping them sent `declined` to `cancelled` and
+    # `expired` to `completed`, so both returned documents in a state the caller
+    # had not asked for: `expired` collided with `accepted` on `completed`, and
+    # `declined` answered with the cancelled ones. The read map knows both
+    # values; only the filter map was bending them.
     filter_value_maps = {
         "status": {
             "sent": "released",
             "accepted": "completed",
-            "declined": "cancelled",
-            "expired": "completed",
         }
     }
     sections = {
