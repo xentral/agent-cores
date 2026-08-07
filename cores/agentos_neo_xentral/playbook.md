@@ -514,15 +514,13 @@ Three things worth knowing:
 
 - **Address by title, not by id.** `removeTag` also takes the title, so a workflow never
   has to resolve a `tag_…` id.
-- **Do NOT plan on finding records by tag.** `tags` is *declared* filterable on the
-  documents, and the filter is accepted (200) — but measured on a live order carrying the
-  tag, it returns **zero rows** — with `equals` and with `contains`, by title and by tag
-  id alike. Only `Product` really
-  filters by tag (the facade emulates it by scanning pages). So a tag is a reliable
-  *marker on a record you already have*, not a reliable *index to find records by*. If a
-  workflow must re-find what it marked, keep the ids itself, or filter on something that
-  demonstrably works (`status`, `customer`, `documents.salesOrder`) and check the tag per
-  record.
+- **Finding records by tag works — but mind the draft trap.** `filters=[{"key": "tags",
+  "op": "equals", "value": "express"}]` returns the tagged records (measured). What it does
+  *not* return is **drafts**, because the v3 list endpoints apply an invisible default
+  status filter (§6). A workflow that tags a fresh order and then looks for it by tag finds
+  nothing — not because the tag filter is broken, but because the order has not been
+  released yet. Add `{"key": "status", "op": "equals", "value": "draft"}` when that is what
+  you mean.
 - **The `tags` field is writable on create and update too.** `addTag`/`removeTag` change
   one entry; writing the `tags` field on an `update` replaces the set. Prefer the actions
   in an automation — a blind `update` silently drops tags someone else added.
@@ -635,6 +633,16 @@ are accepted — anything else is refused by the core.
 
 **Traps.**
 
+- **Drafts are invisible unless you ask for them.** This is the one that costs the most
+  time, because nothing signals it. The v3 list endpoints apply a **default status filter**:
+  without an explicit `status` filter you get `released`, `completed`, `cancelled` and
+  `sent` — **drafts are silently excluded**. Measured on one customer: 10 rows unfiltered,
+  and 4 more that only appear with `{"key": "status", "op": "equals", "value": "draft"}`.
+  So *every* count, every "did my workflow's order land", every reconciliation over a list
+  is quietly missing the drafts. A freshly created order is a draft until `release`, and
+  its `number` is null too — so it is invisible to a list AND unfindable by document
+  number. Fetch it by the id you got from `create`, or filter `status = draft`.
+
 - **The datetime asymmetry.** Partner endpoints (`Customer`, `Supplier`) expect `Y-m-d`;
   document endpoints expect a full timestamp. Neither accepts the format it emits. The core
   bridges this per entity, so pass what the *entity* wants and never feed a value straight
@@ -703,13 +711,12 @@ order's `payment.method` / `payment.terms.*`, its shop references and `channel` 
 `Customer.defaults.paymentTerms` / `taxation` / `shippingMethod` / `finance.creditLimit`
 (P0).
 
-Also measured and worth knowing: the **`tags` filter on documents is declared upstream,
-accepted with 200, and matches nothing** — `equals` and `contains`, by title and by tag id,
-against an order that demonstrably carries the tag; five combinations, zero rows. The
-Xentral source looks correct end to end (`QueryFilter::string('tags', 'tags.title')`, the
-`label_type.title` column, and a morph constraint on `reference_table`), so this is an
-upstream defect rather than a mapping gap. The documents therefore no longer declare the
-filter at all. Only `Product` filters by tag for real (the facade emulates it). See P7b.
+One thing that is *not* a gap, though it looks like one until you know why: filtering
+documents by `tags` works. An earlier round of this playbook claimed it was broken, after
+five filter combinations returned zero rows against an order that demonstrably carried the
+tag. The order was a **draft**, and the v3 list endpoints hide drafts by default (§6). Same
+cause, one symptom, and it can masquerade as any filter being broken — check the default
+status filter before concluding that a query is at fault.
 
 If a needed capability is on this list, say so and stop rather than routing around the core
 with a raw API call — the gap is reported automatically so the core can gain the capability,
@@ -846,12 +853,9 @@ requiredForCreate:
   CustomerGroup: [name]
   ProductCategory: [name]
 filterable:
-  # NOTE: `tags` is declared filterable on every document but measurably returns
-  # nothing (P7b) — deliberately NOT claimed here, because this block is what a
-  # builder trusts. Only Product's tag filter is emulated and real.
-  SalesInvoice: [status, customer, payment.status, documents.salesOrder]
+  SalesInvoice: [status, customer, payment.status, documents.salesOrder, tags]
   DeliveryNote: [status, customer, documents.salesOrder]
-  SalesOrder: [status, customer, references.customerOrderNumber, references.externalNumber, references.externalId, number, writeProtection]
+  SalesOrder: [status, customer, references.customerOrderNumber, references.externalNumber, references.externalId, number, writeProtection, tags]
   Customer: [number, name, email, addresses.zip, addresses.city]
   Return: [status, customer, dates.requested, documents.salesOrder]
   PurchaseOrder: [status, supplier]

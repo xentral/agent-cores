@@ -327,12 +327,10 @@ def tags_prop(*, writable: bool = False, filterable: bool = True) -> dict[str, A
     write, so the string form round-trips; color/group live on the Tag entity."""
     # Not every upstream list accepts a tag filter — v3 products rejects it
     # outright, so the entity that cannot filter says so instead of promising it.
-    # The documents are worse than a rejection: v3 DECLARES a `tags` filter (and a
-    # second `tags.id` key), accepts it with 200, and matches nothing. Measured on
-    # mvp against a sales order carrying the tag — title and raw id, `equals` and
-    # `contains`, both keys: zero rows every time. A filter that silently returns an
-    # empty set reads like "no such records", so the documents stop advertising it
-    # until upstream delivers. Product keeps its own emulated tag search.
+    # The documents DO filter by tag (measured on mvp: one tagged sales order in,
+    # one row out). An earlier probe read as "declared but broken" only because the
+    # tagged order was a DRAFT, and the v3 list endpoints exclude drafts unless the
+    # status filter is set explicitly — see the default-status trap in the playbook.
     flags: dict[str, Any] = {"filterable": True} if filterable else {}
     if writable:
         flags["creatable"] = True

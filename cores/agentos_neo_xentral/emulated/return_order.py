@@ -411,7 +411,7 @@ class ReturnAdapter(FacadeAdapterBase):
                     ),
                 },
             ),
-            "tags": tags_prop(writable=True, filterable=False),
+            "tags": tags_prop(writable=True),
             # v3 exposes it on every business document (BusinessDocumentResource:
             # `writeProtection => isWriteProtected()`) and filters on it. Flip it with
             # the setWriteProtection / removeWriteProtection actions — a protected
