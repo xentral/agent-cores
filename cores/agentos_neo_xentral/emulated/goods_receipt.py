@@ -69,16 +69,13 @@ class GoodsReceiptAdapter(FacadeAdapterBase):
                         "post",
                         "Post",
                         wish=(
-                            "There is no posting TRANSITION: a goods receipt is booked at "
-                            "creation — PurchaseOrder.createGoodsReceipt (or the return's "
-                            "equivalent) moves the stock as it writes the document. Nothing "
-                            "to wait for here."
+                            True
                         ),
                     ),
                     self.step_cmd(
                         "cancel",
                         "Cancel",
-                        wish="Goods-receipt storno is a known upstream gap (05 #9).",
+                        wish=True,
                     ),
                 ],
             }
@@ -89,17 +86,17 @@ class GoodsReceiptAdapter(FacadeAdapterBase):
             self.action_def(
                 "proposeStorageLocations",
                 "Propose storage locations",
-                wish="Putaway proposals have no public endpoint.",
+                wish=True,
             ),
             self.action_def(
                 "printProductLabels",
                 "Print product labels",
-                wish="Per-product label print exists (v1 products/{id}/printLabel); a per-receipt batch print is not composed.",
+                wish=True,
             ),
             self.action_def(
                 "printBatchLabels",
                 "Print batch labels",
-                wish="Batch labels have no public endpoint.",
+                wish=True,
             ),
         ]
 

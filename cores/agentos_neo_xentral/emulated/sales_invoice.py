@@ -250,18 +250,15 @@ class SalesInvoiceAdapter(FacadeAdapterBase):
             self.action_def(
                 "registerPayment",
                 "Register payment",
-                wish="The payments API is not public — no endpoint to register an incoming payment.",
-            ),
+                wish=True            ),
             self.action_def(
                 "remind",
                 "Send reminder",
                 wish=(
-                    "No endpoint SENDS a reminder. The dunning LEVEL is writable "
-                    "though - PATCH the invoice's dunning.level - so an escalation "
-                    "workflow can record the step even where the mail cannot be sent."
+                    True
                 ),
             ),
-            self.action_def("writeOff", "Write off", wish="Write-offs have no public endpoint."),
+            self.action_def("writeOff", "Write off", wish=True),
             self.action_def(
                 "downloadPdf",
                 "Download PDF",
@@ -276,7 +273,7 @@ class SalesInvoiceAdapter(FacadeAdapterBase):
             self.action_def(
                 "downloadEInvoice",
                 "Download e-invoice",
-                wish="E-invoice (XRechnung/ZUGFeRD) rendering is not exposed via the public API.",
+                wish=True,
             ),
         ]
 

@@ -155,25 +155,14 @@ class QuoteAdapter(FacadeAdapterBase):
                         "accept",
                         "Accept",
                         wish=(
-                            "No upstream endpoint. v3 offers has exactly release, cancel, "
-                            "send, logActivity, setWriteProtection and removeWriteProtection; "
-                            "UpdateOfferData carries no status, and offers do not exist in "
-                            "v1/v2 at all. The transition happens only in the UI. Worth "
-                            "settling first: the status 'accepted' (angenommen) is written by "
-                            "no code path and occurs in no tenant — the state the ERP really "
-                            "keeps is 'commissioned' (beauftragt), reached as a side effect of "
-                            "converting the quote into a sales order."
+                            True
                         ),
                     ),
                     self.step_cmd(
                         "decline",
                         "Decline",
                         wish=(
-                            "No upstream endpoint. Declining sets angebot.status='abgelehnt' "
-                            "and closes open follow-ups — two SQL updates inside the legacy "
-                            "page controller, with no service class, no API route and no "
-                            "event. The legacy XML API cannot reach it either: ApiBelegEdit "
-                            "whitelists the status values and 'abgelehnt' is not among them."
+                            True
                         ),
                     ),
                     self.step_cmd("cancel", "Cancel"),
@@ -193,26 +182,14 @@ class QuoteAdapter(FacadeAdapterBase):
                 "convertToSalesOrder",
                 "Convert to sales order",
                 wish=(
-                    "No conversion endpoint we can reach. v3 has createFromSalesOrder and "
-                    "createFromDeliveryNote for invoices and returns, but no createFromOffer "
-                    "for sales orders, and POST /v3/salesOrders cannot reference a quote "
-                    "(the relation is read-only). v1 salesOrders/import is a raw import, not "
-                    "a conversion. The logic exists — Erpapi::WeiterfuehrenAngebotZuAuftrag "
-                    "copies the document and sets the quote to commissioned — and is exposed "
-                    "once, as the legacy XML API /api/v1/AngebotZuAuftrag. That one is "
-                    "digest-authenticated, hangs on a legacy permission and already sits "
-                    "behind a killswitch, so it is not usable from a bearer-token core."
+                    True
                 ),
             ),
             self.action_def(
                 "duplicate",
                 "Duplicate",
                 wish=(
-                    "No duplicate endpoint in any API generation — no v3 action, nothing in "
-                    "v1/v2, nothing in the legacy XML API. erpAPI::CopyAngebot() does the "
-                    "work behind the UI only. The same function exists for orders, invoices "
-                    "and delivery notes, so one uniform actions/duplicate would serve every "
-                    "document type at once."
+                    True
                 ),
             ),
             self.action_def(

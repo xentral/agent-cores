@@ -144,7 +144,7 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
             self.action_def(
                 "recordConfirmation",
                 "Record confirmation",
-                wish="Supplier order confirmations have no public endpoint.",
+                wish=True,
             ),
             self.action_def(
                 "createGoodsReceipt",
@@ -163,17 +163,17 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
             self.action_def(
                 "createPurchaseInvoice",
                 "Create purchase invoice",
-                wish="Creating a supplier invoice from the order is not composed yet (BF supplierInvoice create exists as raw entity CRUD).",
+                wish=True,
             ),
             self.action_def(
                 "requestConfirmation",
                 "Request confirmation",
-                wish="No public endpoint to request a supplier confirmation.",
+                wish=True,
             ),
             self.action_def(
                 "updateDeliveryDates",
                 "Update delivery dates",
-                wish="A bulk delivery-date update has no endpoint; per-item dates go through a normal update.",
+                wish=True,
             ),
             self.action_def(
                 "downloadPdf",

@@ -71,6 +71,25 @@ def _field_gaps() -> dict[str, Any]:
 
 
 @functools.lru_cache(maxsize=1)
+def _wish_reasons() -> dict[str, Any]:
+    """Why each declared-but-not-executable capability cannot run, from the core's
+    capabilities.spec.yaml (``wishes`` → ``<Entity>`` → ``<key>`` → reason).
+
+    The adapters say WHICH capabilities are gaps; this file says WHY. Keeping the two
+    apart is what lets the playbook test compare them: a spec that also decided the
+    classification would be checking itself. The text lives here because it is a
+    business statement the specification's owner must be able to edit without touching
+    Python. Missing file → empty, and `_wish_reason` then names the omission.
+    """
+    path = os.path.join(os.path.dirname(__file__), "..", "capabilities.spec.yaml")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return (yaml.safe_load(fh) or {}).get("wishes") or {}
+    except (FileNotFoundError, ValueError, yaml.YAMLError):
+        return {}
+
+
+@functools.lru_cache(maxsize=1)
 def _verified() -> dict[str, Any]:
     """Live-test results per entity (verified.json) — the GREEN/RED side of the
     living backlog. ``entities.<Key>.fields.<path>`` → per-facet pass/fail. Written
@@ -454,14 +473,26 @@ class FacadeAdapterBase:
         *,
         destructive: bool = False,
         description: str | None = None,
-        wish: str | None = None,
+        wish: bool = False,
         command: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """One entry of the model's action catalogue (docs/01-model.md §8).
 
-        ``wish`` marks a planned-but-unimplemented action: it is DECLARED (the
-        catalogue is the contract) but executing it returns 409 with this reason
-        — the action-side twin of the blue field wishes (ADR-014).
+        ``wish=True`` marks a planned-but-unimplemented action: it is DECLARED (the
+        catalogue is the contract) but executing it returns 409 with the reason —
+        the action-side twin of the blue field gaps (ADR-014).
+
+        The adapter states only THAT a capability is a gap; the reason text lives in
+        ``capabilities.spec.yaml``, where the reviewer who owns the requirement can
+        edit it. Those texts are business statements ("the transition happens only in
+        the UI"), and they used to sit in this Python file where that reviewer could
+        not reach them.
+
+        The classification deliberately stays here. If the spec decided *which*
+        capabilities are gaps, the two rules that carry the most weight in
+        ``test_core_playbooks`` — a required capability must not be a wish, a
+        recorded gap must still be one — would be comparing the spec against itself.
+        Two independent statements are what makes the comparison worth running.
         """
         d: dict[str, Any] = {
             "key": key,
@@ -476,15 +507,42 @@ class FacadeAdapterBase:
         if command:
             d["command"] = command
         if wish:
-            d["wish"] = wish
+            d["wish"] = self._spec_wish_reason(key)
         return d
 
-    @staticmethod
-    def step_cmd(key: str, label: str, *, wish: str | None = None) -> dict[str, Any]:
+    def step_cmd(self, key: str, label: str, *, wish: bool = False) -> dict[str, Any]:
+        """One command of a process step. ``wish=True`` as in ``action_def``.
+
+        No longer a ``@staticmethod``: resolving the reason needs the entity key, and
+        every call site already goes through ``self``.
+        """
         cmd: dict[str, Any] = {"key": key, "label": label}
         if wish:
-            cmd["wish"] = wish
+            cmd["wish"] = self._spec_wish_reason(key)
         return cmd
+
+    def _spec_wish_reason(self, key: str) -> str:
+        """The recorded reason a capability cannot be executed, from the spec.
+
+        A gap with no reason is not a gap, it is an omission — nobody can tell whether
+        the upstream cannot do it or nobody looked. So a missing entry says exactly
+        that rather than rendering an empty string; ``test_every_wish_has_a_reason``
+        fails the build on it.
+        """
+        # Defensive on shape, not just on absence. This file is now on the runtime
+        # path, so a malformed section must degrade to the placeholder rather than
+        # raise: a spec typo should cost a reason string, never a 500 from `describe`.
+        # `test_every_wish_carries_a_reason` is what turns it back into a build error.
+        entity = _wish_reasons().get(self.manifest.key)
+        reason = entity.get(key) if isinstance(entity, dict) else None
+        return (
+            reason
+            if isinstance(reason, str) and reason.strip()
+            else (
+                f"Declared as not executable, but capabilities.spec.yaml records no reason "
+                f"for {self.manifest.key}.{key}."
+            )
+        )
 
     @staticmethod
     def _resolve_path(properties: dict[str, Any], path: str) -> dict[str, Any] | None:

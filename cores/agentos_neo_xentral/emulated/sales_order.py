@@ -309,7 +309,7 @@ class SalesOrderAdapter(FacadeAdapterBase):
             self.action_def(
                 "createDeliveryNote",
                 "Create delivery note",
-                wish="v1 dispatch couples delivery-note creation with shipping side-effects; a clean createDeliveryNote(items?) needs a dedicated endpoint.",
+                wish=True,
             ),
             self.action_def(
                 "createSalesInvoice",
@@ -319,22 +319,20 @@ class SalesOrderAdapter(FacadeAdapterBase):
             self.action_def(
                 "createPickingRun",
                 "Create picking run",
-                wish="Pick list creation has no public endpoint (05 #12).",
+                wish=True,
             ),
             self.action_def(
                 "addHold",
                 "Add hold",
-                wish="Holds map to trafficLights — readable, but there is no public write API.",
-            ),
+                wish=True            ),
             self.action_def(
                 "releaseHold",
                 "Release hold",
-                wish="Holds map to trafficLights — readable, but there is no public write API.",
-            ),
+                wish=True            ),
             self.action_def(
                 "allocateStock",
                 "Allocate stock",
-                wish="Stock allocation runs upstream automatically; no manual trigger is exposed.",
+                wish=True,
             ),
             self.action_def(
                 "split",
@@ -375,7 +373,7 @@ class SalesOrderAdapter(FacadeAdapterBase):
                     },
                 },
             ),
-            self.action_def("duplicate", "Duplicate", wish="No duplicate endpoint upstream."),
+            self.action_def("duplicate", "Duplicate", wish=True),
             self.action_def(
                 "downloadPdf",
                 "Download PDF",

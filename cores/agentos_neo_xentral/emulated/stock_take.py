@@ -59,17 +59,13 @@ class StockTakeAdapter(FacadeAdapterBase):
                     self.step_cmd(
                         "startCounting",
                         "Start counting",
-                        wish="v1 inventoryRuns is read-only — no state writes.",
-                    ),
+                        wish=True                    ),
                     self.step_cmd(
-                        "submit", "Submit", wish="v1 inventoryRuns is read-only — no state writes."
-                    ),
+                        "submit", "Submit", wish=True                   ),
                     self.step_cmd(
-                        "post", "Post", wish="v1 inventoryRuns is read-only — no state writes."
-                    ),
+                        "post", "Post", wish=True                   ),
                     self.step_cmd(
-                        "cancel", "Cancel", wish="v1 inventoryRuns is read-only — no state writes."
-                    ),
+                        "cancel", "Cancel", wish=True                   ),
                 ],
             }
         ]
@@ -79,13 +75,13 @@ class StockTakeAdapter(FacadeAdapterBase):
             self.action_def(
                 "exportCountingList",
                 "Export counting list",
-                wish="Counting-list export is not exposed.",
+                wish=True,
             ),
-            self.action_def("recount", "Recount", wish="Recount has no public trigger."),
+            self.action_def("recount", "Recount", wish=True),
             self.action_def(
                 "addPosition",
                 "Add position",
-                wish="Adding positions is not exposed via v1 inventoryRuns.",
+                wish=True,
             ),
         ]
 

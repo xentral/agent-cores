@@ -41,18 +41,15 @@ class PaymentAdapter(FacadeAdapterBase):
             self.action_def(
                 "allocate",
                 "Allocate",
-                wish="The payments API itself is missing upstream (the entity is blocked) — allocation comes with it.",
-            ),
+                wish=True            ),
             self.action_def(
                 "unallocate",
                 "Unallocate",
-                wish="The payments API itself is missing upstream — allocation comes with it.",
-            ),
+                wish=True            ),
             self.action_def(
                 "refund",
                 "Refund",
-                wish="The payments API itself is missing upstream — refunds come with it.",
-            ),
+                wish=True            ),
         ]
 
     def fields(self) -> dict[str, dict[str, Any]]:

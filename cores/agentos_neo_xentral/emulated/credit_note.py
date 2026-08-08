@@ -131,9 +131,7 @@ class CreditNoteAdapter(FacadeAdapterBase):
                         "cancel",
                         "Cancel",
                         wish=(
-                            "A released credit note can only be cancelled in the "
-                            "Xentral UI (legacy); v3 exposes no cancel action. Drafts "
-                            "are removed with `delete`."
+                            True
                         ),
                     ),
                 ],
@@ -151,12 +149,11 @@ class CreditNoteAdapter(FacadeAdapterBase):
             self.action_def(
                 "registerRefund",
                 "Register refund",
-                wish="The payments API is not public — no endpoint to register an outgoing refund.",
-            ),
+                wish=True            ),
             self.action_def(
                 "offsetAgainstInvoice",
                 "Offset against invoice",
-                wish="Offsetting has no public endpoint.",
+                wish=True,
             ),
             self.action_def(
                 "downloadPdf",

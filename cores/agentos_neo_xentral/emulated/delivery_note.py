@@ -186,8 +186,7 @@ class DeliveryNoteAdapter(FacadeAdapterBase):
                     self.step_cmd(
                         "startPicking",
                         "Start picking",
-                        wish="Picking is driven by picking runs — no direct startPicking endpoint.",
-                    ),
+                        wish=True                    ),
                     self.step_cmd("markDelivered", "Mark delivered"),
                     self.step_cmd("cancel", "Cancel"),
                 ],
@@ -199,7 +198,7 @@ class DeliveryNoteAdapter(FacadeAdapterBase):
             self.action_def(
                 "createShipment",
                 "Create shipment",
-                wish="The carrier label API (printShippingLabel) is beta and not public.",
+                wish=True,
             ),
             self.action_def(
                 "createReturn",
@@ -235,7 +234,7 @@ class DeliveryNoteAdapter(FacadeAdapterBase):
             self.action_def(
                 "printLabels",
                 "Print labels",
-                wish="Per-product label print exists (v1 products/{id}/printLabel); a per-delivery-note batch print is not composed.",
+                wish=True,
             ),
         ]
 

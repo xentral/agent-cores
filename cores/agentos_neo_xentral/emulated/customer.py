@@ -87,12 +87,12 @@ class CustomerAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
                 "label": "Status",
                 "commands": [
                     self.step_cmd(
-                        "archive", "Archive", wish="No archive flag is writable via v3 customers."
+                        "archive", "Archive", wish=True
                     ),
                     self.step_cmd(
                         "reactivate",
                         "Reactivate",
-                        wish="No archive flag is writable via v3 customers.",
+                        wish=True,
                     ),
                 ],
             }
@@ -103,23 +103,22 @@ class CustomerAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
             self.action_def(
                 "setHold",
                 "Set hold",
-                wish="Customer holds (delivery/invoice block) are not writable via the public API.",
+                wish=True,
             ),
             self.action_def(
                 "releaseHold",
                 "Release hold",
-                wish="Customer holds are not writable via the public API.",
+                wish=True,
             ),
             self.action_def(
-                "mergeInto", "Merge into", wish="Duplicate merge is a UI-only feature — no API."
-            ),
+                "mergeInto", "Merge into", wish=True           ),
             self.action_def(
-                "runCreditCheck", "Run credit check", wish="Credit checks have no public trigger."
+                "runCreditCheck", "Run credit check", wish=True
             ),
             self.action_def(
                 "statement",
                 "Open-items statement",
-                wish="An open-items statement is not exposed via the public API.",
+                wish=True,
             ),
         ]
 

@@ -6,6 +6,10 @@
 # (tests/test_core_playbooks.py). When the two disagree, the default reading is
 # that the CORE is wrong — not that this file needs adjusting to match it.
 #
+# This file SHIPS. The core loads the `wishes` reasons at runtime and renders them
+# into `describe`, so what you write here is what a workflow builder reads when they
+# hit a gap. Everything else in it is checked by CI only.
+#
 # For that reason the file is NOT generated. A specification derived from the
 # implementation is not a specification, it is a transcript: it can never state
 # what is still missing, which is the only reason a domain expert would read it.
@@ -16,8 +20,12 @@
 # --------
 # executable    the capability exists and works. Must be a real action or step
 #               command carrying NO wish.
-# wishes        the capability is needed but the upstream cannot do it. Must
-#               still carry a wish (the adapter holds the measured reason).
+# wishes        the capability is needed but the upstream cannot do it, mapped to
+#               the measured reason. The adapter must still classify it as a wish
+#               (`wish=True`); this file supplies the text and is loaded at runtime
+#               to render it into `describe`. The classification deliberately stays
+#               in the adapter — if this file decided BOTH, the two rules that
+#               matter most would be comparing it against itself.
 # evidenceGaps  which `executable` entries a live run has NOT actually proven.
 #               Must match `verified.json` exactly, in both directions — a newly
 #               proven capability has to be struck from here, an unproven new one
@@ -55,27 +63,261 @@ executable:
   Printer: [printDocument]
   EmailAccount: [sendEmail]
 wishes:
-  Quote: [convertToSalesOrder, duplicate, accept, decline]
-  SalesOrder: [createDeliveryNote, createPickingRun, addHold, releaseHold, allocateStock, duplicate]
-  SalesInvoice: [registerPayment, remind, writeOff, downloadEInvoice]
-  DeliveryNote: [createShipment, printLabels, startPicking]
-  CreditNote: [registerRefund, offsetAgainstInvoice, cancel]
-  Return: [sendReturnLabel, createReplacementOrder, receive, check]
-  PurchaseOrder: [recordConfirmation, requestConfirmation, createPurchaseInvoice, updateDeliveryDates]
-  GoodsReceipt: [post, cancel, proposeStorageLocations, printProductLabels, printBatchLabels]
-  PurchaseInvoice: [approve, reject, rematch, registerPayment, schedulePayment, attachFile]
-  Customer: [archive, reactivate, setHold, releaseHold, mergeInto, runCreditCheck, statement]
-  Supplier: [archive, reactivate, setHold, releaseHold, mergeInto, runCreditCheck, statement]
-  Product: [adjustStock, duplicate, recalculatePurchasePrice, syncToChannel, mergeInto, archive]
-  PriceList: [duplicate, bulkAdjust, activate, deactivate]
-  Shipment: [createLabel, cancelLabel, downloadLabel, refreshTracking]
-  Payment: [allocate, unallocate, refund]
-  StorageLocation: [block, release, printLabel]
-  StockTake: [startCounting, submit, post, cancel, exportCountingList, recount, addPosition]
-  PickingRun: [release, start, pause, complete, cancel, assign, reprioritize, printPickList]
-  Channel: [syncOrders, syncStock, syncProducts, testConnection, pause, resume]
-  Batch: [traceReport, block, release]
-  SerialNumber: [traceReport, block, release]
+  Quote:
+    convertToSalesOrder: >-
+      No conversion endpoint we can reach. v3 has createFromSalesOrder and
+      createFromDeliveryNote for invoices and returns, but no createFromOffer for sales
+      orders, and POST /v3/salesOrders cannot reference a quote (the relation is read-only).
+      v1 salesOrders/import is a raw import, not a conversion. The logic exists —
+      Erpapi::WeiterfuehrenAngebotZuAuftrag copies the document and sets the quote to
+      commissioned — and is exposed once, as the legacy XML API /api/v1/AngebotZuAuftrag.
+      That one is digest-authenticated, hangs on a legacy permission and already sits behind
+      a killswitch, so it is not usable from a bearer-token core.
+    duplicate: >-
+      No duplicate endpoint in any API generation — no v3 action, nothing in v1/v2, nothing
+      in the legacy XML API. erpAPI::CopyAngebot() does the work behind the UI only. The
+      same function exists for orders, invoices and delivery notes, so one uniform
+      actions/duplicate would serve every document type at once.
+    accept: >-
+      No upstream endpoint. v3 offers has exactly release, cancel, send, logActivity,
+      setWriteProtection and removeWriteProtection; UpdateOfferData carries no status, and
+      offers do not exist in v1/v2 at all. The transition happens only in the UI. Worth
+      settling first: the status 'accepted' (angenommen) is written by no code path and
+      occurs in no tenant — the state the ERP really keeps is 'commissioned' (beauftragt),
+      reached as a side effect of converting the quote into a sales order.
+    decline: >-
+      No upstream endpoint. Declining sets angebot.status='abgelehnt' and closes open
+      follow-ups — two SQL updates inside the legacy page controller, with no service class,
+      no API route and no event. The legacy XML API cannot reach it either: ApiBelegEdit
+      whitelists the status values and 'abgelehnt' is not among them.
+  SalesOrder:
+    createDeliveryNote: >-
+      v1 dispatch couples delivery-note creation with shipping side-effects; a clean
+      createDeliveryNote(items?) needs a dedicated endpoint.
+    createPickingRun: >-
+      Pick list creation has no public endpoint (05 #12).
+    addHold: >-
+      Holds map to trafficLights — readable, but there is no public write API.
+    releaseHold: >-
+      Holds map to trafficLights — readable, but there is no public write API.
+    allocateStock: >-
+      Stock allocation runs upstream automatically; no manual trigger is exposed.
+    duplicate: >-
+      No duplicate endpoint upstream.
+  SalesInvoice:
+    registerPayment: >-
+      The payments API is not public — no endpoint to register an incoming payment.
+    remind: >-
+      No endpoint SENDS a reminder. The dunning LEVEL is writable though - PATCH the
+      invoice's dunning.level - so an escalation workflow can record the step even where the
+      mail cannot be sent.
+    writeOff: >-
+      Write-offs have no public endpoint.
+    downloadEInvoice: >-
+      E-invoice (XRechnung/ZUGFeRD) rendering is not exposed via the public API.
+  DeliveryNote:
+    createShipment: >-
+      The carrier label API (printShippingLabel) is beta and not public.
+    printLabels: >-
+      Per-product label print exists (v1 products/{id}/printLabel); a per-delivery-note
+      batch print is not composed.
+    startPicking: >-
+      Picking is driven by picking runs — no direct startPicking endpoint.
+  CreditNote:
+    registerRefund: >-
+      The payments API is not public — no endpoint to register an outgoing refund.
+    offsetAgainstInvoice: >-
+      Offsetting has no public endpoint.
+    cancel: >-
+      A released credit note can only be cancelled in the Xentral UI (legacy); v3 exposes no
+      cancel action. Drafts are removed with `delete`.
+  Return:
+    sendReturnLabel: >-
+      Return labels run through the beta carrier label API — not public.
+    createReplacementOrder: >-
+      No replacement-order endpoint upstream.
+    receive: >-
+      Receiving has no upstream endpoint — v3 returnOrders offers complete/cancel only.
+    check: >-
+      The check step has no upstream endpoint.
+  PurchaseOrder:
+    recordConfirmation: >-
+      Supplier order confirmations have no public endpoint.
+    requestConfirmation: >-
+      No public endpoint to request a supplier confirmation.
+    createPurchaseInvoice: >-
+      Creating a supplier invoice from the order is not composed yet (BF supplierInvoice
+      create exists as raw entity CRUD).
+    updateDeliveryDates: >-
+      A bulk delivery-date update has no endpoint; per-item dates go through a normal
+      update.
+  GoodsReceipt:
+    post: >-
+      There is no posting TRANSITION: a goods receipt is booked at creation —
+      PurchaseOrder.createGoodsReceipt (or the return's equivalent) moves the stock as it
+      writes the document. Nothing to wait for here.
+    cancel: >-
+      Goods-receipt storno is a known upstream gap (05 #9).
+    proposeStorageLocations: >-
+      Putaway proposals have no public endpoint.
+    printProductLabels: >-
+      Per-product label print exists (v1 products/{id}/printLabel); a per-receipt batch
+      print is not composed.
+    printBatchLabels: >-
+      Batch labels have no public endpoint.
+  PurchaseInvoice:
+    approve: >-
+      The BF InvoiceCheck/DocumentStatus process steps are readable, but the write
+      transition is not exposed. Candidate: v1 liabilities/{id}/actions/release — needs the
+      numeric id, which the BF rows do not carry.
+    reject: >-
+      Rejecting has no exposed write transition.
+    rematch: >-
+      Matching runs upstream automatically; no re-trigger endpoint is exposed.
+    registerPayment: >-
+      The payments API is not public — no endpoint to register an outgoing payment.
+    schedulePayment: >-
+      Payment runs have no public API.
+    attachFile: >-
+      Candidate: v1 liabilities/{id}/documents (upload) — needs the numeric id, which the BF
+      rows do not carry.
+  Customer:
+    archive: >-
+      No archive flag is writable via v3 customers.
+    reactivate: >-
+      No archive flag is writable via v3 customers.
+    setHold: >-
+      Customer holds (delivery/invoice block) are not writable via the public API.
+    releaseHold: >-
+      Customer holds are not writable via the public API.
+    mergeInto: >-
+      Duplicate merge is a UI-only feature — no API.
+    runCreditCheck: >-
+      Credit checks have no public trigger.
+    statement: >-
+      An open-items statement is not exposed via the public API.
+  Supplier:
+    archive: >-
+      No archive flag is writable via v1 suppliers.
+    reactivate: >-
+      No archive flag is writable via v1 suppliers.
+    setHold: >-
+      Supplier holds are not writable via the public API.
+    releaseHold: >-
+      Supplier holds are not writable via the public API.
+    mergeInto: >-
+      Duplicate merge is a UI-only feature — no API.
+    runCreditCheck: >-
+      Credit checks have no public trigger.
+    statement: >-
+      An open-items statement is not exposed via the public API.
+  Product:
+    adjustStock: >-
+      No public product-level stock adjustment; v1 storageLocations/setTotalStock works per
+      location but is not composed.
+    duplicate: >-
+      No duplicate endpoint upstream.
+    recalculatePurchasePrice: >-
+      Price recalculation has no public trigger.
+    syncToChannel: >-
+      v1 products/{id}/salesChannels assigns a channel; a true sync push is not exposed.
+    mergeInto: >-
+      Duplicate merge is a UI-only feature — no API.
+    archive: >-
+      v2 products rejects isDeleted writes (400).
+  PriceList:
+    duplicate: >-
+      A duplicate-with-validFrom composer is not built (create a new entry instead).
+    bulkAdjust: >-
+      A percentage bulk adjustment has no endpoint and is not composed.
+    activate: >-
+      v1 salesPrices carries no activation state write.
+    deactivate: >-
+      v1 salesPrices carries no activation state write.
+  Shipment:
+    createLabel: >-
+      Carrier labels run through the beta printShippingLabel API (CIS) on delivery notes —
+      not public.
+    cancelLabel: >-
+      Label cancellation is not exposed.
+    downloadLabel: >-
+      Label download is not exposed.
+    refreshTracking: >-
+      Tracking refresh has no public trigger.
+  Payment:
+    allocate: >-
+      The payments API itself is missing upstream (the entity is blocked) — allocation comes
+      with it.
+    unallocate: >-
+      The payments API itself is missing upstream — allocation comes with it.
+    refund: >-
+      The payments API itself is missing upstream — refunds come with it.
+  StorageLocation:
+    block: >-
+      v1 storageLocations exposes no block/release state write.
+    release: >-
+      v1 storageLocations exposes no block/release state write.
+    printLabel: >-
+      Storage-location labels have no public endpoint.
+  StockTake:
+    startCounting: >-
+      v1 inventoryRuns is read-only — no state writes.
+    submit: >-
+      v1 inventoryRuns is read-only — no state writes.
+    post: >-
+      v1 inventoryRuns is read-only — no state writes.
+    cancel: >-
+      v1 inventoryRuns is read-only — no state writes.
+    exportCountingList: >-
+      Counting-list export is not exposed.
+    recount: >-
+      Recount has no public trigger.
+    addPosition: >-
+      Adding positions is not exposed via v1 inventoryRuns.
+  PickingRun:
+    release: >-
+      v1 pickLists is read-only — no state writes.
+    start: >-
+      v1 pickLists is read-only — no state writes.
+    pause: >-
+      v1 pickLists is read-only — no state writes.
+    complete: >-
+      v1 pickLists is read-only — no state writes.
+    cancel: >-
+      v1 pickLists is read-only — no state writes.
+    assign: >-
+      Picker assignment is not exposed.
+    reprioritize: >-
+      Priority changes are not exposed.
+    printPickList: >-
+      Pick-list print/PDF is not exposed.
+  Channel:
+    syncOrders: >-
+      The channel API (05 #17) exposes no sync triggers.
+    syncStock: >-
+      The channel API (05 #17) exposes no sync triggers.
+    syncProducts: >-
+      The channel API (05 #17) exposes no sync triggers.
+    testConnection: >-
+      The channel API (05 #17) exposes no connection test.
+    pause: >-
+      The channel API (05 #17) exposes no state writes.
+    resume: >-
+      The channel API (05 #17) exposes no state writes.
+  Batch:
+    traceReport: >-
+      Batch/serial trace has no public API (05) — the report comes with it.
+    block: >-
+      The batch API itself is missing upstream (the entity is blocked).
+    release: >-
+      The batch API itself is missing upstream (the entity is blocked).
+  SerialNumber:
+    traceReport: >-
+      Batch/serial trace has no public API (05) — the report comes with it.
+    block: >-
+      The serial-number API itself is missing upstream (the entity is blocked).
+    release: >-
+      The serial-number API itself is missing upstream (the entity is blocked).
 operations:
   AddressCustomField: [list]
   Batch: []

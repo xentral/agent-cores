@@ -61,32 +61,27 @@ class PickingRunAdapter(FacadeAdapterBase):
                 "label": "Status",
                 "commands": [
                     self.step_cmd(
-                        "release", "Release", wish="v1 pickLists is read-only — no state writes."
-                    ),
+                        "release", "Release", wish=True                   ),
                     self.step_cmd(
-                        "start", "Start", wish="v1 pickLists is read-only — no state writes."
-                    ),
+                        "start", "Start", wish=True                   ),
                     self.step_cmd(
-                        "pause", "Pause", wish="v1 pickLists is read-only — no state writes."
-                    ),
+                        "pause", "Pause", wish=True                   ),
                     self.step_cmd(
-                        "complete", "Complete", wish="v1 pickLists is read-only — no state writes."
-                    ),
+                        "complete", "Complete", wish=True                   ),
                     self.step_cmd(
-                        "cancel", "Cancel", wish="v1 pickLists is read-only — no state writes."
-                    ),
+                        "cancel", "Cancel", wish=True                   ),
                 ],
             }
         ]
 
     def actions(self):
         return [
-            self.action_def("assign", "Assign picker", wish="Picker assignment is not exposed."),
+            self.action_def("assign", "Assign picker", wish=True),
             self.action_def(
-                "reprioritize", "Reprioritize", wish="Priority changes are not exposed."
+                "reprioritize", "Reprioritize", wish=True
             ),
             self.action_def(
-                "printPickList", "Print pick list", wish="Pick-list print/PDF is not exposed."
+                "printPickList", "Print pick list", wish=True
             ),
         ]
 

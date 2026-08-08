@@ -912,7 +912,7 @@ class ProductAdapter(FacadeAdapterBase):
                     self.step_cmd("activate", "Activate"),
                     # archive → v2 isDeleted:true is rejected (400) upstream.
                     self.step_cmd(
-                        "archive", "Archive", wish="v2 products rejects isDeleted writes (400)."
+                        "archive", "Archive", wish=True
                     ),
                 ],
             }
@@ -923,22 +923,21 @@ class ProductAdapter(FacadeAdapterBase):
             self.action_def(
                 "adjustStock",
                 "Adjust stock",
-                wish="No public product-level stock adjustment; v1 storageLocations/setTotalStock works per location but is not composed.",
+                wish=True,
             ),
-            self.action_def("duplicate", "Duplicate", wish="No duplicate endpoint upstream."),
+            self.action_def("duplicate", "Duplicate", wish=True),
             self.action_def(
                 "recalculatePurchasePrice",
                 "Recalculate purchase price",
-                wish="Price recalculation has no public trigger.",
+                wish=True,
             ),
             self.action_def(
                 "syncToChannel",
                 "Sync to channel",
-                wish="v1 products/{id}/salesChannels assigns a channel; a true sync push is not exposed.",
+                wish=True,
             ),
             self.action_def(
-                "mergeInto", "Merge into", wish="Duplicate merge is a UI-only feature — no API."
-            ),
+                "mergeInto", "Merge into", wish=True           ),
         ]
 
     def fields(self) -> dict[str, dict[str, Any]]:

@@ -82,12 +82,12 @@ class PriceListAdapter(FacadeAdapterBase):
                     self.step_cmd(
                         "deactivate",
                         "Deactivate",
-                        wish="v1 salesPrices carries no activation state write.",
+                        wish=True,
                     ),
                     self.step_cmd(
                         "activate",
                         "Activate",
-                        wish="v1 salesPrices carries no activation state write.",
+                        wish=True,
                     ),
                 ],
             }
@@ -98,12 +98,12 @@ class PriceListAdapter(FacadeAdapterBase):
             self.action_def(
                 "duplicate",
                 "Duplicate (validFrom)",
-                wish="A duplicate-with-validFrom composer is not built (create a new entry instead).",
+                wish=True,
             ),
             self.action_def(
                 "bulkAdjust",
                 "Bulk adjust (percent)",
-                wish="A percentage bulk adjustment has no endpoint and is not composed.",
+                wish=True,
             ),
         ]
 

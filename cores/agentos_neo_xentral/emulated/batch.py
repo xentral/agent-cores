@@ -52,12 +52,12 @@ class BatchAdapter(FacadeAdapterBase):
                     self.step_cmd(
                         "block",
                         "Block",
-                        wish="The batch API itself is missing upstream (the entity is blocked).",
+                        wish=True,
                     ),
                     self.step_cmd(
                         "release",
                         "Release",
-                        wish="The batch API itself is missing upstream (the entity is blocked).",
+                        wish=True,
                     ),
                 ],
             }
@@ -68,8 +68,7 @@ class BatchAdapter(FacadeAdapterBase):
             self.action_def(
                 "traceReport",
                 "Trace report",
-                wish="Batch/serial trace has no public API (05) — the report comes with it.",
-            ),
+                wish=True            ),
         ]
 
     def fields(self) -> dict[str, dict[str, Any]]:
