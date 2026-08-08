@@ -5,8 +5,8 @@ building; use `describe` for the full field tree of a specific entity.
 
 This core is a **facade**: it owns no data and translates live onto the connected Xentral's
 v3/v2/v1 APIs. A capability exists here only where Xentral exposes an endpoint — hence §5.
-Claims about what is executable are replayed against the core's metadata in CI
-(`playbook.claims.yaml`). If this file and a `describe` disagree, `describe` wins.
+What must be executable is specified in `capabilities.spec.yaml` and replayed against
+the core's metadata in CI. If this file and a `describe` disagree, `describe` wins.
 
 ---
 
@@ -257,4 +257,5 @@ every action's `command` schema. `list` — the tenant's live catalogue. `events
 ids. `api_search` / `api_endpoint` — the raw Xentral OpenAPI, to check whether a wish has
 become reachable. `bulk_template` / `bulk_validate` / `bulk_run` — mass import.
 
-Machine-checked capability claims: [`playbook.claims.yaml`](playbook.claims.yaml).
+Capability specification: [`capabilities.spec.yaml`](capabilities.spec.yaml) · file
+map for reviewers: [`README.md`](README.md).

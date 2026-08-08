@@ -1,14 +1,44 @@
-# Machine-checked claims for playbook.md
+# The capability specification of this core — reviewed by a domain expert.
 #
-# Lives beside the playbook rather than inside it: this is what CI replays
-# against the core's metadata (tests/test_core_playbooks.py), not something a
-# human or an agent reads. Keeping it out of the prose is what lets the
-# playbook stay short enough to actually be read.
+# READ THIS FIRST: the direction of proof runs from here TO the code. This file
+# states what the core must be able to do; CI replays every statement against the
+# core's own metadata and against the live-probe results in `verified.json`
+# (tests/test_core_playbooks.py). When the two disagree, the default reading is
+# that the CORE is wrong — not that this file needs adjusting to match it.
 #
-# Rules: an `executable` entry must be a real action or step command carrying
-# NO wish; a `wishes` entry must still be one; per named entity
-# `executable + wishes` must cover EVERY capability, so a newly built one
-# cannot go unmentioned.
+# For that reason the file is NOT generated. A specification derived from the
+# implementation is not a specification, it is a transcript: it can never state
+# what is still missing, which is the only reason a domain expert would read it.
+#
+# See README.md for who owns which file and how the loop runs.
+#
+# Sections
+# --------
+# executable    the capability exists and works. Must be a real action or step
+#               command carrying NO wish.
+# wishes        the capability is needed but the upstream cannot do it. Must
+#               still carry a wish (the adapter holds the measured reason).
+# evidenceGaps  which `executable` entries a live run has NOT actually proven.
+#               Must match `verified.json` exactly, in both directions — a newly
+#               proven capability has to be struck from here, an unproven new one
+#               has to be added. This is the ratchet that keeps "it works" honest.
+# operations    the CRUD surface per entity. Complete over the whole core.
+# commands      required parameters per capability. Complete over every
+#               capability that takes any.
+# statuses,
+# requiredForCreate,
+# filterable,
+# notFilterable,
+# fields        field-level statements about the model.
+# reviewed      the sign-off ledger: entities a domain expert has actually gone
+#               through. NOT a technical gate — it is how the review sheet tells
+#               a checked entity apart from one nobody has looked at yet.
+#
+# `executable + wishes` must cover EVERY capability of every entity that has any,
+# so a newly built one cannot go unmentioned.
+#
+# Field-level requirements live next door in `priorities.json` — same spec, other
+# axis (what must be recordable and findable, rather than doable).
 
 executable:
   Quote: [send, downloadPdf, addTag, removeTag, release, cancel, setWriteProtection, removeWriteProtection]
@@ -47,20 +77,74 @@ wishes:
   Batch: [traceReport, block, release]
   SerialNumber: [traceReport, block, release]
 operations:
-  GoodsReceipt: [list, read]
-  Shipment: [list, read]
-  Payment: [list, read]
-  StockLevel: [list, read]
-  StockTake: [list, read]
-  PickingRun: [list, read]
-  Tag: [list, read]
-  Channel: [list, read]
-  StockMovement: [create]
+  AddressCustomField: [list]
   Batch: []
-  SerialNumber: []
-  Warehouse: [list, create, update, delete]
-  ShippingMethod: [list, read]
+  Channel: [list, read]
+  Correspondence: [list, read, create, update, delete]
+  CostCenter: [list, read, create, update, delete]
+  CreditNote: [list, read, create, update, delete]
+  Customer: [list, read, create, update, delete]
+  CustomerGroup: [list, read, create, update, delete]
+  DeliveryNote: [list, read, create, update, delete]
+  DeliveryTerm: [list]
+  EmailAccount: [list, read]
+  Employee: [list]
+  GoodsReceipt: [list, read]
+  MerchandiseGroup: [list, read]
+  Payment: [list, read]
   PaymentMethod: [list]
+  PaymentTermsGroup: [list, read]
+  PickingRun: [list, read]
+  PriceList: [list, read, create, update, delete]
+  Printer: [list]
+  Product: [list, read, create, update, delete]
+  ProductCategory: [list, read, create, update, delete]
+  ProductFreeField: [list, read]
+  ProductProperty: [list]
+  ProductTag: [list]
+  Project: [list]
+  PurchaseInvoice: [list, read, create, update, delete]
+  PurchaseOrder: [list, read, create, update, delete]
+  PurchasePrice: [list, read, create, update, delete]
+  Quote: [list, read, create, update, delete]
+  Return: [list, read, create, update, delete]
+  ReturnReason: [list]
+  SalesInvoice: [list, read, create, update, delete]
+  SalesOrder: [list, read, create, update, delete]
+  SerialNumber: []
+  Shipment: [list, read]
+  ShippingMethod: [list, read]
+  StockLevel: [list, read]
+  StockMovement: [create]
+  StockTake: [list, read]
+  StorageLocation: [list, read, create, update, delete]
+  Supplier: [list, read, create, update, delete]
+  Tag: [list, read]
+  Task: [list, read, create, update, delete]
+  TaxRate: [list]
+  TextTemplate: [list, read]
+  User: [list]
+  Warehouse: [list, create, update, delete]
+  Webhook: [list, read]
+  WebhookEventType: [list]
+# Executable, but never actually proven against a live tenant. Measured on the
+# instance named in verified.json: of 80 capabilities claimed executable, 25 are
+# `pass` (effect read back); the rest are `reachable` (the route exists and
+# refused our probe — no capability claim either way), `executed` (changed
+# something, nobody looked) or never tested at all.
+evidenceGaps:
+  CreditNote: [release, removeWriteProtection, send, setWriteProtection]
+  DeliveryNote: [cancel, createReturn, createSalesInvoice, markDelivered, release, removeWriteProtection, setWriteProtection]
+  EmailAccount: [sendEmail]
+  Printer: [printDocument]
+  Product: [activate, deactivate]
+  PurchaseOrder: [cancel, close, createGoodsReceipt, release, removeWriteProtection, send, setWriteProtection]
+  Quote: [cancel, release, removeWriteProtection, send, setWriteProtection]
+  Return: [cancel, createCreditNote, createFromDeliveryNote, release, removeWriteProtection, restock, setWriteProtection, settle]
+  SalesInvoice: [cancel, release, removeWriteProtection, send, setWriteProtection]
+  SalesOrder: [cancel, close, createSalesInvoice, dispatch, release, removeWriteProtection, sendConfirmation, setWriteProtection, split, splitOrder]
+  StorageLocation: [inventoryCount, putaway, stockAdjustment, stockRemoval, stockTransfer]
+
 statuses:
   Quote.status: [draft, sent, accepted, declined, expired, cancelled]
   SalesOrder.status: [draft, confirmed, fulfilled, closed, cancelled]
@@ -173,16 +257,39 @@ fields:
   - Customer.addresses.isDefault
   - Customer.contacts.salutation
 commands:
-  PurchaseOrder.createGoodsReceipt: [date, items]
-  Return.restock: [date, items]
-  SalesOrder.splitOrder: [items]
-  SalesOrder.addTag: [title]
-  SalesOrder.removeTag: [title]
+  CreditNote.addTag: [title]
+  CreditNote.removeTag: [title]
   Customer.addTag: [title]
   Customer.removeTag: [title]
+  DeliveryNote.addTag: [title]
+  DeliveryNote.createReturn: [lineItems]
+  DeliveryNote.removeTag: [title]
+  EmailAccount.sendEmail: [body, subject, to]
+  Printer.printDocument: [fileContent]
+  PurchaseOrder.addTag: [title]
+  PurchaseOrder.createGoodsReceipt: [date, items]
+  PurchaseOrder.removeTag: [title]
+  Quote.addTag: [title]
+  Quote.removeTag: [title]
+  Return.addTag: [title]
+  Return.createFromDeliveryNote: [deliveryNote, lineItems]
+  Return.removeTag: [title]
+  Return.restock: [date, items]
+  SalesInvoice.addTag: [title]
+  SalesInvoice.removeTag: [title]
+  SalesOrder.addTag: [title]
+  SalesOrder.removeTag: [title]
+  SalesOrder.splitOrder: [items]
+  StorageLocation.inventoryCount: [product, quantity]
   StorageLocation.putaway: [product, quantity]
+  StorageLocation.stockAdjustment: [product, quantity, reason]
   StorageLocation.stockRemoval: [product, quantity]
   StorageLocation.stockTransfer: [product, quantity, target]
-  Return.createFromDeliveryNote: [deliveryNote, lineItems]
-  DeliveryNote.createReturn: [lineItems]
-  Quote.addTag: [title]
+  Supplier.addTag: [title]
+  Supplier.removeTag: [title]
+
+# Sign-off ledger: entities a domain expert has actually reviewed against the
+# business, with the date. Empty on purpose — nothing here has been through that
+# review yet, and the review sheet must be able to say so rather than imply a
+# check that never happened.
+reviewed: {}
