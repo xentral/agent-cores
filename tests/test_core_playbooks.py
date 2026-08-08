@@ -23,6 +23,17 @@ right call. It is checked here too, because prose of that kind is only useful wh
 it is true. The machine-only statements live in the spec rather than in the prose so
 the playbook stays short enough to be read in one pass.
 
+The document itself is read, not just a list describing it: every dotted field path
+and every ``Entity.name`` reference in its code spans must resolve against the core.
+That is the difference between checking a hand-written mirror of the prose and
+checking the prose. It does NOT extend to bare backticked words — most of them are
+tool names, filter operators and status values rather than fields, and a rule over
+them would need a ~67-entry exclusion list, which is the hand-maintenance being
+removed. Nor does it bind a path to an entity: the prose writes
+`references.customerOrderNumber` under a heading about orders, never
+`SalesOrder.references.customerOrderNumber`, and inferring the entity from document
+structure would assert a claim the text does not make.
+
 The rules that carry the most weight:
 
 * **A capability claimed executable must carry no wish**, and a claimed wish must
@@ -47,6 +58,7 @@ The rules that carry the most weight:
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -79,6 +91,25 @@ KNOWN_SECTIONS = {
 }
 
 CORES_WITH_PLAYBOOK = sorted(p.parent.name for p in CORES_DIR.glob(f"*/{PLAYBOOK}"))
+
+#: Inline code spans, and the two token shapes inside them that make a checkable
+#: claim about the core: a dotted field path, and an `Entity.name` reference.
+_BACKTICKED = re.compile(r"`([^`\n]+)`")
+_DOTTED_PATH = re.compile(r"^[a-z][A-Za-z0-9_]*(\[\])?(\.[A-Za-z0-9_]+(\[\])?)+$")
+_QUALIFIED = re.compile(r"\b([A-Z][A-Za-z]+)\.([A-Za-z][A-Za-z0-9_.]*)")
+
+#: Dotted tokens whose head is one of these describes the SHAPE of a `describe`
+#: response — `actions[].key`, `query.searchable` — not a field on a record. Excluded
+#: by their head rather than as literal strings, so a new example phrased differently
+#: does not need a new entry.
+_DESCRIBE_VOCABULARY = frozenset({"actions", "processSteps", "query", "rootNode", "command"})
+
+#: A dotted token ending in one of these is a filename the prose points at.
+_DOC_SUFFIXES = (".yaml", ".yml", ".json", ".md", ".py", ".csv", ".xlsx")
+
+
+def _playbook(core_id: str) -> str:
+    return (CORES_DIR / core_id / PLAYBOOK).read_text("utf-8")
 
 
 def _load_core(core_id: str):
@@ -421,6 +452,77 @@ def test_named_field_paths_resolve(core):
     for dotted in core["spec"].get("fields") or []:
         key, _, path = dotted.partition(".")
         assert path in _entity(core, key)["fields"], f"{dotted}: no such field path"
+
+
+def test_playbook_field_paths_exist(core):
+    """Every dotted path the PROSE names in backticks must be a real field.
+
+    ``fields`` above checks a hand-written list of entity-qualified paths — the
+    reviewer's statement about the model. This checks the document itself, which is
+    the thing that actually rots: a field renamed upstream leaves the playbook
+    instructing builders to bind something that is no longer there.
+
+    Only dotted tokens are judged, and that limit is deliberate. Bare backticked
+    words are mostly not fields at all — tool names, filter operators, status values,
+    schema flags, step-group keys — and measured on this playbook a rule over them
+    would need a ~67-entry exclusion list, which is the hand-maintenance this replaces.
+    Dotted tokens are unambiguous: 25 of them, 21 real field paths, and the four
+    exceptions are each a different KIND of thing, excluded by rule rather than by
+    name (see the two constants).
+
+    Entity binding is not checked here, because the prose does not carry it: it writes
+    `references.customerOrderNumber` under a heading about orders, not
+    `SalesOrder.references.customerOrderNumber`. Inferring the entity from document
+    structure would invent a claim the text does not make. So this asserts the weaker,
+    true thing — the path exists somewhere in the core — and the hand-written list
+    keeps the per-entity binding.
+    """
+    known = {path for entity in core["model"].values() for path in entity["fields"]}
+    if not known:
+        return
+    unresolved = set()
+    for token in _BACKTICKED.findall(_playbook(core["id"])):
+        if not _DOTTED_PATH.match(token) or token.endswith(_DOC_SUFFIXES):
+            continue
+        # `actions[].key` — strip the collection marker BEFORE reading the head, or
+        # the vocabulary check compares against "actions[]" and never matches.
+        path = token.replace("[]", "")
+        if path.split(".", 1)[0] in _DESCRIBE_VOCABULARY or path in known:
+            continue
+        unresolved.add(token)
+    unresolved = sorted(unresolved)
+    assert not unresolved, (
+        f"{core['id']}: the playbook names field paths this core does not have: "
+        f"{unresolved}. Either the prose is stale, or the path moved."
+    )
+
+
+def test_playbook_qualified_references_resolve(core):
+    """`Entity.something` in the prose must be one of that entity's own names.
+
+    The few places the playbook does qualify a reference are the ones a builder copies
+    straight into a call, so a stale one costs a failed run. Nothing checked them until
+    now. A qualified token may name a field, a capability or an operation — the prose
+    uses all three shapes — and naming none of them means the document is describing a
+    core that does not exist.
+    """
+    unresolved = []
+    for entity_key, tail in _QUALIFIED.findall(_playbook(core["id"])):
+        entity = core["model"].get(entity_key)
+        if entity is None:  # a capitalised word that is not an entity of this core
+            continue
+        tail = tail.rstrip(".")
+        if (
+            tail in entity["fields"]
+            or tail in entity["capabilities"]
+            or tail in entity["operations"]
+        ):
+            continue
+        unresolved.append(f"{entity_key}.{tail}")
+    assert not unresolved, (
+        f"{core['id']}: the playbook names {sorted(set(unresolved))}, which are neither "
+        f"fields nor capabilities nor operations of those entities"
+    )
 
 
 def test_command_shapes_match(core):

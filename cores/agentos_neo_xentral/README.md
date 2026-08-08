@@ -102,7 +102,7 @@ PYTHONPATH=<agent-os>/backend \
 | `manifest.py` | Which adapters this core exposes. |
 | `checks/verify.py` | The prober: runs against a real tenant and writes `verified.json`. |
 | `descriptions.json` | Field descriptions surfaced in `describe`. |
-| `playbook.md` | Short prose for agents building workflows. Checked against the core by CI. |
+| `playbook.md` | Short prose for agents building workflows. CI reads the document itself: every dotted field path and every `Entity.name` it names in code spans must exist in the core. |
 | `docs/` | Investigations and findings behind individual decisions. |
 
 ## The loop
