@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 """Render specification, implementation and live evidence into one review sheet.
 
-The core keeps its truth in three places that are written by three different sides
-and must never be derived from one another:
+The core keeps its truth in two places, written by two different sides and never
+derived from one another:
 
-  * ``capabilities.spec.yaml`` — what the ERP must be able to DO (domain expert)
-  * ``field-gaps.yaml``        — what it must be able to RECORD and FIND (domain expert)
-  * ``verified.json``          — what a live run actually demonstrated (the prober)
+  * ``erp-spec.yaml``   — what the ERP must be able to do and to record (domain expert)
+  * ``verified.json``   — what a live run actually demonstrated (the prober)
 
-Reviewing any one of them alone answers the wrong question. The spec alone cannot
-say whether anything works; ``verified.json`` alone cannot say whether what works is
-what was needed. This joins all three onto one row per capability and per field
-requirement, so the review question becomes "is anything missing for the business?"
-instead of "does this key exist?".
+Reviewing either alone answers the wrong question. The spec alone cannot say whether
+anything works; ``verified.json`` alone cannot say whether what works is what was
+needed. This joins them onto one row per capability and per field requirement, so the
+review question becomes "is anything missing for the business?" instead of "does this
+key exist?".
 
 Two outputs, same data:
 
@@ -62,34 +61,6 @@ import yaml  # noqa: E402
 # openpyxl is imported inside `_write_xlsx`, not here. It is deliberately not a repo
 # dependency (supplied per call), and the drift test rebuilds the YAML half through
 # `render_yaml` — which must stay importable on a plain test runner.
-
-# The order the business reads its own system in. Anything not named here follows,
-# alphabetically — a new entity therefore appears at the end rather than silently
-# in the middle of the sales chain.
-CHAIN = (
-    "Customer",
-    "Quote",
-    "SalesOrder",
-    "DeliveryNote",
-    "Shipment",
-    "SalesInvoice",
-    "Payment",
-    "Return",
-    "CreditNote",
-    "Supplier",
-    "PurchaseOrder",
-    "GoodsReceipt",
-    "PurchaseInvoice",
-    "Product",
-    "PriceList",
-    "PurchasePrice",
-    "StorageLocation",
-    "StockLevel",
-    "StockMovement",
-    "StockTake",
-    "PickingRun",
-    "Warehouse",
-)
 
 #: The verdict that means the capability itself was demonstrated — an effect read
 #: back, not merely a route that answered. Mirrors ``verdicts.PROVEN``.
@@ -188,23 +159,24 @@ def _model(core_id: str) -> dict[str, dict[str, Any]]:
     return out
 
 
-def _order(keys) -> list[str]:
-    rank = {key: i for i, key in enumerate(CHAIN)}
-    return sorted(keys, key=lambda k: (rank.get(k, len(CHAIN)), k))
+def _order(core_id: str, keys) -> list[str]:
+    """The core's own reading sequence. Shared with the spec and its ordering rule
+    (`cores/<id>/order.py`) so the sheet and the file a reviewer edits agree."""
+    module = __import__(f"xentral_entity_cores.{core_id}.order", fromlist=["chain_order"])
+    return module.chain_order(keys)
 
 
-def _capability_rows(spec: dict, model: dict, verified: dict) -> list[dict[str, Any]]:
+def _capability_rows(core_id: str, spec: dict, model: dict, verified: dict) -> list[dict[str, Any]]:
     """One row per capability: what the spec asks, what the core built, what a run proved."""
-    executable = spec.get("executable") or {}
-    wishes = spec.get("wishes") or {}
-    reviewed = spec.get("reviewed") or {}
     rows: list[dict[str, Any]] = []
-    for entity in _order(set(executable) | set(wishes) | set(model)):
+    for entity in _order(core_id, set(spec) | set(model)):
+        block = spec.get(entity) or {}
         meta = model.get(entity) or {"capabilities": {}}
         marks = verified.get(entity) or {}
-        for key in sorted(set(executable.get(entity) or []) | set(wishes.get(entity) or [])):
+        can, cannot = block.get("can") or {}, block.get("cannot") or {}
+        for key in sorted(set(can) | set(cannot)):
             capability = meta["capabilities"].get(key) or {}
-            required = key in (executable.get(entity) or [])
+            required = key in can
             wish = capability.get("wish")
             verdict = marks.get(key) if required else None
             rows.append(
@@ -223,13 +195,13 @@ def _capability_rows(spec: dict, model: dict, verified: dict) -> list[dict[str, 
                     "verdict": verdict,
                     "proven": bool(required and verdict == PROVEN),
                     "note": wish or "",
-                    "reviewed": reviewed.get(entity) or "",
+                    "reviewed": block.get("reviewed") or "",
                 }
             )
     return rows
 
 
-def _field_rows(field_gaps: dict, model: dict, verified: dict) -> list[dict[str, Any]]:
+def _field_rows(core_id: str, spec: dict, model: dict, verified: dict) -> list[dict[str, Any]]:
     """One row per field requirement — the other axis of the same specification.
 
     A recorded gap can go stale, and a stale one is worse than none: it goes on
@@ -239,8 +211,8 @@ def _field_rows(field_gaps: dict, model: dict, verified: dict) -> list[dict[str,
     what makes an obsolete entry visible instead of permanent.
     """
     rows: list[dict[str, Any]] = []
-    entities = field_gaps or {}
-    for entity in _order(entities):
+    entities = {k: b["fieldGaps"] for k, b in spec.items() if b.get("fieldGaps")}
+    for entity in _order(core_id, entities):
         meta = model.get(entity)
         marks = (verified.get(entity) or {}).get("fields") or {}
         for entry in entities[entity] or []:
@@ -272,8 +244,10 @@ def _field_rows(field_gaps: dict, model: dict, verified: dict) -> list[dict[str,
     return rows
 
 
-def _summary(cap_rows: list[dict], field_rows: list[dict], spec: dict) -> list[dict[str, Any]]:
-    reviewed = spec.get("reviewed") or {}
+def _summary(
+    core_id: str, cap_rows: list[dict], field_rows: list[dict], spec: dict
+) -> list[dict[str, Any]]:
+    reviewed = {key: block.get("reviewed") for key, block in spec.items()}
     per: dict[str, dict[str, Any]] = {}
     for row in cap_rows:
         s = per.setdefault(
@@ -311,7 +285,7 @@ def _summary(cap_rows: list[dict], field_rows: list[dict], spec: dict) -> list[d
             },
         )
         s["fieldRequirements"] += 1
-    return [per[k] for k in _order(per)]
+    return [per[k] for k in _order(core_id, per)]
 
 
 def render_yaml(core_id: str, source: dict, summary, cap_rows, field_rows) -> str:
@@ -365,7 +339,7 @@ def render_yaml(core_id: str, source: dict, summary, cap_rows, field_rows) -> st
     header = (
         "# Review sheet — specification vs. implementation vs. live evidence.\n"
         "# GENERATED by scripts/export_review_sheet.py. Do not edit: change the\n"
-        "# specification (capabilities.spec.yaml / field-gaps.yaml) or the code.\n"
+        "# specification (erp-spec.yaml) or the code.\n"
         "# Carries no generation timestamp on purpose — `source` records the probe run\n"
         "# it was built from, so a diff here means a fact moved, not that it was re-run.\n"
     )
@@ -375,11 +349,11 @@ def render_yaml(core_id: str, source: dict, summary, cap_rows, field_rows) -> st
 def build(core_id: str) -> tuple[dict, list[dict], list[dict], list[dict]]:
     """Read the three sources and assemble the review rows. No output side."""
     core_dir = _CORES / core_id
-    spec_path = core_dir / "capabilities.spec.yaml"
-    spec = yaml.safe_load(spec_path.read_text("utf-8")) or {} if spec_path.is_file() else {}
-
-    gaps_path = core_dir / "field-gaps.yaml"
-    field_gaps = yaml.safe_load(gaps_path.read_text("utf-8")) or {} if gaps_path.is_file() else {}
+    spec_path = core_dir / "erp-spec.yaml"
+    # category → entity → block; every consumer here addresses an entity, so the
+    # grouping is flattened once (same seam as the core's own loader).
+    grouped = yaml.safe_load(spec_path.read_text("utf-8")) or {} if spec_path.is_file() else {}
+    spec = {k: b for entities in grouped.values() for k, b in entities.items()}
 
     verified_path = core_dir / "verified.json"
     verified_doc = json.loads(verified_path.read_text("utf-8")) if verified_path.is_file() else {}
@@ -399,9 +373,9 @@ def build(core_id: str) -> tuple[dict, list[dict], list[dict], list[dict]]:
     }
 
     model = _model(core_id)
-    cap_rows = _capability_rows(spec, model, verified)
-    field_rows = _field_rows(field_gaps, model, verified)
-    return source, _summary(cap_rows, field_rows, spec), cap_rows, field_rows
+    cap_rows = _capability_rows(core_id, spec, model, verified)
+    field_rows = _field_rows(core_id, spec, model, verified)
+    return source, _summary(core_id, cap_rows, field_rows, spec), cap_rows, field_rows
 
 
 def _write_xlsx(path: Path, core_id: str, source: dict, summary, cap_rows, field_rows) -> None:
@@ -556,8 +530,8 @@ def _write_xlsx(path: Path, core_id: str, source: dict, summary, cap_rows, field
 
 def main(core_id: str = "agentos_neo_xentral") -> int:
     core_dir = _CORES / core_id
-    if not (core_dir / "capabilities.spec.yaml").is_file():
-        print(f"{core_id}: no capabilities.spec.yaml — nothing to review", file=sys.stderr)
+    if not (core_dir / "erp-spec.yaml").is_file():
+        print(f"{core_id}: no erp-spec.yaml — nothing to review", file=sys.stderr)
         return 1
 
     source, summary, cap_rows, field_rows = build(core_id)

@@ -8,7 +8,9 @@ only the repo's own consistency:
   * manifest.json has the required shape and a sane contractVersion,
   * every `cores/<id>/` is an importable package (has __init__.py),
   * the set of core folders matches manifest.cores.ids exactly,
-  * every verdict in a `verified.json` is in the vocabulary (cores/agentos_neo_xentral/verdicts.py).
+  * every verdict in a `verified.json` is in the vocabulary (cores/agentos_neo_xentral/verdicts.py),
+  * `erp-spec.yaml` has the shape the runtime loader expects — which fails soft, so
+    this is where a malformed specification is named instead.
 
 Exit non-zero on any violation so CI fails the PR.
 """
@@ -18,6 +20,9 @@ from __future__ import annotations
 import importlib.util
 import json
 import sys
+from typing import Any
+
+import yaml
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -100,6 +105,114 @@ def _check_verdicts(core_id: str) -> int:
     return 1
 
 
+_SPEC_CATEGORIES = frozenset({"documents", "masterdata", "crm", "settings"})
+_SPEC_ENTITY_KEYS = frozenset(
+    {
+        "label",
+        "reviewed",
+        "operations",
+        "statuses",
+        "requiredForCreate",
+        "filterable",
+        "notFilterable",
+        "fields",
+        "can",
+        "cannot",
+        "fieldGaps",
+    }
+)
+
+
+class _StrictLoader(yaml.SafeLoader):
+    """``safe_load`` lets a duplicate mapping key win silently — a copy-pasted
+    ``Customer:`` would delete an entity's whole specification and still parse clean."""
+
+
+def _no_duplicate_keys(loader: Any, node: Any, deep: bool = False) -> Any:
+    seen = set()
+    for key_node, _ in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        if key in seen:
+            raise yaml.YAMLError(f"duplicate key {key!r} at line {key_node.start_mark.line + 1}")
+        seen.add(key)
+    return yaml.SafeLoader.construct_mapping(loader, node, deep=deep)
+
+
+_StrictLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _no_duplicate_keys)
+
+
+def _check_erp_spec(core_id: str) -> int:
+    """The shape of `erp-spec.yaml`, without importing anything.
+
+    The core loads this file at runtime and fails SOFT on a malformed one — a typo must
+    cost a sentence in `describe`, never a 500. This is where that bargain is paid back:
+    the fast CI job, no backend contract needed, so a broken specification is named in
+    seconds rather than after a full dependency sync. What it cannot see (a capability
+    that does not exist, a category that disagrees with the adapter) is covered by
+    tests/test_core_playbooks.py, which does import the core.
+    """
+    path = CORES_DIR / core_id / "erp-spec.yaml"
+    if not path.is_file():
+        return 0
+    try:
+        # S506 reads a custom loader as unsafe; this one subclasses SafeLoader and only
+        # adds the duplicate-key refusal, so it constructs exactly what safe_load does.
+        doc = yaml.load(path.read_text(encoding="utf-8"), _StrictLoader)  # noqa: S506
+    except (OSError, yaml.YAMLError) as exc:
+        _fail(f"cores/{core_id}/erp-spec.yaml: {exc}")
+        return 1
+
+    errors = 0
+    if not isinstance(doc, dict) or not doc:
+        _fail(f"cores/{core_id}/erp-spec.yaml: must be a non-empty mapping")
+        return 1
+    allowed_verdicts = _verdict_vocabulary()
+    for category, entities in doc.items():
+        if category not in _SPEC_CATEGORIES:
+            _fail(
+                f"cores/{core_id}/erp-spec.yaml: unknown category {category!r} — the "
+                f"grouping is the adapters' own `manifest.category`, not a new taxonomy"
+            )
+            errors += 1
+            continue
+        if not isinstance(entities, dict):
+            _fail(f"cores/{core_id}/erp-spec.yaml: {category} is not a mapping")
+            errors += 1
+            continue
+        for key, block in entities.items():
+            if not isinstance(block, dict):
+                _fail(f"cores/{core_id}/erp-spec.yaml: {category}.{key} is not a mapping")
+                errors += 1
+                continue
+            unknown = sorted(set(block) - _SPEC_ENTITY_KEYS)
+            if unknown:
+                _fail(f"cores/{core_id}/erp-spec.yaml: {key} has unknown key(s) {unknown}")
+                errors += 1
+            if "reviewed" not in block:
+                _fail(f"cores/{core_id}/erp-spec.yaml: {key} has no `reviewed` (use null)")
+                errors += 1
+            for op, entry in (block.get("can") or {}).items():
+                if not isinstance(entry, dict):
+                    _fail(f"cores/{core_id}/erp-spec.yaml: {key}.can.{op} must be a mapping")
+                    errors += 1
+                    continue
+                verdict = entry.get("evidence")
+                if verdict is not None and verdict not in allowed_verdicts:
+                    _fail(
+                        f"cores/{core_id}/erp-spec.yaml: {key}.can.{op} evidence "
+                        f"{verdict!r} is outside the vocabulary {sorted(allowed_verdicts)}"
+                    )
+                    errors += 1
+            for op, reason in (block.get("cannot") or {}).items():
+                if not isinstance(reason, str) or not reason.strip():
+                    _fail(
+                        f"cores/{core_id}/erp-spec.yaml: {key}.cannot.{op} has no reason — "
+                        f"a gap with no reason cannot be told from one nobody investigated"
+                    )
+                    errors += 1
+    return errors
+
+
 def main() -> int:
     errors = 0
 
@@ -141,6 +254,7 @@ def main() -> int:
             _fail(f"cores/{core_id} has no __init__.py (must export CORE)")
             errors += 1
         errors += _check_verdicts(core_id)
+        errors += _check_erp_spec(core_id)
 
     if errors:
         print(f"validate_cores: {errors} error(s)")

@@ -243,7 +243,7 @@ class CreditNoteAdapter(FacadeAdapterBase):
                     "issued": prop("date", "Issued", **_CU, filterable=True, sortable=True),
                     # Unlike the invoice, the credit-note v3 DTOs still carry no
                     # `deliveryDate` — the write drops this silently, so the schema must
-                    # not advertise it as writable (field-gaps.yaml keeps the wish).
+                    # not advertise it as writable (erp-spec.yaml keeps the wish).
                     "serviceDate": prop(
                         "date",
                         "Service date",

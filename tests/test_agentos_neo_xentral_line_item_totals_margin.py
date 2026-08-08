@@ -29,6 +29,26 @@ from xentral_entity_cores.agentos_neo_xentral.emulated.sales_order import SalesO
 _ALL = (QuoteAdapter, SalesOrderAdapter, SalesInvoiceAdapter, CreditNoteAdapter)
 
 
+def _field_gaps() -> dict:
+    """The field-gap entries per entity, out of the core's one specification file.
+
+    `erp-spec.yaml` groups `category -> entity -> block`; this flattens to
+    `entity -> [gap]`, the shape these assertions care about.
+    """
+    import pathlib
+
+    import yaml
+
+    path = pathlib.Path(__file__).parent.parent / "cores/agentos_neo_xentral/erp-spec.yaml"
+    grouped = yaml.safe_load(path.read_text(encoding="utf-8"))
+    return {
+        key: block["fieldGaps"]
+        for entities in grouped.values()
+        for key, block in entities.items()
+        if block.get("fieldGaps")
+    }
+
+
 def _raw(**line: Any) -> dict[str, Any]:
     base = {"id": 151013, "order": 1, "product": {"id": "61988"}, "quantity": 3}
     return {"id": 1, "financials": {"currency": "EUR"}, "lineItems": [{**base, **line}]}
@@ -105,10 +125,6 @@ def test_no_tax_is_invented_for_a_line():
     figure Xentral never reported, indistinguishable from a real one and free to
     disagree with the printed document (legacy rounding is an open question). The gap
     is carried as a blue wish, not filled in."""
-    import pathlib
-
-    import yaml
-
     raw = _raw(
         lineItemRevenue={
             "net": {"amount": "300.00", "currency": "EUR"},
@@ -120,11 +136,7 @@ def test_no_tax_is_invented_for_a_line():
         assert set(totals) == {"net", "gross"}, cls.__name__
         assert "tax" not in cls().fields()["items"]["node"]["properties"]["totals"]["properties"]
 
-    gaps = yaml.safe_load(
-        (
-            pathlib.Path(__file__).parent.parent / "cores/agentos_neo_xentral/field-gaps.yaml"
-        ).read_text(encoding="utf-8")
-    )
+    gaps = _field_gaps()
     for ent in ("Quote", "SalesOrder", "SalesInvoice", "CreditNote"):
         wishes = [w for w in gaps[ent] if w["field"] == "items.totals.tax"]
         assert wishes, f"{ent}: the missing per-line tax must stay visible as a wish"

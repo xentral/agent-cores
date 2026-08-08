@@ -21,6 +21,26 @@ from xentral_entity_cores.agentos_neo_xentral.emulated.customer import CustomerA
 from xentral_entity_cores.agentos_neo_xentral.emulated.supplier import SupplierAdapter
 
 
+def _field_gaps() -> dict:
+    """The field-gap entries per entity, out of the core's one specification file.
+
+    `erp-spec.yaml` groups `category -> entity -> block`; this flattens to
+    `entity -> [gap]`, the shape these assertions care about.
+    """
+    import pathlib
+
+    import yaml
+
+    path = pathlib.Path(__file__).parent.parent / "cores/agentos_neo_xentral/erp-spec.yaml"
+    grouped = yaml.safe_load(path.read_text(encoding="utf-8"))
+    return {
+        key: block["fieldGaps"]
+        for entities in grouped.values()
+        for key, block in entities.items()
+        if block.get("fieldGaps")
+    }
+
+
 def _f() -> dict[str, Any]:
     return CustomerAdapter().fields()
 
@@ -204,12 +224,6 @@ def test_customer_can_be_deleted():
 def test_lead_flag_is_read_only_and_carried_as_a_wish():
     """No v3 customers payload exposes the lead flag, so `type` must not claim to be
     writable — and the gap has to stay visible rather than disappear."""
-    import pathlib
-
-    import yaml
-
     assert _f()["type"]["access"] == "readOnly"
-    path = pathlib.Path(__file__).parent.parent / "cores/agentos_neo_xentral/field-gaps.yaml"
-    gaps = yaml.safe_load(path.read_text(encoding="utf-8"))
-    wishes = [w for w in gaps["Customer"] if w["field"] == "type"]
+    wishes = [w for w in _field_gaps()["Customer"] if w["field"] == "type"]
     assert wishes and set(wishes[0]["ops"]) == {"create", "update"}

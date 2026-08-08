@@ -1,10 +1,15 @@
 """A core must do what its specification says — and prove it.
 
-``capabilities.spec.yaml`` is the core's capability specification: what the ERP must
-be able to do, written and signed off by a domain expert. This module replays every
+``erp-spec.yaml`` is the core's ERP specification: what the system must be able to do
+and to record, written and signed off by a domain expert. This module replays every
 statement in it against two independent sources — the core's own ``metadata()`` (what
 the code declares) and ``verified.json`` (what a live run against a real tenant
 actually demonstrated).
+
+It is organised ``category → entity → everything about that entity``, so one block
+answers "what can this system do with an order". Every rule below addresses a single
+entity, so ``_spec`` flattens the grouping once and exactly one rule checks it — the
+categories are the adapters' own ``manifest.category``, not a taxonomy the file owns.
 
 **The direction of proof runs from the spec to the code.** When the two disagree the
 default reading is that the core is wrong, and the assertion messages say so. That is
@@ -40,14 +45,14 @@ The rules that carry the most weight:
   still be one. Getting this backwards in either direction is the expensive failure —
   a builder either designs around a capability that exists, or ships a workflow that
   is refused on the first real record.
-* **"Executable" is a claim about the code, not about reality.** ``evidenceGaps``
-  records which of those capabilities no live run has actually proven, and must match
-  ``verified.json`` exactly in both directions. Without it, a route that merely exists
-  reads identically to one whose effect was observed — measured on the committed file
-  when this rule was written: of 80 capabilities claimed executable, 25 were proven.
+* **A capability in ``can`` is a claim about the code, not about reality.** Each one
+  records the verdict a live run returned, checked against ``verified.json`` by value.
+  Without that, a route that merely exists reads identically to one whose effect was
+  observed — measured when this was written: of 80 capabilities, 25 proven, 34 only
+  `reachable`, 3 `executed`, 18 never tested at all.
 * **The spec must be complete over the core**, not merely over the entities it
-  happens to mention: every entity with capabilities, every CRUD surface, every
-  parameter-carrying command. Partial coverage is the dangerous kind, because a
+  happens to mention: one block per entity, every CRUD surface, every capability,
+  every parameter-carrying command. Partial coverage is the dangerous kind, because a
   reviewer reads a subset and believes they reviewed the whole.
 * **A core whose roster is only knowable at request time may not carry a spec at
   all.** Its adapters come from an ``adapters_factory`` that needs a live
@@ -57,6 +62,7 @@ The rules that carry the most weight:
 
 from __future__ import annotations
 
+import datetime
 import json
 import re
 from pathlib import Path
@@ -66,7 +72,7 @@ import yaml
 
 CORES_DIR = Path(__file__).resolve().parent.parent / "cores"
 PLAYBOOK = "playbook.md"
-SPEC = "capabilities.spec.yaml"
+SPEC = "erp-spec.yaml"
 VERIFIED = "verified.json"
 
 #: The verdict that means the capability itself was demonstrated — an effect was
@@ -74,21 +80,49 @@ VERIFIED = "verified.json"
 #: as a literal so this module stays importable without the core package.
 PROVEN = "pass"
 
-# Sections of the spec and what each asserts. Anything else is a typo, not a new
-# rule — see test_no_unknown_spec_sections.
-KNOWN_SECTIONS = {
-    "executable",
-    "wishes",
-    "evidenceGaps",
-    "operations",
-    "statuses",
-    "requiredForCreate",
-    "filterable",
-    "notFilterable",
-    "fields",
-    "commands",
-    "reviewed",
-}
+#: The grouping the spec may use. Not a taxonomy the file owns — these are the
+#: adapters' own ``manifest.category`` values, the same ones `describe` ships.
+CATEGORIES = ("documents", "masterdata", "crm", "settings")
+
+#: What an entity block may state. Anything else is a typo, not a new rule — see
+#: test_no_unknown_categories_or_entity_keys.
+ENTITY_KEYS = frozenset(
+    {
+        "label",
+        "reviewed",
+        "operations",
+        "statuses",
+        "requiredForCreate",
+        "filterable",
+        "notFilterable",
+        "fields",
+        "can",
+        "cannot",
+        "fieldGaps",
+    }
+)
+
+
+class StrictLoader(yaml.SafeLoader):
+    """``safe_load`` lets a duplicate mapping key win silently.
+
+    Harmless while an entity appeared once per section across eleven small sections.
+    In one 1 700-line file with 50 sibling blocks, a copy-pasted ``Customer:`` would
+    delete an entity's entire specification and still parse clean.
+    """
+
+
+def _no_duplicate_keys(loader, node, deep=False):
+    seen = set()
+    for key_node, _ in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        if key in seen:
+            raise yaml.YAMLError(f"duplicate key {key!r} at line {key_node.start_mark.line + 1}")
+        seen.add(key)
+    return yaml.SafeLoader.construct_mapping(loader, node, deep=deep)
+
+
+StrictLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _no_duplicate_keys)
 
 CORES_WITH_PLAYBOOK = sorted(p.parent.name for p in CORES_DIR.glob(f"*/{PLAYBOOK}"))
 
@@ -117,6 +151,21 @@ def _load_core(core_id: str):
     return module.CORE
 
 
+def _chain_order(core_id: str):
+    """The core's own reading sequence (``order.chain_order``), or None.
+
+    Imported from the core rather than restated here: the exporter that writes
+    `review.xlsx` uses the same function, and a test guarding its own second copy of a
+    sequence guards nothing. A core that ships no `order` module simply states no order,
+    and the rule skips.
+    """
+    try:
+        module = __import__(f"xentral_entity_cores.{core_id}.order", fromlist=["chain_order"])
+    except ImportError:
+        return None
+    return module.chain_order
+
+
 def _walk(props, prefix=""):
     for name, spec in (props or {}).items():
         if not isinstance(spec, dict):
@@ -129,20 +178,39 @@ def _walk(props, prefix=""):
             yield from _walk(nested, f"{path}.")
 
 
-def _spec(core_id: str) -> dict:
-    """The specification lives in a sibling `capabilities.spec.yaml`, not in the prose.
+def _categories(core_id: str) -> dict:
+    """The raw ``category → {entity: block}`` document, order preserved.
 
-    It used to be a fenced block at the end of the playbook, which put ~9 KB of
-    machine-only content into a document whose whole point is being short enough to
-    be read in one pass. A core may ship prose without a spec (nothing to check); a
-    spec without a playbook is a packaging accident and fails loudly.
+    Kept alongside the flattened view because two rules are about the grouping itself:
+    which categories exist, and in what order the entities inside one are written.
     """
     path = CORES_DIR / core_id / SPEC
     if not path.is_file():
         return {}
-    parsed = yaml.safe_load(path.read_text("utf-8"))
+    parsed = yaml.load(path.read_text("utf-8"), StrictLoader)  # noqa: S506
     assert isinstance(parsed, dict) and parsed, f"{core_id}: {SPEC} must be a mapping"
     return parsed
+
+
+def _spec(core_id: str) -> dict:
+    """Entity key → its specification block, flattened across the category grouping.
+
+    The file groups by category because that is how a reviewer navigates 50 entities;
+    every rule below addresses ONE entity. Flattening here means the grouping is
+    checked by exactly one rule
+    (``test_every_entity_sits_under_the_category_its_manifest_declares``) instead of
+    being re-derived by all of them.
+
+    A core may ship prose without a spec (nothing to check); a spec without a playbook
+    is a packaging accident and fails loudly.
+    """
+    out: dict[str, dict] = {}
+    for category, entities in _categories(core_id).items():
+        assert isinstance(entities, dict), f"{core_id}: category {category!r} is not a mapping"
+        for key, block in entities.items():
+            assert isinstance(block, dict), f"{core_id}: {category}.{key} is not a mapping"
+            out[key] = {**block, "_category": category}
+    return out
 
 
 def _verified(core_id: str) -> dict:
@@ -181,6 +249,10 @@ def _model(core_id: str) -> dict:
                 )
                 capabilities[key] = command
         out[meta["key"]] = {
+            # `category` and `label` are the core's own; the spec mirrors them and is
+            # checked against them, so neither becomes a second source of truth.
+            "category": meta.get("category"),
+            "label": meta.get("label"),
             "operations": list(meta.get("operations") or []),
             "capabilities": capabilities,
             "fields": dict(_walk(meta.get("rootNode", {}).get("properties", {}))),
@@ -194,6 +266,7 @@ def core(request):
     return {
         "id": core_id,
         "spec": _spec(core_id),
+        "categories": _categories(core_id),
         "model": _model(core_id),
         "verified": _verified(core_id),
     }
@@ -212,7 +285,7 @@ def _entity(core: dict, key: str) -> dict:
 # formality.
 #
 # It went 48k → 56k once while the recipes were being written, then back to 18k when
-# the machine-only statements moved out to capabilities.spec.yaml and the prose was
+# the machine-only statements moved out to erp-spec.yaml and the prose was
 # rewritten to the 80 % an e-commerce back office actually does. Roughly three A4
 # pages. That is the target shape: everything past it belongs in `describe`, which
 # is live and always right, or in the spec, which is read by reviewers, not agents.
@@ -242,21 +315,29 @@ def test_a_dynamic_roster_core_carries_no_spec(core):
     )
 
 
-def test_no_unknown_spec_sections(core):
-    unknown = set(core["spec"]) - KNOWN_SECTIONS
-    assert not unknown, (
-        f"{core['id']}: unknown spec sections {sorted(unknown)} — nothing checks these"
+def test_no_unknown_categories_or_entity_keys(core):
+    unknown_categories = sorted(set(core["categories"]) - set(CATEGORIES))
+    assert not unknown_categories, (
+        f"{core['id']}: unknown categories {unknown_categories} — the grouping is the "
+        f"core's own `manifest.category`, not a taxonomy this file may invent"
     )
+    unknown = sorted(
+        f"{key}.{k}"
+        for key, block in core["spec"].items()
+        for k in block
+        if not k.startswith("_") and k not in ENTITY_KEYS
+    )
+    assert not unknown, f"{core['id']}: unknown keys {unknown} — nothing checks these"
 
 
 def test_executable_capabilities_exist_and_carry_no_wish(core):
-    for key, ops in (core["spec"].get("executable") or {}).items():
+    for key, block in core["spec"].items():
         entity = _entity(core, key)
-        for op in ops:
+        for op in block.get("can") or {}:
             capability = entity["capabilities"].get(op)
             assert capability is not None, (
                 f"{key}.{op}: the spec requires this capability, but the core declares no "
-                f"such action or step command — build it, or move it to `wishes` with the "
+                f"such action or step command — build it, or move it to `cannot` with the "
                 f"upstream reason"
             )
             assert not capability.get("wish"), (
@@ -266,9 +347,9 @@ def test_executable_capabilities_exist_and_carry_no_wish(core):
 
 
 def test_wishes_are_still_wishes(core):
-    for key, ops in (core["spec"].get("wishes") or {}).items():
+    for key, block in core["spec"].items():
         entity = _entity(core, key)
-        for op in ops:
+        for op in block.get("cannot") or {}:
             capability = entity["capabilities"].get(op)
             assert capability is not None, (
                 f"{key}.{op}: the spec records this as an upstream gap, but the core declares "
@@ -277,7 +358,7 @@ def test_wishes_are_still_wishes(core):
             )
             assert capability.get("wish"), (
                 f"{key}.{op}: the spec tells builders this is NOT possible, but the core now "
-                f"implements it — move it to `executable` and fix the prose"
+                f"implements it — move it to `can` and fix the prose"
             )
 
 
@@ -294,9 +375,10 @@ def test_every_wish_carries_a_reason(core):
     placeholder naming the omission, which is honest at runtime but must not survive a
     build. A gap with no reason cannot be told apart from one nobody investigated.
     """
-    for key, ops in (core["spec"].get("wishes") or {}).items():
+    for key, block in core["spec"].items():
+        ops = block.get("cannot") or {}
         assert isinstance(ops, dict), (
-            f"{key}: `wishes` must map each capability to its reason, not list bare keys"
+            f"{key}: `cannot` must map each capability to its reason, not list bare keys"
         )
         for op, reason in ops.items():
             assert isinstance(reason, str) and reason.strip(), (
@@ -335,64 +417,58 @@ def test_no_rendered_wish_carries_the_runtime_placeholder(core):
             )
 
 
-def test_evidence_gaps_match_the_live_run(core):
-    """Which executable capabilities a live run has NOT actually proven.
+def test_evidence_matches_the_live_run(core):
+    """The recorded evidence must be the verdict the probe actually returned.
 
-    ``executable`` is a statement about the code: the adapter declares the capability
-    and does not mark it a wish. That is not the same as it working. The probe records
-    how strongly each one was shown (``verdicts.py``) — and ``reachable``, the most
-    common verdict, explicitly means the route exists and refused our probe, with no
-    capability claim in either direction.
+    `evidenceGaps` used to be a boundary — in the list or not — which meant `reachable`
+    (the route exists and refused our probe: no capability claim either way), `executed`
+    (something changed, nobody looked) and *never tested at all* were one word. Measured
+    when this was rewritten: 34 reachable, 3 executed, 18 untested, all reading
+    identically. The verdict vocabulary exists to tell those apart (`verdicts.py`), so
+    the spec now records the verdict itself.
 
-    So the gap list is spec'd and checked in both directions. A capability that gains
-    a real proof must be struck from it; a newly claimed one that has never been proven
-    must be added. Either way a human writes the line, which is the point: the number of
-    unproven capabilities cannot drift upward quietly.
+    Checked by value and in both directions: a capability that gains a proof must be
+    upgraded here, one that loses it must be downgraded. A human writes the line either
+    way, which is the point — the number of unproven capabilities cannot drift upward
+    quietly.
     """
     if not core["verified"]:
         return
-    declared = {
-        f"{key}.{op}" for key, ops in (core["spec"].get("evidenceGaps") or {}).items() for op in ops
-    }
-    actual = {
-        f"{key}.{op}"
-        for key, ops in (core["spec"].get("executable") or {}).items()
-        for op in ops
-        if (core["verified"].get(key) or {}).get(op) != PROVEN
-    }
-    assert declared == actual, (
-        f"{core['id']}: `evidenceGaps` disagrees with {VERIFIED}. "
-        f"now proven, strike from the spec: {sorted(declared - actual) or 'none'}; "
-        f"claimed executable but never proven, add them: {sorted(actual - declared) or 'none'}"
+    drifted = {}
+    for key, block in core["spec"].items():
+        for op, entry in (block.get("can") or {}).items():
+            recorded = entry.get("evidence") if isinstance(entry, dict) else None
+            measured = (core["verified"].get(key) or {}).get(op)
+            if recorded != measured:
+                drifted[f"{key}.{op}"] = (recorded, measured)
+    assert not drifted, (
+        f"{core['id']}: `evidence` disagrees with {VERIFIED} (spec, live): "
+        f"{dict(sorted(drifted.items()))}"
     )
 
 
-def test_every_entity_with_capabilities_is_specified(core):
-    """Completeness over the CORE, not over the entities the spec happens to name.
+def test_the_spec_covers_every_entity_and_invents_none(core):
+    """One block per entity the core exposes, and no block for anything else.
 
     Partial coverage is the dangerous kind: a reviewer reads what is there and takes it
-    for the whole surface. An entity that grows its first action must appear here before
-    anyone can use it.
+    for the whole surface. Entity-major makes this the natural shape of the rule — an
+    entity that grows its first action already has a block waiting for it.
     """
-    specified = set(core["spec"].get("executable") or {}) | set(core["spec"].get("wishes") or {})
-    unspecified = sorted(
-        key
-        for key, entity in core["model"].items()
-        if entity["capabilities"] and key not in specified
-    )
-    assert not unspecified, (
-        f"{core['id']}: these entities have actions or step commands that no spec section "
-        f"mentions: {unspecified}"
+    if not core["spec"]:
+        return
+    missing = sorted(set(core["model"]) - set(core["spec"]))
+    invented = sorted(set(core["spec"]) - set(core["model"]))
+    assert not missing and not invented, (
+        f"{core['id']}: no block for {missing or 'none'}; blocks for entities this core "
+        f"does not expose: {invented or 'none'}"
     )
 
 
-def test_spec_covers_every_capability_of_the_entities_it_names(core):
+def test_spec_covers_every_capability_of_every_entity(core):
     """A capability the spec never mentions is a capability nobody reviewed."""
-    executable = core["spec"].get("executable") or {}
-    wishes = core["spec"].get("wishes") or {}
-    for key in sorted(set(executable) | set(wishes)):
+    for key, block in core["spec"].items():
         entity = _entity(core, key)
-        specified = set(executable.get(key) or []) | set(wishes.get(key) or [])
+        specified = set(block.get("can") or {}) | set(block.get("cannot") or {})
         actual = set(entity["capabilities"])
         assert specified == actual, (
             f"{key}: the spec and the core's capabilities disagree. "
@@ -402,59 +478,70 @@ def test_spec_covers_every_capability_of_the_entities_it_names(core):
 
 
 def test_declared_operations_match(core):
-    for key, ops in (core["spec"].get("operations") or {}).items():
+    """Stated for every entity: read-only versus writable is a business decision, and
+    left as a sample the section reads as "these are the interesting ones" when it
+    means "nobody wrote down the rest"."""
+    for key, block in core["spec"].items():
         entity = _entity(core, key)
-        assert sorted(entity["operations"]) == sorted(ops), (
-            f"{key}: the spec requires operations {sorted(ops)}, core exposes "
-            f"{sorted(entity['operations'])}"
+        assert "operations" in block, (
+            f"{key}: no `operations` — say whether this entity is read-only or writable"
         )
-
-
-def test_operations_are_specified_for_every_entity(core):
-    """Read-only versus writable is a business decision, so every entity states it.
-
-    Left as a sample this section reads as "these are the interesting ones", when what
-    it actually means is "nobody wrote down the rest".
-    """
-    if not core["spec"]:
-        return
-    missing = sorted(set(core["model"]) - set(core["spec"].get("operations") or {}))
-    assert not missing, (
-        f"{core['id']}: no operations specified for {missing} — state the CRUD surface "
-        f"for every entity the core exposes"
-    )
+        assert sorted(entity["operations"]) == sorted(block["operations"]), (
+            f"{key}: the spec requires operations {sorted(block['operations'])}, core "
+            f"exposes {sorted(entity['operations'])}"
+        )
 
 
 def test_status_vocabularies_match(core):
-    for dotted, values in (core["spec"].get("statuses") or {}).items():
-        key, _, path = dotted.partition(".")
-        spec = _entity(core, key)["fields"].get(path)
-        assert spec is not None, f"{dotted}: no such field"
-        options = spec.get("options") or []
-        actual = {o.get("value") if isinstance(o, dict) else o for o in options}
-        assert actual, f"{dotted}: the field declares no options"
-        assert actual == set(values), (
-            f"{dotted}: the spec requires {sorted(values)}, core offers {sorted(actual)}"
-        )
+    for key, block in core["spec"].items():
+        entity = _entity(core, key)
+        for path, values in (block.get("statuses") or {}).items():
+            spec = entity["fields"].get(path)
+            assert spec is not None, f"{key}.{path}: no such field"
+            options = spec.get("options") or []
+            actual = {o.get("value") if isinstance(o, dict) else o for o in options}
+            assert actual, f"{key}.{path}: the field declares no options"
+            assert actual == set(values), (
+                f"{key}.{path}: the spec requires {sorted(values)}, core offers {sorted(actual)}"
+            )
 
 
 def test_required_for_create_matches(core):
-    for key, paths in (core["spec"].get("requiredForCreate") or {}).items():
+    for key, block in core["spec"].items():
+        if "requiredForCreate" not in block:
+            continue
         entity = _entity(core, key)
         actual = {
             path
             for path, spec in entity["fields"].items()
             if "required" in (spec.get("rules") or [])
         }
-        assert actual == set(paths), (
-            f"{key}: the spec requires {sorted(paths)} on create, core requires {sorted(actual)}"
+        assert actual == set(block["requiredForCreate"]), (
+            f"{key}: the spec requires {sorted(block['requiredForCreate'])} on create, "
+            f"core requires {sorted(actual)}"
         )
 
 
+def test_required_for_create_is_stated_wherever_the_core_requires_anything(core):
+    """Checked in both directions per entity that states it — which means dropping the
+    whole block is invisible. This closes that one-way hole."""
+    if not core["spec"]:
+        return
+    missing = sorted(
+        key
+        for key, entity in core["model"].items()
+        if any("required" in (s.get("rules") or []) for s in entity["fields"].values())
+        and "requiredForCreate" not in (core["spec"].get(key) or {})
+    )
+    assert not missing, (
+        f"{core['id']}: these entities have mandatory create fields nobody wrote down: {missing}"
+    )
+
+
 def test_filterable_requirements_hold(core):
-    for key, paths in (core["spec"].get("filterable") or {}).items():
+    for key, block in core["spec"].items():
         entity = _entity(core, key)
-        for path in paths:
+        for path in block.get("filterable") or []:
             spec = entity["fields"].get(path)
             assert spec is not None, f"{key}.{path}: no such field"
             assert spec.get("filterable"), (
@@ -464,9 +551,9 @@ def test_filterable_requirements_hold(core):
 
 def test_not_filterable_records_hold(core):
     """The documented traps — a field that exists but cannot be queried."""
-    for key, paths in (core["spec"].get("notFilterable") or {}).items():
+    for key, block in core["spec"].items():
         entity = _entity(core, key)
-        for path in paths:
+        for path in block.get("notFilterable") or []:
             spec = entity["fields"].get(path)
             assert spec is not None, f"{key}.{path}: no such field"
             assert not spec.get("filterable"), (
@@ -476,9 +563,13 @@ def test_not_filterable_records_hold(core):
 
 
 def test_named_field_paths_resolve(core):
-    for dotted in core["spec"].get("fields") or []:
-        key, _, path = dotted.partition(".")
-        assert path in _entity(core, key)["fields"], f"{dotted}: no such field path"
+    """`fields` is the paths the REVIEWER decided must exist — deliberately a sample,
+    not an inventory of the model. The entity binding is structural now; it used to be
+    a string prefix parsed with `partition`."""
+    for key, block in core["spec"].items():
+        entity = _entity(core, key)
+        for path in block.get("fields") or []:
+            assert path in entity["fields"], f"{key}.{path}: no such field path"
 
 
 def test_playbook_field_paths_exist(core):
@@ -553,33 +644,37 @@ def test_playbook_qualified_references_resolve(core):
 
 
 def test_command_shapes_match(core):
-    for dotted, required in (core["spec"].get("commands") or {}).items():
-        key, _, op = dotted.partition(".")
-        capability = _entity(core, key)["capabilities"].get(op)
-        assert capability is not None, f"{dotted}: no such action or step command"
-        actual = (capability.get("command") or {}).get("required") or []
-        assert sorted(actual) == sorted(required), (
-            f"{dotted}: the spec requires parameters {sorted(required)}, core requires "
-            f"{sorted(actual)}"
-        )
+    """`params` names what a capability requires. The "no such capability" assertion the
+    old dotted-key form needed is gone: a `can` key is already proven to be a real
+    capability by `test_spec_covers_every_capability_of_every_entity`."""
+    for key, block in core["spec"].items():
+        entity = _entity(core, key)
+        for op, entry in (block.get("can") or {}).items():
+            required = (entry or {}).get("params") or []
+            actual = (entity["capabilities"][op].get("command") or {}).get("required") or []
+            assert sorted(actual) == sorted(required), (
+                f"{key}.{op}: the spec requires parameters {sorted(required)}, core "
+                f"requires {sorted(actual)}"
+            )
 
 
 def test_commands_cover_every_parameterised_capability(core):
-    """Every capability that takes parameters states them here.
+    """Every capability that takes parameters states them.
 
-    This section used to be a sample, and the asymmetry misled a reader: `Quote.addTag`
-    was listed while `Quote.removeTag` — the same generated schema, the same required
-    `title` — was not, which reads as a difference between the two capabilities. There
-    is none. Listing all of them is what makes their absence meaningful.
+    This used to be a separate section and a sample, and the asymmetry misled a reader:
+    `Quote.addTag` was listed while `Quote.removeTag` — the same generated schema, the
+    same required `title` — was not, which reads as a difference between the two
+    capabilities. There is none. Stating all of them is what makes an absence mean
+    something.
     """
     if not core["spec"]:
         return
-    specified = set(core["spec"].get("commands") or {})
     missing = sorted(
         f"{key}.{op}"
         for key, entity in core["model"].items()
         for op, capability in entity["capabilities"].items()
-        if (capability.get("command") or {}).get("required") and f"{key}.{op}" not in specified
+        if (capability.get("command") or {}).get("required")
+        and not ((core["spec"].get(key) or {}).get("can") or {}).get(op, {}).get("params")
     )
     assert not missing, (
         f"{core['id']}: these capabilities take required parameters that the spec does not "
@@ -587,13 +682,83 @@ def test_commands_cover_every_parameterised_capability(core):
     )
 
 
-def test_reviewed_ledger_names_real_entities(core):
-    """The sign-off ledger: which entities a domain expert actually went through.
+def test_the_reviewed_ledger_records_a_date_or_nothing(core):
+    """The sign-off: when a domain expert went through this entity.
 
     Deliberately not a gate — it does not fail a build for being empty, because an
-    unreviewed core is a normal state and pretending otherwise would just get the
-    ledger filled to make CI quiet. What it must not do is name something that does
-    not exist, which would let a sign-off point at nothing.
+    unreviewed core is a normal state and pretending otherwise would just get the ledger
+    filled to make CI quiet. What it must not hold is `true`: a sign-off that cannot say
+    WHEN it happened is worth nothing a year later, when the entity has moved on.
+
+    It sits on the entity now rather than in a register at the end of the file, so the
+    reviewer records the fact where they established it.
     """
-    for key in core["spec"].get("reviewed") or {}:
-        _entity(core, key)
+    for key, block in core["spec"].items():
+        assert "reviewed" in block, (
+            f"{key}: no `reviewed` key. Absent and 'never reviewed' must not look the "
+            f"same — write `reviewed: null`."
+        )
+        reviewed = block["reviewed"]
+        if reviewed is None:
+            continue
+        assert isinstance(reviewed, (str, datetime.date)) and str(reviewed).strip(), (
+            f"{key}: `reviewed` must be the date of the sign-off (or null), not {reviewed!r}"
+        )
+
+
+def test_every_entity_sits_under_the_category_its_manifest_declares(core):
+    """The grouping is not a taxonomy this file owns.
+
+    It is `manifest.category` — the same value `describe` ships. Two owners for one fact
+    is how a reviewer reads `documents`, believes they have seen every document, and
+    misses one that someone filed next to `Batch` because it felt related.
+    """
+    misfiled = {
+        key: (block["_category"], _entity(core, key)["category"])
+        for key, block in core["spec"].items()
+        if block["_category"] != _entity(core, key)["category"]
+    }
+    assert not misfiled, (
+        f"{core['id']}: filed under the wrong category (spec, manifest): {misfiled}. Move "
+        f"the block — or change `category=` in the adapter, if the adapter is the wrong one."
+    )
+
+
+def test_the_label_matches_the_core(core):
+    """The label exists so a reviewer reading `crm → Correspondence` knows what that is
+    without opening Python. Because it is checked it cannot lie, and because it is
+    checked it is not a second source of truth."""
+    wrong = {
+        key: (block.get("label"), _entity(core, key)["label"])
+        for key, block in core["spec"].items()
+        if block.get("label") != _entity(core, key)["label"]
+    }
+    assert not wrong, f"{core['id']}: label drift (spec, core): {wrong}"
+
+
+def test_entities_are_ordered_the_way_the_review_sheet_reads_them(core):
+    """Same sequence as `review.xlsx`, so someone moving between the two is at the same
+    place in both (`cores/<id>/order.py`).
+
+    Not tidiness for its own sake: 50 blocks edited by hand over months land wherever
+    the last diff put them, and "where is GoodsReceipt" then costs a search instead of a
+    glance.
+    """
+    order = _chain_order(core["id"])
+    if order is None:  # a core without the shared sequence states no order to check
+        return
+    for category, entities in core["categories"].items():
+        actual = list(entities)
+        expected = order(actual)
+        assert actual == expected, (
+            f"{core['id']}: {category} is out of order. Expected:\n  " + "\n  ".join(expected)
+        )
+
+
+def test_a_duplicate_entity_key_is_refused():
+    """`safe_load` lets the second win silently. In a 1 700-line file with 50 sibling
+    blocks that would delete an entity's whole specification and still parse clean."""
+    with pytest.raises(yaml.YAMLError, match="duplicate key"):
+        # S506 reads a custom loader as unsafe; this one subclasses SafeLoader and only
+        # adds the duplicate-key refusal, so it constructs exactly what safe_load does.
+        yaml.load("documents:\n  Quote: {label: a}\n  Quote: {label: b}\n", StrictLoader)  # noqa: S506

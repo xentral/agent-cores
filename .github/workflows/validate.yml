@@ -19,7 +19,13 @@ jobs:
         run: python3 -c "import json; json.load(open('manifest.json'))"
 
       - name: Structure + manifest consistency
-        run: python3 scripts/validate_cores.py
+        # PyYAML is the one dependency this job needs: `erp-spec.yaml` is checked here
+        # rather than in import-smoke precisely so a malformed specification is named
+        # in seconds, without the backend contract. Installed rather than skipped —
+        # a shape check that quietly does not run is worse than none.
+        run: |
+          pip install pyyaml
+          python3 scripts/validate_cores.py
 
       - name: Lint cores (ruff)
         run: |

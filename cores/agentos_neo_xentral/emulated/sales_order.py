@@ -5,7 +5,7 @@ Outward: the new salesOrder model. Inward: reads/writes Xentral v3
 trafficLights → holds, financials/totals → money strings). Per ADR-014 there is
 no overlay: a field is ``creatable/updatable`` only where the upstream can write
 it TODAY; everything else is read-only here and tracked as a blue wish in
-field-gaps.yaml (a write that includes it answers 409 with the field list).
+erp-spec.yaml (a write that includes it answers 409 with the field list).
 """
 
 from __future__ import annotations
@@ -580,7 +580,7 @@ class SalesOrderAdapter(FacadeAdapterBase):
                     "auto": prop("boolean", "Auto dispatch", **_CU),
                     "priority": prop("select", "Priority", options=_PRIORITY_OPTIONS, **_CU),
                     # No upstream slot: the read hardcodes "allowed". Read-only until
-                    # v3 exposes a partial-shipping policy (field-gaps.yaml wish).
+                    # v3 exposes a partial-shipping policy (erp-spec.yaml wish).
                     "partialShipping": prop("select", "Partial shipping", **RO),
                 },
             ),
