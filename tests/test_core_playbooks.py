@@ -682,6 +682,71 @@ def test_commands_cover_every_parameterised_capability(core):
     )
 
 
+def test_contested_field_gaps_are_recorded_exactly(core):
+    """Where the core says a field IS writable and the spec says it is not.
+
+    `describe` then answers with both at once — `creatable: true` on the field and a
+    reason why you cannot set it. A builder reading that has to guess which half to
+    believe. Measured when this rule was written: 16 entries, 24 field × operation,
+    among them `Quote.shipping.method`, which the adapter has mapped since the
+    API-729 parity work.
+
+    A declared flag deliberately does NOT retire the gap. `_proven` records why: the
+    schema can declare a writable leaf while the capability the gap is about has no
+    write path at all (`Product.suppliers` — the default supplier maps through, the
+    multi-supplier sourcing the gap means does not), so dropping a gap on a flag would
+    erase a real one. Only a LIVE probe settles it.
+
+    So the contradiction is written down instead of resolved by guesswork, and the set
+    must match exactly in both directions — a new one fails the build, and one that a
+    probe has settled has to be struck by hand. It is a work list, not an exemption:
+    every entry here is one live create/update away from being either deleted or
+    hardened.
+
+    NOTE the facet exclusion. `read` cannot appear here, and must not: a read verdict
+    only shows that OUR model produced a value, and the model invents some
+    (`Customer.addresses.isDefault` is a hard-coded True). A read gap disputes what the
+    upstream supplies, which observing our own output cannot answer — a live run once
+    reported 14 read wishes as obsolete and every one was still true.
+    """
+    if not core["spec"] or not core["verified"]:
+        return
+    flag = {
+        "create": "creatable",
+        "update": "updatable",
+        "filter": "filterable",
+        "sort": "sortable",
+        "search": "searchable",
+    }
+    declared, actual = {}, {}
+    for key, block in core["spec"].items():
+        fields = _entity(core, key)["fields"]
+        marks = (core["verified"].get(key) or {}).get("fields") or {}
+        for gap in block.get("fieldGaps") or []:
+            path = gap.get("field")
+            if gap.get("contested"):
+                declared[f"{key}.{path}"] = sorted(gap["contested"])
+            spec_field = fields.get(path)
+            if spec_field is None:
+                continue
+            contested = sorted(
+                op
+                for op in gap.get("ops") or []
+                if op in flag
+                and spec_field.get(flag[op])
+                and (marks.get(path) or {}).get(op) != PROVEN
+            )
+            if contested:
+                actual[f"{key}.{path}"] = contested
+    assert declared == actual, (
+        f"{core['id']}: `contested` disagrees with the core. "
+        f"settled or gone, strike them: "
+        f"{sorted(set(declared) - set(actual)) or 'none'}; "
+        f"the core declares these writable while the spec calls them gaps, record them: "
+        f"{ {k: v for k, v in actual.items() if declared.get(k) != v} or 'none' }"
+    )
+
+
 def test_the_reviewed_ledger_records_a_date_or_nothing(core):
     """The sign-off: when a domain expert went through this entity.
 
