@@ -100,6 +100,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import collections
+import functools
 import json
 import os
 import re
@@ -108,6 +109,7 @@ import secrets
 from typing import Any
 
 import httpx
+import yaml
 
 # Load backend/.env so a bare `uv run python -m …` picks up XENTRAL_API_KEY (the
 # Sanctum token) and friends without the caller pre-exporting them. Does not
@@ -397,12 +399,68 @@ def _line_eq(got: Any, want: Any) -> bool:
     return got == want
 
 
-def _update_targets(props: dict[str, Any], prefix: str = "") -> list[tuple[str, dict[str, Any]]]:
-    """Every updatable scalar leaf (string/date/number/boolean) reachable WITHOUT
+@functools.lru_cache(maxsize=1)
+def _spec_must() -> dict[str, dict[str, set[str]]]:
+    """``<Entity>`` → ``<field path>`` → the operations the SPECIFICATION requires.
+
+    This is what makes the run spec-driven. It used to walk the schema and probe
+    whatever the core happened to declare — which can only ever confirm what the code
+    already says, and can never settle a gap, because the op a gap is about is the one
+    the core does not declare.
+
+    Empty when the file is missing: a core without a specification falls back to the
+    schema flags, which is what every core did before.
+    """
+    path = os.path.join(os.path.dirname(__file__), "..", "erp-spec.yaml")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            doc = yaml.safe_load(fh) or {}
+    except (FileNotFoundError, ValueError, yaml.YAMLError):
+        return {}
+    out: dict[str, dict[str, set[str]]] = {}
+    for entities in doc.values():
+        if not isinstance(entities, dict):
+            continue
+        for key, block in entities.items():
+            fields = (block or {}).get("fields")
+            if not isinstance(fields, dict):
+                continue
+            out[key] = {
+                p: set(f.get("must") or [])
+                for p, f in fields.items()
+                if isinstance(f, dict) and f.get("must")
+            }
+    return out
+
+
+def _wants(key: str, path: str, op: str, spec: dict[str, Any], flag: str) -> bool:
+    """Whether this run should probe ``op`` on ``key.path``.
+
+    The specification decides where it says anything about the field; the schema flag
+    decides otherwise. Both directions matter: an op the spec requires is probed even
+    though the core does not offer it — that is how a recorded gap can ever be settled
+    — and an op the core offers but nobody requires is left alone.
+    """
+    required = _spec_must().get(key)
+    if required is None or path not in required:
+        return bool(spec.get(flag))
+    return op in required[path]
+
+
+def _update_targets(
+    props: dict[str, Any], prefix: str = "", key: str = ""
+) -> list[tuple[str, dict[str, Any]]]:
+    """Every scalar leaf (string/date/number/boolean) an update must reach, WITHOUT
     crossing a collection — collections (items, tags) need per-item probes, not a
     PATCH of the whole list. Read-only embedded parents are not descended. Numeric
     and boolean leaves are probed only where the sample carries a value (a null
-    number/flag cannot be restored net-zero — the create probe covers those)."""
+    number/flag cannot be restored net-zero — the create probe covers those).
+
+    Which leaves those are comes from the specification where it says anything about
+    the field, and from the schema flag otherwise. That is the difference between
+    confirming what the code already declares and testing what the ERP is required to
+    do: a field the spec requires updatable and the core does not offer is probed
+    here, which is the only way a recorded gap on `update` can ever be settled."""
     out: list[tuple[str, dict[str, Any]]] = []
     for name, spec in (props or {}).items():
         if not isinstance(spec, dict):
@@ -413,10 +471,10 @@ def _update_targets(props: dict[str, Any], prefix: str = "") -> list[tuple[str, 
         sub = spec.get("properties")
         if isinstance(sub, dict) and spec.get("type") == "embedded":
             if spec.get("access") != "readOnly":
-                out += _update_targets(sub, path)
+                out += _update_targets(sub, path, key)
             continue
         leaf = path.rsplit(".", 1)[-1]
-        if spec.get("updatable") and (
+        if _wants(key, path, "update", spec, "updatable") and (
             spec.get("type") in ("string", "date", "integer", "decimal", "number", "boolean")
             # A select is probeable once we can name a second valid value — either
             # from _VALID_TOGGLE or, better, from the field's own declared options.
@@ -1336,7 +1394,7 @@ async def _verify_entity(
             if _picked is not None:
                 val, val_owner = _picked, _rec
                 break
-        if spec.get("filterable"):
+        if _wants(key, path, "filter", spec, "filterable"):
             fval = val.get("id") if isinstance(val, dict) else val
             if isinstance(fval, str) and "_" in fval and spec.get("type") == "reference":
                 fval = fval.split("_", 1)[1]
@@ -1420,7 +1478,7 @@ async def _verify_entity(
                             "came from — the filter may have been ignored"
                         )
                 mark(path, "filter", fst == 200, note, when_ok=when_ok)
-        if spec.get("sortable"):
+        if _wants(key, path, "sort", spec, "sortable"):
             desc_st, desc_pl = await p.req(query=[("page[size]", "5"), ("sort", f"-{path}")])
             if desc_st != 200:
                 mark(path, "sort", False, f"sort -{path} {desc_st}: {_err(desc_pl)}")
@@ -1428,7 +1486,7 @@ async def _verify_entity(
                 asc_st, asc_pl = await p.req(query=[("page[size]", "5"), ("sort", path)])
                 verdict, note = _sort_effect(path, desc_pl, asc_pl, asc_st)
                 mark(path, "sort", verdict != "fail", note, when_ok=verdict)
-        if spec.get("searchable"):
+        if _wants(key, path, "search", spec, "searchable"):
             # The facade recognises a search only as `filter[i][key]=search`, and
             # fans it out over `search_fields()` as a per-field `contains` filter.
             # The old probe sent a bare `?search=` param, which reaches none of that
@@ -1521,7 +1579,7 @@ async def _verify_entity(
             if drafts:
                 update_rows = drafts + rows
         preferred: dict[str, Any] | None = None
-        for path, spec in _update_targets(schema):
+        for path, spec in _update_targets(schema, key=key):
             last_note = "no updatable record found"
             done = False
             skip_note: str | None = None
@@ -2117,7 +2175,22 @@ async def _verify_entity(
     # file's mtime, which after a fresh clone is the checkout time — and a manifest
     # assembled from many scoped runs has no single age anyway: the seven sales
     # documents were re-probed weeks after the rest.
+    # What the specification asked for and this run did not answer. Without it the file
+    # says only what was measured, and "never probed" reads exactly like "nothing to
+    # report" — measured before this existed: 209 of 306 recorded field gaps had never
+    # been probed at all, and nothing said so.
+    uncovered = sorted(
+        f"{path}.{op}"
+        for path, ops in (_spec_must().get(key) or {}).items()
+        for op in ops
+        if op != "read" and op not in (fields.get(path) or {})
+    )
+    if uncovered:
+        summary += f" | {len(uncovered)} required op(s) unprobed"
+
     result: dict[str, Any] = {"probedAt": _stamp(), "fields": fields}
+    if uncovered:
+        result["unprobed"] = uncovered
     if actions_res or steps_res:
         result["actionsProbedAt"] = _stamp()
     if actions_res:
