@@ -43,27 +43,17 @@ _ALL = _TAKES_IT + _DOES_NOT
 
 
 def _field_gaps() -> dict:
-    """The field-gap entries per entity, out of the core's one specification file.
+    """The parked field gaps per entity, out of backlog.yaml.
 
-    `erp-spec.yaml` groups `category -> entity -> block`; this flattens to
-    `entity -> [gap]`, the shape these assertions care about.
+    The gaps left the specification when the core stopped rendering them: the spec now
+    describes what the system IS, and the backlog is a plain work list nothing loads.
+    These assertions still care that a recorded gap says what it always said.
     """
 
     import yaml
 
-    path = pathlib.Path(__file__).parent.parent / "cores/agentos_neo_xentral/erp-spec.yaml"
-    grouped = yaml.safe_load(path.read_text(encoding="utf-8"))
-    out: dict = {}
-    for entities in grouped.values():
-        for key, block in entities.items():
-            entries = [
-                {"field": p, **g}
-                for p, f in (block.get("fields") or {}).items()
-                for g in (f.get("gaps") or [])
-            ]
-            if entries:
-                out[key] = entries
-    return out
+    path = pathlib.Path(__file__).parent.parent / "cores/agentos_neo_xentral/backlog.yaml"
+    return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
 
 
 # ---- where Xentral takes a number ---------------------------------------
@@ -131,7 +121,15 @@ def test_the_reason_says_which_of_the_two_it_is():
         assert "does not declare" in wishes[0]["reason"], name
 
 
-def test_the_409_carries_the_reason():
+def test_the_409_refuses_and_names_the_fields():
+    """A write naming a field the core does not write is refused, not silently dropped.
+
+    The refusal is the load-bearing part and it stays: a 200 with the value gone
+    destroys foreign keys on a migration without anyone noticing (ADR-014). What it no
+    longer carries is a per-field reason. Those explained why a GAP existed, and the
+    specification no longer records gaps — it describes what the system offers, so a
+    field named here is one the caller invented or read from a stale schema.
+    """
     import asyncio
 
     resp = asyncio.run(
@@ -149,8 +147,8 @@ def test_the_409_carries_the_reason():
     assert resp.status_code == 409
     payload = json.loads(resp.content)
     assert payload["fields"] == ["number"]
-    assert "does not declare" in payload["reasons"]["number"]
-    assert "read-only upstream today" not in payload["detail"]
+    assert "reasons" not in payload, "the per-field reasons left with the gaps"
+    assert "erp-spec.yaml" in payload["detail"], "the caller is pointed at the model"
 
 
 def test_a_normal_create_is_unaffected():

@@ -93,37 +93,6 @@ def _entities() -> dict[str, Any]:
 
 
 @functools.lru_cache(maxsize=1)
-def _field_gaps() -> dict[str, Any]:
-    """Per-entity field gaps — the field axis of the specification
-    (docs/03-mapping-layer.md §5). ``<Entity>`` → ``[{field, ops, reason}]``.
-
-    The gaps now sit on the field they concern (``fields.<path>.gaps``) rather than in
-    a list beside it, so a reader sees the requirement and the gap together. This
-    flattens them back to the shape ``_apply_field_gaps`` and ``_wishes_by_field``
-    already expect — the restructure stops at this seam.
-
-    A field may carry more than one gap: ``create`` and ``search`` on the same field
-    are different business needs with different reasons, and merging them would lose
-    the reason.
-    """
-    out: dict[str, Any] = {}
-    for key, block in _entities().items():
-        fields = block.get("fields")
-        if not isinstance(fields, dict):
-            continue
-        entries = [
-            {"field": path, **gap}
-            for path, spec in fields.items()
-            if isinstance(spec, dict)
-            for gap in (spec.get("gaps") or [])
-            if isinstance(gap, dict)
-        ]
-        if entries:
-            out[key] = entries
-    return out
-
-
-@functools.lru_cache(maxsize=1)
 def _wish_reasons() -> dict[str, Any]:
     """Why each declared-but-not-executable capability cannot run (``cannot``):
     ``<Entity>`` → ``<key>`` → reason.
@@ -657,63 +626,6 @@ class FacadeAdapterBase:
             for path, facets in fields.items()
         )
 
-    def _apply_field_gaps(self, properties: dict[str, Any]) -> None:
-        """Stamp the hand-curated blue wishes (erp-spec.yaml) onto the schema —
-        the living backlog (docs/03-mapping-layer.md §5). Renders blue only where
-        the op is actually unavailable.
-
-        A wish outranks every other verdict where it is shown, including a `pass` —
-        right for a real gap, dangerous for a stale one: the entry goes on claiming
-        "not possible" over a capability that has since been built and live-proven,
-        and the proof is what gets hidden. An op a live probe has PROVEN is
-        therefore not stamped, and the entry is surfaced through obsolete_wishes()
-        so it gets deleted rather than quietly ignored."""
-        for field, ops in self._wishes_by_field().items():
-            spec = self._resolve_path(properties, field) if "." in field else properties.get(field)
-            if not isinstance(spec, dict):
-                continue
-            live = {op: reason for op, reason in ops.items() if not self._proven(field, op)}
-            if live:
-                spec["priority"] = live
-
-    def _wishes_by_field(self) -> dict[str, dict[str, str]]:
-        by_field: dict[str, dict[str, str]] = {}
-        for entry in _field_gaps().get(self.manifest.key) or ():
-            field = entry.get("field")
-            reason = entry.get("reason") or ""
-            for op in entry.get("ops") or ():
-                by_field.setdefault(field, {})[op] = reason
-        return by_field
-
-    def obsolete_wishes(self) -> list[dict[str, Any]]:
-        """Wishes whose op the schema now declares — the backlog contradicting the
-        core. Reported by validate_cores.py so the entry is deleted, not carried."""
-        properties = self.fields()
-        out: list[dict[str, Any]] = []
-        for field, ops in self._wishes_by_field().items():
-            spec = self._resolve_path(properties, field) if "." in field else properties.get(field)
-            if not isinstance(spec, dict):
-                continue
-            done = sorted(op for op in ops if self._proven(field, op))
-            if done:
-                out.append({"field": field, "ops": done})
-        return out
-
-    def missing_field_wishes(self) -> list[dict[str, Any]]:
-        """Wishes for a field the schema does not have at all.
-
-        These are the widest gaps in the backlog — `items.totals.tax` (no per-line
-        tax amount exists upstream), `contacts.address` — and until now they
-        rendered nowhere: there is no row to colour blue, so the stamp silently
-        found no spec and the wish vanished from every capability view."""
-        properties = self.fields()
-        out: list[dict[str, Any]] = []
-        for field, ops in sorted(self._wishes_by_field().items()):
-            spec = self._resolve_path(properties, field) if "." in field else properties.get(field)
-            if not isinstance(spec, dict):
-                out.append({"field": field, "ops": sorted(ops), "reason": next(iter(ops.values()))})
-        return out
-
     def _apply_verified(self, properties: dict[str, Any]) -> None:
         """Stamp live-test results (verified.json) onto the schema — the green/red
         side of the grid. ``fields.<path>`` → per-facet pass/fail (+ <op>Note)."""
@@ -918,7 +830,6 @@ class FacadeAdapterBase:
 
     def metadata(self, accept_language: str | None = None) -> dict[str, Any]:
         properties = self.fields()
-        self._apply_field_gaps(properties)
         self._apply_verified(properties)
         self._apply_descriptions(properties)
         self._apply_detail_only(properties)
@@ -944,12 +855,6 @@ class FacadeAdapterBase:
         # (e.g. that scoped/tiered prices live on PriceList, not on Product).
         if getattr(self.manifest, "description", ""):
             meta["description"] = self.manifest.description
-        # Gaps with no field to colour blue: the schema has no such path, so the
-        # wish would otherwise be invisible in every capability view. Named here so
-        # "this entity cannot express X at all" is readable, not just "X is absent".
-        missing = self.missing_field_wishes()
-        if missing:
-            meta["missingFieldWishes"] = missing
         # Advertise what a search actually MATCHES — consumers (record pickers, list
         # search) key their server-search affordance off this list. Where the
         # upstream searches natively that is ITS field set, not the schema flags the
@@ -1572,23 +1477,17 @@ class FacadeAdapterBase:
         cannot do it, OR it could and we decline (a document number is always drawn
         from the number range, even though v3 would store a supplied one). A caller
         that only reads this response has to be able to tell those apart."""
-        wishes = {
-            w.get("field"): w.get("reason")
-            for w in _field_gaps().get(self.manifest.key, [])
-            if isinstance(w, dict) and w.get("reason")
-        }
         body: dict[str, Any] = {
             "title": f"{self.manifest.key}: fields the core does not write",
             "detail": (
-                "Either the upstream cannot write them today or the core declines them "
-                "by decision (ADR-014: no overlay, no silent drop). See `reasons`, and "
-                "erp-spec.yaml for the full backlog."
+                "The specification (erp-spec.yaml) states what each field supports; a "
+                "field named here is not among them. Read `describe` and send only what "
+                "it declares — the core refuses rather than dropping a value silently "
+                "(ADR-014), because a 200 with the value gone destroys foreign keys on a "
+                "migration without anyone noticing."
             ),
             "fields": sorted(rejected),
         }
-        reasons = {f: wishes[f] for f in sorted(rejected) if f in wishes}
-        if reasons:
-            body["reasons"] = reasons
         return self._json(409, body)
 
     def map_write(

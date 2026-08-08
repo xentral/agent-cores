@@ -24,7 +24,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:17:03+00:00"
+      "probedAt": "2026-08-08T15:46:20+00:00"
     },
     "Channel": {
       "fields": {
@@ -80,7 +80,15 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:14:07+00:00"
+      "probedAt": "2026-08-08T15:40:57+00:00",
+      "unprobed": [
+        "active.create",
+        "active.update",
+        "name.create",
+        "name.update",
+        "type.create",
+        "type.update"
+      ]
     },
     "Correspondence": {
       "fields": {
@@ -253,7 +261,26 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-02T18:39:10+00:00"
+      "probedAt": "2026-08-08T15:45:16+00:00",
+      "unprobed": [
+        "customer.update",
+        "delivery.emailAddress.create",
+        "delivery.emailBcc.create",
+        "delivery.isFax.create",
+        "delivery.isSent.create",
+        "delivery.printer.create",
+        "editor.create",
+        "project.create",
+        "recipient.address.city.create",
+        "recipient.address.contactPerson.create",
+        "recipient.address.country.create",
+        "recipient.address.name.create",
+        "recipient.address.postalCode.create",
+        "recipient.address.street.create",
+        "sender.company.search",
+        "sender.partner.create",
+        "sender.partner.update"
+      ]
     },
     "CostCenter": {
       "fields": {
@@ -293,7 +320,7 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-05T08:07:28+00:00"
+      "probedAt": "2026-08-08T15:45:27+00:00"
     },
     "CreditNote": {
       "actions": {
@@ -360,8 +387,7 @@
           "update": "pass"
         },
         "createdAt": {
-          "filter": "accepted",
-          "filterNote": "accepted, but returned nothing — the record the value came from is missing",
+          "filter": "pass",
           "read": "pass",
           "sort": "pass"
         },
@@ -391,7 +417,8 @@
         },
         "dates.serviceDate": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 48 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 48 sampled records carries a value — nothing proven either way",
+          "updateNote": "no sample date value — not probed (a null date cannot be restored)"
         },
         "documents": {
           "read": "pass"
@@ -496,7 +523,9 @@
           "filter": "pass",
           "read": "pass",
           "search": "pass",
-          "sort": "pass"
+          "sort": "pass",
+          "update": "fail",
+          "updateNote": "PATCH 409: CreditNote: fields the core does not write"
         },
         "object": {
           "read": "pass"
@@ -516,13 +545,17 @@
           "update": "pass"
         },
         "references.debtorAccountNumber": {
-          "read": "pass"
+          "read": "pass",
+          "update": "fail",
+          "updateNote": "upstream accepted the write but the value did not persist"
         },
         "settlement": {
           "read": "pass"
         },
         "settlement.mode": {
-          "read": "pass"
+          "read": "pass",
+          "update": "fail",
+          "updateNote": "upstream accepted the write but the value did not persist"
         },
         "settlement.payments": {
           "read": "unobserved",
@@ -555,6 +588,20 @@
           "read": "pass",
           "update": "pass"
         },
+        "texts": {
+          "read": "pass"
+        },
+        "texts.intro": {
+          "create": "pass",
+          "read": "unobserved",
+          "readNote": "declared, but none of the 48 sampled records carries a value — nothing proven either way",
+          "update": "pass"
+        },
+        "texts.outro": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
         "totals": {
           "read": "pass"
         },
@@ -574,19 +621,36 @@
           "read": "pass"
         },
         "updatedAt": {
-          "filter": "accepted",
-          "filterNote": "accepted, but returned nothing — the record the value came from is missing",
+          "filter": "pass",
           "read": "pass",
           "sort": "pass"
+        },
+        "writeProtection": {
+          "filter": "pass",
+          "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T12:14:13+00:00",
+      "probedAt": "2026-08-08T15:37:43+00:00",
       "processSteps": {
         "release": "reachable"
       },
       "processStepsNotes": {
         "release": "reachable — 409 from upstream: Resource status invalid for requested operation"
-      }
+      },
+      "unprobed": [
+        "customFields.create",
+        "customFields.update",
+        "customer.update",
+        "dates.serviceDate.create",
+        "dates.serviceDate.update",
+        "items.description.update",
+        "items.taxRate.create",
+        "items.taxRate.update",
+        "number.create",
+        "references.customerOrderNumber.create",
+        "references.debtorAccountNumber.create",
+        "settlement.mode.create"
+      ]
     },
     "Customer": {
       "actions": {
@@ -786,16 +850,15 @@
           "read": "pass"
         },
         "defaults.paymentTerms.discountDays": {
-          "read": "unobserved",
-          "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way"
+          "read": "pass"
         },
         "defaults.paymentTerms.discountPercent": {
-          "read": "unobserved",
-          "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way"
+          "read": "pass"
         },
         "defaults.paymentTerms.dueDays": {
-          "read": "unobserved",
-          "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way"
+          "read": "pass",
+          "update": "fail",
+          "updateNote": "PATCH 409: Customer: fields the core does not write"
         },
         "defaults.priceList": {
           "read": "unobserved",
@@ -806,8 +869,9 @@
           "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way"
         },
         "defaults.taxation": {
-          "read": "unobserved",
-          "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way"
+          "read": "pass",
+          "update": "fail",
+          "updateNote": "PATCH 409: Customer: fields the core does not write"
         },
         "email": {
           "create": "pass",
@@ -820,16 +884,13 @@
           "read": "pass"
         },
         "finance.creditLimit": {
-          "read": "unobserved",
-          "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way"
+          "read": "pass"
         },
         "finance.creditLimit.amount": {
-          "read": "unobserved",
-          "readNote": "no sampled record carries 'finance.creditLimit', so the leaf could not be observed — nothing proven either way"
+          "read": "pass"
         },
         "finance.creditLimit.currency": {
-          "read": "unobserved",
-          "readNote": "no sampled record carries 'finance.creditLimit', so the leaf could not be observed — nothing proven either way"
+          "read": "pass"
         },
         "finance.debtorAccountNumber": {
           "read": "pass"
@@ -876,7 +937,9 @@
           "filter": "pass",
           "read": "pass",
           "search": "pass",
-          "sort": "pass"
+          "sort": "pass",
+          "update": "fail",
+          "updateNote": "PATCH 409: Customer: fields the core does not write"
         },
         "object": {
           "read": "pass"
@@ -897,7 +960,9 @@
         },
         "status": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way",
+          "update": "fail",
+          "updateNote": "PATCH 409: Customer: fields the core does not write"
         },
         "tags": {
           "filter": "pass",
@@ -923,7 +988,100 @@
           "update": "pass"
         }
       },
-      "probedAt": "2026-08-02T11:35:16+00:00"
+      "probedAt": "2026-08-08T15:40:16+00:00",
+      "unprobed": [
+        "addresses.city.create",
+        "addresses.city.update",
+        "addresses.contactPerson.create",
+        "addresses.contactPerson.update",
+        "addresses.country.create",
+        "addresses.country.update",
+        "addresses.email.create",
+        "addresses.email.update",
+        "addresses.gln.create",
+        "addresses.gln.update",
+        "addresses.isDefault.create",
+        "addresses.isDefault.update",
+        "addresses.label.create",
+        "addresses.label.update",
+        "addresses.name.create",
+        "addresses.name.update",
+        "addresses.phone.create",
+        "addresses.phone.update",
+        "addresses.state.create",
+        "addresses.state.update",
+        "addresses.street.create",
+        "addresses.street.update",
+        "addresses.type.create",
+        "addresses.type.update",
+        "addresses.zip.create",
+        "addresses.zip.update",
+        "billTo.update",
+        "channel.create",
+        "channel.update",
+        "contacts.address.create",
+        "contacts.address.update",
+        "contacts.allowMarketingEmails.create",
+        "contacts.allowMarketingEmails.update",
+        "contacts.birthday.create",
+        "contacts.birthday.update",
+        "contacts.department.create",
+        "contacts.department.update",
+        "contacts.email.create",
+        "contacts.email.update",
+        "contacts.fax.create",
+        "contacts.fax.update",
+        "contacts.internalNote.create",
+        "contacts.internalNote.update",
+        "contacts.isPrimary.create",
+        "contacts.isPrimary.update",
+        "contacts.language.create",
+        "contacts.language.update",
+        "contacts.mobile.create",
+        "contacts.mobile.update",
+        "contacts.name.create",
+        "contacts.name.update",
+        "contacts.phone.create",
+        "contacts.phone.update",
+        "contacts.position.create",
+        "contacts.position.update",
+        "contacts.remarks.create",
+        "contacts.remarks.update",
+        "contacts.salutation.create",
+        "contacts.salutation.update",
+        "contacts.subDepartment.create",
+        "contacts.subDepartment.update",
+        "contacts.title.create",
+        "contacts.title.update",
+        "contacts.type.create",
+        "contacts.type.update",
+        "customFields.create",
+        "customFields.key.create",
+        "customFields.key.update",
+        "customFields.label.create",
+        "customFields.label.update",
+        "customFields.update",
+        "customFields.value.create",
+        "customFields.value.update",
+        "defaults.partialShipping.update",
+        "defaults.paymentMethod.create",
+        "defaults.paymentMethod.update",
+        "defaults.paymentTerms.dueDays.create",
+        "defaults.priceList.update",
+        "defaults.shippingMethod.update",
+        "defaults.taxation.create",
+        "finance.creditLimit.update",
+        "finance.dunningBlocked.update",
+        "finance.onHold.update",
+        "notes.create",
+        "notes.update",
+        "number.create",
+        "parent.update",
+        "project.create",
+        "tags.create",
+        "type.create",
+        "type.update"
+      ]
     },
     "CustomerGroup": {
       "fields": {
@@ -1012,7 +1170,14 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-02T17:19:40+00:00"
+      "probedAt": "2026-08-08T15:44:09+00:00",
+      "unprobed": [
+        "conditions.baseDiscount.update",
+        "conditions.cashDiscountRate.update",
+        "conditions.freeShippingActive.update",
+        "conditions.freeShippingFrom.update",
+        "project.create"
+      ]
     },
     "DeliveryNote": {
       "actions": {
@@ -1072,6 +1237,7 @@
         "billingAddress.zip": {
           "create": "pass",
           "read": "pass",
+          "search": "pass",
           "update": "pass"
         },
         "channel": {
@@ -1085,8 +1251,7 @@
           "update": "pass"
         },
         "createdAt": {
-          "filter": "accepted",
-          "filterNote": "accepted, but returned nothing — the record the value came from is missing",
+          "filter": "pass",
           "read": "pass",
           "sort": "pass"
         },
@@ -1104,11 +1269,15 @@
         },
         "customs.incoterm": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way",
+          "update": "fail",
+          "updateNote": "PATCH 409: DeliveryNote: fields the core does not write"
         },
         "customs.note": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way",
+          "update": "fail",
+          "updateNote": "PATCH 409: DeliveryNote: fields the core does not write"
         },
         "customs.totalWeight": {
           "read": "unobserved",
@@ -1256,6 +1425,7 @@
           "filterNote": "no sample value on the test instance — filter not probed",
           "read": "unobserved",
           "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way",
+          "searchNote": "no sample text value and no fixture — search not probed",
           "update": "pass"
         },
         "shipments": {
@@ -1284,17 +1454,34 @@
           "read": "pass",
           "update": "pass"
         },
+        "texts": {
+          "read": "pass"
+        },
+        "texts.intro": {
+          "create": "pass",
+          "read": "unobserved",
+          "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way",
+          "update": "pass"
+        },
+        "texts.outro": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
         "updatedAt": {
-          "filter": "accepted",
-          "filterNote": "accepted, but returned nothing — the record the value came from is missing",
+          "filter": "pass",
           "read": "pass",
           "sort": "pass"
         },
         "warehouse": {
           "read": "pass"
+        },
+        "writeProtection": {
+          "filter": "pass",
+          "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T12:13:21+00:00",
+      "probedAt": "2026-08-08T15:36:53+00:00",
       "processSteps": {
         "cancel": "reachable",
         "markDelivered": "reachable",
@@ -1304,7 +1491,23 @@
         "cancel": "reachable — 409 from upstream: Resource status invalid for requested operation",
         "markDelivered": "reachable — 409 from upstream: Resource status invalid for requested operation",
         "release": "reachable — 409 from upstream: Resource status invalid for requested operation"
-      }
+      },
+      "unprobed": [
+        "customFields.create",
+        "customFields.update",
+        "customer.update",
+        "customs.incoterm.create",
+        "customs.note.create",
+        "customs.totalWeight.create",
+        "customs.totalWeight.update",
+        "items.update",
+        "number.create",
+        "references.customerOrderNumber.create",
+        "references.customerOrderNumber.filter",
+        "references.customerOrderNumber.search",
+        "warehouse.create",
+        "warehouse.update"
+      ]
     },
     "DeliveryTerm": {
       "fields": {
@@ -1319,7 +1522,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:16:43+00:00"
+      "probedAt": "2026-08-08T15:45:31+00:00"
     },
     "EmailAccount": {
       "actions": {
@@ -1354,7 +1557,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:16:38+00:00"
+      "probedAt": "2026-08-08T15:45:17+00:00"
     },
     "Employee": {
       "fields": {
@@ -1376,7 +1579,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:16:57+00:00"
+      "probedAt": "2026-08-08T15:45:43+00:00"
     },
     "GoodsReceipt": {
       "fields": {
@@ -1472,7 +1675,14 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:12:05+00:00"
+      "probedAt": "2026-08-08T15:38:51+00:00",
+      "unprobed": [
+        "items.create",
+        "items.update",
+        "references.supplierDeliveryNoteNumber.create",
+        "references.supplierDeliveryNoteNumber.update",
+        "status.update"
+      ]
     },
     "MerchandiseGroup": {
       "fields": {
@@ -1495,7 +1705,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:16:59+00:00"
+      "probedAt": "2026-08-08T15:46:18+00:00"
     },
     "PaymentMethod": {
       "fields": {
@@ -1509,7 +1719,7 @@
           "read": "pass"
         },
         "project": {
-          "filterNote": "no sample value on the test instance — filter not probed",
+          "filter": "pass",
           "read": "pass"
         },
         "type": {
@@ -1517,7 +1727,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:16:39+00:00"
+      "probedAt": "2026-08-08T15:45:29+00:00"
     },
     "PaymentTermsGroup": {
       "fields": {
@@ -1562,7 +1772,7 @@
           "readNote": "declared, but none of the 4 sampled records carries a value — nothing proven either way"
         }
       },
-      "probedAt": "2026-08-02T10:16:46+00:00"
+      "probedAt": "2026-08-08T15:45:32+00:00"
     },
     "PickingRun": {
       "fields": {
@@ -1687,7 +1897,12 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:16:31+00:00"
+      "probedAt": "2026-08-08T15:43:50+00:00",
+      "unprobed": [
+        "id.create",
+        "strategy.create",
+        "tasks.status.update"
+      ]
     },
     "PriceList": {
       "fields": {
@@ -1779,7 +1994,16 @@
           "update": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:16:11+00:00"
+      "probedAt": "2026-08-08T15:42:35+00:00",
+      "unprobed": [
+        "remark.create",
+        "scope.customer.create",
+        "scope.customerGroup.create",
+        "unitPrice.currency.create",
+        "validFrom.create",
+        "validFrom.update",
+        "validUntil.create"
+      ]
     },
     "Printer": {
       "actions": {
@@ -1826,7 +2050,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:16:38+00:00"
+      "probedAt": "2026-08-08T15:45:16+00:00"
     },
     "Product": {
       "fields": {
@@ -1861,20 +2085,17 @@
           "read": "pass"
         },
         "customFields": {
-          "read": "unobserved",
-          "readNote": "declared, but none of the 111 sampled records carries a value — nothing proven either way"
+          "read": "pass"
         },
         "customFields.label": {
           "read": "unobserved",
-          "readNote": "no sampled record carries 'customFields', so the leaf could not be observed — nothing proven either way"
+          "readNote": "declared, but none of the 111 sampled records carries a value — nothing proven either way"
         },
         "customFields.number": {
-          "read": "unobserved",
-          "readNote": "no sampled record carries 'customFields', so the leaf could not be observed — nothing proven either way"
+          "read": "pass"
         },
         "customFields.value": {
-          "read": "unobserved",
-          "readNote": "no sampled record carries 'customFields', so the leaf could not be observed — nothing proven either way"
+          "read": "pass"
         },
         "description": {
           "create": "pass",
@@ -1938,7 +2159,9 @@
           "update": "pass"
         },
         "kind": {
-          "read": "pass"
+          "read": "pass",
+          "update": "fail",
+          "updateNote": "upstream accepted the write but the value did not persist"
         },
         "logistics": {
           "read": "pass"
@@ -1973,17 +2196,14 @@
           "update": "pass"
         },
         "logistics.netWeight": {
-          "read": "unobserved",
-          "readNote": "declared, but none of the 111 sampled records carries a value — nothing proven either way"
+          "read": "pass"
         },
         "logistics.netWeight.unit": {
-          "read": "unobserved",
-          "readNote": "no sampled record carries 'logistics.netWeight', so the leaf could not be observed — nothing proven either way"
+          "read": "pass"
         },
         "logistics.netWeight.value": {
-          "read": "unobserved",
-          "readNote": "no sampled record carries 'logistics.netWeight', so the leaf could not be observed — nothing proven either way",
-          "updateNote": "no sample numeric value — not probed (a null number cannot be restored)"
+          "read": "pass",
+          "update": "pass"
         },
         "logistics.packagingUnits": {
           "read": "unobserved",
@@ -2054,19 +2274,23 @@
           "update": "pass"
         },
         "prices.purchase.source": {
-          "read": "unobserved",
-          "readNote": "declared, but none of the 111 sampled records carries a value — nothing proven either way"
+          "read": "pass",
+          "update": "fail",
+          "updateNote": "upstream accepted the write but the value did not persist"
         },
         "prices.sale": {
-          "read": "pass"
+          "read": "unobserved",
+          "readNote": "detail-only section: read on the single record too, and no value there either — a list always leaves it null and names the section in extra.unavailableSections"
         },
         "prices.sale.amount": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
+          "readNote": "detail-only section: read on the single record too, and no value there either — a list always leaves it null and names the section in extra.unavailableSections",
           "update": "pass"
         },
         "prices.sale.currency": {
-          "read": "pass",
+          "read": "unobserved",
+          "readNote": "detail-only section: read on the single record too, and no value there either — a list always leaves it null and names the section in extra.unavailableSections",
           "update": "pass"
         },
         "production": {
@@ -2174,7 +2398,9 @@
         },
         "tax.profile": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 111 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 111 sampled records carries a value — nothing proven either way",
+          "update": "fail",
+          "updateNote": "upstream accepted the write but the value did not persist"
         },
         "tax.rate": {
           "create": "pass",
@@ -2207,8 +2433,7 @@
           "update": "pass"
         },
         "updatedAt": {
-          "filter": "accepted",
-          "filterNote": "accepted, but returned nothing — the record the value came from is missing",
+          "filter": "pass",
           "read": "pass",
           "sort": "pass"
         },
@@ -2225,7 +2450,60 @@
           "readNote": "declared, but none of the 111 sampled records carries a value — nothing proven either way"
         }
       },
-      "probedAt": "2026-08-02T12:24:21+00:00"
+      "probedAt": "2026-08-08T15:42:23+00:00",
+      "unprobed": [
+        "bom.items.create",
+        "bom.items.product.create",
+        "bom.items.product.update",
+        "bom.items.quantity.create",
+        "bom.items.quantity.update",
+        "bom.items.reference.create",
+        "bom.items.reference.update",
+        "bom.items.type.create",
+        "bom.items.type.update",
+        "bom.items.update",
+        "category.create",
+        "category.update",
+        "customFields.number.create",
+        "customFields.number.update",
+        "customFields.value.create",
+        "customFields.value.update",
+        "identifiers.ean.create",
+        "identifiers.manufacturerNumber.create",
+        "kind.create",
+        "logistics.dimensions.height.create",
+        "logistics.dimensions.width.create",
+        "logistics.netWeight.value.create",
+        "logistics.packagingUnits.create",
+        "logistics.packagingUnits.update",
+        "number.create",
+        "prices.purchase.currency.create",
+        "prices.purchase.source.create",
+        "prices.sale.currency.create",
+        "production.hasBillOfMaterials.create",
+        "properties.property.create",
+        "properties.property.update",
+        "properties.unit.create",
+        "properties.unit.update",
+        "properties.value.create",
+        "properties.value.update",
+        "statusReason.create",
+        "suppliers.create",
+        "suppliers.isDefault.create",
+        "suppliers.isDefault.update",
+        "suppliers.supplier.create",
+        "suppliers.supplier.update",
+        "suppliers.update",
+        "tags.create",
+        "tags.update",
+        "tax.profile.create",
+        "tracking.batches.create",
+        "tracking.bestBefore.create",
+        "tracking.serialNumbers.create",
+        "variant.isMatrix.create",
+        "variant.of.create",
+        "variant.of.update"
+      ]
     },
     "ProductCategory": {
       "fields": {
@@ -2376,7 +2654,13 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-02T18:39:47+00:00"
+      "probedAt": "2026-08-08T15:46:17+00:00",
+      "unprobed": [
+        "parent.create",
+        "parent.update",
+        "project.create",
+        "project.update"
+      ]
     },
     "ProductFreeField": {
       "fields": {
@@ -2391,7 +2675,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:17:02+00:00"
+      "probedAt": "2026-08-08T15:46:20+00:00"
     },
     "ProductProperty": {
       "fields": {
@@ -2408,7 +2692,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:16:59+00:00"
+      "probedAt": "2026-08-08T15:46:18+00:00"
     },
     "ProductTag": {
       "fields": {
@@ -2426,7 +2710,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:17:00+00:00"
+      "probedAt": "2026-08-08T15:46:19+00:00"
     },
     "Project": {
       "fields": {
@@ -2473,7 +2757,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:16:52+00:00"
+      "probedAt": "2026-08-08T15:45:40+00:00"
     },
     "PurchaseInvoice": {
       "fields": {
@@ -2482,11 +2766,11 @@
         },
         "approval.at": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 52 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 54 sampled records carries a value — nothing proven either way"
         },
         "approval.by": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 52 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 54 sampled records carries a value — nothing proven either way"
         },
         "approval.status": {
           "read": "pass"
@@ -2506,7 +2790,7 @@
         },
         "costCenter": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 52 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 54 sampled records carries a value — nothing proven either way"
         },
         "createdAt": {
           "read": "pass",
@@ -2523,6 +2807,8 @@
           "create": "pass",
           "filter": "pass",
           "read": "pass",
+          "sort": "fail",
+          "sortNote": "sort -dates.invoiceDate 422: Property 'dateOfSupplierInvoice' is not sortable.",
           "update": "pass"
         },
         "dates.received": {
@@ -2533,7 +2819,7 @@
         },
         "dates.serviceDate": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 52 sampled records carries a value — nothing proven either way",
+          "readNote": "declared, but none of the 54 sampled records carries a value — nothing proven either way",
           "updateNote": "no sample date value — not probed (a null date cannot be restored)"
         },
         "documents": {
@@ -2573,7 +2859,8 @@
           "read": "pass"
         },
         "items.product": {
-          "read": "pass",
+          "read": "unobserved",
+          "readNote": "declared, but none of the 54 sampled records carries a value — nothing proven either way",
           "updateNote": "no sample value for product — not probed (a null line value cannot be restored net-zero)"
         },
         "items.quantity": {
@@ -2615,7 +2902,9 @@
         },
         "number": {
           "filter": "pass",
-          "read": "pass"
+          "read": "pass",
+          "update": "fail",
+          "updateNote": "PATCH 409: PurchaseInvoice: fields the core does not write"
         },
         "object": {
           "read": "pass"
@@ -2633,12 +2922,14 @@
         },
         "payment.method": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 52 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 54 sampled records carries a value — nothing proven either way"
         },
         "payment.paidOn": {
           "read": "pass"
         },
         "payment.status": {
+          "filter": "fail",
+          "filterNote": "filter[payment.status] 422: PurchaseInvoice: filter(s) not supported",
           "read": "pass"
         },
         "references": {
@@ -2646,7 +2937,7 @@
         },
         "references.creditorAccountNumber": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 52 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 54 sampled records carries a value — nothing proven either way"
         },
         "references.externalReference": {
           "read": "pass",
@@ -2660,16 +2951,20 @@
           "update": "pass"
         },
         "status": {
+          "filter": "fail",
+          "filterNote": "filter[status] 422: PurchaseInvoice: filter(s) not supported",
           "read": "pass"
         },
         "supplier": {
-          "create": "pass",
-          "read": "pass"
+          "create": "fail",
+          "createNote": "sent on create but did not persist on the created record",
+          "read": "unobserved",
+          "readNote": "declared, but none of the 54 sampled records carries a value — nothing proven either way"
         },
         "tags": {
           "filterNote": "no sample value on the test instance — filter not probed",
           "read": "unobserved",
-          "readNote": "declared, but none of the 52 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 54 sampled records carries a value — nothing proven either way"
         },
         "totals": {
           "read": "pass"
@@ -2691,7 +2986,32 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-02T17:02:50+00:00"
+      "probedAt": "2026-08-08T15:39:11+00:00",
+      "unprobed": [
+        "approval.status.update",
+        "dates.serviceDate.create",
+        "dates.serviceDate.update",
+        "items.description.create",
+        "items.description.update",
+        "items.name.create",
+        "items.product.create",
+        "items.product.update",
+        "items.quantity.unit.create",
+        "items.quantity.unit.update",
+        "items.quantity.value.create",
+        "items.quantity.value.update",
+        "items.taxRate.create",
+        "items.unitPrice.amount.create",
+        "items.unitPrice.amount.update",
+        "items.unitPrice.currency.create",
+        "items.unitPrice.currency.update",
+        "items.update",
+        "match.status.update",
+        "number.create",
+        "references.externalReference.create",
+        "supplier.update",
+        "tags.filter"
+      ]
     },
     "PurchaseOrder": {
       "actions": {
@@ -2713,7 +3033,7 @@
         },
         "confirmation.confirmedAt": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 63 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 64 sampled records carries a value — nothing proven either way"
         },
         "confirmation.status": {
           "read": "pass"
@@ -2727,11 +3047,10 @@
         "costCenter": {
           "create": "pass",
           "read": "unobserved",
-          "readNote": "declared, but none of the 63 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 64 sampled records carries a value — nothing proven either way"
         },
         "createdAt": {
-          "filter": "accepted",
-          "filterNote": "accepted, but returned nothing — the record the value came from is missing",
+          "filter": "pass",
           "read": "pass",
           "sort": "pass"
         },
@@ -2740,7 +3059,7 @@
         },
         "customFields": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 63 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 64 sampled records carries a value — nothing proven either way"
         },
         "dates": {
           "read": "pass"
@@ -2757,7 +3076,8 @@
         },
         "dates.requestedDelivery": {
           "filter": "pass",
-          "read": "pass"
+          "read": "pass",
+          "updateNote": "no sample date value — not probed (a null date cannot be restored)"
         },
         "deliveryAddress": {
           "read": "pass"
@@ -2807,7 +3127,7 @@
         },
         "documents.goodsReceipts": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 63 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 64 sampled records carries a value — nothing proven either way"
         },
         "documents.goodsReceipts.id": {
           "read": "unobserved",
@@ -2819,7 +3139,7 @@
         },
         "documents.purchaseInvoices": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 63 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 64 sampled records carries a value — nothing proven either way"
         },
         "documents.purchaseInvoices.id": {
           "read": "unobserved",
@@ -2831,7 +3151,7 @@
         },
         "dropship": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 63 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 64 sampled records carries a value — nothing proven either way"
         },
         "id": {
           "read": "pass"
@@ -2844,7 +3164,7 @@
         },
         "items.fulfillment.invoiced": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 63 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 64 sampled records carries a value — nothing proven either way"
         },
         "items.fulfillment.received": {
           "read": "pass"
@@ -2946,11 +3266,15 @@
           "read": "pass"
         },
         "references.ourCustomerNumber": {
-          "read": "pass"
+          "read": "pass",
+          "update": "fail",
+          "updateNote": "PATCH 409: PurchaseOrder: fields the core does not write"
         },
         "references.supplierOfferNumber": {
           "filter": "pass",
-          "read": "pass"
+          "read": "pass",
+          "update": "fail",
+          "updateNote": "PATCH 409: PurchaseOrder: fields the core does not write"
         },
         "status": {
           "filter": "pass",
@@ -2968,6 +3292,19 @@
           "read": "pass",
           "update": "pass"
         },
+        "texts": {
+          "read": "pass"
+        },
+        "texts.intro": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "texts.outro": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
         "totals": {
           "read": "pass"
         },
@@ -2981,17 +3318,20 @@
           "read": "pass"
         },
         "updatedAt": {
-          "filter": "accepted",
-          "filterNote": "accepted, but returned nothing — the record the value came from is missing",
+          "filter": "pass",
           "read": "pass",
           "sort": "pass"
         },
         "warehouse": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 63 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 64 sampled records carries a value — nothing proven either way"
+        },
+        "writeProtection": {
+          "filter": "pass",
+          "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T12:15:38+00:00",
+      "probedAt": "2026-08-08T15:38:48+00:00",
       "processSteps": {
         "cancel": "reachable",
         "close": "reachable",
@@ -3001,7 +3341,27 @@
         "cancel": "reachable — 409 from upstream: Resource status invalid for requested operation",
         "close": "reachable — 409 from upstream: Resource status invalid for requested operation",
         "release": "reachable — 409 from upstream: Resource status invalid for requested operation"
-      }
+      },
+      "unprobed": [
+        "confirmation.status.update",
+        "confirmation.supplierOrderNumber.update",
+        "customFields.create",
+        "customFields.update",
+        "dates.requestedDelivery.create",
+        "dates.requestedDelivery.update",
+        "dropship.create",
+        "items.taxRate.create",
+        "items.taxRate.update",
+        "items.update",
+        "number.create",
+        "printSettings.requestConfirmation.create",
+        "printSettings.withoutPrices.create",
+        "references.ourCustomerNumber.create",
+        "references.supplierOfferNumber.create",
+        "supplier.update",
+        "warehouse.create",
+        "warehouse.update"
+      ]
     },
     "PurchasePrice": {
       "fields": {
@@ -3079,7 +3439,21 @@
           "updateNote": "no sample date value — not probed (a null date cannot be restored)"
         }
       },
-      "probedAt": "2026-08-02T10:16:26+00:00"
+      "probedAt": "2026-08-08T15:42:51+00:00",
+      "unprobed": [
+        "isStandardSupplier.create",
+        "packageAmount.create",
+        "packageAmount.update",
+        "remark.create",
+        "supplier.update",
+        "supplierDesignation.create",
+        "supplierItemNumber.create",
+        "unitPrice.currency.create",
+        "validFrom.create",
+        "validFrom.update",
+        "validUntil.create",
+        "validUntil.update"
+      ]
     },
     "Quote": {
       "actions": {
@@ -3150,8 +3524,7 @@
           "update": "pass"
         },
         "createdAt": {
-          "filter": "accepted",
-          "filterNote": "accepted, but returned nothing — the record the value came from is missing",
+          "filter": "pass",
           "read": "pass",
           "sort": "pass"
         },
@@ -3175,7 +3548,8 @@
         "dates.expectedOrderDate": {
           "filterNote": "no sample value on the test instance — filter not probed",
           "read": "unobserved",
-          "readNote": "declared, but none of the 18 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 18 sampled records carries a value — nothing proven either way",
+          "updateNote": "no sample date value — not probed (a null date cannot be restored)"
         },
         "dates.issued": {
           "create": "pass",
@@ -3187,11 +3561,14 @@
         "dates.requestedDelivery": {
           "filterNote": "no sample value on the test instance — filter not probed",
           "read": "unobserved",
-          "readNote": "declared, but none of the 18 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 18 sampled records carries a value — nothing proven either way",
+          "updateNote": "no sample date value — not probed (a null date cannot be restored)"
         },
         "dates.validUntil": {
           "filter": "pass",
-          "read": "pass"
+          "read": "pass",
+          "update": "fail",
+          "updateNote": "upstream accepted the write but the value did not persist"
         },
         "documents": {
           "read": "pass"
@@ -3323,7 +3700,9 @@
           "read": "pass"
         },
         "payment.terms.dueDays": {
-          "read": "pass"
+          "read": "pass",
+          "update": "fail",
+          "updateNote": "PATCH 409: Quote: fields the core does not write"
         },
         "project": {
           "create": "pass",
@@ -3335,7 +3714,9 @@
         },
         "references.customerInquiryNumber": {
           "filter": "pass",
-          "read": "pass"
+          "read": "pass",
+          "update": "fail",
+          "updateNote": "PATCH 409: Quote: fields the core does not write"
         },
         "shipping": {
           "read": "pass"
@@ -3423,13 +3804,16 @@
           "read": "pass"
         },
         "updatedAt": {
-          "filter": "accepted",
-          "filterNote": "accepted, but returned nothing — the record the value came from is missing",
+          "filter": "pass",
           "read": "pass",
           "sort": "pass"
+        },
+        "writeProtection": {
+          "filter": "pass",
+          "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T12:09:32+00:00",
+      "probedAt": "2026-08-08T15:33:40+00:00",
       "processSteps": {
         "cancel": "reachable",
         "release": "reachable"
@@ -3437,7 +3821,30 @@
       "processStepsNotes": {
         "cancel": "reachable — 409 from upstream: Resource status invalid for requested operation",
         "release": "reachable — 409 from upstream: Resource status invalid for requested operation"
-      }
+      },
+      "unprobed": [
+        "customFields.create",
+        "customFields.update",
+        "customer.update",
+        "dates.expectedOrderDate.create",
+        "dates.expectedOrderDate.filter",
+        "dates.expectedOrderDate.update",
+        "dates.requestedDelivery.create",
+        "dates.requestedDelivery.filter",
+        "dates.requestedDelivery.update",
+        "dates.validUntil.create",
+        "items.isOptional.create",
+        "items.isOptional.update",
+        "items.taxRate.create",
+        "items.taxRate.update",
+        "number.create",
+        "payment.method.create",
+        "payment.method.update",
+        "payment.terms.dueDays.create",
+        "references.customerInquiryNumber.create",
+        "shipping.method.create",
+        "shipping.method.update"
+      ]
     },
     "Return": {
       "actions": {
@@ -3501,8 +3908,7 @@
           "update": "pass"
         },
         "createdAt": {
-          "filter": "accepted",
-          "filterNote": "accepted, but returned nothing — the record the value came from is missing",
+          "filter": "pass",
           "read": "pass",
           "sort": "pass"
         },
@@ -3608,6 +4014,10 @@
         "object": {
           "read": "pass"
         },
+        "progress": {
+          "filter": "pass",
+          "read": "pass"
+        },
         "project": {
           "create": "pass",
           "read": "pass",
@@ -3618,11 +4028,17 @@
         },
         "references.customerOrderNumber": {
           "filter": "pass",
-          "read": "pass"
+          "read": "pass",
+          "update": "fail",
+          "updateNote": "PATCH 409: Return: fields the core does not write"
         },
         "references.rmaNumber": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 92 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 92 sampled records carries a value — nothing proven either way",
+          "search": "fail",
+          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is ['billingAddress.email', 'billingAddress.name', 'billingAddress.zip', 'dates.issued', 'number', 'references.customerOrderNumber'], so a consolidated search never looks at this field",
+          "update": "fail",
+          "updateNote": "PATCH 409: Return: fields the core does not write"
         },
         "resolution": {
           "read": "pass"
@@ -3634,7 +4050,8 @@
           "read": "pass"
         },
         "status": {
-          "filter": "pass",
+          "filter": "fail",
+          "filterNote": "filter[status] 400: Invalid value: settled. Valid values are: draft, received, released, sent, cancelled, completed {\"status\": [\"Invalid value: settled. Valid values are: draft, received, released, sent, cancelled, completed\"]}",
           "read": "pass"
         },
         "tags": {
@@ -3644,18 +4061,34 @@
           "read": "pass",
           "update": "pass"
         },
+        "texts": {
+          "read": "pass"
+        },
+        "texts.intro": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "texts.outro": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
         "updatedAt": {
-          "filter": "accepted",
-          "filterNote": "accepted, but returned nothing — the record the value came from is missing",
+          "filter": "pass",
           "read": "pass",
           "sort": "pass"
         },
         "warehouse": {
           "read": "unobserved",
           "readNote": "declared, but none of the 92 sampled records carries a value — nothing proven either way"
+        },
+        "writeProtection": {
+          "filter": "pass",
+          "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T12:14:51+00:00",
+      "probedAt": "2026-08-08T15:38:15+00:00",
       "processSteps": {
         "cancel": "reachable",
         "release": "reachable",
@@ -3665,7 +4098,26 @@
         "cancel": "reachable — 409 from upstream: Resource status invalid for requested operation",
         "release": "reachable — 409 from upstream: Resource status invalid for requested operation",
         "settle": "reachable — 409 from upstream: Resource status invalid for requested operation"
-      }
+      },
+      "unprobed": [
+        "customFields.create",
+        "customFields.update",
+        "customer.update",
+        "documents.deliveryNote.create",
+        "documents.salesOrder.create",
+        "items.action.create",
+        "items.action.update",
+        "items.condition.create",
+        "items.condition.update",
+        "items.reason.create",
+        "items.reason.update",
+        "items.update",
+        "number.create",
+        "references.customerOrderNumber.create",
+        "references.rmaNumber.create",
+        "warehouse.create",
+        "warehouse.update"
+      ]
     },
     "ReturnReason": {
       "fields": {
@@ -3688,7 +4140,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:16:41+00:00"
+      "probedAt": "2026-08-08T15:45:30+00:00"
     },
     "SalesInvoice": {
       "actions": {
@@ -3721,6 +4173,7 @@
         "billingAddress.email": {
           "create": "pass",
           "read": "pass",
+          "search": "pass",
           "update": "pass"
         },
         "billingAddress.name": {
@@ -3759,8 +4212,7 @@
           "update": "pass"
         },
         "createdAt": {
-          "filter": "accepted",
-          "filterNote": "accepted, but returned nothing — the record the value came from is missing",
+          "filter": "pass",
           "read": "pass",
           "sort": "pass"
         },
@@ -3831,17 +4283,20 @@
           "read": "pass"
         },
         "dunning.blocked": {
-          "read": "pass"
+          "read": "pass",
+          "update": "pass"
         },
         "dunning.lastReminderAt": {
           "read": "unobserved",
           "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way"
         },
         "dunning.level": {
-          "read": "pass"
+          "read": "pass",
+          "update": "pass"
         },
         "dunning.note": {
-          "read": "pass"
+          "read": "pass",
+          "update": "pass"
         },
         "eInvoice": {
           "read": "pass"
@@ -3957,7 +4412,9 @@
           "filter": "pass",
           "read": "pass",
           "search": "pass",
-          "sort": "pass"
+          "sort": "pass",
+          "update": "fail",
+          "updateNote": "PATCH 409: SalesInvoice: fields the core does not write"
         },
         "object": {
           "read": "pass"
@@ -3996,13 +4453,19 @@
           "read": "pass"
         },
         "payment.terms.discountDays": {
-          "read": "pass"
+          "read": "pass",
+          "update": "fail",
+          "updateNote": "PATCH 409: SalesInvoice: fields the core does not write"
         },
         "payment.terms.discountPercent": {
-          "read": "pass"
+          "read": "pass",
+          "update": "fail",
+          "updateNote": "PATCH 409: SalesInvoice: fields the core does not write"
         },
         "payment.terms.dueDays": {
-          "read": "pass"
+          "read": "pass",
+          "update": "fail",
+          "updateNote": "PATCH 409: SalesInvoice: fields the core does not write"
         },
         "project": {
           "create": "pass",
@@ -4017,11 +4480,14 @@
           "filterNote": "no sample value on the test instance — filter not probed",
           "read": "unobserved",
           "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way",
+          "searchNote": "no sample text value and no fixture — search not probed",
           "update": "pass"
         },
         "references.debtorAccountNumber": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way",
+          "update": "fail",
+          "updateNote": "upstream accepted the write but the value did not persist"
         },
         "status": {
           "filter": "pass",
@@ -4034,6 +4500,20 @@
           "update": "pass"
         },
         "taxation": {
+          "create": "pass",
+          "read": "pass",
+          "update": "pass"
+        },
+        "texts": {
+          "read": "pass"
+        },
+        "texts.intro": {
+          "create": "pass",
+          "read": "unobserved",
+          "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way",
+          "update": "pass"
+        },
+        "texts.outro": {
           "create": "pass",
           "read": "pass",
           "update": "pass"
@@ -4057,14 +4537,17 @@
           "read": "pass"
         },
         "updatedAt": {
-          "filter": "accepted",
-          "filterNote": "accepted, but returned nothing — the record the value came from is missing",
+          "filter": "pass",
           "read": "pass",
           "sort": "accepted",
           "sortNote": "fewer than two distinct values on the page — order not assertable"
+        },
+        "writeProtection": {
+          "filter": "pass",
+          "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T12:12:41+00:00",
+      "probedAt": "2026-08-08T15:36:24+00:00",
       "processSteps": {
         "cancel": "executed",
         "release": "reachable"
@@ -4072,7 +4555,28 @@
       "processStepsNotes": {
         "cancel": "EXECUTED on the sampled record (200) — effect not read back",
         "release": "reachable — 409 from upstream: Resource status invalid for requested operation"
-      }
+      },
+      "unprobed": [
+        "customFields.create",
+        "customFields.update",
+        "customer.update",
+        "dunning.blocked.create",
+        "dunning.level.create",
+        "dunning.note.create",
+        "items.description.update",
+        "items.taxRate.create",
+        "items.taxRate.update",
+        "number.create",
+        "payment.method.create",
+        "payment.method.update",
+        "payment.terms.discountDays.create",
+        "payment.terms.discountPercent.create",
+        "payment.terms.dueDays.create",
+        "references.customerOrderNumber.create",
+        "references.customerOrderNumber.filter",
+        "references.customerOrderNumber.search",
+        "references.debtorAccountNumber.create"
+      ]
     },
     "SalesOrder": {
       "actions": {
@@ -4111,6 +4615,7 @@
         "billingAddress.email": {
           "create": "pass",
           "read": "pass",
+          "search": "pass",
           "update": "pass"
         },
         "billingAddress.name": {
@@ -4136,6 +4641,7 @@
         "billingAddress.zip": {
           "create": "pass",
           "read": "pass",
+          "search": "pass",
           "update": "pass"
         },
         "channel": {
@@ -4148,8 +4654,7 @@
           "update": "pass"
         },
         "createdAt": {
-          "filter": "accepted",
-          "filterNote": "accepted, but returned nothing — the record the value came from is missing",
+          "filter": "pass",
           "read": "pass",
           "sort": "pass"
         },
@@ -4159,6 +4664,7 @@
           "update": "pass"
         },
         "customFields": {
+          "filterNote": "no sample value on the test instance — filter not probed",
           "read": "unobserved",
           "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way"
         },
@@ -4394,7 +4900,9 @@
           "filter": "pass",
           "read": "pass",
           "search": "pass",
-          "sort": "pass"
+          "sort": "pass",
+          "update": "fail",
+          "updateNote": "PATCH 409: SalesOrder: fields the core does not write"
         },
         "object": {
           "read": "pass"
@@ -4413,13 +4921,16 @@
           "read": "pass"
         },
         "payment.terms.discountDays": {
-          "read": "pass"
+          "read": "pass",
+          "update": "pass"
         },
         "payment.terms.discountPercent": {
-          "read": "pass"
+          "read": "pass",
+          "update": "pass"
         },
         "payment.terms.dueDays": {
-          "read": "pass"
+          "read": "pass",
+          "update": "pass"
         },
         "project": {
           "create": "pass",
@@ -4433,15 +4944,21 @@
         "references.customerOrderNumber": {
           "filter": "pass",
           "read": "pass",
+          "search": "pass",
           "update": "pass"
         },
         "references.externalId": {
           "filter": "pass",
-          "read": "pass"
+          "read": "pass",
+          "search": "fail",
+          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is ['billingAddress.email', 'billingAddress.name', 'billingAddress.zip', 'dates.issued', 'number', 'references.customerOrderNumber', 'references.externalNumber'], so a consolidated search never looks at this field",
+          "update": "pass"
         },
         "references.externalNumber": {
           "filter": "pass",
-          "read": "pass"
+          "read": "pass",
+          "search": "pass",
+          "update": "pass"
         },
         "references.paymentTransactionId": {
           "read": "unobserved",
@@ -4578,14 +5095,17 @@
           "read": "pass"
         },
         "updatedAt": {
-          "filter": "accepted",
-          "filterNote": "accepted, but returned nothing — the record the value came from is missing",
+          "filter": "pass",
           "read": "pass",
           "sort": "accepted",
           "sortNote": "fewer than two distinct values on the page — order not assertable"
+        },
+        "writeProtection": {
+          "filter": "pass",
+          "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T12:11:24+00:00",
+      "probedAt": "2026-08-08T15:35:19+00:00",
       "processSteps": {
         "cancel": "reachable",
         "close": "reachable",
@@ -4597,7 +5117,36 @@
         "close": "reachable — 409 from upstream: Resource status invalid for requested operation",
         "dispatch": "reachable — 400: Generic request validation failed.",
         "release": "reachable — 409 from upstream: Resource status invalid for requested operation"
-      }
+      },
+      "unprobed": [
+        "channel.create",
+        "channel.update",
+        "customFields.create",
+        "customFields.filter",
+        "customFields.update",
+        "customer.update",
+        "dates.earliestFulfillment.update",
+        "dates.requestedDelivery.update",
+        "dates.reservation.update",
+        "fulfillmentPolicy.auto.create",
+        "fulfillmentPolicy.partialShipping.create",
+        "fulfillmentPolicy.partialShipping.update",
+        "fulfillmentPolicy.priority.create",
+        "items.description.update",
+        "items.taxRate.create",
+        "items.taxRate.update",
+        "number.create",
+        "payment.method.create",
+        "payment.method.update",
+        "payment.terms.discountDays.create",
+        "payment.terms.discountPercent.create",
+        "payment.terms.dueDays.create",
+        "references.customerOrderNumber.create",
+        "references.externalId.create",
+        "references.externalNumber.create",
+        "shipping.method.create",
+        "shipping.method.update"
+      ]
     },
     "Shipment": {
       "fields": {
@@ -4684,7 +5233,9 @@
           "read": "pass"
         },
         "tracking.number": {
-          "read": "pass"
+          "read": "pass",
+          "search": "fail",
+          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is empty, so a consolidated search never looks at this field"
         },
         "trackingNumber": {
           "read": "pass"
@@ -4709,7 +5260,10 @@
           "readNote": "no sampled record carries 'weight', so the leaf could not be observed — nothing proven either way"
         }
       },
-      "probedAt": "2026-08-02T10:16:27+00:00"
+      "probedAt": "2026-08-08T15:42:52+00:00",
+      "unprobed": [
+        "id.create"
+      ]
     },
     "ShippingMethod": {
       "fields": {
@@ -4741,7 +5295,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:16:40+00:00"
+      "probedAt": "2026-08-08T15:45:29+00:00"
     },
     "StockTake": {
       "fields": {
@@ -4753,11 +5307,11 @@
         },
         "dates.keyDate": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 25 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 27 sampled records carries a value — nothing proven either way"
         },
         "dates.posted": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 25 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 27 sampled records carries a value — nothing proven either way"
         },
         "dates.started": {
           "read": "pass"
@@ -4767,7 +5321,7 @@
         },
         "documents.stockMovements": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 25 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 27 sampled records carries a value — nothing proven either way"
         },
         "documents.stockMovements.id": {
           "read": "unobserved",
@@ -4794,7 +5348,7 @@
         },
         "positions": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 25 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 27 sampled records carries a value — nothing proven either way"
         },
         "positions.counted": {
           "read": "unobserved",
@@ -4854,11 +5408,11 @@
         },
         "totals.differences": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 25 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 27 sampled records carries a value — nothing proven either way"
         },
         "totals.positions": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 25 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 27 sampled records carries a value — nothing proven either way"
         },
         "updatedAt": {
           "read": "pass"
@@ -4867,7 +5421,11 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:16:30+00:00"
+      "probedAt": "2026-08-08T15:43:49+00:00",
+      "unprobed": [
+        "id.create",
+        "positions.counted.update"
+      ]
     },
     "StorageLocation": {
       "actions": {
@@ -4932,7 +5490,9 @@
         },
         "description": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 60 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 60 sampled records carries a value — nothing proven either way",
+          "update": "fail",
+          "updateNote": "PATCH 409: StorageLocation: fields the core does not write"
         },
         "dimensions": {
           "read": "pass"
@@ -5000,7 +5560,21 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T16:27:35+00:00"
+      "probedAt": "2026-08-08T15:43:48+00:00",
+      "unprobed": [
+        "abcCategory.create",
+        "description.create",
+        "dimensions.height.create",
+        "dimensions.length.create",
+        "dimensions.width.create",
+        "pickingOrder.create",
+        "usage.blocked.create",
+        "usage.consumption.create",
+        "usage.pointOfSale.create",
+        "usage.production.create",
+        "usage.replenishment.create",
+        "warehouse.create"
+      ]
     },
     "Supplier": {
       "actions": {
@@ -5207,7 +5781,8 @@
         },
         "defaults.paymentTerms.dueDays": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 42 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 42 sampled records carries a value — nothing proven either way",
+          "updateNote": "no sample numeric value — not probed (a null number cannot be restored)"
         },
         "defaults.priceList": {
           "read": "unobserved",
@@ -5293,11 +5868,13 @@
         },
         "purchasing.confirmationRequired": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 42 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 42 sampled records carries a value — nothing proven either way",
+          "updateNote": "no sample boolean value — not probed (a null flag cannot be restored)"
         },
         "purchasing.deliveryDays": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 42 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 42 sampled records carries a value — nothing proven either way",
+          "updateNote": "no sample numeric value — not probed (a null number cannot be restored)"
         },
         "purchasing.minimumOrderValue": {
           "read": "unobserved",
@@ -5321,7 +5898,9 @@
         },
         "status": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 42 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 42 sampled records carries a value — nothing proven either way",
+          "update": "fail",
+          "updateNote": "upstream accepted the write but the value did not persist"
         },
         "tags": {
           "filter": "accepted",
@@ -5348,7 +5927,98 @@
           "update": "pass"
         }
       },
-      "probedAt": "2026-08-02T11:36:11+00:00"
+      "probedAt": "2026-08-08T15:40:53+00:00",
+      "unprobed": [
+        "addresses.city.create",
+        "addresses.city.update",
+        "addresses.contactPerson.create",
+        "addresses.contactPerson.update",
+        "addresses.country.create",
+        "addresses.country.update",
+        "addresses.email.create",
+        "addresses.email.update",
+        "addresses.gln.create",
+        "addresses.gln.update",
+        "addresses.isDefault.create",
+        "addresses.isDefault.update",
+        "addresses.label.create",
+        "addresses.label.update",
+        "addresses.name.create",
+        "addresses.name.update",
+        "addresses.phone.create",
+        "addresses.phone.update",
+        "addresses.state.create",
+        "addresses.state.update",
+        "addresses.street.create",
+        "addresses.street.update",
+        "addresses.type.create",
+        "addresses.type.update",
+        "addresses.zip.create",
+        "addresses.zip.update",
+        "billTo.update",
+        "contacts.address.create",
+        "contacts.address.update",
+        "contacts.allowMarketingEmails.create",
+        "contacts.allowMarketingEmails.update",
+        "contacts.birthday.create",
+        "contacts.birthday.update",
+        "contacts.department.create",
+        "contacts.department.update",
+        "contacts.email.create",
+        "contacts.email.update",
+        "contacts.fax.create",
+        "contacts.fax.update",
+        "contacts.internalNote.create",
+        "contacts.internalNote.update",
+        "contacts.isPrimary.create",
+        "contacts.isPrimary.update",
+        "contacts.language.create",
+        "contacts.language.update",
+        "contacts.mobile.create",
+        "contacts.mobile.update",
+        "contacts.name.create",
+        "contacts.name.update",
+        "contacts.phone.create",
+        "contacts.phone.update",
+        "contacts.position.create",
+        "contacts.position.update",
+        "contacts.remarks.create",
+        "contacts.remarks.update",
+        "contacts.salutation.create",
+        "contacts.salutation.update",
+        "contacts.subDepartment.create",
+        "contacts.subDepartment.update",
+        "contacts.title.create",
+        "contacts.title.update",
+        "contacts.type.create",
+        "contacts.type.update",
+        "customFields.create",
+        "customFields.key.create",
+        "customFields.key.update",
+        "customFields.label.create",
+        "customFields.label.update",
+        "customFields.update",
+        "customFields.value.create",
+        "customFields.value.update",
+        "defaults.partialShipping.update",
+        "defaults.paymentTerms.dueDays.create",
+        "defaults.paymentTerms.dueDays.update",
+        "defaults.priceList.update",
+        "defaults.shippingMethod.update",
+        "finance.creditorAccountNumber.update",
+        "notes.create",
+        "notes.update",
+        "parent.update",
+        "project.create",
+        "purchasing.confirmationRequired.create",
+        "purchasing.confirmationRequired.update",
+        "purchasing.deliveryDays.create",
+        "purchasing.deliveryDays.update",
+        "purchasing.ourCustomerNumber.create",
+        "purchasing.sendOrdersVia.create",
+        "purchasing.sendOrdersVia.update",
+        "tags.create"
+      ]
     },
     "Tag": {
       "fields": {
@@ -5362,7 +6032,7 @@
         "group": {
           "filterNote": "no sample value on the test instance — filter not probed",
           "read": "unobserved",
-          "readNote": "declared, but none of the 63 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 65 sampled records carries a value — nothing proven either way"
         },
         "id": {
           "read": "pass"
@@ -5384,7 +6054,10 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:16:35+00:00"
+      "probedAt": "2026-08-08T15:43:53+00:00",
+      "unprobed": [
+        "group.filter"
+      ]
     },
     "Task": {
       "fields": {
@@ -5403,7 +6076,9 @@
           "filter": "pass",
           "read": "pass",
           "sort": "accepted",
-          "sortNote": "fewer than two distinct values on the page — order not assertable"
+          "sortNote": "fewer than two distinct values on the page — order not assertable",
+          "update": "fail",
+          "updateNote": "PATCH 409: Task: fields the core does not write"
         },
         "dates.created": {
           "filter": "pass",
@@ -5562,7 +6237,27 @@
           "update": "pass"
         }
       },
-      "probedAt": "2026-08-02T17:19:18+00:00"
+      "probedAt": "2026-08-08T15:44:34+00:00",
+      "unprobed": [
+        "assignee.create",
+        "assignee.update",
+        "links.contactPerson.create",
+        "links.contactPerson.filter",
+        "links.contactPerson.update",
+        "links.customer.create",
+        "links.customer.filter",
+        "links.customer.update",
+        "links.project.create",
+        "links.project.update",
+        "links.subProject.create",
+        "links.subProject.update",
+        "reminder.advanceNoticeDays.update",
+        "reminder.daysBefore.update",
+        "timeTracking.hours.update",
+        "timeTracking.loggedAt.create",
+        "timeTracking.loggedAt.update",
+        "visibility.onBulletinBoard.create"
+      ]
     },
     "TaxRate": {
       "fields": {
@@ -5603,7 +6298,10 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:16:48+00:00"
+      "probedAt": "2026-08-08T15:45:34+00:00",
+      "unprobed": [
+        "product.filter"
+      ]
     },
     "TextTemplate": {
       "fields": {
@@ -5626,7 +6324,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:17:05+00:00"
+      "probedAt": "2026-08-08T15:46:22+00:00"
     },
     "User": {
       "fields": {
@@ -5665,7 +6363,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:16:55+00:00"
+      "probedAt": "2026-08-08T15:45:42+00:00"
     },
     "Warehouse": {
       "fields": {
@@ -5685,7 +6383,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T15:58:15+00:00"
+      "probedAt": "2026-08-08T15:45:38+00:00"
     },
     "Webhook": {
       "fields": {
@@ -5708,7 +6406,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:17:04+00:00"
+      "probedAt": "2026-08-08T15:46:21+00:00"
     },
     "WebhookEventType": {
       "fields": {
@@ -5722,10 +6420,10 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-02T10:17:04+00:00"
+      "probedAt": "2026-08-08T15:46:22+00:00"
     }
   },
-  "generatedAt": "2026-08-05T08:07:28+00:00",
+  "generatedAt": "2026-08-08T15:46:22+00:00",
   "instance": "a2ad4180-0d41-4360-8044-9dca0c35608a",
   "schemaVersion": 2
 }
