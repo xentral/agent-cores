@@ -11,7 +11,7 @@ in ``emulated/`` once we start building. The full concept lives in ``docs/``
 pattern is the "Mode C" section of ``docs/guides/building-an-erp-core.md``.
 
 Gaps are surfaced the same way as the other cores: not-yet-writable fields and
-missing resources are marked blue (``priorities.json``) and what actually works
+missing resources are marked blue (``field-gaps.yaml``) and what actually works
 is proven by live tests (``verified.json``) — the core carries its own backlog.
 """
 

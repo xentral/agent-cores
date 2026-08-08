@@ -539,7 +539,7 @@ class DeliveryNoteAdapter(FacadeAdapterBase):
     # configured number range, so a caller supplying one must be told it was refused
     # rather than get a 201 and a different number. Upstream would accept it on three
     # of these types (salesOrder / invoice / creditNote, verified on mvp) — declining
-    # it everywhere is a product decision, recorded as such in priorities.json.
+    # it everywhere is a product decision, recorded as such in field-gaps.yaml.
     _IGNORE = {
         "object",
         "id",

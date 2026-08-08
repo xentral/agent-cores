@@ -21,6 +21,9 @@ import base64
 import json
 import os
 import re
+
+import yaml
+
 from collections.abc import Callable, Iterator
 from decimal import Decimal, InvalidOperation
 from urllib.parse import unquote
@@ -51,14 +54,19 @@ _SPEAKING_ID = re.compile(r"^[a-z]+_[0-9]+$")
 
 
 @functools.lru_cache(maxsize=1)
-def _priorities() -> dict[str, Any]:
-    """Per-entity blue wishes from the core's priorities.json (the living
-    backlog; docs/03-mapping-layer.md §5). Missing file → empty."""
-    path = os.path.join(os.path.dirname(__file__), "..", "priorities.json")
+def _field_gaps() -> dict[str, Any]:
+    """Per-entity field gaps from the core's field-gaps.yaml — the field axis of the
+    specification (docs/03-mapping-layer.md §5). Missing file → empty.
+
+    YAML rather than JSON because the payload is prose: each entry carries a business
+    reason that a reviewer writes and edits, and JSON can neither comment it nor wrap
+    it. Parsed once per process (lru_cache), so the slower parser costs nothing.
+    """
+    path = os.path.join(os.path.dirname(__file__), "..", "field-gaps.yaml")
     try:
         with open(path, encoding="utf-8") as fh:
-            return json.load(fh).get("entities") or {}
-    except (FileNotFoundError, ValueError):
+            return yaml.safe_load(fh) or {}
+    except (FileNotFoundError, ValueError, yaml.YAMLError):
         return {}
 
 
@@ -285,7 +293,7 @@ def map_item_totals(li: dict[str, Any], currency: str = "EUR") -> dict[str, Any]
     pass-through, and squarely on the unresolved legacy rounding-parity question
     (docs/03-mapping-layer.md Kategorie 3 §1, ``projekt.preisberechnung``). A derived
     number would be indistinguishable from an upstream one while being free to
-    disagree with the printed document. The gap is a blue wish in priorities.json;
+    disagree with the printed document. The gap is a blue wish in field-gaps.yaml;
     per-rate tax is available on the document's ``totals``."""
     rev = li.get("lineItemRevenue") or {}
     net = ((rev.get("net") or {}).get("amount"), (rev.get("net") or {}).get("currency"))
@@ -539,8 +547,8 @@ class FacadeAdapterBase:
             for path, facets in fields.items()
         )
 
-    def _apply_priorities(self, properties: dict[str, Any]) -> None:
-        """Stamp the hand-curated blue wishes (priorities.json) onto the schema —
+    def _apply_field_gaps(self, properties: dict[str, Any]) -> None:
+        """Stamp the hand-curated blue wishes (field-gaps.yaml) onto the schema —
         the living backlog (docs/03-mapping-layer.md §5). Renders blue only where
         the op is actually unavailable.
 
@@ -560,7 +568,7 @@ class FacadeAdapterBase:
 
     def _wishes_by_field(self) -> dict[str, dict[str, str]]:
         by_field: dict[str, dict[str, str]] = {}
-        for entry in _priorities().get(self.manifest.key) or ():
+        for entry in _field_gaps().get(self.manifest.key) or ():
             field = entry.get("field")
             reason = entry.get("reason") or ""
             for op in entry.get("ops") or ():
@@ -800,7 +808,7 @@ class FacadeAdapterBase:
 
     def metadata(self, accept_language: str | None = None) -> dict[str, Any]:
         properties = self.fields()
-        self._apply_priorities(properties)
+        self._apply_field_gaps(properties)
         self._apply_verified(properties)
         self._apply_descriptions(properties)
         self._apply_detail_only(properties)
@@ -1448,7 +1456,7 @@ class FacadeAdapterBase:
         outside the default path (salesOrder splits its line items off before
         delegating) must answer identically instead of dropping the rejection.
 
-        The per-field ``reasons`` come from priorities.json. They matter because
+        The per-field ``reasons`` come from field-gaps.yaml. They matter because
         "not writable" covers two different things, and a blanket "read-only
         upstream" would be a false statement for the second: the upstream genuinely
         cannot do it, OR it could and we decline (a document number is always drawn
@@ -1456,7 +1464,7 @@ class FacadeAdapterBase:
         that only reads this response has to be able to tell those apart."""
         wishes = {
             w.get("field"): w.get("reason")
-            for w in _priorities().get(self.manifest.key, [])
+            for w in _field_gaps().get(self.manifest.key, [])
             if isinstance(w, dict) and w.get("reason")
         }
         body: dict[str, Any] = {
@@ -1464,7 +1472,7 @@ class FacadeAdapterBase:
             "detail": (
                 "Either the upstream cannot write them today or the core declines them "
                 "by decision (ADR-014: no overlay, no silent drop). See `reasons`, and "
-                "priorities.json for the full backlog."
+                "field-gaps.yaml for the full backlog."
             ),
             "fields": sorted(rejected),
         }

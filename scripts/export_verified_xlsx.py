@@ -7,7 +7,7 @@ the cells (what a live run proved).
 
 Nothing here talks to a tenant. `adapter.metadata()` already stamps everything the
 workbook needs — `verified` (per-facet verdicts + `<facet>Note`), `priority` (the
-blue wishes from priorities.json) and `description` — so the export is a pure
+blue wishes from field-gaps.yaml) and `description` — so the export is a pure
 offline read of the checked-in files.
 
 Cell vocabulary, per field × facet:
@@ -401,7 +401,7 @@ def main(core_id: str = "agentos_neo_xentral") -> int:
             "manchen, z. B. send, ist das die endgültige Antwort · "
             "FEHLER = geprüft und fehlgeschlagen · "
             "offen = deklariert, aber ungeprüft · – = laut Schema nicht anwendbar · "
-            "Wunsch = bewusst nicht möglich (priorities.json)"
+            "Wunsch = bewusst nicht möglich (field-gaps.yaml)"
         ),
     )
 

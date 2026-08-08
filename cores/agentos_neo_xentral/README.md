@@ -13,13 +13,13 @@ other, nothing is being checked any more.
 | File | What it says |
 |---|---|
 | `capabilities.spec.yaml` | What the ERP must be able to **do**: per entity, which actions and status steps must exist, which statuses, which fields are mandatory on create, what must be filterable. |
-| `priorities.json` | What the ERP must be able to **record and find**: field × operation the merchant needs but the Xentral API cannot do today, each with the business reason ("a clerk must be able to set and correct the customer's PO number"). |
+| `field-gaps.yaml` | What the ERP must be able to **record and find**: field × operation the merchant needs but the Xentral API cannot do today, each with the business reason ("a clerk must be able to set and correct the customer's PO number"). |
 
 Two files, one specification, two axes. Both are hand-written. Neither is
 generated from the code — a specification derived from the implementation cannot
 state what is still missing, which is the only reason anyone would review it.
 
-Gaps recorded in `priorities.json` are rendered into the live `describe` output at
+Gaps recorded in `field-gaps.yaml` are rendered into the live `describe` output at
 the field they concern, so a builder sees *"not possible, and here is why"* instead
 of mere absence. Absence is indistinguishable from "nobody looked".
 

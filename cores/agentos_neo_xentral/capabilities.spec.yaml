@@ -37,7 +37,7 @@
 # `executable + wishes` must cover EVERY capability of every entity that has any,
 # so a newly built one cannot go unmentioned.
 #
-# Field-level requirements live next door in `priorities.json` — same spec, other
+# Field-level requirements live next door in `field-gaps.yaml` — same spec, other
 # axis (what must be recordable and findable, rather than doable).
 
 executable:
