@@ -308,6 +308,33 @@ def test_every_wish_carries_a_reason(core):
             )
 
 
+def test_no_rendered_wish_carries_the_runtime_placeholder(core):
+    """The reason must survive the LOADER, not merely exist in the file.
+
+    The rule above reads the spec directly. It would stay green through a rename, a
+    re-nesting, or a category typo that orphans an entity — while `_wish_reasons()`
+    returns nothing and every gap in `describe` renders "Declared as not executable,
+    but ... records no reason". The text is right there in the file the whole time.
+
+    The loader fails soft on purpose: it runs lazily on the request path, so a spec
+    typo must cost a sentence, never a 500 from `describe` (``base.py`` records that
+    trade where the fallback is written). This is the other half of that bargain —
+    soft in production, loud here. It asserts on the rendered ``metadata()``, which is
+    the exact code path `action_def` and `step_cmd` take in production, so no new
+    machinery is needed to cover it.
+    """
+    for key, entity in core["model"].items():
+        for op, capability in entity["capabilities"].items():
+            wish = capability.get("wish")
+            if not wish:
+                continue
+            assert "records no reason" not in wish, (
+                f"{key}.{op}: the core declares this a gap, but the runtime loader could "
+                f"not find its reason in {SPEC}. The file may be perfectly fine and the "
+                f"loader wrong — check the shape, not just the text."
+            )
+
+
 def test_evidence_gaps_match_the_live_run(core):
     """Which executable capabilities a live run has NOT actually proven.
 
