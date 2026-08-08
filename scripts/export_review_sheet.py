@@ -211,7 +211,16 @@ def _field_rows(core_id: str, spec: dict, model: dict, verified: dict) -> list[d
     what makes an obsolete entry visible instead of permanent.
     """
     rows: list[dict[str, Any]] = []
-    entities = {k: b["fieldGaps"] for k, b in spec.items() if b.get("fieldGaps")}
+    # The gaps sit on the field they concern now; flattened here to the row shape.
+    entities = {}
+    for key, block in spec.items():
+        rows = [
+            {"field": path, **gap}
+            for path, field in (block.get("fields") or {}).items()
+            for gap in (field.get("gaps") or [])
+        ]
+        if rows:
+            entities[key] = rows
     for entity in _order(core_id, entities):
         meta = model.get(entity)
         marks = (verified.get(entity) or {}).get("fields") or {}

@@ -16,15 +16,32 @@ entity`, so one block answers *"what can this system do with an order"*:
 | Per entity | What it says |
 |---|---|
 | `operations` | read-only or writable |
-| `statuses` | the lifecycle vocabulary of each status field |
-| `requiredForCreate` · `filterable` · `notFilterable` · `fields` | what a create must carry, what must be queryable, the documented traps, the paths the reviewer decided must exist |
+| `fields` | **the whole ERP model of this entity** — one entry per field: type, whether a create must carry it, which operations must work (`must`), the status vocabulary, and any gap |
 | `can` | the capability works — with the verdict a live run returned, and the parameters it takes |
 | `cannot` | the capability is needed and the upstream cannot do it — **with the reason** |
-| `fieldGaps` | field × operation the merchant needs and the API cannot serve, with the business reason |
 | `reviewed` | the date a domain expert went through this entity, or `null` |
 
+A field entry is one line where nothing is wrong with it, and grows only where it is:
+
+```yaml
+number:          {type: string, must: [filter, search, sort]}
+customer:        {type: reference, ref: Customer, required: true, must: [create, filter]}
+references.customerOrderNumber:
+  type: string
+  must: [create, update, search]
+  gaps:
+    - ops: [create]
+      contested: [create]
+      reason: >-
+        The customer's own order number (B2B standard). Read-only upstream today.
+```
+
+`must` is the **requirement**: which operations have to work. Where the core supports
+them the two agree; where it does not, a `gap` must name exactly that operation.
+`missing: true` marks a field the spec requires and the core does not have at all.
+
 Two axes in one document: what must be *doable* (`can` / `cannot`) and what must be
-*recordable and findable* (`fieldGaps`). Hand-written, never generated from the code —
+*recordable and findable* (`fields`). Hand-written, never generated from the code —
 a specification derived from the implementation cannot state what is still missing,
 which is the only reason anyone would review it.
 

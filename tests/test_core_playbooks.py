@@ -91,10 +91,6 @@ ENTITY_KEYS = frozenset(
         "label",
         "reviewed",
         "operations",
-        "statuses",
-        "requiredForCreate",
-        "filterable",
-        "notFilterable",
         "fields",
         "can",
         "cannot",
@@ -493,83 +489,100 @@ def test_declared_operations_match(core):
 
 
 def test_status_vocabularies_match(core):
+    """`options` on the field, not a `statuses` section beside it — a status vocabulary
+    is a property of the field that carries it."""
     for key, block in core["spec"].items():
         entity = _entity(core, key)
-        for path, values in (block.get("statuses") or {}).items():
+        for path, field in (block.get("fields") or {}).items():
+            if not field.get("options"):
+                continue
             spec = entity["fields"].get(path)
             assert spec is not None, f"{key}.{path}: no such field"
-            options = spec.get("options") or []
-            actual = {o.get("value") if isinstance(o, dict) else o for o in options}
+            actual = {
+                o.get("value") if isinstance(o, dict) else o for o in (spec.get("options") or [])
+            }
             assert actual, f"{key}.{path}: the field declares no options"
-            assert actual == set(values), (
-                f"{key}.{path}: the spec requires {sorted(values)}, core offers {sorted(actual)}"
+            assert actual == set(field["options"]), (
+                f"{key}.{path}: the spec requires {sorted(field['options'])}, core offers "
+                f"{sorted(actual)}"
             )
 
 
 def test_required_for_create_matches(core):
+    """Both directions: every field the spec marks required must be required in the
+    core, and every field the core requires must be marked. Dropping the mark used to
+    be invisible — it lived in a section that only checked what it named."""
     for key, block in core["spec"].items():
-        if "requiredForCreate" not in block:
-            continue
         entity = _entity(core, key)
+        declared = {p for p, f in (block.get("fields") or {}).items() if f.get("required")}
         actual = {
             path
             for path, spec in entity["fields"].items()
             if "required" in (spec.get("rules") or [])
         }
-        assert actual == set(block["requiredForCreate"]), (
-            f"{key}: the spec requires {sorted(block['requiredForCreate'])} on create, "
-            f"core requires {sorted(actual)}"
+        assert declared == actual, (
+            f"{key}: the spec requires {sorted(declared)} on create, core requires {sorted(actual)}"
         )
 
 
-def test_required_for_create_is_stated_wherever_the_core_requires_anything(core):
-    """Checked in both directions per entity that states it — which means dropping the
-    whole block is invisible. This closes that one-way hole."""
+def test_the_spec_states_every_field_the_core_has(core):
+    """Spec-driven: the specification names the model, and the core must match it.
+
+    Both directions. A field the core grew without a spec entry is unspecified — nobody
+    decided it should exist. A field the spec names that the core does not have is a
+    requirement not met, and must say so with `missing: true` and a gap explaining what
+    is wanted; silently listing it would make the file describe a system that does not
+    exist.
+    """
     if not core["spec"]:
         return
-    missing = sorted(
-        key
-        for key, entity in core["model"].items()
-        if any("required" in (s.get("rules") or []) for s in entity["fields"].values())
-        and "requiredForCreate" not in (core["spec"].get(key) or {})
-    )
-    assert not missing, (
-        f"{core['id']}: these entities have mandatory create fields nobody wrote down: {missing}"
-    )
-
-
-def test_filterable_requirements_hold(core):
     for key, block in core["spec"].items():
         entity = _entity(core, key)
-        for path in block.get("filterable") or []:
-            spec = entity["fields"].get(path)
-            assert spec is not None, f"{key}.{path}: no such field"
-            assert spec.get("filterable"), (
-                f"{key}.{path}: the spec requires this as a filter, but it is not filterable"
+        declared = set(block.get("fields") or {})
+        actual = set(entity["fields"])
+        unspecified = sorted(actual - declared)
+        assert not unspecified, f"{key}: the core has fields the spec does not state: {unspecified}"
+        for path in sorted(declared - actual):
+            field = block["fields"][path]
+            assert field.get("missing") is True, (
+                f"{key}.{path}: the spec states this field, the core does not have it. "
+                f"Mark it `missing: true` with a gap saying what is needed, or drop it."
+            )
+            assert field.get("gaps"), (
+                f"{key}.{path}: marked missing with no gap — say what it is for"
             )
 
 
-def test_not_filterable_records_hold(core):
-    """The documented traps — a field that exists but cannot be queried."""
+def test_declared_operations_are_supported(core):
+    """`must` is the requirement: these operations have to work on this field.
+
+    Where the core supports the operation the two agree by construction. Where it does
+    not, the field must carry a gap naming exactly that operation — otherwise the spec
+    is asking for something and nothing records that it is missing.
+    """
+    flag = {
+        "create": "creatable",
+        "update": "updatable",
+        "filter": "filterable",
+        "sort": "sortable",
+        "search": "searchable",
+    }
     for key, block in core["spec"].items():
         entity = _entity(core, key)
-        for path in block.get("notFilterable") or []:
+        for path, field in (block.get("fields") or {}).items():
             spec = entity["fields"].get(path)
-            assert spec is not None, f"{key}.{path}: no such field"
-            assert not spec.get("filterable"), (
-                f"{key}.{path}: the spec records this as unfilterable, but it now can be — "
-                f"the documented workaround is obsolete"
+            if spec is None:  # `missing`, covered by the rule above
+                continue
+            covered = {op for gap in (field.get("gaps") or []) for op in gap.get("ops") or []}
+            unmet = sorted(
+                op
+                for op in field.get("must") or []
+                if op in flag and not spec.get(flag[op]) and op not in covered
             )
-
-
-def test_named_field_paths_resolve(core):
-    """`fields` is the paths the REVIEWER decided must exist — deliberately a sample,
-    not an inventory of the model. The entity binding is structural now; it used to be
-    a string prefix parsed with `partition`."""
-    for key, block in core["spec"].items():
-        entity = _entity(core, key)
-        for path in block.get("fields") or []:
-            assert path in entity["fields"], f"{key}.{path}: no such field path"
+            assert not unmet, (
+                f"{key}.{path}: the spec requires {unmet} and the core does not support "
+                f"that, with no gap saying so. Build it, or record the gap."
+            )
 
 
 def test_playbook_field_paths_exist(core):
@@ -722,22 +735,24 @@ def test_contested_field_gaps_are_recorded_exactly(core):
     for key, block in core["spec"].items():
         fields = _entity(core, key)["fields"]
         marks = (core["verified"].get(key) or {}).get("fields") or {}
-        for gap in block.get("fieldGaps") or []:
-            path = gap.get("field")
-            if gap.get("contested"):
-                declared[f"{key}.{path}"] = sorted(gap["contested"])
+        for path, field in (block.get("fields") or {}).items():
             spec_field = fields.get(path)
-            if spec_field is None:
-                continue
-            contested = sorted(
-                op
-                for op in gap.get("ops") or []
-                if op in flag
-                and spec_field.get(flag[op])
-                and (marks.get(path) or {}).get(op) != PROVEN
-            )
-            if contested:
-                actual[f"{key}.{path}"] = contested
+            for gap in field.get("gaps") or []:
+                if gap.get("contested"):
+                    declared.setdefault(f"{key}.{path}", []).extend(gap["contested"])
+                if spec_field is None:
+                    continue
+                contested = [
+                    op
+                    for op in gap.get("ops") or []
+                    if op in flag
+                    and spec_field.get(flag[op])
+                    and (marks.get(path) or {}).get(op) != PROVEN
+                ]
+                if contested:
+                    actual.setdefault(f"{key}.{path}", []).extend(contested)
+    declared = {k: sorted(set(v)) for k, v in declared.items()}
+    actual = {k: sorted(set(v)) for k, v in actual.items()}
     assert declared == actual, (
         f"{core['id']}: `contested` disagrees with the core. "
         f"settled or gone, strike them: "

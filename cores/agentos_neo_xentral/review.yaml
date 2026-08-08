@@ -72,106 +72,22 @@ entities:
       proven: false
       reason: An open-items statement is not exposed via the public API.
     fieldRequirements:
-    - field: addresses.isDefault
+    - field: number
       ops:
-      - read
-      - create
       - update
-      status: recheck
-      reason: Mark the standard address per type (unified-address model; at most one
-        default per customer & type) — v3 partner addresses carry no isDefault flag.
-      nowDeclared:
-      - create
-      - update
-      nowProven:
-      - read
-    - field: addresses.label
-      ops:
-      - read
-      - create
-      - update
-      status: recheck
-      reason: Free label/name per address location (e.g. 'Lager München') — v3 knows
-        only billing/shipping roles, no named locations.
-      nowDeclared:
-      - create
-      - update
-      nowProven:
-      - read
-    - field: addresses.type
-      ops:
-      - create
-      - update
-      status: recheck
-      reason: Set the address role incl. the 'both' value (one address serving billing
-        AND shipping) — v3 splits billing (primaryAddress/deviating) vs shipping (deliveryAddresses)
-        by store, so the role is not a freely settable field.
-      nowDeclared:
-      - create
-      - update
-    - field: contacts.address
-      ops:
-      - read
-      - create
-      - update
-      status: fieldMissing
-      reason: Bind a contact person to a specific address (person-at-location) — v3
-        stores only a free-text contactPerson on delivery addresses, not a reference.
-    - field: contacts.isPrimary
-      ops:
-      - read
-      - create
-      - update
-      status: fieldMissing
-      reason: Mark the main contact person — v3 contactPersons carry no primary flag.
-    - field: defaults.paymentTerms.dueDays
+      status: open
+      reason: Correcting a customer number after the fact. v3 accepts a number on
+        POST but not on PATCH, so a typo in a migrated number can only be fixed in
+        the UI.
+    - field: type
       ops:
       - create
       - update
       status: open
-      reason: Default payment term for the customer — drives every order/invoice;
-        must be settable.
-    - field: defaults.taxation
-      ops:
-      - create
-      - update
-      status: open
-      reason: Default taxation scheme (domestic/euB2B/euOss/export) per customer.
-    - field: defaults.paymentMethod
-      ops:
-      - create
-      - update
-      status: open
-      reason: Default payment method per customer.
-    - field: finance.creditLimit
-      ops:
-      - update
-      status: open
-      reason: 'The customer credit limit — a core AR control; UI-only today, not writable
-        via API (docs/05 #14).'
-    - field: finance.onHold
-      ops:
-      - update
-      status: open
-      reason: 'Put a customer on delivery/credit hold — UI-only today (docs/05 #14).'
-    - field: finance.dunningBlocked
-      ops:
-      - update
-      status: open
-      reason: Block dunning for a customer — UI-only today.
-    - field: finance.openAmount
-      ops:
-      - read
-      status: open
-      reason: 'Aggregated open amount per customer is computed nowhere in the API
-        (docs/05 #14) — must be derived/served.'
-    - field: customFields
-      ops:
-      - create
-      - update
-      status: open
-      reason: Custom field values on the customer — today only readable, not writable
-        via API.
+      reason: Customer vs. lead (Interessent). v2 has isLead, but no v3 customers
+        payload carries it — not in the record, not behind any allowed include — so
+        the core cannot set it without leaving v3. Roughly half a typical CRM migration
+        is leads, so they all land as customers today.
     - field: status
       ops:
       - read
@@ -199,6 +115,62 @@ entities:
       status: open
       reason: Per-channel external ids (channel links) are not exposed via the public
         API.
+    - field: addresses.type
+      ops:
+      - create
+      - update
+      status: recheck
+      reason: Set the address role incl. the 'both' value (one address serving billing
+        AND shipping) — v3 splits billing (primaryAddress/deviating) vs shipping (deliveryAddresses)
+        by store, so the role is not a freely settable field.
+      nowDeclared:
+      - create
+      - update
+    - field: addresses.label
+      ops:
+      - read
+      - create
+      - update
+      status: recheck
+      reason: Free label/name per address location (e.g. 'Lager München') — v3 knows
+        only billing/shipping roles, no named locations.
+      nowDeclared:
+      - create
+      - update
+      nowProven:
+      - read
+    - field: addresses.isDefault
+      ops:
+      - read
+      - create
+      - update
+      status: recheck
+      reason: Mark the standard address per type (unified-address model; at most one
+        default per customer & type) — v3 partner addresses carry no isDefault flag.
+      nowDeclared:
+      - create
+      - update
+      nowProven:
+      - read
+    - field: defaults.paymentMethod
+      ops:
+      - create
+      - update
+      status: open
+      reason: Default payment method per customer.
+    - field: defaults.paymentTerms.dueDays
+      ops:
+      - create
+      - update
+      status: open
+      reason: Default payment term for the customer — drives every order/invoice;
+        must be settable.
+    - field: defaults.taxation
+      ops:
+      - create
+      - update
+      status: open
+      reason: Default taxation scheme (domestic/euB2B/euOss/export) per customer.
     - field: defaults.shippingMethod
       ops:
       - read
@@ -217,22 +189,50 @@ entities:
       - update
       status: open
       reason: The partial-shipping preference is not surfaced by the v3 partner read.
-    - field: type
+    - field: finance.openAmount
+      ops:
+      - read
+      status: open
+      reason: 'Aggregated open amount per customer is computed nowhere in the API
+        (docs/05 #14) — must be derived/served.'
+    - field: finance.creditLimit
+      ops:
+      - update
+      status: open
+      reason: 'The customer credit limit — a core AR control; UI-only today, not writable
+        via API (docs/05 #14).'
+    - field: finance.onHold
+      ops:
+      - update
+      status: open
+      reason: 'Put a customer on delivery/credit hold — UI-only today (docs/05 #14).'
+    - field: finance.dunningBlocked
+      ops:
+      - update
+      status: open
+      reason: Block dunning for a customer — UI-only today.
+    - field: customFields
       ops:
       - create
       - update
       status: open
-      reason: Customer vs. lead (Interessent). v2 has isLead, but no v3 customers
-        payload carries it — not in the record, not behind any allowed include — so
-        the core cannot set it without leaving v3. Roughly half a typical CRM migration
-        is leads, so they all land as customers today.
-    - field: number
+      reason: Custom field values on the customer — today only readable, not writable
+        via API.
+    - field: contacts.address
       ops:
+      - read
+      - create
       - update
-      status: open
-      reason: Correcting a customer number after the fact. v3 accepts a number on
-        POST but not on PATCH, so a typo in a migrated number can only be fixed in
-        the UI.
+      status: fieldMissing
+      reason: Bind a contact person to a specific address (person-at-location) — v3
+        stores only a free-text contactPerson on delivery addresses, not a reference.
+    - field: contacts.isPrimary
+      ops:
+      - read
+      - create
+      - update
+      status: fieldMissing
+      reason: Mark the main contact person — v3 contactPersons carry no primary flag.
   Quote:
     reviewed: null
     capabilities:
@@ -323,6 +323,20 @@ entities:
       evidence: null
       proven: false
     fieldRequirements:
+    - field: number
+      ops:
+      - create
+      status: open
+      reason: Carrying a quote number over from another system. The v3 create does
+        not declare documentNumber for this document type and ignores a supplied value
+        without an error, so the core refuses it instead. salesOrder, invoice and
+        creditNote do accept one.
+    - field: customer
+      ops:
+      - update
+      status: open
+      reason: Reassign the quote's partner after creation — v3 accepts it only on
+        create.
     - field: references.customerInquiryNumber
       ops:
       - create
@@ -349,6 +363,23 @@ entities:
       - update
       status: open
       reason: Desired delivery date on the quote — not writable upstream today.
+    - field: items.taxRate
+      ops:
+      - create
+      - update
+      status: open
+      reason: Deviating tax rate per position. Upstream derives the line tax from
+        the product's tax class and the customer's tax rule; v3 accepts taxRate on
+        a line item, answers 2xx and keeps its own value — measured on mvp 2026-08-01
+        (sent "reduced", read back "standard", on create and on update alike). Needs
+        a real write path upstream.
+    - field: items.isOptional
+      ops:
+      - create
+      - update
+      status: open
+      reason: Optional line items (not counted in totals) are a core quoting feature
+        — not settable upstream today.
     - field: payment.method
       ops:
       - create
@@ -370,13 +401,6 @@ entities:
       nowDeclared:
       - create
       - update
-    - field: items.isOptional
-      ops:
-      - create
-      - update
-      status: open
-      reason: Optional line items (not counted in totals) are a core quoting feature
-        — not settable upstream today.
     - field: customFields
       ops:
       - create
@@ -384,12 +408,6 @@ entities:
       status: open
       reason: Custom field values on the quote — today only readable via include,
         not writable via API.
-    - field: customer
-      ops:
-      - update
-      status: open
-      reason: Reassign the quote's partner after creation — v3 accepts it only on
-        create.
     - field: items.totals.tax
       ops:
       - read
@@ -401,24 +419,6 @@ entities:
         is still an open decision, so a derived value could silently disagree with
         the printed document. Per-rate tax exists on the document totals; the line
         needs its own.'
-    - field: number
-      ops:
-      - create
-      status: open
-      reason: Carrying a quote number over from another system. The v3 create does
-        not declare documentNumber for this document type and ignores a supplied value
-        without an error, so the core refuses it instead. salesOrder, invoice and
-        creditNote do accept one.
-    - field: items.taxRate
-      ops:
-      - create
-      - update
-      status: open
-      reason: Deviating tax rate per position. Upstream derives the line tax from
-        the product's tax class and the customer's tax rule; v3 accepts taxRate on
-        a line item, answers 2xx and keeps its own value — measured on mvp 2026-08-01
-        (sent "reduced", read back "standard", on create and on update alike). Needs
-        a real write path upstream.
   SalesOrder:
     reviewed: null
     capabilities:
@@ -527,6 +527,19 @@ entities:
       evidence: reachable
       proven: false
     fieldRequirements:
+    - field: number
+      ops:
+      - update
+      status: open
+      reason: Correcting a sales order number after the fact. The v3 create accepts
+        one, but PATCH has no slot for it — a number carried over from another system
+        must be right the first time.
+    - field: customer
+      ops:
+      - update
+      status: open
+      reason: Reassign the order to the correct customer after creation — v3 accepts
+        the partner only on create today.
     - field: references.customerOrderNumber
       ops:
       - create
@@ -541,16 +554,16 @@ entities:
       status: open
       reason: On the phone the customer quotes their PO number, not the ERP number
         — the full-text search must reach it.
-    - field: references.externalNumber
-      ops:
-      - search
-      status: open
-      reason: Support finds shop orders by the SHOP number the customer has.
     - field: references.externalId
       ops:
       - search
       status: open
       reason: Automated reconciliation matches by the external id.
+    - field: references.externalNumber
+      ops:
+      - search
+      status: open
+      reason: Support finds shop orders by the SHOP number the customer has.
     - field: dates.requestedDelivery
       ops:
       - update
@@ -559,6 +572,27 @@ entities:
         entered on an order. Not writable upstream today.
       nowDeclared:
       - update
+    - field: billingAddress.zip
+      ops:
+      - search
+      status: open
+      reason: Postal-code search is a standard phone use-case (shop orders).
+    - field: billingAddress.email
+      ops:
+      - search
+      status: open
+      reason: Email search is a standard use-case for shop orders — often the only
+        identifier support has.
+    - field: items.taxRate
+      ops:
+      - create
+      - update
+      status: open
+      reason: Deviating tax rate per position. Upstream derives the line tax from
+        the product's tax class and the customer's tax rule; v3 accepts taxRate on
+        a line item, answers 2xx and keeps its own value — measured on mvp 2026-08-01
+        (sent "reduced", read back "standard", on create and on update alike). Needs
+        a real write path upstream.
     - field: shipping.method
       ops:
       - create
@@ -569,6 +603,19 @@ entities:
       nowDeclared:
       - create
       - update
+    - field: fulfillmentPolicy.partialShipping
+      ops:
+      - create
+      - update
+      status: open
+      reason: Partial-shipping policy has no upstream slot — the read reports a hardcoded
+        "allowed". Needs a real v3 field before it can be written or trusted.
+    - field: discounts
+      ops:
+      - read
+      status: open
+      reason: Header discounts/vouchers (e-commerce) are not exposed by v3 salesOrders
+        — only line-level discounts exist.
     - field: customFields
       ops:
       - create
@@ -581,36 +628,6 @@ entities:
       - filter
       status: open
       reason: Companies segment and find orders by their own custom-field values.
-    - field: customer
-      ops:
-      - update
-      status: open
-      reason: Reassign the order to the correct customer after creation — v3 accepts
-        the partner only on create today.
-    - field: fulfillmentPolicy.partialShipping
-      ops:
-      - create
-      - update
-      status: open
-      reason: Partial-shipping policy has no upstream slot — the read reports a hardcoded
-        "allowed". Needs a real v3 field before it can be written or trusted.
-    - field: billingAddress.zip
-      ops:
-      - search
-      status: open
-      reason: Postal-code search is a standard phone use-case (shop orders).
-    - field: billingAddress.email
-      ops:
-      - search
-      status: open
-      reason: Email search is a standard use-case for shop orders — often the only
-        identifier support has.
-    - field: discounts
-      ops:
-      - read
-      status: open
-      reason: Header discounts/vouchers (e-commerce) are not exposed by v3 salesOrders
-        — only line-level discounts exist.
     - field: items.totals.tax
       ops:
       - read
@@ -622,23 +639,6 @@ entities:
         is still an open decision, so a derived value could silently disagree with
         the printed document. Per-rate tax exists on the document totals; the line
         needs its own.'
-    - field: number
-      ops:
-      - update
-      status: open
-      reason: Correcting a sales order number after the fact. The v3 create accepts
-        one, but PATCH has no slot for it — a number carried over from another system
-        must be right the first time.
-    - field: items.taxRate
-      ops:
-      - create
-      - update
-      status: open
-      reason: Deviating tax rate per position. Upstream derives the line tax from
-        the product's tax class and the customer's tax rule; v3 accepts taxRate on
-        a line item, answers 2xx and keeps its own value — measured on mvp 2026-08-01
-        (sent "reduced", read back "standard", on create and on update alike). Needs
-        a real write path upstream.
   DeliveryNote:
     reviewed: null
     capabilities:
@@ -712,6 +712,20 @@ entities:
       proven: false
       reason: Picking is driven by picking runs — no direct startPicking endpoint.
     fieldRequirements:
+    - field: number
+      ops:
+      - create
+      status: open
+      reason: Carrying a delivery note number over from another system. The v3 create
+        does not declare documentNumber for this document type and ignores a supplied
+        value without an error, so the core refuses it instead. salesOrder, invoice
+        and creditNote do accept one.
+    - field: customer
+      ops:
+      - update
+      status: open
+      reason: Reassign the delivery note's partner after creation — v3 accepts it
+        only on create.
     - field: references.customerOrderNumber
       ops:
       - create
@@ -732,13 +746,23 @@ entities:
       status: open
       reason: The picking/shipping warehouse — must be selectable per delivery note,
         not fixed to the default.
-    - field: customs.incoterm
+    - field: billingAddress.zip
       ops:
-      - create
+      - search
+      status: open
+      reason: Postal-code search — standard phone use-case for delivery lookups.
+    - field: items
+      ops:
       - update
       status: open
-      reason: Incoterm for export shipments — a customs-declaration essential, not
-        settable via API today.
+      reason: Adjust delivered positions/quantities after creation — the v3 update
+        DTO carries no line-item write path.
+    - field: shipments
+      ops:
+      - read
+      status: open
+      reason: Tracking numbers need a nachlade GET /v1/deliveryNotes/{id}/shipments
+        — not yet composed into the read payload.
     - field: customs.totalWeight
       ops:
       - create
@@ -746,6 +770,13 @@ entities:
       status: open
       reason: Total shipment weight for the customs declaration / carrier — needs
         to be settable.
+    - field: customs.incoterm
+      ops:
+      - create
+      - update
+      status: open
+      reason: Incoterm for export shipments — a customs-declaration essential, not
+        settable via API today.
     - field: customs.note
       ops:
       - create
@@ -759,37 +790,6 @@ entities:
       status: open
       reason: Custom field values on the delivery note — today only readable via include,
         not writable via API.
-    - field: customer
-      ops:
-      - update
-      status: open
-      reason: Reassign the delivery note's partner after creation — v3 accepts it
-        only on create.
-    - field: items
-      ops:
-      - update
-      status: open
-      reason: Adjust delivered positions/quantities after creation — the v3 update
-        DTO carries no line-item write path.
-    - field: shipments
-      ops:
-      - read
-      status: open
-      reason: Tracking numbers need a nachlade GET /v1/deliveryNotes/{id}/shipments
-        — not yet composed into the read payload.
-    - field: billingAddress.zip
-      ops:
-      - search
-      status: open
-      reason: Postal-code search — standard phone use-case for delivery lookups.
-    - field: number
-      ops:
-      - create
-      status: open
-      reason: Carrying a delivery note number over from another system. The v3 create
-        does not declare documentNumber for this document type and ignores a supplied
-        value without an error, so the core refuses it instead. salesOrder, invoice
-        and creditNote do accept one.
   Shipment:
     reviewed: null
     capabilities:
@@ -825,12 +825,6 @@ entities:
       status: open
       reason: Creating a shipment + label via the facade (POST /v1/shipments + createLabel
         exists upstream) is not orchestrated here yet — needed for headless fulfilment.
-    - field: tracking.number
-      ops:
-      - search
-      status: open
-      reason: Support looks up a shipment by tracking number — needs a filterable/searchable
-        upstream list parameter.
     - field: status
       ops:
       - read
@@ -847,6 +841,12 @@ entities:
       - read
       status: open
       reason: Carrier tracking events are not exposed — needs a carrier-events feed.
+    - field: tracking.number
+      ops:
+      - search
+      status: open
+      reason: Support looks up a shipment by tracking number — needs a filterable/searchable
+        upstream list parameter.
   SalesInvoice:
     reviewed: null
     capabilities:
@@ -919,6 +919,19 @@ entities:
       proven: false
       reason: Write-offs have no public endpoint.
     fieldRequirements:
+    - field: number
+      ops:
+      - update
+      status: open
+      reason: Correcting a invoice number after the fact. The v3 create accepts one,
+        but PATCH has no slot for it — a number carried over from another system must
+        be right the first time.
+    - field: customer
+      ops:
+      - update
+      status: open
+      reason: Reassign the invoice's partner after creation — v3 accepts it only on
+        create.
     - field: references.customerOrderNumber
       ops:
       - create
@@ -939,6 +952,29 @@ entities:
       status: open
       reason: Deviating debtor account for the FiBu/DATEV export — settable when it
         differs from the customer default.
+    - field: billingAddress.email
+      ops:
+      - search
+      status: open
+      reason: Email search — standard use-case for finding a customer's invoices.
+    - field: items.taxRate
+      ops:
+      - create
+      - update
+      status: open
+      reason: Deviating tax rate per position. Upstream derives the line tax from
+        the product's tax class and the customer's tax rule; v3 accepts taxRate on
+        a line item, answers 2xx and keeps its own value — measured on mvp 2026-08-01
+        (sent "reduced", read back "standard", on create and on update alike). Needs
+        a real write path upstream.
+    - field: totals.outstanding
+      ops:
+      - read
+      status: recheck
+      reason: 'Exact open amount needs readable payment↔invoice allocations (docs/05
+        #2); today only derived from paymentStatus.'
+      nowProven:
+      - read
     - field: payment.method
       ops:
       - create
@@ -979,19 +1015,6 @@ entities:
       reason: A dunning note for the AR clerk — must be writable.
       nowDeclared:
       - update
-    - field: customFields
-      ops:
-      - create
-      - update
-      status: open
-      reason: Custom field values on the invoice — today only readable via include,
-        not writable via API.
-    - field: customer
-      ops:
-      - update
-      status: open
-      reason: Reassign the invoice's partner after creation — v3 accepts it only on
-        create.
     - field: eInvoice
       ops:
       - read
@@ -1000,19 +1023,13 @@ entities:
         upstream API (docs/05 #7) — only XML raw data exists today.'
       nowProven:
       - read
-    - field: totals.outstanding
+    - field: customFields
       ops:
-      - read
-      status: recheck
-      reason: 'Exact open amount needs readable payment↔invoice allocations (docs/05
-        #2); today only derived from paymentStatus.'
-      nowProven:
-      - read
-    - field: billingAddress.email
-      ops:
-      - search
+      - create
+      - update
       status: open
-      reason: Email search — standard use-case for finding a customer's invoices.
+      reason: Custom field values on the invoice — today only readable via include,
+        not writable via API.
     - field: items.totals.tax
       ops:
       - read
@@ -1024,23 +1041,6 @@ entities:
         is still an open decision, so a derived value could silently disagree with
         the printed document. Per-rate tax exists on the document totals; the line
         needs its own.'
-    - field: number
-      ops:
-      - update
-      status: open
-      reason: Correcting a invoice number after the fact. The v3 create accepts one,
-        but PATCH has no slot for it — a number carried over from another system must
-        be right the first time.
-    - field: items.taxRate
-      ops:
-      - create
-      - update
-      status: open
-      reason: Deviating tax rate per position. Upstream derives the line tax from
-        the product's tax class and the customer's tax rule; v3 accepts taxRate on
-        a line item, answers 2xx and keeps its own value — measured on mvp 2026-08-01
-        (sent "reduced", read back "standard", on create and on update alike). Needs
-        a real write path upstream.
   Payment:
     reviewed: null
     capabilities:
@@ -1071,6 +1071,12 @@ entities:
       status: open
       reason: 'No payment LIST/filter exists upstream — only GET /paymentTransactions/{id}
         (docs/05 #2). GET /v3/payments with filters is the ask.'
+    - field: kind
+      ops:
+      - read
+      status: open
+      reason: 'Payout/settlement aggregation (fees, chargebacks) per provider needs
+        docs/05 #8.'
     - field: allocations
       ops:
       - read
@@ -1078,12 +1084,6 @@ entities:
       status: open
       reason: 'Payment↔invoice allocations (n:m) are neither readable nor writable
         — without them exact outstanding amounts are impossible (docs/05 #2).'
-    - field: kind
-      ops:
-      - read
-      status: open
-      reason: 'Payout/settlement aggregation (fees, chargebacks) per provider needs
-        docs/05 #8.'
   Return:
     reviewed: null
     capabilities:
@@ -1168,6 +1168,19 @@ entities:
       evidence: reachable
       proven: false
     fieldRequirements:
+    - field: number
+      ops:
+      - create
+      status: open
+      reason: Carrying a return number over from another system. The v3 create does
+        not declare documentNumber for this document type and ignores a supplied value
+        without an error, so the core refuses it instead. salesOrder, invoice and
+        creditNote do accept one.
+    - field: customer
+      ops:
+      - update
+      status: open
+      reason: Reassign the partner after creation — v3 accepts it only on create.
     - field: references.rmaNumber
       ops:
       - create
@@ -1186,6 +1199,18 @@ entities:
       - update
       status: open
       reason: The customer's PO number on the return — read-only upstream today.
+    - field: warehouse
+      ops:
+      - create
+      - update
+      status: open
+      reason: The returns warehouse must be selectable per return.
+    - field: items
+      ops:
+      - update
+      status: open
+      reason: Edit return positions after creation — the v3 update DTO carries no
+        line-item write path.
     - field: items.reason
       ops:
       - create
@@ -1202,6 +1227,12 @@ entities:
       status: open
       reason: Item condition (resellable/damaged/disposal) drives restocking — not
         in the v3 payload yet.
+    - field: items.condition
+      ops:
+      - read
+      status: open
+      reason: 'Item condition is not surfaced by the v3 return payload yet (docs/05
+        #4 batch/trace family).'
     - field: items.action
       ops:
       - create
@@ -1209,12 +1240,6 @@ entities:
       status: open
       reason: Resolution per line (credit/replace/repair) — not in the v3 payload
         yet.
-    - field: warehouse
-      ops:
-      - create
-      - update
-      status: open
-      reason: The returns warehouse must be selectable per return.
     - field: customFields
       ops:
       - create
@@ -1222,31 +1247,6 @@ entities:
       status: open
       reason: Custom field values on the return — today only readable via include,
         not writable via API.
-    - field: customer
-      ops:
-      - update
-      status: open
-      reason: Reassign the partner after creation — v3 accepts it only on create.
-    - field: items
-      ops:
-      - update
-      status: open
-      reason: Edit return positions after creation — the v3 update DTO carries no
-        line-item write path.
-    - field: items.condition
-      ops:
-      - read
-      status: open
-      reason: 'Item condition is not surfaced by the v3 return payload yet (docs/05
-        #4 batch/trace family).'
-    - field: number
-      ops:
-      - create
-      status: open
-      reason: Carrying a return number over from another system. The v3 create does
-        not declare documentNumber for this document type and ignores a supplied value
-        without an error, so the core refuses it instead. salesOrder, invoice and
-        creditNote do accept one.
   CreditNote:
     reviewed: null
     capabilities:
@@ -1306,6 +1306,18 @@ entities:
       evidence: null
       proven: false
     fieldRequirements:
+    - field: number
+      ops:
+      - update
+      status: open
+      reason: Correcting a credit note number after the fact. The v3 create accepts
+        one, but PATCH has no slot for it — a number carried over from another system
+        must be right the first time.
+    - field: customer
+      ops:
+      - update
+      status: open
+      reason: Reassign the partner after creation — v3 accepts it only on create.
     - field: references.customerOrderNumber
       ops:
       - create
@@ -1327,6 +1339,24 @@ entities:
       status: open
       reason: Leistungsdatum — a §14 UStG mandatory field on the credit note; must
         be settable.
+    - field: items.taxRate
+      ops:
+      - create
+      - update
+      status: open
+      reason: Deviating tax rate per position. Upstream derives the line tax from
+        the product's tax class and the customer's tax rule; v3 accepts taxRate on
+        a line item, answers 2xx and keeps its own value — measured on mvp 2026-08-01
+        (sent "reduced", read back "standard", on create and on update alike). Needs
+        a real write path upstream.
+    - field: totals.outstanding
+      ops:
+      - read
+      status: recheck
+      reason: 'Exact open amount needs readable refund/offset allocations (docs/05
+        #2); today derived from paymentStatus only.'
+      nowProven:
+      - read
     - field: settlement.mode
       ops:
       - create
@@ -1341,19 +1371,6 @@ entities:
       status: open
       reason: Custom field values on the credit note — today only readable via include,
         not writable via API.
-    - field: customer
-      ops:
-      - update
-      status: open
-      reason: Reassign the partner after creation — v3 accepts it only on create.
-    - field: totals.outstanding
-      ops:
-      - read
-      status: recheck
-      reason: 'Exact open amount needs readable refund/offset allocations (docs/05
-        #2); today derived from paymentStatus only.'
-      nowProven:
-      - read
     - field: items.totals.tax
       ops:
       - read
@@ -1365,23 +1382,6 @@ entities:
         is still an open decision, so a derived value could silently disagree with
         the printed document. Per-rate tax exists on the document totals; the line
         needs its own.'
-    - field: number
-      ops:
-      - update
-      status: open
-      reason: Correcting a credit note number after the fact. The v3 create accepts
-        one, but PATCH has no slot for it — a number carried over from another system
-        must be right the first time.
-    - field: items.taxRate
-      ops:
-      - create
-      - update
-      status: open
-      reason: Deviating tax rate per position. Upstream derives the line tax from
-        the product's tax class and the customer's tax rule; v3 accepts taxRate on
-        a line item, answers 2xx and keeps its own value — measured on mvp 2026-08-01
-        (sent "reduced", read back "standard", on create and on update alike). Needs
-        a real write path upstream.
   Supplier:
     reviewed: null
     capabilities:
@@ -1438,102 +1438,6 @@ entities:
       proven: false
       reason: An open-items statement is not exposed via the public API.
     fieldRequirements:
-    - field: addresses.isDefault
-      ops:
-      - read
-      - create
-      - update
-      status: recheck
-      reason: Mark the standard address per type (unified-address model; at most one
-        default per customer & type) — v3 partner addresses carry no isDefault flag.
-      nowDeclared:
-      - create
-      - update
-      nowProven:
-      - read
-    - field: addresses.label
-      ops:
-      - read
-      - create
-      - update
-      status: recheck
-      reason: Free label/name per address location (e.g. 'Lager München') — v3 knows
-        only billing/shipping roles, no named locations.
-      nowDeclared:
-      - create
-      - update
-      nowProven:
-      - read
-    - field: addresses.type
-      ops:
-      - create
-      - update
-      status: recheck
-      reason: Set the address role incl. the 'both' value (one address serving billing
-        AND shipping) — v3 splits billing (primaryAddress/deviating) vs shipping (deliveryAddresses)
-        by store, so the role is not a freely settable field.
-      nowDeclared:
-      - create
-      - update
-    - field: contacts.address
-      ops:
-      - read
-      - create
-      - update
-      status: fieldMissing
-      reason: Bind a contact person to a specific address (person-at-location) — v3
-        stores only a free-text contactPerson on delivery addresses, not a reference.
-    - field: contacts.isPrimary
-      ops:
-      - read
-      - create
-      - update
-      status: fieldMissing
-      reason: Mark the main contact person — v3 contactPersons carry no primary flag.
-    - field: purchasing.confirmationRequired
-      ops:
-      - create
-      - update
-      status: open
-      reason: Whether an order confirmation (AB) is required from this supplier —
-        drives purchasing workflow; not settable via API today.
-    - field: purchasing.sendOrdersVia
-      ops:
-      - create
-      - update
-      status: open
-      reason: How POs are sent to the supplier (email/portal/EDI) — a supplier default
-        that must be settable.
-    - field: purchasing.deliveryDays
-      ops:
-      - create
-      - update
-      status: open
-      reason: Standard supplier lead time in days — feeds replenishment planning.
-    - field: defaults.paymentTerms.dueDays
-      ops:
-      - create
-      - update
-      status: open
-      reason: Default supplier payment term — drives liability due dates.
-    - field: finance.creditorAccountNumber
-      ops:
-      - update
-      status: open
-      reason: The creditor account for the FiBu/DATEV export — settable per supplier.
-    - field: finance.openAmount
-      ops:
-      - read
-      status: open
-      reason: Aggregated open liabilities per supplier are computed nowhere in the
-        API — must be derived/served.
-    - field: customFields
-      ops:
-      - create
-      - update
-      status: open
-      reason: Custom field values on the supplier — today only readable, not writable
-        via API.
     - field: status
       ops:
       - read
@@ -1561,6 +1465,63 @@ entities:
       status: open
       reason: Per-channel external ids (channel links) are not exposed via the public
         API.
+    - field: purchasing.confirmationRequired
+      ops:
+      - create
+      - update
+      status: open
+      reason: Whether an order confirmation (AB) is required from this supplier —
+        drives purchasing workflow; not settable via API today.
+    - field: purchasing.sendOrdersVia
+      ops:
+      - create
+      - update
+      status: open
+      reason: How POs are sent to the supplier (email/portal/EDI) — a supplier default
+        that must be settable.
+    - field: purchasing.deliveryDays
+      ops:
+      - create
+      - update
+      status: open
+      reason: Standard supplier lead time in days — feeds replenishment planning.
+    - field: addresses.type
+      ops:
+      - create
+      - update
+      status: recheck
+      reason: Set the address role incl. the 'both' value (one address serving billing
+        AND shipping) — v3 splits billing (primaryAddress/deviating) vs shipping (deliveryAddresses)
+        by store, so the role is not a freely settable field.
+      nowDeclared:
+      - create
+      - update
+    - field: addresses.label
+      ops:
+      - read
+      - create
+      - update
+      status: recheck
+      reason: Free label/name per address location (e.g. 'Lager München') — v3 knows
+        only billing/shipping roles, no named locations.
+      nowDeclared:
+      - create
+      - update
+      nowProven:
+      - read
+    - field: addresses.isDefault
+      ops:
+      - read
+      - create
+      - update
+      status: recheck
+      reason: Mark the standard address per type (unified-address model; at most one
+        default per customer & type) — v3 partner addresses carry no isDefault flag.
+      nowDeclared:
+      - create
+      - update
+      nowProven:
+      - read
     - field: defaults.shippingMethod
       ops:
       - read
@@ -1579,6 +1540,45 @@ entities:
       - update
       status: open
       reason: The partial-shipping preference is not surfaced by the v3 partner read.
+    - field: defaults.paymentTerms.dueDays
+      ops:
+      - create
+      - update
+      status: open
+      reason: Default supplier payment term — drives liability due dates.
+    - field: finance.openAmount
+      ops:
+      - read
+      status: open
+      reason: Aggregated open liabilities per supplier are computed nowhere in the
+        API — must be derived/served.
+    - field: finance.creditorAccountNumber
+      ops:
+      - update
+      status: open
+      reason: The creditor account for the FiBu/DATEV export — settable per supplier.
+    - field: customFields
+      ops:
+      - create
+      - update
+      status: open
+      reason: Custom field values on the supplier — today only readable, not writable
+        via API.
+    - field: contacts.address
+      ops:
+      - read
+      - create
+      - update
+      status: fieldMissing
+      reason: Bind a contact person to a specific address (person-at-location) — v3
+        stores only a free-text contactPerson on delivery addresses, not a reference.
+    - field: contacts.isPrimary
+      ops:
+      - read
+      - create
+      - update
+      status: fieldMissing
+      reason: Mark the main contact person — v3 contactPersons carry no primary flag.
   PurchaseOrder:
     reviewed: null
     capabilities:
@@ -1659,13 +1659,19 @@ entities:
       reason: A bulk delivery-date update has no endpoint; per-item dates go through
         a normal update.
     fieldRequirements:
-    - field: references.supplierOfferNumber
+    - field: number
       ops:
       - create
+      status: open
+      reason: Carrying a purchase order number over from another system. The v3 create
+        does not declare documentNumber for this document type and ignores a supplied
+        value without an error, so the core refuses it instead. salesOrder, invoice
+        and creditNote do accept one.
+    - field: supplier
+      ops:
       - update
       status: open
-      reason: The supplier's quote number we ordered against — read-only upstream
-        today.
+      reason: Reassign the PO's supplier after creation — v3 accepts it only on create.
     - field: references.ourCustomerNumber
       ops:
       - create
@@ -1673,18 +1679,25 @@ entities:
       status: open
       reason: Our customer number at the supplier — belongs on the PO, not settable
         via API today.
-    - field: confirmation.supplierOrderNumber
+    - field: references.supplierOfferNumber
       ops:
+      - create
       - update
       status: open
-      reason: 'The AB (order-confirmation) number from the supplier — the whole confirmation
-        block is read-only upstream (docs/05: AB handling).'
+      reason: The supplier's quote number we ordered against — read-only upstream
+        today.
     - field: confirmation.status
       ops:
       - update
       status: open
       reason: Recording the confirmation status (pending/confirmed/deviating) is core
         purchasing — not writable via API today.
+    - field: confirmation.supplierOrderNumber
+      ops:
+      - update
+      status: open
+      reason: 'The AB (order-confirmation) number from the supplier — the whole confirmation
+        block is read-only upstream (docs/05: AB handling).'
     - field: dates.requestedDelivery
       ops:
       - create
@@ -1697,39 +1710,12 @@ entities:
       - update
       status: open
       reason: The receiving warehouse for the PO must be selectable.
-    - field: customFields
-      ops:
-      - create
-      - update
-      status: open
-      reason: Custom field values on the PO — today only readable via include, not
-        writable via API.
-    - field: supplier
-      ops:
-      - update
-      status: open
-      reason: Reassign the PO's supplier after creation — v3 accepts it only on create.
     - field: items
       ops:
       - update
       status: open
       reason: Edit PO positions after creation — the v3 update DTO carries no line-item
         write path.
-    - field: dropship
-      ops:
-      - read
-      - create
-      status: open
-      reason: 'Dropshipping (Strecke: salesOrder link + customer delivery address)
-        is not exposed via v3 purchaseOrders.'
-    - field: number
-      ops:
-      - create
-      status: open
-      reason: Carrying a purchase order number over from another system. The v3 create
-        does not declare documentNumber for this document type and ignores a supplied
-        value without an error, so the core refuses it instead. salesOrder, invoice
-        and creditNote do accept one.
     - field: items.taxRate
       ops:
       - create
@@ -1740,6 +1726,20 @@ entities:
         a line item, answers 2xx and keeps its own value — measured on mvp 2026-08-01
         (sent "reduced", read back "standard", on create and on update alike). Needs
         a real write path upstream.
+    - field: dropship
+      ops:
+      - read
+      - create
+      status: open
+      reason: 'Dropshipping (Strecke: salesOrder link + customer delivery address)
+        is not exposed via v3 purchaseOrders.'
+    - field: customFields
+      ops:
+      - create
+      - update
+      status: open
+      reason: Custom field values on the PO — today only readable via include, not
+        writable via API.
   GoodsReceipt:
     reviewed: null
     capabilities:
@@ -1777,12 +1777,6 @@ entities:
       proven: false
       reason: Putaway proposals have no public endpoint.
     fieldRequirements:
-    - field: status
-      ops:
-      - update
-      status: open
-      reason: 'Cancel/storno of a posted goods receipt — the remaining upstream gap
-        after the BF entity list covered browsing (docs/05 #9 revised).'
     - field: references.supplierDeliveryNoteNumber
       ops:
       - create
@@ -1791,15 +1785,6 @@ entities:
       status: open
       reason: The supplier's delivery-note number on the goods receipt — needed for
         the three-way match; not in the BF record yet.
-    - field: items
-      ops:
-      - read
-      - create
-      - update
-      status: open
-      reason: Line items (product × quantity × storage location, quality check per
-        line) are not exposed on the BF goodsReceipt record — creation still goes
-        through the PO action only.
     - field: dates.received
       ops:
       - read
@@ -1812,6 +1797,21 @@ entities:
       status: open
       reason: Received/posted dates are not exposed — only createdAt/updatedAt exist
         on the BF entity.
+    - field: status
+      ops:
+      - update
+      status: open
+      reason: 'Cancel/storno of a posted goods receipt — the remaining upstream gap
+        after the BF entity list covered browsing (docs/05 #9 revised).'
+    - field: items
+      ops:
+      - read
+      - create
+      - update
+      status: open
+      reason: Line items (product × quantity × storage location, quality check per
+        line) are not exposed on the BF goodsReceipt record — creation still goes
+        through the PO action only.
   PurchaseInvoice:
     reviewed: null
     capabilities:
@@ -1864,12 +1864,30 @@ entities:
       reason: 'The document number is system-assigned: sending `documentNumber` on
         create answers 201 and the record comes back with an empty number (measured
         on mvp 2026-08-02). Same behaviour as the other documents.'
+    - field: status
+      ops:
+      - filter
+      status: open
+      reason: Filtering incoming invoices by workflow status is the AP daily view
+        — the BF supplierInvoice API does not allow filtering documentStatus today.
+    - field: dates.invoiceDate
+      ops:
+      - sort
+      status: open
+      reason: Sorting incoming invoices by invoice date — dateOfSupplierInvoice is
+        not sortable on the BF API today.
     - field: match.status
       ops:
       - update
       status: open
       reason: Re-running/overriding the match verdict via API (rematch) — the check
         statuses are readable now; a command to re-evaluate is still missing upstream.
+    - field: payment.status
+      ops:
+      - filter
+      status: open
+      reason: Open-liabilities view needs filtering by payment status — not allowed
+        on the BF supplierInvoice API today.
     - field: approval.status
       ops:
       - update
@@ -1877,24 +1895,6 @@ entities:
       reason: 'Approve/reject via API: BF process steps (GoodsCheck/InvoiceCheck/Payment)
         are reported to exist — wiring + live verification of those steps is pending
         (steps were empty on the test instance''s metadata).'
-    - field: status
-      ops:
-      - filter
-      status: open
-      reason: Filtering incoming invoices by workflow status is the AP daily view
-        — the BF supplierInvoice API does not allow filtering documentStatus today.
-    - field: payment.status
-      ops:
-      - filter
-      status: open
-      reason: Open-liabilities view needs filtering by payment status — not allowed
-        on the BF supplierInvoice API today.
-    - field: dates.invoiceDate
-      ops:
-      - sort
-      status: open
-      reason: Sorting incoming invoices by invoice date — dateOfSupplierInvoice is
-        not sortable on the BF API today.
     - field: approval.by
       ops:
       - read
@@ -1967,6 +1967,14 @@ entities:
         instead of juggling isServiceProduct/isFee/isShippingCostsProduct booleans
         — the v2 create body only exposes isShippingCostsProduct, so service/digital
         cannot be expressed.
+    - field: tags
+      ops:
+      - create
+      - update
+      status: open
+      reason: Tagging products (assortment curation, campaigns) — product writes now
+        go through v2, but the v2 tags shape ({id,key,name,color}) is not yet mapped/verified,
+        so tag writes stay blue.
     - field: prices.sale
       ops:
       - read
@@ -2010,14 +2018,6 @@ entities:
       reason: The default supplier IS writable (mapped to v2 standardSupplier); multi-supplier
         sourcing (several suppliers with per-supplier price/number) needs a suppliers
         include/relation not yet mapped, plus a write path.
-    - field: tags
-      ops:
-      - create
-      - update
-      status: open
-      reason: Tagging products (assortment curation, campaigns) — product writes now
-        go through v2, but the v2 tags shape ({id,key,name,color}) is not yet mapped/verified,
-        so tag writes stay blue.
   PriceList:
     reviewed: null
     capabilities:
@@ -2101,13 +2101,6 @@ entities:
       evidence: reachable
       proven: false
     fieldRequirements:
-    - field: contents.reserved
-      ops:
-      - read
-      status: open
-      reason: Location contents are composed from the StockLevel projection now; the
-        reserved portion per location stays unavailable — upstream reports reservations
-        only as a product total.
     - field: description
       ops:
       - create
@@ -2116,6 +2109,13 @@ entities:
       reason: Upstream returns the bin description but rejects it on create and update
         ("The attribute description is not allowed.") — the field is read-only for
         every API generation we have. Measured on mvp 2026-08-02.
+    - field: contents.reserved
+      ops:
+      - read
+      status: open
+      reason: Location contents are composed from the StockLevel projection now; the
+        reserved portion per location stays unavailable — upstream reports reservations
+        only as a product total.
     - field: locationType
       ops:
       - read
@@ -2127,19 +2127,6 @@ entities:
     reviewed: null
     capabilities: []
     fieldRequirements:
-    - field: reserved
-      ops:
-      - read
-      status: open
-      reason: No per-location reservation is exposed upstream; /v1/products/{id}/stocks
-        reports reserved only as a product TOTAL. The projection reports quantity
-        and leaves reserved/available blank rather than spreading a total over locations.
-    - field: available
-      ops:
-      - read
-      status: open
-      reason: 'Same gap as reserved: available = quantity - reserved is only derivable
-        per product, not per storage location.'
     - field: batch
       ops:
       - read
@@ -2157,6 +2144,19 @@ entities:
       reason: 'The list needs an anchor filter (product or storageLocation): upstream
         has no global stock collection, so an unanchored query would mean fanning
         out over every product of the tenant.'
+    - field: reserved
+      ops:
+      - read
+      status: open
+      reason: No per-location reservation is exposed upstream; /v1/products/{id}/stocks
+        reports reserved only as a product TOTAL. The projection reports quantity
+        and leaves reserved/available blank rather than spreading a total over locations.
+    - field: available
+      ops:
+      - read
+      status: open
+      reason: 'Same gap as reserved: available = quantity - reserved is only derivable
+        per product, not per storage location.'
   StockMovement:
     reviewed: null
     capabilities: []
@@ -2170,12 +2170,6 @@ entities:
         biggest gap (docs/05 #1). GET /v3/stockMovements is the ask. Until it ships
         the entity does not declare list/read at all, so a caller learns this from
         the contract instead of a 404.'
-    - field: unitCost
-      ops:
-      - read
-      status: open
-      reason: Movement valuation (unitCost at booking time) is required for GoBD-clean
-        stock accounting (ADR-009e) — nothing upstream.
     - field: id
       ops:
       - create
@@ -2186,6 +2180,12 @@ entities:
         be recognised afterwards, which is why correction+setQuantityTo is the only
         retry-safe write. The ask: return the specced Location header, or the created
         movement.'
+    - field: unitCost
+      ops:
+      - read
+      status: open
+      reason: Movement valuation (unitCost at booking time) is required for GoBD-clean
+        stock accounting (ADR-009e) — nothing upstream.
   StockTake:
     reviewed: null
     capabilities:
@@ -2232,13 +2232,6 @@ entities:
       proven: false
       reason: v1 inventoryRuns is read-only — no state writes.
     fieldRequirements:
-    - field: positions
-      ops:
-      - read
-      status: open
-      reason: Counting positions (expected/counted/difference with values) live in
-        the counting-list reports — not composed into the API payload yet; needed
-        for the GoBD difference review.
     - field: id
       ops:
       - create
@@ -2246,18 +2239,6 @@ entities:
       reason: 'Starting a stock take via API (scope: warehouse/locations/products,
         key date) — the v1 inventory endpoints exist but the write orchestration is
         not built yet.'
-    - field: positions.counted
-      ops:
-      - update
-      status: open
-      reason: Submitting counted quantities via API (mobile counting) — needed for
-        headless inventory.
-    - field: documents.stockMovements
-      ops:
-      - read
-      status: open
-      reason: 'Posted correction movements per stock take need the stockMovements
-        API (docs/05 #1) to be traceable.'
     - field: dates.keyDate
       ops:
       - read
@@ -2275,6 +2256,25 @@ entities:
       reason: Position/difference totals are not exposed by v1 inventoryRuns.
       nowProven:
       - read
+    - field: positions
+      ops:
+      - read
+      status: open
+      reason: Counting positions (expected/counted/difference with values) live in
+        the counting-list reports — not composed into the API payload yet; needed
+        for the GoBD difference review.
+    - field: positions.counted
+      ops:
+      - update
+      status: open
+      reason: Submitting counted quantities via API (mobile counting) — needed for
+        headless inventory.
+    - field: documents.stockMovements
+      ops:
+      - read
+      status: open
+      reason: 'Posted correction movements per stock take need the stockMovements
+        API (docs/05 #1) to be traceable.'
   PickingRun:
     reviewed: null
     capabilities:
@@ -2334,25 +2334,6 @@ entities:
       reason: 'Creating a picking run by criteria (wave: channel, shipping method,
         cutoff, maxOrders) has NO upstream endpoint — the main gap (docs/05 #3); execution
         (start/complete, totes) already exists.'
-    - field: tasks
-      ops:
-      - read
-      status: open
-      reason: Task-level detail (location, product, quantity, status per pick) is
-        not exposed on the pickLists API — needed for progress boards and pick-path
-        optimisation.
-    - field: tasks.status
-      ops:
-      - update
-      status: open
-      reason: 'Granular task-level pick confirmation with quantity + scans (docs/05
-        #3) — today only whole-list start/complete exists.'
-    - field: strategy
-      ops:
-      - create
-      status: open
-      reason: Choosing the picking strategy (single/multiOrder/wave/zone) at creation
-        — no create endpoint today.
     - field: criteria
       ops:
       - read
@@ -2368,6 +2349,25 @@ entities:
       - read
       status: open
       reason: Totes/containers are not exposed by v1 pickLists.
+    - field: strategy
+      ops:
+      - create
+      status: open
+      reason: Choosing the picking strategy (single/multiOrder/wave/zone) at creation
+        — no create endpoint today.
+    - field: tasks
+      ops:
+      - read
+      status: open
+      reason: Task-level detail (location, product, quantity, status per pick) is
+        not exposed on the pickLists API — needed for progress boards and pick-path
+        optimisation.
+    - field: tasks.status
+      ops:
+      - update
+      status: open
+      reason: 'Granular task-level pick confirmation with quantity + scans (docs/05
+        #3) — today only whole-list start/complete exists.'
   Batch:
     reviewed: null
     capabilities:
@@ -2397,23 +2397,23 @@ entities:
       status: open
       reason: 'Batches exist only as read-only v3 Product includes — no batch resource,
         no list, no detail (docs/05 #4). GET /v3/batches is the ask.'
-    - field: trace
+    - field: bestBefore
       ops:
-      - read
+      - update
       status: open
-      reason: 'Batch trace (which goods receipts brought it in, which delivery notes
-        shipped it — recall scenario) has no API at all (docs/05 #4).'
+      reason: Correcting a best-before date via API — internal web routes only today.
     - field: status
       ops:
       - update
       status: open
       reason: Blocking/releasing a batch (quality hold) via API — maintenance happens
         only through internal web routes today.
-    - field: bestBefore
+    - field: trace
       ops:
-      - update
+      - read
       status: open
-      reason: Correcting a best-before date via API — internal web routes only today.
+      reason: 'Batch trace (which goods receipts brought it in, which delivery notes
+        shipped it — recall scenario) has no API at all (docs/05 #4).'
   Channel:
     reviewed: null
     capabilities:
@@ -2454,15 +2454,28 @@ entities:
       proven: false
       reason: 'The channel API (05 #17) exposes no connection test.'
     fieldRequirements:
-    - field: sync
+    - field: platform
       ops:
       - read
       status: recheck
-      reason: 'Channel sync-run status (last run, success/failure) is not exposed
-        — needed to monitor shop imports (docs/05 #17, still open after the BF salesChannel
-        entity covered the list).'
+      reason: 'The platform kind (shopify/amazon/…) is not exposed — the BF salesChannel
+        entity carries only a name (05 #17).'
       nowProven:
       - read
+    - field: defaults
+      ops:
+      - read
+      status: recheck
+      reason: 'Channel defaults (price list, warehouse) are not exposed (05 #17).'
+      nowProven:
+      - read
+    - field: name
+      ops:
+      - create
+      - update
+      status: open
+      reason: 'REVISED (docs/05 #17): BF salesChannel has CRUD — our facade write-mapping
+        + live verification is pending.'
     - field: type
       ops:
       - read
@@ -2480,26 +2493,13 @@ entities:
       reason: Enable/disable state is not on the BF salesChannel record.
       nowProven:
       - read
-    - field: name
-      ops:
-      - create
-      - update
-      status: open
-      reason: 'REVISED (docs/05 #17): BF salesChannel has CRUD — our facade write-mapping
-        + live verification is pending.'
-    - field: platform
+    - field: sync
       ops:
       - read
       status: recheck
-      reason: 'The platform kind (shopify/amazon/…) is not exposed — the BF salesChannel
-        entity carries only a name (05 #17).'
-      nowProven:
-      - read
-    - field: defaults
-      ops:
-      - read
-      status: recheck
-      reason: 'Channel defaults (price list, warehouse) are not exposed (05 #17).'
+      reason: 'Channel sync-run status (last run, success/failure) is not exposed
+        — needed to monitor shop imports (docs/05 #17, still open after the BF salesChannel
+        entity covered the list).'
       nowProven:
       - read
   EmailAccount:
@@ -2554,6 +2554,12 @@ entities:
       reason: 'The one thing that would make a task a work item. `assignee` is readOnly
         upstream: a create or update carrying it answers 2xx and leaves the field
         null. Measured on mvp 2026-08-02.'
+    - field: dates.completed
+      ops:
+      - update
+      status: open
+      reason: 'Completing a task through the API does not stamp its completion date:
+        `status: completed` persists, `completionDate` stays null.'
     - field: timeline
       ops:
       - read
@@ -2561,9 +2567,3 @@ entities:
       reason: The task's comment thread. Declared `readWrite` with a full sub-node
         and returned by NO read — not the list, not the single read, and no include/expand
         parameter produces it. Not modelled until it reads back.
-    - field: dates.completed
-      ops:
-      - update
-      status: open
-      reason: 'Completing a task through the API does not stamp its completion date:
-        `status: completed` persists, `completionDate` stays null.'
