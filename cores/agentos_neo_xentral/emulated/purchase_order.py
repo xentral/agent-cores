@@ -373,6 +373,15 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
                     ),
                 },
             ),
+            "texts": prop(
+                "embedded",
+                "Texts",
+                section="general",
+                properties={
+                    "intro": prop("string", "Intro", **_CU),
+                    "outro": prop("string", "Outro", **_CU),
+                },
+            ),
             "note": prop("string", "Note", section="general", **_CU),
             "documents": prop(
                 "embedded",
@@ -552,6 +561,7 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
                     "discountDays": terms.get("paymentTargetDiscountDays"),
                 },
             },
+            "texts": {"intro": r.get("bodyIntroduction"), "outro": r.get("bodyOutroduction")},
             "note": r.get("internalComment"),
             "documents": {"goodsReceipts": [], "purchaseInvoices": []},
             "tags": map_tags(r.get("tags")),
@@ -574,6 +584,7 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
         "project",
         "costCenter",
         "note",
+        "texts",
         "deliveryAddress",
         "items",
         "dates",
@@ -638,6 +649,12 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
             v3["project"] = self._ref_id(model["project"])
         if "costCenter" in model:
             v3["costCenter"] = model["costCenter"]
+        if "texts" in model:
+            t = model["texts"] or {}
+            if "intro" in t:
+                v3["bodyIntroduction"] = t["intro"]
+            if "outro" in t:
+                v3["bodyOutroduction"] = t["outro"]
         if "note" in model:
             v3["internalComment"] = model["note"]
         if "deliveryAddress" in model:

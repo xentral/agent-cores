@@ -421,6 +421,15 @@ class ReturnAdapter(FacadeAdapterBase):
                     ),
                 },
             ),
+            "texts": prop(
+                "embedded",
+                "Texts",
+                section="general",
+                properties={
+                    "intro": prop("string", "Intro", **_CU),
+                    "outro": prop("string", "Outro", **_CU),
+                },
+            ),
             "note": prop("string", "Note", section="general", **_CU),
             "documents": prop(
                 "embedded",
@@ -575,6 +584,7 @@ class ReturnAdapter(FacadeAdapterBase):
                     "salesOrders",
                 ),
             },
+            "texts": {"intro": r.get("bodyIntroduction"), "outro": r.get("bodyOutroduction")},
             "note": r.get("internalComment"),
             "documents": {
                 "salesOrder": ref(
@@ -595,6 +605,7 @@ class ReturnAdapter(FacadeAdapterBase):
         "customer",
         "project",
         "note",
+        "texts",
         "billingAddress",
         "items",
         "dates",
@@ -655,6 +666,12 @@ class ReturnAdapter(FacadeAdapterBase):
         rejected: set[str] = set()
         if "project" in model:
             v3["project"] = self._ref_id(model["project"])
+        if "texts" in model:
+            t = model["texts"] or {}
+            if "intro" in t:
+                v3["bodyIntroduction"] = t["intro"]
+            if "outro" in t:
+                v3["bodyOutroduction"] = t["outro"]
         if "note" in model:
             v3["internalComment"] = model["note"]
         if "billingAddress" in model:

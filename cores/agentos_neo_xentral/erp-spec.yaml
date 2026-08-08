@@ -695,6 +695,9 @@ documents:
           - ops: [create, update]
             reason: >-
               Customs note for export paperwork.
+      texts: {type: embedded}
+      texts.intro: {type: string, must: [create, update]}
+      texts.outro: {type: string, must: [create, update]}
       note: {type: string, must: [create, update]}
       documents: {type: embedded}
       documents.salesOrder: {type: reference, ref: SalesOrder, must: [filter]}
@@ -999,6 +1002,9 @@ documents:
       eInvoice.status: {type: string}
       eInvoice.buyerReference: {type: string}
       eInvoice.downloadUrl: {type: string}
+      texts: {type: embedded}
+      texts.intro: {type: string, must: [create, update]}
+      texts.outro: {type: string, must: [create, update]}
       note: {type: string, must: [create, update]}
       documents: {type: embedded}
       documents.salesOrder: {type: reference, ref: SalesOrder, must: [filter]}
@@ -1227,6 +1233,9 @@ documents:
       resolution: {type: embedded}
       resolution.creditNote: {type: reference, ref: CreditNote}
       resolution.replacementOrder: {type: reference, ref: SalesOrder}
+      texts: {type: embedded}
+      texts.intro: {type: string, must: [create, update]}
+      texts.outro: {type: string, must: [create, update]}
       note: {type: string, must: [create, update]}
       documents: {type: embedded}
       documents.salesOrder: {type: reference, ref: SalesOrder, must: [create, filter]}
@@ -1387,6 +1396,9 @@ documents:
       settlement.payments: {type: collection}
       settlement.payments.id: {type: string}
       settlement.payments.number: {type: string}
+      texts: {type: embedded}
+      texts.intro: {type: string, must: [create, update]}
+      texts.outro: {type: string, must: [create, update]}
       note: {type: string, must: [create, update]}
       documents: {type: embedded}
       documents.salesInvoice: {type: reference, ref: SalesInvoice}
@@ -1566,6 +1578,9 @@ documents:
       payment.terms.dueDays: {type: integer}
       payment.terms.discountPercent: {type: decimal}
       payment.terms.discountDays: {type: integer}
+      texts: {type: embedded}
+      texts.intro: {type: string, must: [create, update]}
+      texts.outro: {type: string, must: [create, update]}
       note: {type: string, must: [create, update]}
       documents: {type: embedded}
       documents.goodsReceipts: {type: collection}

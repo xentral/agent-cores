@@ -453,6 +453,15 @@ class SalesInvoiceAdapter(FacadeAdapterBase):
                     "downloadUrl": prop("string", "Download URL", **RO),
                 },
             ),
+            "texts": prop(
+                "embedded",
+                "Texts",
+                section="general",
+                properties={
+                    "intro": prop("string", "Intro", **_CU),
+                    "outro": prop("string", "Outro", **_CU),
+                },
+            ),
             "note": prop("string", "Note", section="general", **_CU),
             "documents": prop(
                 "embedded",
@@ -660,6 +669,7 @@ class SalesInvoiceAdapter(FacadeAdapterBase):
                 "buyerReference": None,
                 "downloadUrl": None,
             },
+            "texts": {"intro": r.get("bodyIntroduction"), "outro": r.get("bodyOutroduction")},
             "note": r.get("internalComment"),
             "documents": {
                 "salesOrder": ref("so_", so_id, None, None, "salesOrders"),
@@ -681,6 +691,7 @@ class SalesInvoiceAdapter(FacadeAdapterBase):
         "costCenter",
         "currency",
         "note",
+        "texts",
         "taxation",
         "billingAddress",
         "items",
@@ -757,6 +768,12 @@ class SalesInvoiceAdapter(FacadeAdapterBase):
             v3.setdefault("financials", {})["currency"] = model["currency"]
         if "taxation" in model:
             v3.setdefault("financials", {}).setdefault("tax", {})["taxation"] = model["taxation"]
+        if "texts" in model:
+            t = model["texts"] or {}
+            if "intro" in t:
+                v3["bodyIntroduction"] = t["intro"]
+            if "outro" in t:
+                v3["bodyOutroduction"] = t["outro"]
         if "note" in model:
             v3["internalComment"] = model["note"]
         if "billingAddress" in model:

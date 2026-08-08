@@ -361,6 +361,15 @@ class CreditNoteAdapter(FacadeAdapterBase):
                     ),
                 },
             ),
+            "texts": prop(
+                "embedded",
+                "Texts",
+                section="general",
+                properties={
+                    "intro": prop("string", "Intro", **_CU),
+                    "outro": prop("string", "Outro", **_CU),
+                },
+            ),
             "note": prop("string", "Note", section="general", **_CU),
             "documents": prop(
                 "embedded",
@@ -496,6 +505,7 @@ class CreditNoteAdapter(FacadeAdapterBase):
                 "outstanding": "0.00" if settled == "paid" else gross,
             },
             "settlement": {"mode": "refund", "status": settled, "payments": []},
+            "texts": {"intro": r.get("bodyIntroduction"), "outro": r.get("bodyOutroduction")},
             "note": r.get("internalComment"),
             "documents": {
                 "salesInvoice": ref(
@@ -521,6 +531,7 @@ class CreditNoteAdapter(FacadeAdapterBase):
         "costCenter",
         "currency",
         "note",
+        "texts",
         "taxation",
         "billingAddress",
         "items",
@@ -585,6 +596,12 @@ class CreditNoteAdapter(FacadeAdapterBase):
             v3.setdefault("financials", {})["currency"] = model["currency"]
         if "taxation" in model:
             v3.setdefault("financials", {}).setdefault("tax", {})["taxation"] = model["taxation"]
+        if "texts" in model:
+            t = model["texts"] or {}
+            if "intro" in t:
+                v3["bodyIntroduction"] = t["intro"]
+            if "outro" in t:
+                v3["bodyOutroduction"] = t["outro"]
         if "note" in model:
             v3["internalComment"] = model["note"]
         if "billingAddress" in model:
