@@ -41,12 +41,17 @@ def _field_gaps() -> dict:
 
     path = pathlib.Path(__file__).parent.parent / "cores/agentos_neo_xentral/erp-spec.yaml"
     grouped = yaml.safe_load(path.read_text(encoding="utf-8"))
-    return {
-        key: block["fieldGaps"]
-        for entities in grouped.values()
-        for key, block in entities.items()
-        if block.get("fieldGaps")
-    }
+    out: dict = {}
+    for entities in grouped.values():
+        for key, block in entities.items():
+            entries = [
+                {"field": p, **g}
+                for p, f in (block.get("fields") or {}).items()
+                for g in (f.get("gaps") or [])
+            ]
+            if entries:
+                out[key] = entries
+    return out
 
 
 def _raw(**line: Any) -> dict[str, Any]:

@@ -94,13 +94,33 @@ def _entities() -> dict[str, Any]:
 
 @functools.lru_cache(maxsize=1)
 def _field_gaps() -> dict[str, Any]:
-    """Per-entity field gaps (``fieldGaps``) — the field axis of the specification
-    (docs/03-mapping-layer.md §5). ``<Entity>`` → ``[{field, ops, reason}]``."""
-    return {
-        key: block["fieldGaps"]
-        for key, block in _entities().items()
-        if isinstance(block.get("fieldGaps"), list)
-    }
+    """Per-entity field gaps — the field axis of the specification
+    (docs/03-mapping-layer.md §5). ``<Entity>`` → ``[{field, ops, reason}]``.
+
+    The gaps now sit on the field they concern (``fields.<path>.gaps``) rather than in
+    a list beside it, so a reader sees the requirement and the gap together. This
+    flattens them back to the shape ``_apply_field_gaps`` and ``_wishes_by_field``
+    already expect — the restructure stops at this seam.
+
+    A field may carry more than one gap: ``create`` and ``search`` on the same field
+    are different business needs with different reasons, and merging them would lose
+    the reason.
+    """
+    out: dict[str, Any] = {}
+    for key, block in _entities().items():
+        fields = block.get("fields")
+        if not isinstance(fields, dict):
+            continue
+        entries = [
+            {"field": path, **gap}
+            for path, spec in fields.items()
+            if isinstance(spec, dict)
+            for gap in (spec.get("gaps") or [])
+            if isinstance(gap, dict)
+        ]
+        if entries:
+            out[key] = entries
+    return out
 
 
 @functools.lru_cache(maxsize=1)
