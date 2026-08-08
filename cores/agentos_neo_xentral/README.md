@@ -28,7 +28,8 @@ of mere absence. Absence is indistinguishable from "nobody looked".
 | File | What it says |
 |---|---|
 | `verified.json` | What a live run against a real tenant actually demonstrated. Header records which instance and when. **Never edit by hand.** |
-| `verified.xlsx` | The readable view of the same data, for review. Regenerate with `scripts/export_verified_xlsx.py`. |
+| `verified.xlsx` | Field × facet detail of the same data. Regenerate with `scripts/export_verified_xlsx.py`. |
+| `review.yaml` / `review.xlsx` | **The review sheet** — specification, implementation and evidence on one row. Regenerate with `scripts/export_review_sheet.py`. |
 
 `verified.json` grades how strongly each capability was shown, and the distinction
 carries the weight:
@@ -47,6 +48,38 @@ executable, **25 are proven**. The rest are listed by name in the spec's
 directions — so the count cannot drift upward quietly, and a capability that gains
 a real proof has to be struck from it by hand.
 
+## The review sheet
+
+`review.xlsx` is what a domain expert actually reads. It joins all three sources
+onto one row, ordered along the process chain (customer → quote → order → delivery
+→ invoice → return → credit note, then purchasing, then master data) rather than
+alphabetically, so a document sits next to the one it produces.
+
+| Sheet | One row per | Columns |
+|---|---|---|
+| Übersicht | entity | required · proven · unproven · accepted gaps · not built · field requirements · review status |
+| Fähigkeiten | capability | Soll · Ist · Beweis · reason |
+| Felder | field requirement | operations · status · business reason · hint |
+
+`review.yaml` is the same data for tooling and for PR review. It carries **no
+generation timestamp** — only the stamp of the probe run it was built from — so the
+file changes when a fact changes, not when someone re-runs the export. A diff on it
+means something moved.
+
+Two things the sheet surfaces that neither source shows alone: a recorded field gap
+whose flag the schema now declares (or that a live run has since proven) is flagged
+*"offen — prüfen, evtl. erledigt"*, because a stale gap outranks a real capability
+wherever it is shown; and a gap naming a field path the model does not have at all
+is flagged outright.
+
+Regenerate:
+
+```bash
+PYTHONPATH=<agent-os>/backend \
+  uv run --project <agent-os>/backend --with openpyxl --with pyyaml \
+  python scripts/export_review_sheet.py
+```
+
 ## Built by developers
 
 | File | Role |
@@ -63,8 +96,10 @@ a real proof has to be struck from it by hand.
 1. The expert states in the **spec** what has to be possible.
 2. Developers build it in **`emulated/`**.
 3. **`checks/verify.py`** runs against a real tenant and writes **`verified.json`**.
-4. The **review sheet** puts requirement, implementation and evidence side by side.
-5. The expert reads it: still missing anything? Is a documented gap acceptable?
+4. **`scripts/export_review_sheet.py`** puts requirement, implementation and
+   evidence side by side in `review.xlsx` / `review.yaml`.
+5. The expert reads the sheet: still missing anything? Is a documented gap
+   acceptable? Is an unproven capability good enough?
 6. CI fails whenever spec and core drift apart — in *both* directions: something
    required but not built, and something built that no spec mentions.
 
@@ -76,5 +111,5 @@ say so rather than imply a check that never happened.
 
 ```bash
 python scripts/validate_cores.py
-PYTHONPATH=<agent-os>/backend pytest tests/test_core_playbooks.py
+PYTHONPATH=<agent-os>/backend pytest tests/test_core_playbooks.py tests/test_review_sheet.py
 ```
