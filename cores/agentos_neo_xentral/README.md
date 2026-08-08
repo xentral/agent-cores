@@ -8,64 +8,29 @@ read Python to find out whether something is a requirement, a result, or a guess
 sides and never derived from one another. The moment one is generated from the
 other, nothing is being checked any more.
 
-## Owned by the ERP expert — the requirement
+## Owned by the ERP expert
 
-**`erp-spec.yaml`** — one file, grouped `category → entity → everything about that
-entity`, so one block answers *"what can this system do with an order"*:
-
-| Per entity | What it says |
+| File | What it says |
 |---|---|
-| `operations` | read-only or writable |
-| `fields` | **the whole ERP model of this entity** — one entry per field: type, whether a create must carry it, which operations must work (`must`), the status vocabulary, and any gap |
-| `can` | the capability works — with the verdict a live run returned, and the parameters it takes |
-| `cannot` | the capability is needed and the upstream cannot do it — **with the reason** |
-| `reviewed` | the date a domain expert went through this entity, or `null` |
+| `erp-spec.yaml` | **What this core IS.** Per entity: every field with its type, whether a create must carry it, which operations it supports (`ops`), which of those a live run proved (`proven`), the status vocabulary — plus the executable capabilities with their evidence, and the ones the upstream cannot do with the measured reason. |
+| `backlog.yaml` | **The parked work list.** 199 recorded field gaps with their business reason. Nothing loads it — it is a document, not a mechanism. |
 
-A field entry is one line where nothing is wrong with it, and grows only where it is:
+The specification **describes**; it states no requirements. That is a deliberate
+retreat: the file used to carry an inherited wish list, and the first spec-driven probe
+run showed what that was worth — gaps claiming search does not work on fields where it
+demonstrably does, never once tried. Requirements come back one at a time, from a human
+who decided them, and `reviewed` records when that happened.
 
 ```yaml
-number:          {type: string, must: [filter, search, sort]}
-customer:        {type: reference, ref: Customer, required: true, must: [create, filter]}
-references.customerOrderNumber:
-  type: string
-  must: [create, update, search]
-  gaps:
-    - ops: [create]
-      contested: [create]
-      reason: >-
-        The customer's own order number (B2B standard). Read-only upstream today.
+number:   {type: string, ops: [create, filter, sort, search], proven: [filter, sort, search]}
+customer: {type: reference, ref: Customer, required: true, ops: [create, filter], proven: [create, filter]}
 ```
 
-`must` is the **requirement**: which operations have to work. Where the core supports
-them the two agree; where it does not, a `gap` must name exactly that operation.
-`missing: true` marks a field the spec requires and the core does not have at all.
+`ops` is what the core offers. `proven` is what was measured. **They are not the same
+claim**, and the difference is the point — a declared flag is not evidence.
 
-Two axes in one document: what must be *doable* (`can` / `cannot`) and what must be
-*recordable and findable* (`fields`). Hand-written, never generated from the code —
-a specification derived from the implementation cannot state what is still missing,
-which is the only reason anyone would review it.
-
-It ships. The core loads it at runtime and renders each recorded gap where it applies —
-on the action, or on the field — so a builder reads *"not possible, and here is why"*
-at the point of use instead of mere absence. Absence is indistinguishable from "nobody
-looked".
-
-The grouping is the core's **own** `manifest.category`, the same value `describe`
-ships, and a rule enforces that every entity sits under the one its adapter declares.
-Two owners for one fact is how a reviewer reads `documents`, believes they have seen
-every document, and misses one filed elsewhere because it felt related.
-
-That is why the reasons live here and not in the code. They are business
-statements — *"the transition happens only in the UI"*, *"digest-authenticated and
-behind a killswitch"* — and until recently the 100 capability reasons sat in the
-adapter Python, where the person who owns the requirement could not edit them. The
-adapter now says only **that** something is a gap (`wish=True`); this file says
-**why**.
-
-The split is deliberate and load-bearing: if the specification decided *which*
-capabilities are gaps as well as why, the two rules that matter most — a required
-capability must not be a gap, a recorded gap must still be one — would be comparing
-the specification against itself.
+The backlog is a hypothesis list, not a truth: eight of its entries are already marked
+`disproven`, with the date a live run refuted them.
 
 ## Written by the machine — the result
 
@@ -133,6 +98,7 @@ PYTHONPATH=<agent-os>/backend \
 | `checks/verify.py` | The prober: runs against a real tenant and writes `verified.json`. |
 | `descriptions.json` | Field descriptions surfaced in `describe`. |
 | `playbook.md` | Short prose for agents building workflows. CI reads the document itself: every dotted field path and every `Entity.name` it names in code spans must exist in the core. |
+| `order.py` | The reading sequence the spec and the review sheet share. |
 | `docs/` | Investigations and findings behind individual decisions. |
 
 ## The loop

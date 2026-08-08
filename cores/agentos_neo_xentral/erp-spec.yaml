@@ -1,73 +1,21 @@
-# The ERP specification of this core — reviewed by a domain expert.
+# What this ERP core IS — per entity, per field.
 #
-# READ THIS FIRST: the direction of proof runs from here TO the code. This file states
-# what the ERP must be able to do and to record; CI replays every statement against the
-# core's own metadata and against the live-probe results in `verified.json`
-# (tests/test_core_playbooks.py). When the two disagree, the default reading is that the
-# CORE is wrong — not that this file needs adjusting to match it.
+# Purely descriptive. Every line says what the system does today: which operations a
+# field supports (`ops`), which of those a live run against a real tenant actually
+# demonstrated (`proven`), what a create must carry, the status vocabulary, and which
+# capabilities are executable with how strong a proof.
 #
-# It is deliberately NOT generated. It is checked against the very metadata a generator
-# would derive it from, so generating it would turn every rule into a tautology that can
-# never fail again. A specification derived from the implementation also cannot state
-# what is still missing, which is the only reason a domain expert would read it.
+# It states no requirements. That is deliberate and it is the change: the file used to
+# carry an inherited wish list, and the first spec-driven probe run showed what that was
+# worth — four SalesOrder gaps claimed search does not work on fields where it
+# demonstrably does, and nothing had ever tried. Requirements now come back one at a
+# time, from a human who decided them, and `reviewed` records when that happened.
 #
-# This file SHIPS: the core loads it at runtime and renders each recorded gap where it
-# applies — on the action, or on the field — so a builder reads "not possible, and here
-# is why" at the point of use rather than mere absence. Absence is indistinguishable
-# from "nobody looked".
+# The recorded reasons why something is NOT possible were not thrown away: they live in
+# backlog.yaml, which the core still loads and still renders into `describe`.
 #
-# Layout
-# ------
-# Grouped `category → entity → everything about that entity`, so one block answers
-# "what can this system do with an order". The categories are the core's OWN
-# `manifest.category` — the same value `describe` ships — not a taxonomy this file
-# invents; a rule enforces that every entity sits under the one its adapter declares.
-# Inside a category, entities follow the process chain (customer → quote → order →
-# delivery → invoice → return → credit note, then purchasing, then master data) and
-# then alphabetically, matching the order `review.xlsx` reads in.
-#
-# Per entity
-# ----------
-# label               what the entity is called, mirrored from the core (checked)
-# reviewed            sign-off ledger: the date a domain expert went through this
-#                     entity, or null. NOT a gate — an unreviewed core is a normal
-#                     state, and gating it would only get the ledger filled to quiet CI
-# operations          the CRUD surface. Stated for every entity: read-only vs writable
-#                     is a business decision, and left as a sample this section reads
-#                     as "these are the interesting ones" when it means "nobody wrote
-#                     down the rest"
-# statuses            the lifecycle vocabulary of each status-shaped field
-# requiredForCreate   what a create must carry
-# filterable          what must be queryable
-# notFilterable       documented traps: the field exists but cannot be queried
-# fields              field paths the reviewer decided must exist. Deliberately NOT an
-#                     inventory of the model — a sample, and reading it as a complete
-#                     statement is the mistake this note exists to prevent
-# can                 the capability works, with the verdict a live run returned:
-#                     `pass` (effect read back — proof), `executed` (something changed,
-#                     nobody looked), `reachable` (the route exists and refused our
-#                     probe — NO claim either way), `null` (never tested). `params`
-#                     names the required command parameters. Checked against
-#                     verified.json in both directions, so the number of unproven
-#                     capabilities cannot drift upward quietly
-# cannot              the capability is needed but the upstream cannot do it, mapped to
-#                     the measured reason. The ADAPTER still classifies it (`wish=True`);
-#                     this file supplies the text. If this file decided both, the two
-#                     rules that matter most — a required capability must not be a gap,
-#                     a recorded gap must still be one — would compare it against itself
-# fieldGaps           field × operation the merchant needs and the API cannot serve,
-#                     with the business reason. An entry retires itself once a live
-#                     probe proves the facet; a STALE one is the dangerous kind, because
-#                     a gap outranks a real capability wherever it is shown
-#
-# Empty sections are omitted rather than written as {} — absence and emptiness do not
-# differ here, and the completeness rules derive "this entity has no capabilities" from
-# the core. `reviewed` is the exception and is always written: a missing entry in a
-# sign-off ledger cannot be told apart from a forgotten one.
-#
-# Was `capabilities.spec.yaml` + `field-gaps.yaml`, organised by section. Finding out
-# what the system could do with an order meant reading eleven places in two files, and
-# three sections carried the entity as a string prefix (`"SalesOrder.status"`).
+# `ops` is what the core offers. `proven` is what was measured. The two are not the same
+# claim and the difference is the point — a declared flag is not evidence.
 
 documents:
   Quote:
@@ -77,193 +25,95 @@ documents:
     fields:
       object: {type: string}
       id: {type: string}
-      number:
-        type: string
-        must: [create, filter, sort, search]
-        gaps:
-          - ops: [create]
-            reason: >-
-              Carrying a quote number over from another system. The v3 create does not declare
-              documentNumber for this document type and ignores a supplied value without an
-              error, so the core refuses it instead. salesOrder, invoice and creditNote do
-              accept one.
-      status: {type: select, must: [filter], options: [draft, sent, accepted, declined, expired, cancelled]}
-      customer:
-        type: reference
-        ref: Customer
-        required: true
-        must: [create, update, filter]
-        gaps:
-          - ops: [update]
-            reason: >-
-              Reassign the quote's partner after creation — v3 accepts it only on create.
+      number: {type: string, ops: [filter, sort, search], proven: [filter, sort, search]}
+      status: {type: select, ops: [filter], proven: [filter], options: [draft, sent, accepted, declined, expired, cancelled]}
+      customer: {type: reference, ref: Customer, required: true, ops: [create, filter], proven: [create, filter]}
       channel: {type: reference, ref: Channel}
-      project: {type: reference, ref: Project, must: [create, update]}
-      costCenter: {type: string, must: [create, update]}
+      project: {type: reference, ref: Project, ops: [create, update], proven: [create, update]}
+      costCenter: {type: string, ops: [create, update], proven: [create, update]}
       references: {type: embedded}
-      references.customerInquiryNumber:
-        type: string
-        must: [create, update, filter]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              The customer's inquiry / RFQ number — B2B standard; read-only upstream today.
+      references.customerInquiryNumber: {type: string, ops: [filter], proven: [filter]}
       dates: {type: embedded}
-      dates.issued: {type: date, must: [create, update, filter, sort]}
-      dates.validUntil:
-        type: date
-        must: [create, update, filter]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Offer validity date — drives auto-expiry and follow-up; must be settable per
-              quote.
-      dates.expectedOrderDate:
-        type: date
-        must: [create, update, filter]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Expected order date feeds the sales forecast — settable per quote.
-      dates.requestedDelivery:
-        type: date
-        must: [create, update, filter]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Desired delivery date on the quote — not writable upstream today.
+      dates.issued: {type: date, ops: [create, update, filter, sort], proven: [create, update, filter, sort]}
+      dates.validUntil: {type: date, ops: [filter], proven: [filter]}
+      dates.expectedOrderDate: {type: date, ops: [filter]}
+      dates.requestedDelivery: {type: date, ops: [filter]}
       billingAddress: {type: embedded}
-      billingAddress.name: {type: string, must: [create, update]}
-      billingAddress.street: {type: string, must: [create, update]}
-      billingAddress.zip: {type: string, must: [create, update]}
-      billingAddress.city: {type: string, must: [create, update]}
-      billingAddress.country: {type: string, must: [create, update]}
-      billingAddress.email: {type: string, must: [create, update]}
-      billingAddress.phone: {type: string, must: [create, update]}
-      billingAddress.vatId: {type: string, must: [create, update]}
+      billingAddress.name: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.street: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.zip: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.city: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.country: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.email: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.phone: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.vatId: {type: string, ops: [create, update], proven: [create, update]}
       shippingAddress: {type: embedded}
-      shippingAddress.name: {type: string, must: [create, update]}
-      shippingAddress.street: {type: string, must: [create, update]}
-      shippingAddress.zip: {type: string, must: [create, update]}
-      shippingAddress.city: {type: string, must: [create, update]}
-      shippingAddress.country: {type: string, must: [create, update]}
-      shippingAddress.email: {type: string, must: [create, update]}
-      shippingAddress.phone: {type: string, must: [create, update]}
+      shippingAddress.name: {type: string, ops: [create, update], proven: [create, update]}
+      shippingAddress.street: {type: string, ops: [create, update], proven: [create, update]}
+      shippingAddress.zip: {type: string, ops: [create, update], proven: [create, update]}
+      shippingAddress.city: {type: string, ops: [create, update], proven: [create, update]}
+      shippingAddress.country: {type: string, ops: [create, update], proven: [create, update]}
+      shippingAddress.email: {type: string, ops: [create, update], proven: [create, update]}
+      shippingAddress.phone: {type: string, ops: [create, update], proven: [create, update]}
       shippingAddress.vatId: {type: string}
       items: {type: collection}
       items.object: {type: string}
       items.id: {type: string}
       items.position: {type: integer}
-      items.product: {type: reference, ref: Product, required: true, must: [create, filter]}
-      items.description: {type: string, must: [create, update]}
-      items.quantity: {type: embedded, required: true, must: [create, update]}
+      items.product: {type: reference, ref: Product, required: true, ops: [create, filter], proven: [create, filter]}
+      items.description: {type: string, ops: [create, update], proven: [create, update]}
+      items.quantity: {type: embedded, required: true, ops: [create, update], proven: [create, update]}
       items.quantity.value: {type: decimal}
       items.quantity.unit: {type: string}
-      items.unitPrice: {type: embedded, must: [create, update]}
+      items.unitPrice: {type: embedded, ops: [create, update], proven: [create, update]}
       items.unitPrice.amount: {type: decimal}
       items.unitPrice.currency: {type: string}
       items.priceSource: {type: string}
-      items.discountPercent: {type: decimal, must: [create, update]}
-      items.purchasePrice: {type: embedded, must: [create, update]}
+      items.discountPercent: {type: decimal, ops: [create, update], proven: [create, update]}
+      items.purchasePrice: {type: embedded, ops: [create, update], proven: [create, update]}
       items.purchasePrice.amount: {type: decimal}
       items.purchasePrice.currency: {type: string}
       items.contributionMargin: {type: decimal}
       items.totals: {type: embedded}
       items.totals.net: {type: string}
       items.totals.gross: {type: string}
-      items.taxRate:
-        type: string
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Deviating tax rate per position. Upstream derives the line tax from the product's
-              tax class and the customer's tax rule; v3 accepts taxRate on a line item, answers
-              2xx and keeps its own value — measured on mvp 2026-08-01 (sent "reduced", read
-              back "standard", on create and on update alike). Needs a real write path upstream.
-      items.isOptional:
-        type: boolean
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Optional line items (not counted in totals) are a core quoting feature — not
-              settable upstream today.
-      currency: {type: string, must: [create, update]}
+      items.taxRate: {type: string}
+      items.isOptional: {type: boolean}
+      currency: {type: string, ops: [create, update], proven: [create, update]}
       totals: {type: embedded}
       totals.currency: {type: string}
       totals.net: {type: string}
       totals.gross: {type: string}
       payment: {type: embedded}
-      payment.method:
-        type: reference
-        ref: PaymentMethod
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Payment method proposed on the quote — frequently set per offer.
+      payment.method: {type: reference, ref: PaymentMethod}
       payment.terms: {type: embedded}
-      payment.terms.dueDays:
-        type: integer
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Payment term proposed on the quote.
+      payment.terms.dueDays: {type: integer}
       payment.terms.discountPercent: {type: decimal}
       payment.terms.discountDays: {type: integer}
       shipping: {type: embedded}
-      shipping.method:
-        type: reference
-        ref: ShippingMethod
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            contested: [create, update]
-            reason: >-
-              Shipping method proposed on the quote.
+      shipping.method: {type: reference, ref: ShippingMethod, ops: [create, update]}
       texts: {type: embedded}
-      texts.intro: {type: string, must: [create, update]}
-      texts.outro: {type: string, must: [create, update]}
-      note: {type: string, must: [create, update]}
+      texts.intro: {type: string, ops: [create, update], proven: [create, update]}
+      texts.outro: {type: string, ops: [create, update], proven: [create, update]}
+      note: {type: string, ops: [create, update], proven: [create, update]}
       documents: {type: embedded}
       documents.salesOrders: {type: collection}
       documents.salesOrders.id: {type: string}
       documents.salesOrders.number: {type: string}
-      tags: {type: tag, must: [create, update, filter]}
-      writeProtection: {type: boolean, must: [filter]}
-      customFields:
-        type: embedded
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Custom field values on the quote — today only readable via include, not writable
-              via API.
-      createdAt: {type: datetime, must: [filter, sort]}
-      updatedAt: {type: datetime, must: [filter, sort]}
-      items.totals.tax:
-        missing: true
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Tax amount per line. v3 states only taxRate and effectiveTaxRate on a line — no
-              money figure — so the tax a position carries cannot be read. The core will not
-              derive it from gross minus net: that is a number Xentral never stated, and
-              line-level rounding against the legacy PDF (projekt.preisberechnung) is still an
-              open decision, so a derived value could silently disagree with the printed
-              document. Per-rate tax exists on the document totals; the line needs its own.
+      tags: {type: tag, ops: [create, update, filter], proven: [create, update, filter]}
+      writeProtection: {type: boolean, ops: [filter], proven: [filter]}
+      customFields: {type: embedded}
+      createdAt: {type: datetime, ops: [filter, sort], proven: [filter, sort]}
+      updatedAt: {type: datetime, ops: [filter, sort], proven: [filter, sort]}
     can:
       send: {evidence: reachable}
       downloadPdf: {evidence: pass}
       addTag: {evidence: pass, params: [title]}
       removeTag: {evidence: pass, params: [title]}
-      release: {evidence: reachable}
-      cancel: {evidence: reachable}
       setWriteProtection: {evidence: null}
       removeWriteProtection: {evidence: null}
+      release: {evidence: reachable}
+      cancel: {evidence: reachable}
     cannot:
       convertToSalesOrder: >-
         No conversion endpoint we can reach. v3 has createFromSalesOrder and
@@ -298,132 +148,60 @@ documents:
     fields:
       object: {type: string}
       id: {type: string}
-      number:
-        type: string
-        must: [create, update, filter, sort, search]
-        gaps:
-          - ops: [update]
-            reason: >-
-              Correcting a sales order number after the fact. The v3 create accepts one, but
-              PATCH has no slot for it — a number carried over from another system must be right
-              the first time.
-      status: {type: select, must: [filter], options: [draft, confirmed, fulfilled, closed, cancelled]}
-      customer:
-        type: reference
-        ref: Customer
-        required: true
-        must: [create, update, filter]
-        gaps:
-          - ops: [update]
-            reason: >-
-              Reassign the order to the correct customer after creation — v3 accepts the partner
-              only on create today.
-      channel: {type: reference, ref: Channel, must: [create, update]}
-      project: {type: reference, ref: Project, must: [create, update]}
-      costCenter: {type: string, must: [create, update]}
+      number: {type: string, ops: [create, filter, sort, search], proven: [filter, sort, search]}
+      status: {type: select, ops: [filter], proven: [filter], options: [draft, confirmed, fulfilled, closed, cancelled]}
+      customer: {type: reference, ref: Customer, required: true, ops: [create, filter], proven: [create, filter]}
+      channel: {type: reference, ref: Channel, ops: [create, update]}
+      project: {type: reference, ref: Project, ops: [create, update], proven: [create, update]}
+      costCenter: {type: string, ops: [create, update], proven: [create, update]}
       references: {type: embedded}
-      references.customerOrderNumber:
-        type: string
-        must: [create, update, filter, search]
-        gaps:
-          - ops: [create]
-            contested: [create]
-            reason: >-
-              The customer's own order / PO number (B2B standard field). Read-only upstream
-              today; a clerk must be able to set and correct it.
-          - ops: [search]
-            contested: [create]
-            reason: >-
-              On the phone the customer quotes their PO number, not the ERP number — the
-              full-text search must reach it.
-      references.externalId:
-        type: string
-        must: [create, update, filter, search]
-        gaps:
-          - ops: [search]
-            reason: >-
-              Automated reconciliation matches by the external id.
-      references.externalNumber:
-        type: string
-        must: [create, update, filter, search]
-        gaps:
-          - ops: [search]
-            reason: >-
-              Support finds shop orders by the SHOP number the customer has.
+      references.customerOrderNumber: {type: string, ops: [create, update, filter], proven: [update, filter, search]}
+      references.externalId: {type: string, ops: [create, update, filter], proven: [update, filter]}
+      references.externalNumber: {type: string, ops: [create, update, filter], proven: [update, filter, search]}
       references.paymentTransactionId: {type: string}
       dates: {type: embedded}
-      dates.issued: {type: date, must: [create, update, filter, sort]}
-      dates.requestedDelivery:
-        type: date
-        must: [create, update, filter]
-        gaps:
-          - ops: [update]
-            contested: [update]
-            reason: >-
-              Desired delivery date — core fulfilment field; one of the first things entered on
-              an order. Not writable upstream today.
-      dates.earliestFulfillment: {type: date, must: [create, update]}
-      dates.reservation: {type: date, must: [create, update]}
+      dates.issued: {type: date, ops: [create, update, filter, sort], proven: [create, update, filter, sort]}
+      dates.requestedDelivery: {type: date, ops: [create, update, filter], proven: [create, filter]}
+      dates.earliestFulfillment: {type: date, ops: [create, update], proven: [create]}
+      dates.reservation: {type: date, ops: [create, update], proven: [create]}
       dates.confirmedDelivery: {type: date}
       billingAddress: {type: embedded}
-      billingAddress.name: {type: string, must: [create, update]}
-      billingAddress.street: {type: string, must: [create, update]}
-      billingAddress.zip:
-        type: string
-        must: [create, update, search]
-        gaps:
-          - ops: [search]
-            reason: >-
-              Postal-code search is a standard phone use-case (shop orders).
-      billingAddress.city: {type: string, must: [create, update]}
-      billingAddress.country: {type: string, must: [create, update]}
-      billingAddress.email:
-        type: string
-        must: [create, update, search]
-        gaps:
-          - ops: [search]
-            reason: >-
-              Email search is a standard use-case for shop orders — often the only identifier
-              support has.
-      billingAddress.phone: {type: string, must: [create, update]}
-      billingAddress.vatId: {type: string, must: [create, update]}
+      billingAddress.name: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.street: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.zip: {type: string, ops: [create, update], proven: [create, update, search]}
+      billingAddress.city: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.country: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.email: {type: string, ops: [create, update], proven: [create, update, search]}
+      billingAddress.phone: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.vatId: {type: string, ops: [create, update], proven: [create, update]}
       shippingAddress: {type: embedded}
-      shippingAddress.name: {type: string, must: [create, update]}
-      shippingAddress.street: {type: string, must: [create, update]}
-      shippingAddress.zip: {type: string, must: [create, update]}
-      shippingAddress.city: {type: string, must: [create, update]}
-      shippingAddress.country: {type: string, must: [create, update]}
-      shippingAddress.email: {type: string, must: [create, update]}
-      shippingAddress.phone: {type: string, must: [create, update]}
+      shippingAddress.name: {type: string, ops: [create, update], proven: [create, update]}
+      shippingAddress.street: {type: string, ops: [create, update], proven: [create, update]}
+      shippingAddress.zip: {type: string, ops: [create, update], proven: [create, update]}
+      shippingAddress.city: {type: string, ops: [create, update], proven: [create, update]}
+      shippingAddress.country: {type: string, ops: [create, update], proven: [create, update]}
+      shippingAddress.email: {type: string, ops: [create, update], proven: [create, update]}
+      shippingAddress.phone: {type: string, ops: [create, update], proven: [create, update]}
       shippingAddress.vatId: {type: string}
       items: {type: collection}
       items.object: {type: string}
       items.id: {type: string}
       items.position: {type: integer}
-      items.product: {type: reference, ref: Product, required: true, must: [create, filter]}
-      items.description: {type: string, must: [create, update]}
-      items.quantity: {type: embedded, required: true, must: [create, update]}
+      items.product: {type: reference, ref: Product, required: true, ops: [create, filter], proven: [create, filter]}
+      items.description: {type: string, ops: [create, update], proven: [create]}
+      items.quantity: {type: embedded, required: true, ops: [create, update], proven: [create, update]}
       items.quantity.value: {type: decimal}
       items.quantity.unit: {type: string}
-      items.unitPrice: {type: embedded, must: [create, update]}
+      items.unitPrice: {type: embedded, ops: [create, update], proven: [create, update]}
       items.unitPrice.amount: {type: decimal}
       items.unitPrice.currency: {type: string}
       items.priceSource: {type: string}
-      items.purchasePrice: {type: embedded, must: [create, update]}
+      items.purchasePrice: {type: embedded, ops: [create, update], proven: [create, update]}
       items.purchasePrice.amount: {type: decimal}
       items.purchasePrice.currency: {type: string}
       items.contributionMargin: {type: decimal}
-      items.discountPercent: {type: decimal, must: [create, update]}
-      items.taxRate:
-        type: string
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Deviating tax rate per position. Upstream derives the line tax from the product's
-              tax class and the customer's tax rule; v3 accepts taxRate on a line item, answers
-              2xx and keeps its own value — measured on mvp 2026-08-01 (sent "reduced", read
-              back "standard", on create and on update alike). Needs a real write path upstream.
+      items.discountPercent: {type: decimal, ops: [create, update], proven: [create, update]}
+      items.taxRate: {type: string}
       items.totals: {type: embedded}
       items.totals.net: {type: string}
       items.totals.gross: {type: string}
@@ -436,7 +214,7 @@ documents:
       items.availability.stockManaged: {type: boolean}
       items.availability.onHand: {type: decimal}
       items.availability.deliverable: {type: decimal}
-      currency: {type: string, must: [create, update]}
+      currency: {type: string, ops: [create, update], proven: [create, update]}
       totals: {type: embedded}
       totals.currency: {type: string}
       totals.net: {type: string}
@@ -447,37 +225,22 @@ documents:
       totals.taxes.base: {type: string}
       totals.taxes.amount: {type: string}
       payment: {type: embedded}
-      payment.method: {type: reference, ref: PaymentMethod, must: [create, update]}
+      payment.method: {type: reference, ref: PaymentMethod, ops: [create, update]}
       payment.terms: {type: embedded}
-      payment.terms.dueDays: {type: integer, must: [create, update]}
-      payment.terms.discountPercent: {type: decimal, must: [create, update]}
-      payment.terms.discountDays: {type: integer, must: [create, update]}
+      payment.terms.dueDays: {type: integer, ops: [create, update], proven: [update]}
+      payment.terms.discountPercent: {type: decimal, ops: [create, update], proven: [update]}
+      payment.terms.discountDays: {type: integer, ops: [create, update], proven: [update]}
       payment.status: {type: select}
       shipping: {type: embedded}
-      shipping.method:
-        type: reference
-        ref: ShippingMethod
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            contested: [create, update]
-            reason: >-
-              Carrier / shipping method — core to fulfilment; must be selectable per order.
+      shipping.method: {type: reference, ref: ShippingMethod, ops: [create, update]}
       shipping.status: {type: select}
       shipping.cost: {type: embedded}
       shipping.cost.amount: {type: string}
       shipping.cost.currency: {type: string}
       fulfillmentPolicy: {type: embedded}
-      fulfillmentPolicy.auto: {type: boolean, must: [create, update]}
-      fulfillmentPolicy.priority: {type: select, must: [create, update]}
-      fulfillmentPolicy.partialShipping:
-        type: select
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Partial-shipping policy has no upstream slot — the read reports a hardcoded
-              "allowed". Needs a real v3 field before it can be written or trusted.
+      fulfillmentPolicy.auto: {type: boolean, ops: [create, update], proven: [update]}
+      fulfillmentPolicy.priority: {type: select, ops: [create, update], proven: [update], options: [normal, high]}
+      fulfillmentPolicy.partialShipping: {type: select}
       holds: {type: collection}
       holds.type: {type: string}
       holds.state: {type: string}
@@ -485,9 +248,9 @@ documents:
       trafficLights.id: {type: string}
       trafficLights.state: {type: string}
       texts: {type: embedded}
-      texts.intro: {type: string, must: [create, update]}
-      texts.outro: {type: string, must: [create, update]}
-      note: {type: string, must: [create, update]}
+      texts.intro: {type: string, ops: [create, update], proven: [create, update]}
+      texts.outro: {type: string, ops: [create, update], proven: [create, update]}
+      note: {type: string, ops: [create, update], proven: [create, update]}
       documents: {type: embedded}
       documents.quote: {type: reference, ref: Quote}
       documents.deliveryNotes: {type: collection}
@@ -496,44 +259,15 @@ documents:
       documents.salesInvoices: {type: collection}
       documents.salesInvoices.id: {type: string}
       documents.salesInvoices.number: {type: string}
-      tags: {type: tag, must: [create, update, filter]}
-      writeProtection: {type: boolean, must: [filter]}
-      discounts:
-        type: collection
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Header discounts/vouchers (e-commerce) are not exposed by v3 salesOrders — only
-              line-level discounts exist.
+      tags: {type: tag, ops: [create, update, filter], proven: [create, update, filter]}
+      writeProtection: {type: boolean, ops: [filter], proven: [filter]}
+      discounts: {type: collection}
       discounts.kind: {type: string}
       discounts.description: {type: string}
       discounts.amount: {type: string}
-      customFields:
-        type: embedded
-        must: [create, update, filter]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Custom field values carry company-specific data — today only readable via include,
-              not writable via API (all documents).
-          - ops: [filter]
-            reason: >-
-              Companies segment and find orders by their own custom-field values.
-      createdAt: {type: datetime, must: [filter, sort]}
-      updatedAt: {type: datetime, must: [filter, sort]}
-      items.totals.tax:
-        missing: true
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Tax amount per line. v3 states only taxRate and effectiveTaxRate on a line — no
-              money figure — so the tax a position carries cannot be read. The core will not
-              derive it from gross minus net: that is a number Xentral never stated, and
-              line-level rounding against the legacy PDF (projekt.preisberechnung) is still an
-              open decision, so a derived value could silently disagree with the printed
-              document. Per-rate tax exists on the document totals; the line needs its own.
+      customFields: {type: embedded}
+      createdAt: {type: datetime, ops: [filter, sort], proven: [filter, sort]}
+      updatedAt: {type: datetime, ops: [filter, sort], proven: [filter]}
     can:
       createSalesInvoice: {evidence: executed}
       split: {evidence: reachable}
@@ -542,12 +276,12 @@ documents:
       sendConfirmation: {evidence: reachable}
       addTag: {evidence: pass, params: [title]}
       removeTag: {evidence: pass, params: [title]}
+      setWriteProtection: {evidence: null}
+      removeWriteProtection: {evidence: null}
       release: {evidence: reachable}
       close: {evidence: reachable}
       cancel: {evidence: reachable}
       dispatch: {evidence: reachable}
-      setWriteProtection: {evidence: null}
-      removeWriteProtection: {evidence: null}
     cannot:
       createDeliveryNote: >-
         v1 dispatch couples delivery-note creation with shipping side-effects; a clean
@@ -569,87 +303,36 @@ documents:
     fields:
       object: {type: string}
       id: {type: string}
-      number:
-        type: string
-        must: [create, filter, sort, search]
-        gaps:
-          - ops: [create]
-            reason: >-
-              Carrying a delivery note number over from another system. The v3 create does not
-              declare documentNumber for this document type and ignores a supplied value without
-              an error, so the core refuses it instead. salesOrder, invoice and creditNote do
-              accept one.
-      status: {type: select, must: [filter], options: [draft, picking, shipped, delivered, cancelled]}
-      customer:
-        type: reference
-        ref: Customer
-        required: true
-        must: [create, update, filter]
-        gaps:
-          - ops: [update]
-            reason: >-
-              Reassign the delivery note's partner after creation — v3 accepts it only on
-              create.
+      number: {type: string, ops: [filter, sort, search], proven: [filter, sort, search]}
+      status: {type: select, ops: [filter], proven: [filter], options: [draft, picking, shipped, delivered, cancelled]}
+      customer: {type: reference, ref: Customer, required: true, ops: [create, filter], proven: [create, filter]}
       channel: {type: reference, ref: Channel}
-      project: {type: reference, ref: Project, must: [create, update]}
-      costCenter: {type: string, must: [create, update]}
+      project: {type: reference, ref: Project, ops: [create, update], proven: [create, update]}
+      costCenter: {type: string, ops: [create, update], proven: [create, update]}
       references: {type: embedded}
-      references.customerOrderNumber:
-        type: string
-        must: [create, update, filter, search]
-        gaps:
-          - ops: [create]
-            contested: [create]
-            reason: >-
-              The customer's PO number on the delivery note (B2B) — read-only upstream today;
-              must be settable.
-          - ops: [search]
-            contested: [create]
-            reason: >-
-              Warehouse/support find a delivery note by the customer's PO number.
+      references.customerOrderNumber: {type: string, ops: [create, update, filter], proven: [update]}
       dates: {type: embedded}
-      dates.issued: {type: date, must: [create, update, filter, sort]}
+      dates.issued: {type: date, ops: [create, update, filter, sort], proven: [create, update, filter, sort]}
       dates.shipped: {type: date}
       dates.delivered: {type: date}
-      warehouse:
-        type: reference
-        ref: Warehouse
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              The picking/shipping warehouse — must be selectable per delivery note, not fixed
-              to the default.
+      warehouse: {type: reference, ref: Warehouse}
       billingAddress: {type: embedded}
-      billingAddress.name: {type: string, must: [create, update]}
-      billingAddress.street: {type: string, must: [create, update]}
-      billingAddress.zip:
-        type: string
-        must: [create, update, search]
-        gaps:
-          - ops: [search]
-            reason: >-
-              Postal-code search — standard phone use-case for delivery lookups.
-      billingAddress.city: {type: string, must: [create, update]}
-      billingAddress.country: {type: string, must: [create, update]}
-      billingAddress.email: {type: string, must: [create, update]}
-      billingAddress.phone: {type: string, must: [create, update]}
-      billingAddress.vatId: {type: string, must: [create, update]}
-      items:
-        type: collection
-        must: [update]
-        gaps:
-          - ops: [update]
-            reason: >-
-              Adjust delivered positions/quantities after creation — the v3 update DTO carries
-              no line-item write path.
+      billingAddress.name: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.street: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.zip: {type: string, ops: [create, update], proven: [create, update, search]}
+      billingAddress.city: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.country: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.email: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.phone: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.vatId: {type: string, ops: [create, update], proven: [create, update]}
+      items: {type: collection}
       items.object: {type: string}
       items.id: {type: string}
       items.position: {type: integer}
       items.orderItem: {type: reference, ref: SalesOrder}
-      items.product: {type: reference, ref: Product, required: true, must: [create, filter]}
-      items.description: {type: string, must: [create]}
-      items.quantity: {type: embedded, required: true, must: [create]}
+      items.product: {type: reference, ref: Product, required: true, ops: [create, filter], proven: [create, filter]}
+      items.description: {type: string, ops: [create], proven: [create]}
+      items.quantity: {type: embedded, required: true, ops: [create], proven: [create]}
       items.quantity.value: {type: decimal}
       items.quantity.unit: {type: string}
       items.deliveredQuantity: {type: decimal}
@@ -658,78 +341,44 @@ documents:
       items.batches.quantity: {type: decimal}
       items.serialNumbers: {type: collection}
       items.serialNumbers.number: {type: string}
-      shipments:
-        type: collection
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Tracking numbers need a nachlade GET /v1/deliveryNotes/{id}/shipments — not yet
-              composed into the read payload.
+      shipments: {type: collection}
       shipments.id: {type: string}
       shipments.number: {type: string}
       shipments.name: {type: string}
       customs: {type: embedded}
-      customs.totalWeight:
-        type: embedded
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Total shipment weight for the customs declaration / carrier — needs to be
-              settable.
+      customs.totalWeight: {type: embedded}
       customs.totalWeight.value: {type: decimal}
       customs.totalWeight.unit: {type: string}
-      customs.incoterm:
-        type: string
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Incoterm for export shipments — a customs-declaration essential, not settable via
-              API today.
-      customs.note:
-        type: string
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Customs note for export paperwork.
+      customs.incoterm: {type: string}
+      customs.note: {type: string}
       texts: {type: embedded}
-      texts.intro: {type: string, must: [create, update]}
-      texts.outro: {type: string, must: [create, update]}
-      note: {type: string, must: [create, update]}
+      texts.intro: {type: string, ops: [create, update], proven: [create, update]}
+      texts.outro: {type: string, ops: [create, update], proven: [create, update]}
+      note: {type: string, ops: [create, update], proven: [create, update]}
       documents: {type: embedded}
-      documents.salesOrder: {type: reference, ref: SalesOrder, must: [filter]}
+      documents.salesOrder: {type: reference, ref: SalesOrder, ops: [filter], proven: [filter]}
       documents.salesInvoices: {type: collection}
       documents.salesInvoices.id: {type: string}
       documents.salesInvoices.number: {type: string}
       documents.returns: {type: collection}
       documents.returns.id: {type: string}
       documents.returns.number: {type: string}
-      tags: {type: tag, must: [create, update, filter]}
-      writeProtection: {type: boolean, must: [filter]}
-      customFields:
-        type: embedded
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Custom field values on the delivery note — today only readable via include, not
-              writable via API.
-      createdAt: {type: datetime, must: [filter, sort]}
-      updatedAt: {type: datetime, must: [filter, sort]}
+      tags: {type: tag, ops: [create, update, filter], proven: [create, update, filter]}
+      writeProtection: {type: boolean, ops: [filter], proven: [filter]}
+      customFields: {type: embedded}
+      createdAt: {type: datetime, ops: [filter, sort], proven: [filter, sort]}
+      updatedAt: {type: datetime, ops: [filter, sort], proven: [filter, sort]}
     can:
       createReturn: {evidence: reachable, params: [lineItems]}
       createSalesInvoice: {evidence: reachable}
       downloadPdf: {evidence: pass}
       addTag: {evidence: pass, params: [title]}
       removeTag: {evidence: pass, params: [title]}
+      setWriteProtection: {evidence: null}
+      removeWriteProtection: {evidence: null}
       release: {evidence: reachable}
       markDelivered: {evidence: reachable}
       cancel: {evidence: reachable}
-      setWriteProtection: {evidence: null}
-      removeWriteProtection: {evidence: null}
     cannot:
       createShipment: >-
         The carrier label API (printShippingLabel) is beta and not public.
@@ -744,58 +393,25 @@ documents:
     operations: [list, read]
     fields:
       object: {type: string}
-      id:
-        type: string
-        must: [create]
-        gaps:
-          - ops: [create]
-            reason: >-
-              Creating a shipment + label via the facade (POST /v1/shipments + createLabel
-              exists upstream) is not orchestrated here yet — needed for headless fulfilment.
-      status:
-        type: select
-        must: [read]
-        options: [label, handedOver, inTransit, delivered, exception, returned]
-        gaps:
-          - ops: [read]
-            reason: >-
-              The shipment lifecycle status is not exposed by v1 shipments — only sentAt exists.
+      id: {type: string}
+      status: {type: select, options: [label, handedOver, inTransit, delivered, exception, returned]}
       carrier: {type: string}
       trackingNumber: {type: string}
       trackingUrl: {type: string}
       labelUrl: {type: string}
-      weight:
-        type: embedded
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Package weight is not exposed by v1 shipments.
+      weight: {type: embedded}
       weight.value: {type: number}
       weight.unit: {type: string}
       packages: {type: collection}
       packages.trackingNumber: {type: string}
-      events:
-        type: collection
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Carrier tracking events are not exposed — needs a carrier-events feed.
+      events: {type: collection}
       events.at: {type: datetime}
       events.status: {type: string}
       events.location: {type: string}
       number: {type: string}
       shippingMethod: {type: reference, ref: ShippingMethod}
       tracking: {type: embedded}
-      tracking.number:
-        type: string
-        must: [search]
-        gaps:
-          - ops: [search]
-            reason: >-
-              Support looks up a shipment by tracking number — needs a filterable/searchable
-              upstream list parameter.
+      tracking.number: {type: string}
       tracking.link: {type: string}
       tracking.carrier: {type: string}
       dates: {type: embedded}
@@ -824,229 +440,107 @@ documents:
     fields:
       object: {type: string}
       id: {type: string}
-      number:
-        type: string
-        must: [create, update, filter, sort, search]
-        gaps:
-          - ops: [update]
-            reason: >-
-              Correcting a invoice number after the fact. The v3 create accepts one, but PATCH
-              has no slot for it — a number carried over from another system must be right the
-              first time.
-      status: {type: select, must: [filter], options: [draft, open, paid, partiallyCancelled, cancelled]}
+      number: {type: string, ops: [create, filter, sort, search], proven: [filter, sort, search]}
+      status: {type: select, ops: [filter], proven: [filter], options: [draft, open, paid, partiallyCancelled, cancelled]}
       fixedAt: {type: datetime}
-      customer:
-        type: reference
-        ref: Customer
-        required: true
-        must: [create, update, filter]
-        gaps:
-          - ops: [update]
-            reason: >-
-              Reassign the invoice's partner after creation — v3 accepts it only on create.
+      customer: {type: reference, ref: Customer, required: true, ops: [create, filter], proven: [create, filter]}
       channel: {type: reference, ref: Channel}
-      project: {type: reference, ref: Project, must: [create, update]}
-      costCenter: {type: string, must: [create, update]}
+      project: {type: reference, ref: Project, ops: [create, update], proven: [create, update]}
+      costCenter: {type: string, ops: [create, update], proven: [create, update]}
       references: {type: embedded}
-      references.customerOrderNumber:
-        type: string
-        must: [create, update, filter, search]
-        gaps:
-          - ops: [create]
-            contested: [create]
-            reason: >-
-              The customer's PO number on the invoice (B2B) — read-only upstream today; must be
-              settable and correctable.
-          - ops: [search]
-            contested: [create]
-            reason: >-
-              Support and accounting find invoices by the customer's PO number.
-      references.debtorAccountNumber:
-        type: string
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Deviating debtor account for the FiBu/DATEV export — settable when it differs from
-              the customer default.
+      references.customerOrderNumber: {type: string, ops: [create, update, filter], proven: [update]}
+      references.debtorAccountNumber: {type: string}
       dates: {type: embedded}
-      dates.issued: {type: date, must: [create, update, filter, sort]}
-      dates.serviceDate: {type: date, must: [create, update]}
+      dates.issued: {type: date, ops: [create, update, filter, sort], proven: [create, update, filter]}
+      dates.serviceDate: {type: date, ops: [create, update], proven: [create, update]}
       dates.servicePeriod: {type: string}
-      taxation: {type: select, must: [create, update]}
+      taxation: {type: select, ops: [create, update], proven: [create, update]}
       billingAddress: {type: embedded}
-      billingAddress.name: {type: string, must: [create, update]}
-      billingAddress.street: {type: string, must: [create, update]}
-      billingAddress.zip: {type: string, must: [create, update]}
-      billingAddress.city: {type: string, must: [create, update]}
-      billingAddress.country: {type: string, must: [create, update]}
-      billingAddress.email:
-        type: string
-        must: [create, update, search]
-        gaps:
-          - ops: [search]
-            reason: >-
-              Email search — standard use-case for finding a customer's invoices.
-      billingAddress.phone: {type: string, must: [create, update]}
-      billingAddress.vatId: {type: string, must: [create, update]}
+      billingAddress.name: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.street: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.zip: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.city: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.country: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.email: {type: string, ops: [create, update], proven: [create, update, search]}
+      billingAddress.phone: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.vatId: {type: string, ops: [create, update], proven: [create, update]}
       items: {type: collection}
       items.object: {type: string}
       items.id: {type: string}
       items.position: {type: integer}
       items.orderItem: {type: reference, ref: SalesOrder}
-      items.product: {type: reference, ref: Product, required: true, must: [create, filter]}
-      items.description: {type: string, must: [create, update]}
-      items.quantity: {type: embedded, required: true, must: [create, update]}
+      items.product: {type: reference, ref: Product, required: true, ops: [create, filter], proven: [create, filter]}
+      items.description: {type: string, ops: [create, update], proven: [create]}
+      items.quantity: {type: embedded, required: true, ops: [create, update], proven: [create, update]}
       items.quantity.value: {type: decimal}
       items.quantity.unit: {type: string}
-      items.unitPrice: {type: embedded, must: [create, update]}
+      items.unitPrice: {type: embedded, ops: [create, update], proven: [create, update]}
       items.unitPrice.amount: {type: decimal}
       items.unitPrice.currency: {type: string}
-      items.discountPercent: {type: decimal, must: [create, update]}
-      items.purchasePrice: {type: embedded, must: [create, update]}
+      items.discountPercent: {type: decimal, ops: [create, update], proven: [create, update]}
+      items.purchasePrice: {type: embedded, ops: [create, update], proven: [create, update]}
       items.purchasePrice.amount: {type: decimal}
       items.purchasePrice.currency: {type: string}
       items.contributionMargin: {type: decimal}
-      items.taxRate:
-        type: string
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Deviating tax rate per position. Upstream derives the line tax from the product's
-              tax class and the customer's tax rule; v3 accepts taxRate on a line item, answers
-              2xx and keeps its own value — measured on mvp 2026-08-01 (sent "reduced", read
-              back "standard", on create and on update alike). Needs a real write path upstream.
+      items.taxRate: {type: string}
       items.totals: {type: embedded}
       items.totals.net: {type: string}
       items.totals.gross: {type: string}
-      currency: {type: string, must: [create, update]}
+      currency: {type: string, ops: [create, update], proven: [create, update]}
       totals: {type: embedded}
       totals.currency: {type: string}
       totals.net: {type: string}
       totals.gross: {type: string}
       totals.paid: {type: string}
-      totals.outstanding:
-        type: string
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Exact open amount needs readable payment↔invoice allocations (docs/05 #2); today
-              only derived from paymentStatus.
+      totals.outstanding: {type: string}
       payment: {type: embedded}
-      payment.method:
-        type: reference
-        ref: PaymentMethod
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Payment method on the invoice — central to order-to-cash; frequently overridden.
+      payment.method: {type: reference, ref: PaymentMethod}
       payment.terms: {type: embedded}
-      payment.terms.dueDays:
-        type: integer
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Net payment term in days — drives the due date and dunning.
-      payment.terms.discountPercent:
-        type: decimal
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Cash-discount percentage — standard DACH B2B.
-      payment.terms.discountDays:
-        type: integer
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Cash-discount period in days — pairs with the discount.
+      payment.terms.dueDays: {type: integer}
+      payment.terms.discountPercent: {type: decimal}
+      payment.terms.discountDays: {type: integer}
       payment.dueDate: {type: date}
       payment.discountDate: {type: date}
-      payment.status: {type: select, must: [filter], options: [unpaid, partiallyPaid, paid]}
+      payment.status: {type: select, ops: [filter], proven: [filter], options: [unpaid, partiallyPaid, paid]}
       payment.payments: {type: collection}
       payment.payments.id: {type: string}
       payment.payments.number: {type: string}
       dunning: {type: embedded}
-      dunning.level: {type: select, must: [create, update]}
-      dunning.blocked:
-        type: boolean
-        must: [create, update]
-        gaps:
-          - ops: [update]
-            contested: [update]
-            reason: >-
-              Block/unblock dunning per invoice — a core AR control not writable upstream today.
+      dunning.level: {type: select, ops: [create, update], proven: [update], options: [paymentReminder1, reminder1, reminder2, reminder3, debtCollection, lossOfReceivables]}
+      dunning.blocked: {type: boolean, ops: [create, update], proven: [update]}
       dunning.lastReminderAt: {type: datetime}
-      dunning.note:
-        type: string
-        must: [create, update]
-        gaps:
-          - ops: [update]
-            contested: [update]
-            reason: >-
-              A dunning note for the AR clerk — must be writable.
-      eInvoice:
-        type: embedded
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              The finished ZUGFeRD/XRechnung artefact + delivery status is a missing upstream
-              API (docs/05 #7) — only XML raw data exists today.
+      dunning.note: {type: string, ops: [create, update], proven: [update]}
+      eInvoice: {type: embedded}
       eInvoice.format: {type: string}
       eInvoice.status: {type: string}
       eInvoice.buyerReference: {type: string}
       eInvoice.downloadUrl: {type: string}
       texts: {type: embedded}
-      texts.intro: {type: string, must: [create, update]}
-      texts.outro: {type: string, must: [create, update]}
-      note: {type: string, must: [create, update]}
+      texts.intro: {type: string, ops: [create, update], proven: [create, update]}
+      texts.outro: {type: string, ops: [create, update], proven: [create, update]}
+      note: {type: string, ops: [create, update], proven: [create, update]}
       documents: {type: embedded}
-      documents.salesOrder: {type: reference, ref: SalesOrder, must: [filter]}
+      documents.salesOrder: {type: reference, ref: SalesOrder, ops: [filter], proven: [filter]}
       documents.deliveryNotes: {type: collection}
       documents.deliveryNotes.id: {type: string}
       documents.deliveryNotes.number: {type: string}
       documents.creditNotes: {type: collection}
       documents.creditNotes.id: {type: string}
       documents.creditNotes.number: {type: string}
-      tags: {type: tag, must: [create, update, filter]}
-      writeProtection: {type: boolean, must: [filter]}
-      customFields:
-        type: embedded
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Custom field values on the invoice — today only readable via include, not writable
-              via API.
-      createdAt: {type: datetime, must: [filter, sort]}
-      updatedAt: {type: datetime, must: [filter, sort]}
-      items.totals.tax:
-        missing: true
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Tax amount per line. v3 states only taxRate and effectiveTaxRate on a line — no
-              money figure — so the tax a position carries cannot be read. The core will not
-              derive it from gross minus net: that is a number Xentral never stated, and
-              line-level rounding against the legacy PDF (projekt.preisberechnung) is still an
-              open decision, so a derived value could silently disagree with the printed
-              document. Per-rate tax exists on the document totals; the line needs its own.
+      tags: {type: tag, ops: [create, update, filter], proven: [create, update, filter]}
+      writeProtection: {type: boolean, ops: [filter], proven: [filter]}
+      customFields: {type: embedded}
+      createdAt: {type: datetime, ops: [filter, sort], proven: [filter, sort]}
+      updatedAt: {type: datetime, ops: [filter, sort], proven: [filter]}
     can:
       send: {evidence: reachable}
       downloadPdf: {evidence: pass}
       addTag: {evidence: pass, params: [title]}
       removeTag: {evidence: pass, params: [title]}
-      release: {evidence: reachable}
-      cancel: {evidence: executed}
       setWriteProtection: {evidence: null}
       removeWriteProtection: {evidence: null}
+      release: {evidence: reachable}
+      cancel: {evidence: executed}
     cannot:
       registerPayment: >-
         The payments API is not public — no endpoint to register an incoming payment.
@@ -1064,14 +558,7 @@ documents:
     operations: [list, read]
     fields:
       object: {type: string}
-      id:
-        type: string
-        must: [list]
-        gaps:
-          - ops: [list]
-            reason: >-
-              No payment LIST/filter exists upstream — only GET /paymentTransactions/{id}
-              (docs/05 #2). GET /v3/payments with filters is the ask.
+      id: {type: string}
       direction: {type: select, options: [incoming, outgoing]}
       date: {type: date}
       fees: {type: embedded}
@@ -1079,28 +566,14 @@ documents:
       fees.currency: {type: string}
       unallocated: {type: string}
       number: {type: string}
-      kind:
-        type: select
-        must: [read, filter]
-        options: [incoming, outgoing, refund, chargeback]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Payout/settlement aggregation (fees, chargebacks) per provider needs docs/05 #8.
+      kind: {type: select, ops: [filter], options: [incoming, outgoing, refund, chargeback]}
       amount: {type: embedded}
       amount.amount: {type: string}
       amount.currency: {type: string}
       method: {type: reference, ref: PaymentMethod}
-      reference: {type: string, must: [search]}
-      bookedAt: {type: datetime, must: [filter, sort]}
-      allocations:
-        type: collection
-        must: [read, update]
-        gaps:
-          - ops: [read, update]
-            reason: >-
-              Payment↔invoice allocations (n:m) are neither readable nor writable — without them
-              exact outstanding amounts are impossible (docs/05 #2).
+      reference: {type: string, ops: [search]}
+      bookedAt: {type: datetime, ops: [filter, sort]}
+      allocations: {type: collection}
       allocations.invoice: {type: reference, ref: SalesInvoice}
       allocations.amount: {type: embedded}
       allocations.amount.amount: {type: string}
@@ -1120,150 +593,69 @@ documents:
     fields:
       object: {type: string}
       id: {type: string}
-      number:
-        type: string
-        must: [create, filter, sort, search]
-        gaps:
-          - ops: [create]
-            reason: >-
-              Carrying a return number over from another system. The v3 create does not declare
-              documentNumber for this document type and ignores a supplied value without an
-              error, so the core refuses it instead. salesOrder, invoice and creditNote do
-              accept one.
-      status: {type: select, must: [filter], options: [requested, received, checked, settled, cancelled]}
-      progress: {type: select, must: [filter]}
-      customer:
-        type: reference
-        ref: Customer
-        required: true
-        must: [create, update, filter]
-        gaps:
-          - ops: [update]
-            reason: >-
-              Reassign the partner after creation — v3 accepts it only on create.
-      project: {type: reference, ref: Project, must: [create, update]}
+      number: {type: string, ops: [filter, sort, search], proven: [filter, sort, search]}
+      status: {type: select, ops: [filter], options: [requested, received, checked, settled, cancelled]}
+      progress: {type: select, ops: [filter], proven: [filter], options: [requested, received, checked, settled]}
+      customer: {type: reference, ref: Customer, required: true, ops: [create, filter], proven: [create, filter]}
+      project: {type: reference, ref: Project, ops: [create, update], proven: [create, update]}
       references: {type: embedded}
-      references.rmaNumber:
-        type: string
-        must: [create, update, search]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              The RMA number the customer quotes — no upstream field today; core to returns
-              handling.
-          - ops: [search]
-            reason: >-
-              Support finds a return by the RMA number the customer has.
-      references.customerOrderNumber:
-        type: string
-        must: [create, update, filter]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              The customer's PO number on the return — read-only upstream today.
+      references.rmaNumber: {type: string}
+      references.customerOrderNumber: {type: string, ops: [filter], proven: [filter]}
       dates: {type: embedded}
-      dates.requested: {type: date, must: [create, update, filter, sort]}
+      dates.requested: {type: date, ops: [create, update, filter, sort], proven: [create, update, filter]}
       dates.received: {type: date}
       dates.settled: {type: date}
-      warehouse:
-        type: reference
-        ref: Warehouse
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              The returns warehouse must be selectable per return.
+      warehouse: {type: reference, ref: Warehouse}
       billingAddress: {type: embedded}
-      billingAddress.name: {type: string, must: [create, update]}
-      billingAddress.street: {type: string, must: [create, update]}
-      billingAddress.zip: {type: string, must: [create, update]}
-      billingAddress.city: {type: string, must: [create, update]}
-      billingAddress.country: {type: string, must: [create, update]}
-      billingAddress.email: {type: string, must: [create, update]}
-      billingAddress.phone: {type: string, must: [create, update]}
-      billingAddress.vatId: {type: string, must: [create, update]}
-      items:
-        type: collection
-        must: [update]
-        gaps:
-          - ops: [update]
-            reason: >-
-              Edit return positions after creation — the v3 update DTO carries no line-item
-              write path.
+      billingAddress.name: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.street: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.zip: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.city: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.country: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.email: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.phone: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.vatId: {type: string, ops: [create, update], proven: [create, update]}
+      items: {type: collection}
       items.object: {type: string}
       items.id: {type: string}
       items.position: {type: integer}
       items.deliveryNoteItem: {type: reference, ref: DeliveryNote}
-      items.product: {type: reference, ref: Product, required: true, must: [create, filter]}
-      items.quantity: {type: embedded, required: true, must: [create]}
+      items.product: {type: reference, ref: Product, required: true, ops: [create, filter], proven: [create, filter]}
+      items.quantity: {type: embedded, required: true, ops: [create], proven: [create]}
       items.quantity.value: {type: decimal}
       items.quantity.unit: {type: string}
-      items.reason:
-        type: reference
-        ref: ReturnReason
-        required: true
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            contested: [create]
-            reason: >-
-              The return reason per line — essential for returns analytics; not settable via API
-              today.
-      items.condition:
-        type: select
-        must: [read, create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Item condition (resellable/damaged/disposal) drives restocking — not in the v3
-              payload yet.
-          - ops: [read]
-            reason: >-
-              Item condition is not surfaced by the v3 return payload yet (docs/05 #4
-              batch/trace family).
-      items.action:
-        type: select
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Resolution per line (credit/replace/repair) — not in the v3 payload yet.
+      items.reason: {type: reference, ref: ReturnReason, required: true, ops: [create]}
+      items.condition: {type: select}
+      items.action: {type: select}
       items.receivedQuantity: {type: decimal}
       items.creditedQuantity: {type: decimal}
       resolution: {type: embedded}
       resolution.creditNote: {type: reference, ref: CreditNote}
       resolution.replacementOrder: {type: reference, ref: SalesOrder}
       texts: {type: embedded}
-      texts.intro: {type: string, must: [create, update]}
-      texts.outro: {type: string, must: [create, update]}
-      note: {type: string, must: [create, update]}
+      texts.intro: {type: string, ops: [create, update], proven: [create, update]}
+      texts.outro: {type: string, ops: [create, update], proven: [create, update]}
+      note: {type: string, ops: [create, update], proven: [create, update]}
       documents: {type: embedded}
-      documents.salesOrder: {type: reference, ref: SalesOrder, must: [create, filter]}
-      documents.deliveryNote: {type: reference, ref: DeliveryNote, must: [create]}
-      tags: {type: tag, must: [create, update, filter]}
-      writeProtection: {type: boolean, must: [filter]}
-      customFields:
-        type: embedded
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Custom field values on the return — today only readable via include, not writable
-              via API.
-      createdAt: {type: datetime, must: [filter, sort]}
-      updatedAt: {type: datetime, must: [filter, sort]}
+      documents.salesOrder: {type: reference, ref: SalesOrder, ops: [create, filter], proven: [filter]}
+      documents.deliveryNote: {type: reference, ref: DeliveryNote, ops: [create]}
+      tags: {type: tag, ops: [create, update, filter], proven: [create, update]}
+      writeProtection: {type: boolean, ops: [filter], proven: [filter]}
+      customFields: {type: embedded}
+      createdAt: {type: datetime, ops: [filter, sort], proven: [filter, sort]}
+      updatedAt: {type: datetime, ops: [filter, sort], proven: [filter, sort]}
     can:
       createFromDeliveryNote: {evidence: reachable, params: [deliveryNote, lineItems]}
       createCreditNote: {evidence: executed}
+      restock: {evidence: null, params: [date, items]}
       downloadPdf: {evidence: pass}
       addTag: {evidence: pass, params: [title]}
       removeTag: {evidence: pass, params: [title]}
+      setWriteProtection: {evidence: null}
+      removeWriteProtection: {evidence: null}
       release: {evidence: reachable}
       settle: {evidence: reachable}
       cancel: {evidence: reachable}
-      setWriteProtection: {evidence: null}
-      removeWriteProtection: {evidence: null}
-      restock: {evidence: null, params: [date, items]}
     cannot:
       sendReturnLabel: >-
         Return labels run through the beta carrier label API — not public.
@@ -1280,161 +672,83 @@ documents:
     fields:
       object: {type: string}
       id: {type: string}
-      number:
-        type: string
-        must: [create, update, filter, sort, search]
-        gaps:
-          - ops: [update]
-            reason: >-
-              Correcting a credit note number after the fact. The v3 create accepts one, but
-              PATCH has no slot for it — a number carried over from another system must be right
-              the first time.
-      status: {type: select, must: [filter], options: [draft, open, settled, cancelled]}
+      number: {type: string, ops: [create, filter, sort, search], proven: [filter, sort, search]}
+      status: {type: select, ops: [filter], proven: [filter], options: [draft, open, settled, cancelled]}
       kind: {type: select, options: [correction, cancellation]}
-      customer:
-        type: reference
-        ref: Customer
-        required: true
-        must: [create, update, filter]
-        gaps:
-          - ops: [update]
-            reason: >-
-              Reassign the partner after creation — v3 accepts it only on create.
-      project: {type: reference, ref: Project, must: [create, update]}
-      costCenter: {type: string, must: [create, update]}
+      customer: {type: reference, ref: Customer, required: true, ops: [create, filter], proven: [create, filter]}
+      project: {type: reference, ref: Project, ops: [create, update], proven: [create, update]}
+      costCenter: {type: string, ops: [create, update], proven: [create, update]}
       references: {type: embedded}
-      references.customerOrderNumber:
-        type: string
-        must: [create, update, filter]
-        gaps:
-          - ops: [create]
-            contested: [create]
-            reason: >-
-              The customer's PO number on the credit note (B2B) — read-only upstream today.
-      references.debtorAccountNumber:
-        type: string
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Deviating debtor account for the FiBu/DATEV export of the credit note.
+      references.customerOrderNumber: {type: string, ops: [create, update, filter], proven: [update, filter]}
+      references.debtorAccountNumber: {type: string}
       dates: {type: embedded}
-      dates.issued: {type: date, must: [create, update, filter, sort]}
-      dates.serviceDate:
-        type: date
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Leistungsdatum — a §14 UStG mandatory field on the credit note; must be settable.
-      taxation: {type: select, must: [create, update]}
+      dates.issued: {type: date, ops: [create, update, filter, sort], proven: [create, update, filter, sort]}
+      dates.serviceDate: {type: date}
+      taxation: {type: select, ops: [create, update], proven: [create, update]}
       billingAddress: {type: embedded}
-      billingAddress.name: {type: string, must: [create, update]}
-      billingAddress.street: {type: string, must: [create, update]}
-      billingAddress.zip: {type: string, must: [create, update]}
-      billingAddress.city: {type: string, must: [create, update]}
-      billingAddress.country: {type: string, must: [create, update]}
-      billingAddress.email: {type: string, must: [create, update]}
-      billingAddress.phone: {type: string, must: [create, update]}
-      billingAddress.vatId: {type: string, must: [create, update]}
+      billingAddress.name: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.street: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.zip: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.city: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.country: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.email: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.phone: {type: string, ops: [create, update], proven: [create, update]}
+      billingAddress.vatId: {type: string, ops: [create, update], proven: [create, update]}
       items: {type: collection}
       items.object: {type: string}
       items.id: {type: string}
       items.position: {type: integer}
       items.invoiceItem: {type: reference, ref: SalesInvoice}
-      items.product: {type: reference, ref: Product, required: true, must: [create, filter]}
-      items.description: {type: string, must: [create, update]}
-      items.quantity: {type: embedded, required: true, must: [create, update]}
+      items.product: {type: reference, ref: Product, required: true, ops: [create, filter], proven: [create, filter]}
+      items.description: {type: string, ops: [create, update], proven: [create]}
+      items.quantity: {type: embedded, required: true, ops: [create, update], proven: [create, update]}
       items.quantity.value: {type: decimal}
       items.quantity.unit: {type: string}
-      items.unitPrice: {type: embedded, must: [create, update]}
+      items.unitPrice: {type: embedded, ops: [create, update], proven: [create, update]}
       items.unitPrice.amount: {type: decimal}
       items.unitPrice.currency: {type: string}
-      items.discountPercent: {type: decimal, must: [create, update]}
-      items.purchasePrice: {type: embedded, must: [create, update]}
+      items.discountPercent: {type: decimal, ops: [create, update], proven: [create, update]}
+      items.purchasePrice: {type: embedded, ops: [create, update], proven: [create, update]}
       items.purchasePrice.amount: {type: decimal}
       items.purchasePrice.currency: {type: string}
       items.contributionMargin: {type: decimal}
       items.totals: {type: embedded}
       items.totals.net: {type: string}
       items.totals.gross: {type: string}
-      items.taxRate:
-        type: string
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Deviating tax rate per position. Upstream derives the line tax from the product's
-              tax class and the customer's tax rule; v3 accepts taxRate on a line item, answers
-              2xx and keeps its own value — measured on mvp 2026-08-01 (sent "reduced", read
-              back "standard", on create and on update alike). Needs a real write path upstream.
-      currency: {type: string, must: [create, update]}
+      items.taxRate: {type: string}
+      currency: {type: string, ops: [create, update], proven: [create, update]}
       totals: {type: embedded}
       totals.currency: {type: string}
       totals.net: {type: string}
       totals.gross: {type: string}
       totals.settled: {type: string}
-      totals.outstanding:
-        type: string
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Exact open amount needs readable refund/offset allocations (docs/05 #2); today
-              derived from paymentStatus only.
+      totals.outstanding: {type: string}
       settlement: {type: embedded}
-      settlement.mode:
-        type: select
-        must: [create, update]
-        options: [refund, offset]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Refund vs offset-against-invoice is a per-credit-note decision — not settable
-              upstream today.
+      settlement.mode: {type: select, options: [refund, offset]}
       settlement.status: {type: select}
       settlement.payments: {type: collection}
       settlement.payments.id: {type: string}
       settlement.payments.number: {type: string}
       texts: {type: embedded}
-      texts.intro: {type: string, must: [create, update]}
-      texts.outro: {type: string, must: [create, update]}
-      note: {type: string, must: [create, update]}
+      texts.intro: {type: string, ops: [create, update], proven: [create, update]}
+      texts.outro: {type: string, ops: [create, update], proven: [create, update]}
+      note: {type: string, ops: [create, update], proven: [create, update]}
       documents: {type: embedded}
       documents.salesInvoice: {type: reference, ref: SalesInvoice}
       documents.return: {type: reference, ref: Return}
-      tags: {type: tag, must: [create, update, filter]}
-      writeProtection: {type: boolean, must: [filter]}
-      customFields:
-        type: embedded
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Custom field values on the credit note — today only readable via include, not
-              writable via API.
-      createdAt: {type: datetime, must: [filter, sort]}
-      updatedAt: {type: datetime, must: [filter, sort]}
-      items.totals.tax:
-        missing: true
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Tax amount per line. v3 states only taxRate and effectiveTaxRate on a line — no
-              money figure — so the tax a position carries cannot be read. The core will not
-              derive it from gross minus net: that is a number Xentral never stated, and
-              line-level rounding against the legacy PDF (projekt.preisberechnung) is still an
-              open decision, so a derived value could silently disagree with the printed
-              document. Per-rate tax exists on the document totals; the line needs its own.
+      tags: {type: tag, ops: [create, update, filter], proven: [create, update]}
+      writeProtection: {type: boolean, ops: [filter], proven: [filter]}
+      customFields: {type: embedded}
+      createdAt: {type: datetime, ops: [filter, sort], proven: [filter, sort]}
+      updatedAt: {type: datetime, ops: [filter, sort], proven: [filter, sort]}
     can:
       send: {evidence: reachable}
       downloadPdf: {evidence: pass}
       addTag: {evidence: pass, params: [title]}
       removeTag: {evidence: pass, params: [title]}
-      release: {evidence: reachable}
       setWriteProtection: {evidence: null}
       removeWriteProtection: {evidence: null}
+      release: {evidence: reachable}
     cannot:
       registerRefund: >-
         The payments API is not public — no endpoint to register an outgoing refund.
@@ -1450,120 +764,47 @@ documents:
     fields:
       object: {type: string}
       id: {type: string}
-      number:
-        type: string
-        must: [create, filter, sort, search]
-        gaps:
-          - ops: [create]
-            reason: >-
-              Carrying a purchase order number over from another system. The v3 create does not
-              declare documentNumber for this document type and ignores a supplied value without
-              an error, so the core refuses it instead. salesOrder, invoice and creditNote do
-              accept one.
-      status: {type: select, must: [filter], options: [draft, sent, confirmed, received, closed, cancelled]}
-      supplier:
-        type: reference
-        ref: Supplier
-        required: true
-        must: [create, update, filter]
-        gaps:
-          - ops: [update]
-            reason: >-
-              Reassign the PO's supplier after creation — v3 accepts it only on create.
-      project: {type: reference, ref: Project, must: [create, update]}
-      costCenter: {type: string, must: [create]}
+      number: {type: string, ops: [filter, sort, search], proven: [filter, sort, search]}
+      status: {type: select, ops: [filter], proven: [filter], options: [draft, sent, confirmed, received, closed, cancelled]}
+      supplier: {type: reference, ref: Supplier, required: true, ops: [create, filter], proven: [create, filter]}
+      project: {type: reference, ref: Project, ops: [create, update], proven: [create, update]}
+      costCenter: {type: string, ops: [create], proven: [create]}
       references: {type: embedded}
-      references.ourCustomerNumber:
-        type: string
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Our customer number at the supplier — belongs on the PO, not settable via API
-              today.
-      references.supplierOfferNumber:
-        type: string
-        must: [create, update, filter]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              The supplier's quote number we ordered against — read-only upstream today.
+      references.ourCustomerNumber: {type: string}
+      references.supplierOfferNumber: {type: string, ops: [filter], proven: [filter]}
       confirmation: {type: embedded}
-      confirmation.status:
-        type: select
-        must: [update]
-        gaps:
-          - ops: [update]
-            reason: >-
-              Recording the confirmation status (pending/confirmed/deviating) is core purchasing
-              — not writable via API today.
-      confirmation.supplierOrderNumber:
-        type: string
-        must: [update]
-        gaps:
-          - ops: [update]
-            reason: >-
-              The AB (order-confirmation) number from the supplier — the whole confirmation
-              block is read-only upstream (docs/05: AB handling).
+      confirmation.status: {type: select}
+      confirmation.supplierOrderNumber: {type: string}
       confirmation.confirmedAt: {type: date}
       confirmation.via: {type: string}
       dates: {type: embedded}
-      dates.issued: {type: date, must: [create, update, filter, sort]}
-      dates.requestedDelivery:
-        type: date
-        must: [create, update, filter]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Requested delivery date at the supplier — not writable upstream today.
+      dates.issued: {type: date, ops: [create, update, filter, sort], proven: [create, update, filter, sort]}
+      dates.requestedDelivery: {type: date, ops: [filter], proven: [filter]}
       dates.confirmedDelivery: {type: date}
       deliveryAddress: {type: embedded}
-      deliveryAddress.name: {type: string, must: [create, update]}
-      deliveryAddress.street: {type: string, must: [create, update]}
-      deliveryAddress.zip: {type: string, must: [create, update]}
-      deliveryAddress.city: {type: string, must: [create, update]}
-      deliveryAddress.country: {type: string, must: [create, update]}
-      deliveryAddress.email: {type: string, must: [create, update]}
-      deliveryAddress.phone: {type: string, must: [create, update]}
-      deliveryAddress.vatId: {type: string, must: [create, update]}
-      warehouse:
-        type: reference
-        ref: Warehouse
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              The receiving warehouse for the PO must be selectable.
-      items:
-        type: collection
-        must: [update]
-        gaps:
-          - ops: [update]
-            reason: >-
-              Edit PO positions after creation — the v3 update DTO carries no line-item write
-              path.
+      deliveryAddress.name: {type: string, ops: [create, update], proven: [create, update]}
+      deliveryAddress.street: {type: string, ops: [create, update], proven: [create, update]}
+      deliveryAddress.zip: {type: string, ops: [create, update], proven: [create, update]}
+      deliveryAddress.city: {type: string, ops: [create, update], proven: [create, update]}
+      deliveryAddress.country: {type: string, ops: [create, update], proven: [create, update]}
+      deliveryAddress.email: {type: string, ops: [create, update], proven: [create, update]}
+      deliveryAddress.phone: {type: string, ops: [create, update], proven: [create, update]}
+      deliveryAddress.vatId: {type: string, ops: [create, update], proven: [create, update]}
+      warehouse: {type: reference, ref: Warehouse}
+      items: {type: collection}
       items.object: {type: string}
       items.id: {type: string}
       items.position: {type: integer}
-      items.product: {type: reference, ref: Product, required: true, must: [create, filter]}
-      items.supplierProductNumber: {type: string, must: [create]}
-      items.supplierProductName: {type: string, must: [create]}
-      items.quantity: {type: embedded, required: true, must: [create]}
+      items.product: {type: reference, ref: Product, required: true, ops: [create, filter], proven: [create, filter]}
+      items.supplierProductNumber: {type: string, ops: [create], proven: [create]}
+      items.supplierProductName: {type: string, ops: [create], proven: [create]}
+      items.quantity: {type: embedded, required: true, ops: [create], proven: [create]}
       items.quantity.value: {type: decimal}
       items.quantity.unit: {type: string}
-      items.unitPrice: {type: embedded, must: [create]}
+      items.unitPrice: {type: embedded, ops: [create], proven: [create]}
       items.unitPrice.amount: {type: decimal}
       items.unitPrice.currency: {type: string}
-      items.taxRate:
-        type: string
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Deviating tax rate per position. Upstream derives the line tax from the product's
-              tax class and the customer's tax rule; v3 accepts taxRate on a line item, answers
-              2xx and keeps its own value — measured on mvp 2026-08-01 (sent "reduced", read
-              back "standard", on create and on update alike). Needs a real write path upstream.
+      items.taxRate: {type: string}
       items.fulfillment: {type: embedded}
       items.fulfillment.received: {type: decimal}
       items.fulfillment.invoiced: {type: decimal}
@@ -1579,9 +820,9 @@ documents:
       payment.terms.discountPercent: {type: decimal}
       payment.terms.discountDays: {type: integer}
       texts: {type: embedded}
-      texts.intro: {type: string, must: [create, update]}
-      texts.outro: {type: string, must: [create, update]}
-      note: {type: string, must: [create, update]}
+      texts.intro: {type: string, ops: [create, update], proven: [create, update]}
+      texts.outro: {type: string, ops: [create, update], proven: [create, update]}
+      note: {type: string, ops: [create, update], proven: [create, update]}
       documents: {type: embedded}
       documents.goodsReceipts: {type: collection}
       documents.goodsReceipts.id: {type: string}
@@ -1589,40 +830,26 @@ documents:
       documents.purchaseInvoices: {type: collection}
       documents.purchaseInvoices.id: {type: string}
       documents.purchaseInvoices.number: {type: string}
-      tags: {type: tag, must: [create, update, filter]}
-      writeProtection: {type: boolean, must: [filter]}
+      tags: {type: tag, ops: [create, update, filter], proven: [create, update]}
+      writeProtection: {type: boolean, ops: [filter], proven: [filter]}
       printSettings: {type: embedded}
-      printSettings.withoutPrices: {type: boolean, must: [create, update]}
-      printSettings.requestConfirmation: {type: boolean, must: [create, update]}
-      dropship:
-        type: embedded
-        must: [read, create]
-        gaps:
-          - ops: [read, create]
-            reason: >-
-              Dropshipping (Strecke: salesOrder link + customer delivery address) is not exposed
-              via v3 purchaseOrders.
-      customFields:
-        type: embedded
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Custom field values on the PO — today only readable via include, not writable via
-              API.
-      createdAt: {type: datetime, must: [filter, sort]}
-      updatedAt: {type: datetime, must: [filter, sort]}
+      printSettings.withoutPrices: {type: boolean, ops: [create, update], proven: [update]}
+      printSettings.requestConfirmation: {type: boolean, ops: [create, update], proven: [update]}
+      dropship: {type: embedded}
+      customFields: {type: embedded}
+      createdAt: {type: datetime, ops: [filter, sort], proven: [filter, sort]}
+      updatedAt: {type: datetime, ops: [filter, sort], proven: [filter, sort]}
     can:
       send: {evidence: reachable}
+      createGoodsReceipt: {evidence: null, params: [date, items]}
       downloadPdf: {evidence: pass}
       addTag: {evidence: pass, params: [title]}
       removeTag: {evidence: pass, params: [title]}
+      setWriteProtection: {evidence: null}
+      removeWriteProtection: {evidence: null}
       release: {evidence: reachable}
       close: {evidence: reachable}
       cancel: {evidence: reachable}
-      setWriteProtection: {evidence: null}
-      removeWriteProtection: {evidence: null}
-      createGoodsReceipt: {evidence: null, params: [date, items]}
     cannot:
       recordConfirmation: >-
         Supplier order confirmations have no public endpoint.
@@ -1641,53 +868,16 @@ documents:
       object: {type: string}
       id: {type: string}
       references: {type: embedded}
-      references.supplierDeliveryNoteNumber:
-        type: string
-        must: [read, create, update]
-        gaps:
-          - ops: [create, update, read]
-            reason: >-
-              The supplier's delivery-note number on the goods receipt — needed for the
-              three-way match; not in the BF record yet.
+      references.supplierDeliveryNoteNumber: {type: string}
       dates: {type: embedded}
-      dates.received:
-        type: date
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Received/posted dates are not exposed — only createdAt/updatedAt exist on the BF
-              entity.
-      dates.posted:
-        type: date
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Received/posted dates are not exposed — only createdAt/updatedAt exist on the BF
-              entity.
-      number: {type: string, must: [filter, search]}
-      status:
-        type: select
-        must: [update, filter]
-        options: [open, posted, closed, cancelled]
-        gaps:
-          - ops: [update]
-            reason: >-
-              Cancel/storno of a posted goods receipt — the remaining upstream gap after the BF
-              entity list covered browsing (docs/05 #9 revised).
+      dates.received: {type: date}
+      dates.posted: {type: date}
+      number: {type: string, ops: [filter, search], proven: [filter, search]}
+      status: {type: select, ops: [filter], proven: [filter], options: [open, posted, closed, cancelled]}
       supplier: {type: reference, ref: Supplier}
       qualityCheck: {type: embedded}
       qualityCheck.status: {type: string}
-      items:
-        type: collection
-        must: [read, create, update]
-        gaps:
-          - ops: [read, create, update]
-            reason: >-
-              Line items (product × quantity × storage location, quality check per line) are not
-              exposed on the BF goodsReceipt record — creation still goes through the PO action
-              only.
+      items: {type: collection}
       items.product: {type: reference, ref: Product}
       items.quantity: {type: embedded}
       items.quantity.value: {type: decimal}
@@ -1698,8 +888,8 @@ documents:
       documents.returnOrder: {type: reference, ref: Return}
       documents.salesOrder: {type: reference, ref: SalesOrder}
       documents.parcelReceipt: {type: string}
-      createdAt: {type: datetime, must: [sort]}
-      updatedAt: {type: datetime, must: [sort]}
+      createdAt: {type: datetime, ops: [sort], proven: [sort]}
+      updatedAt: {type: datetime, ops: [sort], proven: [sort]}
     cannot:
       post: >-
         There is no posting TRANSITION: a goods receipt is booked at creation —
@@ -1721,122 +911,63 @@ documents:
     fields:
       object: {type: string}
       id: {type: string}
-      number:
-        type: string
-        must: [create, update, filter]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              The document number is system-assigned: sending `documentNumber` on create answers
-              201 and the record comes back with an empty number (measured on mvp 2026-08-02).
-              Same behaviour as the other documents.
-      status:
-        type: select
-        must: [filter]
-        options: [received, matched, approved, paid, rejected]
-        gaps:
-          - ops: [filter]
-            reason: >-
-              Filtering incoming invoices by workflow status is the AP daily view — the BF
-              supplierInvoice API does not allow filtering documentStatus today.
-      supplier: {type: reference, ref: Supplier, required: true, must: [create, update]}
+      number: {type: string, ops: [filter], proven: [filter]}
+      status: {type: select, options: [received, matched, approved, paid, rejected]}
+      supplier: {type: reference, ref: Supplier, required: true, ops: [create, update]}
       costCenter: {type: string}
       references: {type: embedded}
-      references.supplierInvoiceNumber: {type: string, must: [create, update, filter, search]}
-      references.externalReference: {type: string, must: [create, update]}
+      references.supplierInvoiceNumber: {type: string, ops: [create, update, filter, search], proven: [create, update, filter, search]}
+      references.externalReference: {type: string, ops: [create, update], proven: [update]}
       references.creditorAccountNumber: {type: string}
       dates: {type: embedded}
-      dates.invoiceDate:
-        type: date
-        must: [create, update, filter, sort]
-        gaps:
-          - ops: [sort]
-            reason: >-
-              Sorting incoming invoices by invoice date — dateOfSupplierInvoice is not sortable
-              on the BF API today.
-      dates.received: {type: date, must: [create, update, filter]}
-      dates.serviceDate: {type: date, must: [create, update]}
+      dates.invoiceDate: {type: date, ops: [create, update, filter], proven: [create, update, filter]}
+      dates.received: {type: date, ops: [create, update, filter], proven: [create, update, filter]}
+      dates.serviceDate: {type: date, ops: [create, update]}
       clarification: {type: embedded}
-      clarification.needed: {type: boolean, must: [create, update]}
-      clarification.reason: {type: string, must: [create, update]}
-      items: {type: collection, must: [create, update]}
+      clarification.needed: {type: boolean, ops: [create, update], proven: [create, update]}
+      clarification.reason: {type: string, ops: [create, update], proven: [create, update]}
+      items: {type: collection, ops: [create, update], proven: [create]}
       items.object: {type: string}
       items.id: {type: string}
-      items.product: {type: reference, ref: Product, must: [create, update]}
-      items.name: {type: string, must: [create, update]}
-      items.description: {type: string, must: [create, update]}
+      items.product: {type: reference, ref: Product, ops: [create, update]}
+      items.name: {type: string, ops: [create, update], proven: [update]}
+      items.description: {type: string, ops: [create, update]}
       items.quantity: {type: embedded}
-      items.quantity.value: {type: decimal, must: [create, update]}
-      items.quantity.unit: {type: string, must: [create, update]}
+      items.quantity.value: {type: decimal, ops: [create, update]}
+      items.quantity.unit: {type: string, ops: [create, update]}
       items.unitPrice: {type: embedded}
-      items.unitPrice.amount: {type: decimal, must: [create, update]}
-      items.unitPrice.currency: {type: string, must: [create, update]}
-      items.taxRate: {type: decimal, must: [create, update]}
-      currency: {type: string}
+      items.unitPrice.amount: {type: decimal, ops: [create, update]}
+      items.unitPrice.currency: {type: string, ops: [create, update]}
+      items.taxRate: {type: decimal, ops: [create, update], proven: [update]}
+      currency: {type: string, proven: [create]}
       totals: {type: embedded}
       totals.currency: {type: string}
       totals.gross: {type: string}
       totals.paid: {type: string}
       totals.outstanding: {type: string}
       match: {type: embedded}
-      match.status:
-        type: select
-        must: [update]
-        options: [pending, matched, mismatch]
-        gaps:
-          - ops: [update]
-            reason: >-
-              Re-running/overriding the match verdict via API (rematch) — the check statuses are
-              readable now; a command to re-evaluate is still missing upstream.
+      match.status: {type: select, options: [pending, matched, mismatch]}
       match.goodsCheck: {type: string}
       match.invoiceCheck: {type: string}
       match.purchaseOrder: {type: reference, ref: PurchaseOrder}
       payment: {type: embedded}
       payment.method: {type: string}
-      payment.dueDate: {type: date}
-      payment.discountUntil: {type: date}
+      payment.dueDate: {type: date, proven: [create]}
+      payment.discountUntil: {type: date, proven: [create]}
       payment.paidOn: {type: date}
-      payment.status:
-        type: select
-        must: [filter]
-        gaps:
-          - ops: [filter]
-            reason: >-
-              Open-liabilities view needs filtering by payment status — not allowed on the BF
-              supplierInvoice API today.
+      payment.status: {type: select}
       files: {type: collection}
       files.id: {type: string}
       files.name: {type: string}
       documents: {type: embedded}
       documents.purchaseOrder: {type: reference, ref: PurchaseOrder}
       approval: {type: embedded}
-      approval.status:
-        type: string
-        must: [update]
-        gaps:
-          - ops: [update]
-            reason: >-
-              Approve/reject via API: BF process steps (GoodsCheck/InvoiceCheck/Payment) are
-              reported to exist — wiring + live verification of those steps is pending (steps
-              were empty on the test instance's metadata).
-      approval.by:
-        type: reference
-        ref: User
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              The approver is not exposed — BF supplierInvoice carries only the check statuses.
-      approval.at:
-        type: datetime
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              The approval timestamp is not exposed by the BF supplierInvoice entity.
-      tags: {type: tag, must: [filter]}
-      createdAt: {type: datetime, must: [sort]}
-      updatedAt: {type: datetime, must: [sort]}
+      approval.status: {type: string}
+      approval.by: {type: reference, ref: User}
+      approval.at: {type: datetime}
+      tags: {type: tag, ops: [filter]}
+      createdAt: {type: datetime, ops: [sort], proven: [sort]}
+      updatedAt: {type: datetime, ops: [sort], proven: [sort]}
     cannot:
       approve: >-
         The BF InvoiceCheck/DocumentStatus process steps are readable, but the write transition
@@ -1859,88 +990,40 @@ documents:
     operations: [create]
     fields:
       object: {type: string}
-      id:
-        type: string
-        must: [read, list, create]
-        gaps:
-          - ops: [list, read]
-            reason: >-
-              The stock ledger (Lagerprotokoll) has NO read API at all — the single biggest gap
-              (docs/05 #1). GET /v3/stockMovements is the ask. Until it ships the entity does
-              not declare list/read at all, so a caller learns this from the contract instead of
-              a 404.
-          - ops: [create]
-            reason: >-
-              A booking returns no identity: the v1 storage-item endpoints answer 201 with an
-              empty body and — contrary to their own spec — send no Location header (verified on
-              mvp 2026-07-31). Without an id a repeated booking cannot be recognised afterwards,
-              which is why correction+setQuantityTo is the only retry-safe write. The ask:
-              return the specced Location header, or the created movement.
-      date: {type: datetime, must: [sort]}
-      type: {type: select, required: true, must: [create, filter], options: [receipt, issue, transfer, correction]}
-      product: {type: reference, ref: Product, required: true, must: [create, filter]}
-      quantity: {type: embedded, must: [create]}
-      quantity.value: {type: decimal, must: [create]}
-      quantity.unit: {type: string, must: [create]}
-      from: {type: reference, ref: StorageLocation, must: [create]}
-      to: {type: reference, ref: StorageLocation, must: [create]}
-      setQuantityTo: {type: decimal, must: [create]}
-      batch: {type: reference, ref: Batch, must: [create]}
-      unitCost:
-        type: embedded
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Movement valuation (unitCost at booking time) is required for GoBD-clean stock
-              accounting (ADR-009e) — nothing upstream.
+      id: {type: string}
+      date: {type: datetime, ops: [sort]}
+      type: {type: select, required: true, ops: [create, filter], options: [receipt, issue, transfer, correction]}
+      product: {type: reference, ref: Product, required: true, ops: [create, filter]}
+      quantity: {type: embedded, ops: [create]}
+      quantity.value: {type: decimal, ops: [create]}
+      quantity.unit: {type: string, ops: [create]}
+      from: {type: reference, ref: StorageLocation, ops: [create]}
+      to: {type: reference, ref: StorageLocation, ops: [create]}
+      setQuantityTo: {type: decimal, ops: [create]}
+      batch: {type: reference, ref: Batch, ops: [create]}
+      unitCost: {type: embedded}
       unitCost.amount: {type: string}
       unitCost.currency: {type: string}
-      source: {type: embedded, must: [create]}
+      source: {type: embedded, ops: [create]}
       source.document: {type: string}
       source.user: {type: reference, ref: User}
-      source.reason: {type: string, must: [create]}
-      bookedAt: {type: datetime, must: [filter, sort]}
+      source.reason: {type: string, ops: [create]}
+      bookedAt: {type: datetime, ops: [filter, sort]}
   StockTake:
     label: Stock take
     reviewed: null
     operations: [list, read]
     fields:
       object: {type: string}
-      id:
-        type: string
-        must: [create]
-        gaps:
-          - ops: [create]
-            reason: >-
-              Starting a stock take via API (scope: warehouse/locations/products, key date) —
-              the v1 inventory endpoints exist but the write orchestration is not built yet.
+      id: {type: string}
       dates: {type: embedded}
-      dates.keyDate:
-        type: date
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              The inventory key date (Stichtag) is not exposed by v1 inventoryRuns.
+      dates.keyDate: {type: date}
       dates.started: {type: datetime}
-      dates.posted:
-        type: datetime
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              The posted timestamp is not exposed by v1 inventoryRuns.
-      totals:
-        type: embedded
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Position/difference totals are not exposed by v1 inventoryRuns.
+      dates.posted: {type: datetime}
+      totals: {type: embedded}
       totals.positions: {type: integer}
       totals.differences: {type: integer}
-      name: {type: string, must: [filter]}
+      name: {type: string, ops: [filter], proven: [filter]}
       status: {type: select, options: [draft, counting, review, posted, cancelled]}
       warehouse: {type: reference, ref: Warehouse}
       scope: {type: embedded}
@@ -1948,42 +1031,20 @@ documents:
       people: {type: embedded}
       people.controller: {type: string}
       people.counter: {type: string}
-      positions:
-        type: collection
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Counting positions (expected/counted/difference with values) live in the
-              counting-list reports — not composed into the API payload yet; needed for the GoBD
-              difference review.
+      positions: {type: collection}
       positions.storageLocation: {type: reference, ref: StorageLocation}
       positions.product: {type: reference, ref: Product}
       positions.expected: {type: embedded}
       positions.expected.value: {type: decimal}
       positions.expected.unit: {type: string}
-      positions.counted:
-        type: embedded
-        must: [update]
-        gaps:
-          - ops: [update]
-            reason: >-
-              Submitting counted quantities via API (mobile counting) — needed for headless
-              inventory.
+      positions.counted: {type: embedded}
       positions.counted.value: {type: decimal}
       positions.counted.unit: {type: string}
       positions.difference: {type: embedded}
       positions.difference.value: {type: decimal}
       positions.difference.unit: {type: string}
       documents: {type: embedded}
-      documents.stockMovements:
-        type: collection
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Posted correction movements per stock take need the stockMovements API (docs/05
-              #1) to be traceable.
+      documents.stockMovements: {type: collection}
       documents.stockMovements.id: {type: string}
       createdAt: {type: datetime}
       updatedAt: {type: datetime}
@@ -2008,52 +1069,19 @@ documents:
     operations: [list, read]
     fields:
       object: {type: string}
-      id:
-        type: string
-        must: [create]
-        gaps:
-          - ops: [create]
-            reason: >-
-              Creating a picking run by criteria (wave: channel, shipping method, cutoff,
-              maxOrders) has NO upstream endpoint — the main gap (docs/05 #3); execution
-              (start/complete, totes) already exists.
-      criteria:
-        type: embedded
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Pick-run criteria (channel, shipping method) are not exposed by v1 pickLists.
+      id: {type: string}
+      criteria: {type: embedded}
       criteria.channel: {type: reference, ref: Channel}
       criteria.shippingMethod: {type: reference, ref: ShippingMethod}
-      orders:
-        type: collection
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              The picked sales orders are not exposed by v1 pickLists (only counts).
+      orders: {type: collection}
       orders.id: {type: string}
-      containers:
-        type: collection
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Totes/containers are not exposed by v1 pickLists.
+      containers: {type: collection}
       containers.name: {type: string}
       containers.barcode: {type: string}
       number: {type: string}
       name: {type: string}
-      status: {type: select, must: [filter], options: [draft, released, inProgress, picked, completed, cancelled]}
-      strategy:
-        type: select
-        must: [create]
-        gaps:
-          - ops: [create]
-            reason: >-
-              Choosing the picking strategy (single/multiOrder/wave/zone) at creation — no
-              create endpoint today.
+      status: {type: select, ops: [filter], proven: [filter], options: [draft, released, inProgress, picked, completed, cancelled]}
+      strategy: {type: select, options: [single, multiOrder, wave, zone]}
       warehouse: {type: reference, ref: Warehouse}
       assignedTo: {type: collection}
       assignedTo.name: {type: string}
@@ -2061,22 +1089,8 @@ documents:
       progress.deliveryNotes: {type: integer}
       progress.products: {type: integer}
       progress.totalWeight: {type: decimal}
-      tasks:
-        type: collection
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Task-level detail (location, product, quantity, status per pick) is not exposed on
-              the pickLists API — needed for progress boards and pick-path optimisation.
-      tasks.status:
-        type: select
-        must: [update]
-        gaps:
-          - ops: [update]
-            reason: >-
-              Granular task-level pick confirmation with quantity + scans (docs/05 #3) — today
-              only whole-list start/complete exists.
+      tasks: {type: collection}
+      tasks.status: {type: select}
       tasks.storageLocation: {type: reference, ref: StorageLocation}
       tasks.product: {type: reference, ref: Product}
       tasks.quantity: {type: embedded}
@@ -2113,244 +1127,86 @@ masterdata:
     fields:
       object: {type: string}
       id: {type: string}
-      number:
-        type: string
-        must: [create, update, filter, sort, search]
-        gaps:
-          - ops: [update]
-            reason: >-
-              Correcting a customer number after the fact. v3 accepts a number on POST but not
-              on PATCH, so a typo in a migrated number can only be fixed in the UI.
-      type:
-        type: select
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Customer vs. lead (Interessent). v2 has isLead, but no v3 customers payload
-              carries it — not in the record, not behind any allowed include — so the core
-              cannot set it without leaving v3. Roughly half a typical CRM migration is leads,
-              so they all land as customers today.
-      status:
-        type: select
-        must: [read, update]
-        options: [active, archived]
-        gaps:
-          - ops: [read, update]
-            reason: >-
-              Active/archived state is not exposed via v3 customers — needed for honest
-              archiving (plan §6.1).
-      parent:
-        type: reference
-        ref: Customer
-        must: [read, update]
-        gaps:
-          - ops: [read, update]
-            reason: >-
-              B2B hierarchy (branch → HQ) is not exposed via the public API (plan §6.1 parent).
-      billTo:
-        type: reference
-        ref: Customer
-        must: [read, update]
-        gaps:
-          - ops: [read, update]
-            reason: >-
-              Central billing (Zentralregulierung — invoice to association/HQ) is not exposed
-              (plan §6.1 billTo).
-      channels:
-        type: collection
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Per-channel external ids (channel links) are not exposed via the public API.
+      number: {type: string, ops: [create, filter, sort, search], proven: [filter, sort, search]}
+      type: {type: select}
+      status: {type: select, options: [active, archived]}
+      parent: {type: reference, ref: Customer}
+      billTo: {type: reference, ref: Customer}
+      channels: {type: collection}
       channels.channel: {type: reference, ref: Channel}
       channels.externalId: {type: string}
-      name: {type: string, required: true, must: [create, update, filter, sort, search]}
-      email: {type: string, must: [create, update, filter, search]}
-      phone: {type: string, must: [create, update]}
-      website: {type: string, must: [create, update]}
-      vatId: {type: string, must: [create, update]}
-      language: {type: string, must: [create, update]}
-      addresses: {type: collection, must: [create, update]}
+      name: {type: string, required: true, ops: [create, update, filter, sort, search], proven: [create, update, filter, sort, search]}
+      email: {type: string, ops: [create, update, filter, search], proven: [create, update, filter, search]}
+      phone: {type: string, ops: [create, update], proven: [create, update]}
+      website: {type: string, ops: [create, update], proven: [create, update]}
+      vatId: {type: string, ops: [create, update], proven: [create, update]}
+      language: {type: string, ops: [create, update], proven: [create, update]}
+      addresses: {type: collection, ops: [create, update], proven: [create, update]}
       addresses.id: {type: string}
-      addresses.type:
-        type: select
-        must: [create, update]
-        options: [billing, shipping, both]
-        gaps:
-          - ops: [create, update]
-            contested: [create, update]
-            reason: >-
-              Set the address role incl. the 'both' value (one address serving billing AND
-              shipping) — v3 splits billing (primaryAddress/deviating) vs shipping
-              (deliveryAddresses) by store, so the role is not a freely settable field.
-      addresses.label:
-        type: string
-        must: [read, create, update]
-        gaps:
-          - ops: [read, create, update]
-            contested: [create, update]
-            reason: >-
-              Free label/name per address location (e.g. 'Lager München') — v3 knows only
-              billing/shipping roles, no named locations.
-      addresses.isDefault:
-        type: boolean
-        must: [read, create, update]
-        gaps:
-          - ops: [read, create, update]
-            contested: [create, update]
-            reason: >-
-              Mark the standard address per type (unified-address model; at most one default per
-              customer & type) — v3 partner addresses carry no isDefault flag.
-      addresses.name: {type: string, must: [create, update]}
-      addresses.contactPerson: {type: string, must: [create, update]}
-      addresses.street: {type: string, must: [create, update, filter, sort, search]}
-      addresses.zip: {type: string, must: [create, update, filter, sort, search]}
-      addresses.city: {type: string, must: [create, update, filter, sort, search]}
-      addresses.state: {type: string, must: [create, update, filter, sort]}
-      addresses.country: {type: string, must: [create, update, filter, sort]}
-      addresses.gln: {type: string, must: [create, update]}
-      addresses.email: {type: string, must: [create, update]}
-      addresses.phone: {type: string, must: [create, update]}
-      contacts: {type: collection, must: [create, update]}
+      addresses.type: {type: select, ops: [create, update], options: [billing, shipping, both]}
+      addresses.label: {type: string, ops: [create, update]}
+      addresses.isDefault: {type: boolean, ops: [create, update]}
+      addresses.name: {type: string, ops: [create, update]}
+      addresses.contactPerson: {type: string, ops: [create, update]}
+      addresses.street: {type: string, ops: [create, update, filter, sort, search], proven: [filter, search]}
+      addresses.zip: {type: string, ops: [create, update, filter, sort, search], proven: [filter, search]}
+      addresses.city: {type: string, ops: [create, update, filter, sort, search], proven: [filter, search]}
+      addresses.state: {type: string, ops: [create, update, filter, sort], proven: [filter]}
+      addresses.country: {type: string, ops: [create, update, filter, sort], proven: [filter]}
+      addresses.gln: {type: string, ops: [create, update]}
+      addresses.email: {type: string, ops: [create, update]}
+      addresses.phone: {type: string, ops: [create, update]}
+      contacts: {type: collection, ops: [create, update], proven: [create, update]}
       contacts.id: {type: string}
-      contacts.type: {type: select, must: [create, update], options: [mr, mrs, company, other]}
-      contacts.name: {type: string, required: true, must: [create, update]}
-      contacts.title: {type: string, must: [create, update]}
-      contacts.salutation: {type: string, must: [create, update]}
-      contacts.position: {type: string, must: [create, update]}
-      contacts.department: {type: string, must: [create, update]}
-      contacts.subDepartment: {type: string, must: [create, update]}
-      contacts.email: {type: string, must: [create, update]}
-      contacts.phone: {type: string, must: [create, update]}
-      contacts.mobile: {type: string, must: [create, update]}
-      contacts.fax: {type: string, must: [create, update]}
-      contacts.language: {type: string, must: [create, update]}
-      contacts.birthday: {type: date, must: [create, update]}
-      contacts.allowMarketingEmails: {type: boolean, must: [create, update]}
-      contacts.remarks: {type: text, must: [create, update]}
-      contacts.internalNote: {type: text, must: [create, update]}
+      contacts.type: {type: select, ops: [create, update], options: [mr, mrs, company, other]}
+      contacts.name: {type: string, required: true, ops: [create, update]}
+      contacts.title: {type: string, ops: [create, update]}
+      contacts.salutation: {type: string, ops: [create, update]}
+      contacts.position: {type: string, ops: [create, update]}
+      contacts.department: {type: string, ops: [create, update]}
+      contacts.subDepartment: {type: string, ops: [create, update]}
+      contacts.email: {type: string, ops: [create, update]}
+      contacts.phone: {type: string, ops: [create, update]}
+      contacts.mobile: {type: string, ops: [create, update]}
+      contacts.fax: {type: string, ops: [create, update]}
+      contacts.language: {type: string, ops: [create, update]}
+      contacts.birthday: {type: date, ops: [create, update]}
+      contacts.allowMarketingEmails: {type: boolean, ops: [create, update]}
+      contacts.remarks: {type: text, ops: [create, update]}
+      contacts.internalNote: {type: text, ops: [create, update]}
       defaults: {type: embedded}
       defaults.currency: {type: string}
       defaults.language: {type: string}
-      defaults.paymentMethod:
-        type: reference
-        ref: PaymentMethod
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Default payment method per customer.
+      defaults.paymentMethod: {type: reference, ref: PaymentMethod}
       defaults.paymentTerms: {type: embedded}
-      defaults.paymentTerms.dueDays:
-        type: integer
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Default payment term for the customer — drives every order/invoice; must be
-              settable.
+      defaults.paymentTerms.dueDays: {type: integer}
       defaults.paymentTerms.discountPercent: {type: decimal}
       defaults.paymentTerms.discountDays: {type: integer}
-      defaults.taxation:
-        type: select
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Default taxation scheme (domestic/euB2B/euOss/export) per customer.
-      defaults.shippingMethod:
-        type: reference
-        ref: ShippingMethod
-        must: [read, update]
-        gaps:
-          - ops: [read, update]
-            reason: >-
-              The default shipping method is not surfaced by the v3 partner read.
-      defaults.priceList:
-        type: reference
-        ref: PriceList
-        must: [read, update]
-        gaps:
-          - ops: [read, update]
-            reason: >-
-              The assigned price list is not surfaced by the v3 partner read.
-      defaults.partialShipping:
-        type: select
-        must: [read, update]
-        gaps:
-          - ops: [read, update]
-            reason: >-
-              The partial-shipping preference is not surfaced by the v3 partner read.
+      defaults.taxation: {type: select}
+      defaults.shippingMethod: {type: reference, ref: ShippingMethod}
+      defaults.priceList: {type: reference, ref: PriceList}
+      defaults.partialShipping: {type: select}
       finance: {type: embedded}
-      finance.openAmount:
-        type: embedded
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Aggregated open amount per customer is computed nowhere in the API (docs/05 #14) —
-              must be derived/served.
+      finance.openAmount: {type: embedded}
       finance.openAmount.amount: {type: string}
       finance.openAmount.currency: {type: string}
-      finance.creditLimit:
-        type: embedded
-        must: [update]
-        gaps:
-          - ops: [update]
-            reason: >-
-              The customer credit limit — a core AR control; UI-only today, not writable via API
-              (docs/05 #14).
+      finance.creditLimit: {type: embedded}
       finance.creditLimit.amount: {type: string}
       finance.creditLimit.currency: {type: string}
-      finance.onHold:
-        type: boolean
-        must: [update]
-        gaps:
-          - ops: [update]
-            reason: >-
-              Put a customer on delivery/credit hold — UI-only today (docs/05 #14).
-      finance.dunningBlocked:
-        type: boolean
-        must: [update]
-        gaps:
-          - ops: [update]
-            reason: >-
-              Block dunning for a customer — UI-only today.
+      finance.onHold: {type: boolean}
+      finance.dunningBlocked: {type: boolean}
       finance.debtorAccountNumber: {type: string}
-      project: {type: reference, ref: Project, must: [create, update]}
-      channel: {type: reference, ref: Channel, must: [create, update]}
-      tags: {type: tag, must: [create, update, filter]}
-      notes: {type: text, must: [create, update]}
-      customFields:
-        type: collection
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Custom field values on the customer — today only readable, not writable via API.
-      customFields.key: {type: string, must: [create, update]}
-      customFields.label: {type: string, must: [create, update]}
+      project: {type: reference, ref: Project, ops: [create, update], proven: [update]}
+      channel: {type: reference, ref: Channel, ops: [create, update]}
+      tags: {type: tag, ops: [create, update, filter], proven: [update, filter]}
+      notes: {type: text, ops: [create, update]}
+      customFields: {type: collection}
+      customFields.key: {type: string, ops: [create, update]}
+      customFields.label: {type: string, ops: [create, update]}
       customFields.type: {type: string}
-      customFields.value: {type: string, must: [create, update]}
-      createdAt: {type: datetime, must: [filter, sort]}
-      updatedAt: {type: datetime, must: [filter, sort]}
-      contacts.address:
-        missing: true
-        must: [read, create, update]
-        gaps:
-          - ops: [read, create, update]
-            reason: >-
-              Bind a contact person to a specific address (person-at-location) — v3 stores only
-              a free-text contactPerson on delivery addresses, not a reference.
-      contacts.isPrimary:
-        missing: true
-        must: [read, create, update]
-        gaps:
-          - ops: [read, create, update]
-            reason: >-
-              Mark the main contact person — v3 contactPersons carry no primary flag.
+      customFields.value: {type: string, ops: [create, update]}
+      createdAt: {type: datetime, ops: [filter, sort], proven: [filter, sort]}
+      updatedAt: {type: datetime, ops: [filter, sort], proven: [filter, sort]}
     can:
       addTag: {evidence: pass, params: [title]}
       removeTag: {evidence: pass, params: [title]}
@@ -2376,222 +1232,88 @@ masterdata:
     fields:
       object: {type: string}
       id: {type: string}
-      number: {type: string, must: [filter, sort, search]}
+      number: {type: string, ops: [filter, sort, search], proven: [filter, sort, search]}
       type: {type: select}
-      status:
-        type: select
-        must: [read, update]
-        options: [active, archived]
-        gaps:
-          - ops: [read, update]
-            reason: >-
-              Active/archived state is not exposed via v3 suppliers — needed for honest
-              archiving (plan §6.1).
-      parent:
-        type: reference
-        ref: Supplier
-        must: [read, update]
-        gaps:
-          - ops: [read, update]
-            reason: >-
-              B2B hierarchy (branch → HQ) is not exposed via the public API (plan §6.1 parent).
-      billTo:
-        type: reference
-        ref: Supplier
-        must: [read, update]
-        gaps:
-          - ops: [read, update]
-            reason: >-
-              Central billing (Zentralregulierung — invoice to association/HQ) is not exposed
-              (plan §6.1 billTo).
-      channels:
-        type: collection
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Per-channel external ids (channel links) are not exposed via the public API.
+      status: {type: select, options: [active, archived]}
+      parent: {type: reference, ref: Supplier}
+      billTo: {type: reference, ref: Supplier}
+      channels: {type: collection}
       channels.channel: {type: reference, ref: Channel}
       channels.externalId: {type: string}
-      name: {type: string, required: true, must: [create, update, filter, sort, search]}
-      email: {type: string, must: [create, update, filter, search]}
-      phone: {type: string, must: [create, update]}
-      website: {type: string, must: [create, update]}
-      vatId: {type: string, must: [create, update]}
-      language: {type: string, must: [create, update]}
+      name: {type: string, required: true, ops: [create, update, filter, sort, search], proven: [create, update, filter, sort, search]}
+      email: {type: string, ops: [create, update, filter, search], proven: [create, update, filter, search]}
+      phone: {type: string, ops: [create, update], proven: [create, update]}
+      website: {type: string, ops: [create, update], proven: [create, update]}
+      vatId: {type: string, ops: [create, update], proven: [create, update]}
+      language: {type: string, ops: [create, update], proven: [create, update]}
       purchasing: {type: embedded}
-      purchasing.ourCustomerNumber: {type: string, must: [create, update]}
-      purchasing.confirmationRequired:
-        type: boolean
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Whether an order confirmation (AB) is required from this supplier — drives
-              purchasing workflow; not settable via API today.
-      purchasing.sendOrdersVia:
-        type: select
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              How POs are sent to the supplier (email/portal/EDI) — a supplier default that must
-              be settable.
-      purchasing.deliveryDays:
-        type: integer
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Standard supplier lead time in days — feeds replenishment planning.
+      purchasing.ourCustomerNumber: {type: string, ops: [create, update], proven: [update]}
+      purchasing.confirmationRequired: {type: boolean}
+      purchasing.sendOrdersVia: {type: select}
+      purchasing.deliveryDays: {type: integer}
       purchasing.minimumOrderValue: {type: embedded}
       purchasing.minimumOrderValue.amount: {type: string}
       purchasing.minimumOrderValue.currency: {type: string}
-      addresses: {type: collection, must: [create, update]}
+      addresses: {type: collection, ops: [create, update], proven: [create, update]}
       addresses.id: {type: string}
-      addresses.type:
-        type: select
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            contested: [create, update]
-            reason: >-
-              Set the address role incl. the 'both' value (one address serving billing AND
-              shipping) — v3 splits billing (primaryAddress/deviating) vs shipping
-              (deliveryAddresses) by store, so the role is not a freely settable field.
-      addresses.label:
-        type: string
-        must: [read, create, update]
-        gaps:
-          - ops: [read, create, update]
-            contested: [create, update]
-            reason: >-
-              Free label/name per address location (e.g. 'Lager München') — v3 knows only
-              billing/shipping roles, no named locations.
-      addresses.isDefault:
-        type: boolean
-        must: [read, create, update]
-        gaps:
-          - ops: [read, create, update]
-            contested: [create, update]
-            reason: >-
-              Mark the standard address per type (unified-address model; at most one default per
-              customer & type) — v3 partner addresses carry no isDefault flag.
-      addresses.name: {type: string, must: [create, update]}
-      addresses.contactPerson: {type: string, must: [create, update]}
-      addresses.street: {type: string, must: [create, update, filter, sort, search]}
-      addresses.zip: {type: string, must: [create, update, filter, sort, search]}
-      addresses.city: {type: string, must: [create, update, filter, sort, search]}
-      addresses.state: {type: string, must: [create, update, filter, sort]}
-      addresses.country: {type: string, must: [create, update, filter, sort]}
-      addresses.gln: {type: string, must: [create, update]}
-      addresses.email: {type: string, must: [create, update]}
-      addresses.phone: {type: string, must: [create, update]}
-      contacts: {type: collection, must: [create, update]}
+      addresses.type: {type: select, ops: [create, update], options: [billing, shipping, both]}
+      addresses.label: {type: string, ops: [create, update]}
+      addresses.isDefault: {type: boolean, ops: [create, update]}
+      addresses.name: {type: string, ops: [create, update]}
+      addresses.contactPerson: {type: string, ops: [create, update]}
+      addresses.street: {type: string, ops: [create, update, filter, sort, search], proven: [filter, search]}
+      addresses.zip: {type: string, ops: [create, update, filter, sort, search], proven: [filter, search]}
+      addresses.city: {type: string, ops: [create, update, filter, sort, search], proven: [filter, search]}
+      addresses.state: {type: string, ops: [create, update, filter, sort], proven: [filter]}
+      addresses.country: {type: string, ops: [create, update, filter, sort], proven: [filter]}
+      addresses.gln: {type: string, ops: [create, update]}
+      addresses.email: {type: string, ops: [create, update]}
+      addresses.phone: {type: string, ops: [create, update]}
+      contacts: {type: collection, ops: [create, update], proven: [create, update]}
       contacts.id: {type: string}
-      contacts.type: {type: select, must: [create, update]}
-      contacts.name: {type: string, required: true, must: [create, update]}
-      contacts.title: {type: string, must: [create, update]}
-      contacts.salutation: {type: string, must: [create, update]}
-      contacts.position: {type: string, must: [create, update]}
-      contacts.department: {type: string, must: [create, update]}
-      contacts.subDepartment: {type: string, must: [create, update]}
-      contacts.email: {type: string, must: [create, update]}
-      contacts.phone: {type: string, must: [create, update]}
-      contacts.mobile: {type: string, must: [create, update]}
-      contacts.fax: {type: string, must: [create, update]}
-      contacts.language: {type: string, must: [create, update]}
-      contacts.birthday: {type: date, must: [create, update]}
-      contacts.allowMarketingEmails: {type: boolean, must: [create, update]}
-      contacts.remarks: {type: text, must: [create, update]}
-      contacts.internalNote: {type: text, must: [create, update]}
+      contacts.type: {type: select, ops: [create, update], options: [mr, mrs, company, other]}
+      contacts.name: {type: string, required: true, ops: [create, update]}
+      contacts.title: {type: string, ops: [create, update]}
+      contacts.salutation: {type: string, ops: [create, update]}
+      contacts.position: {type: string, ops: [create, update]}
+      contacts.department: {type: string, ops: [create, update]}
+      contacts.subDepartment: {type: string, ops: [create, update]}
+      contacts.email: {type: string, ops: [create, update]}
+      contacts.phone: {type: string, ops: [create, update]}
+      contacts.mobile: {type: string, ops: [create, update]}
+      contacts.fax: {type: string, ops: [create, update]}
+      contacts.language: {type: string, ops: [create, update]}
+      contacts.birthday: {type: date, ops: [create, update]}
+      contacts.allowMarketingEmails: {type: boolean, ops: [create, update]}
+      contacts.remarks: {type: text, ops: [create, update]}
+      contacts.internalNote: {type: text, ops: [create, update]}
       defaults: {type: embedded}
       defaults.currency: {type: string}
       defaults.language: {type: string}
       defaults.paymentMethod: {type: reference, ref: PaymentMethod}
-      defaults.shippingMethod:
-        type: reference
-        ref: ShippingMethod
-        must: [read, update]
-        gaps:
-          - ops: [read, update]
-            reason: >-
-              The default shipping method is not surfaced by the v3 partner read.
-      defaults.priceList:
-        type: reference
-        ref: PriceList
-        must: [read, update]
-        gaps:
-          - ops: [read, update]
-            reason: >-
-              The assigned price list is not surfaced by the v3 partner read.
-      defaults.partialShipping:
-        type: select
-        must: [read, update]
-        gaps:
-          - ops: [read, update]
-            reason: >-
-              The partial-shipping preference is not surfaced by the v3 partner read.
+      defaults.shippingMethod: {type: reference, ref: ShippingMethod}
+      defaults.priceList: {type: reference, ref: PriceList}
+      defaults.partialShipping: {type: select}
       defaults.paymentTerms: {type: embedded}
-      defaults.paymentTerms.dueDays:
-        type: integer
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Default supplier payment term — drives liability due dates.
+      defaults.paymentTerms.dueDays: {type: integer}
       defaults.paymentTerms.discountPercent: {type: decimal}
       defaults.paymentTerms.discountDays: {type: integer}
       finance: {type: embedded}
-      finance.openAmount:
-        type: embedded
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Aggregated open liabilities per supplier are computed nowhere in the API — must be
-              derived/served.
+      finance.openAmount: {type: embedded}
       finance.openAmount.amount: {type: string}
       finance.openAmount.currency: {type: string}
       finance.onHold: {type: boolean}
-      finance.creditorAccountNumber:
-        type: string
-        must: [update]
-        gaps:
-          - ops: [update]
-            reason: >-
-              The creditor account for the FiBu/DATEV export — settable per supplier.
-      project: {type: reference, ref: Project, must: [create, update]}
-      tags: {type: tag, must: [create, update, filter]}
-      notes: {type: text, must: [create, update]}
-      customFields:
-        type: collection
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Custom field values on the supplier — today only readable, not writable via API.
-      customFields.key: {type: string, must: [create, update]}
-      customFields.label: {type: string, must: [create, update]}
+      finance.creditorAccountNumber: {type: string}
+      project: {type: reference, ref: Project, ops: [create, update], proven: [update]}
+      tags: {type: tag, ops: [create, update, filter], proven: [update]}
+      notes: {type: text, ops: [create, update]}
+      customFields: {type: collection}
+      customFields.key: {type: string, ops: [create, update]}
+      customFields.label: {type: string, ops: [create, update]}
       customFields.type: {type: string}
-      customFields.value: {type: string, must: [create, update]}
-      createdAt: {type: datetime, must: [filter, sort]}
-      updatedAt: {type: datetime, must: [filter, sort]}
-      contacts.address:
-        missing: true
-        must: [read, create, update]
-        gaps:
-          - ops: [read, create, update]
-            reason: >-
-              Bind a contact person to a specific address (person-at-location) — v3 stores only
-              a free-text contactPerson on delivery addresses, not a reference.
-      contacts.isPrimary:
-        missing: true
-        must: [read, create, update]
-        gaps:
-          - ops: [read, create, update]
-            reason: >-
-              Mark the main contact person — v3 contactPersons carry no primary flag.
+      customFields.value: {type: string, ops: [create, update]}
+      createdAt: {type: datetime, ops: [filter, sort], proven: [filter, sort]}
+      updatedAt: {type: datetime, ops: [filter, sort], proven: [filter, sort]}
     can:
       addTag: {evidence: pass, params: [title]}
       removeTag: {evidence: pass, params: [title]}
@@ -2617,97 +1339,60 @@ masterdata:
     fields:
       object: {type: string}
       id: {type: string}
-      number: {type: string, must: [create, filter, sort, search]}
-      status: {type: select, must: [update, filter], options: [active, inactive, archived]}
-      statusReason: {type: string, must: [create, update]}
-      kind:
-        type: select
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              The consolidated product kind (ADR-011) should be settable directly instead of
-              juggling isServiceProduct/isFee/isShippingCostsProduct booleans — the v2 create
-              body only exposes isShippingCostsProduct, so service/digital cannot be expressed.
-      name: {type: string, required: true, must: [create, update, filter, sort, search]}
-      description: {type: string, must: [create, update]}
-      unit: {type: string, must: [create, update]}
-      category: {type: reference, ref: MerchandiseGroup, must: [create, update]}
-      project: {type: reference, ref: Project, must: [update, filter]}
-      tags:
-        type: tag
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Tagging products (assortment curation, campaigns) — product writes now go through
-              v2, but the v2 tags shape ({id,key,name,color}) is not yet mapped/verified, so tag
-              writes stay blue.
+      number: {type: string, ops: [create, filter, sort, search], proven: [filter, sort, search]}
+      status: {type: select, ops: [update, filter], proven: [update, filter], options: [active, inactive, archived]}
+      statusReason: {type: string, ops: [create, update], proven: [update]}
+      kind: {type: select, options: [physical, service, digital, shippingCost, fee]}
+      name: {type: string, required: true, ops: [create, update, filter, sort, search], proven: [create, update, filter, sort, search]}
+      description: {type: string, ops: [create, update], proven: [create, update]}
+      unit: {type: string, ops: [create, update], proven: [create, update]}
+      category: {type: reference, ref: MerchandiseGroup, ops: [create, update]}
+      project: {type: reference, ref: Project, ops: [update, filter], proven: [update, filter]}
+      tags: {type: tag}
       identifiers: {type: embedded}
-      identifiers.ean: {type: string, must: [create, update, filter, search]}
-      identifiers.manufacturerNumber: {type: string, must: [create, update, filter]}
-      identifiers.hsCode: {type: string, must: [create, update]}
-      identifiers.countryOfOrigin: {type: string, must: [create, update]}
+      identifiers.ean: {type: string, ops: [create, update, filter, search], proven: [update, filter, search]}
+      identifiers.manufacturerNumber: {type: string, ops: [create, update, filter], proven: [update]}
+      identifiers.hsCode: {type: string, ops: [create, update], proven: [create, update]}
+      identifiers.countryOfOrigin: {type: string, ops: [create, update], proven: [create, update]}
       identifiers.external: {type: collection}
       identifiers.external.channel: {type: reference, ref: Channel}
       identifiers.external.id: {type: string}
       manufacturer: {type: embedded}
-      manufacturer.name: {type: string, must: [create, update]}
-      manufacturer.website: {type: string, must: [create, update]}
+      manufacturer.name: {type: string, ops: [create, update], proven: [create, update]}
+      manufacturer.website: {type: string, ops: [create, update], proven: [create, update]}
       prices: {type: embedded}
-      prices.sale:
-        type: embedded
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              WRITE works — the sale price is composed as a separate salesPrices write on
-              create/update. READ is still blue: the v3 read model does not carry the sale price
-              (needs the salesPrices include parsed), so a written price is not read back.
-      prices.sale.amount: {type: string, must: [create, update]}
-      prices.sale.currency: {type: string, must: [create, update]}
+      prices.sale: {type: embedded}
+      prices.sale.amount: {type: string, ops: [create, update], proven: [create, update]}
+      prices.sale.currency: {type: string, ops: [create, update], proven: [update]}
       prices.purchase: {type: embedded}
-      prices.purchase.amount: {type: string, must: [create, update]}
-      prices.purchase.currency: {type: string, must: [create, update]}
-      prices.purchase.source: {type: select, must: [create, update]}
+      prices.purchase.amount: {type: string, ops: [create, update], proven: [create, update]}
+      prices.purchase.currency: {type: string, ops: [create, update], proven: [update]}
+      prices.purchase.source: {type: select, ops: [create, update], options: [calculated, manual]}
       tax: {type: embedded}
-      tax.rate: {type: select, must: [create, update]}
-      tax.profile:
-        type: string
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              The 16-account tax matrix consolidated into a referenceable taxProfile (ADR-011) —
-              today only the raw taxAccounts embed exists, not a clean reference.
+      tax.rate: {type: select, ops: [create, update], proven: [create, update], options: [standard, reduced, exempt]}
+      tax.profile: {type: string}
       logistics: {type: embedded}
       logistics.weight: {type: embedded}
-      logistics.weight.value: {type: decimal, must: [create, update]}
+      logistics.weight.value: {type: decimal, ops: [create, update], proven: [create, update]}
       logistics.weight.unit: {type: string}
       logistics.netWeight: {type: embedded}
-      logistics.netWeight.value: {type: decimal, must: [create, update]}
+      logistics.netWeight.value: {type: decimal, ops: [create, update], proven: [update]}
       logistics.netWeight.unit: {type: string}
       logistics.dimensions: {type: embedded}
-      logistics.dimensions.length: {type: decimal, must: [create, update]}
-      logistics.dimensions.width: {type: decimal, must: [create, update]}
-      logistics.dimensions.height: {type: decimal, must: [create, update]}
+      logistics.dimensions.length: {type: decimal, ops: [create, update], proven: [create, update]}
+      logistics.dimensions.width: {type: decimal, ops: [create, update], proven: [update]}
+      logistics.dimensions.height: {type: decimal, ops: [create, update], proven: [update]}
       logistics.dimensions.unit: {type: string}
-      logistics.minimumOrderQuantity: {type: integer, must: [create, update]}
-      logistics.minimumStockQuantity: {type: integer, must: [create, update]}
-      logistics.packagingUnits:
-        type: collection
-        must: [read, create, update]
-        gaps:
-          - ops: [create, read, update]
-            reason: >-
-              Packaging units (VPE) need the packagingUnits include parsed — not yet mapped.
+      logistics.minimumOrderQuantity: {type: integer, ops: [create, update], proven: [create, update]}
+      logistics.minimumStockQuantity: {type: integer, ops: [create, update], proven: [create, update]}
+      logistics.packagingUnits: {type: collection}
       logistics.packagingUnits.unit: {type: string}
       logistics.packagingUnits.quantity: {type: integer}
       tracking: {type: embedded}
-      tracking.stock: {type: boolean, must: [create, update]}
-      tracking.batches: {type: boolean, must: [create, update]}
-      tracking.serialNumbers: {type: select, must: [create, update]}
-      tracking.bestBefore: {type: boolean, must: [create, update]}
+      tracking.stock: {type: boolean, ops: [create, update], proven: [create, update]}
+      tracking.batches: {type: boolean, ops: [create, update], proven: [update]}
+      tracking.serialNumbers: {type: select, ops: [create, update], proven: [update], options: [none, stockGenerated, stockOriginal, trackOriginal]}
+      tracking.bestBefore: {type: boolean, ops: [create, update], proven: [update]}
       stock: {type: embedded}
       stock.available: {type: decimal}
       stock.physical: {type: decimal}
@@ -2717,61 +1402,42 @@ masterdata:
       stock.correction: {type: decimal}
       stock.calculated: {type: decimal}
       stock.pseudo: {type: decimal}
-      stock.incoming:
-        type: decimal
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Inbound quantity (ordered but not yet received) is the one stock figure Xentral
-              does not compute: /products/{id}/stocks returns physical, sellable, reserved,
-              correction, pseudo, openSalesOrders, calculated and producible — all mapped — but
-              nothing inbound. The per-warehouse split the same call carries is answered by
-              StockLevel (filter[product], narrowed by warehouse), so it is not duplicated onto
-              the product.
+      stock.incoming: {type: decimal}
       stock.belowMinimum: {type: boolean}
       production: {type: embedded}
-      production.mode: {type: select, must: [create, update]}
-      production.hasBillOfMaterials: {type: boolean, must: [create, update]}
+      production.mode: {type: select, ops: [create, update], proven: [create, update], options: [none, inHouse, external, justInTime]}
+      production.hasBillOfMaterials: {type: boolean, ops: [create, update], proven: [update]}
       documentDefaults: {type: embedded}
-      documentDefaults.hidePrice: {type: boolean, must: [create, update]}
+      documentDefaults.hidePrice: {type: boolean, ops: [create, update], proven: [create, update]}
       documentDefaults.noticeText: {type: string}
       documentDefaults.requiresCustomerApproval: {type: boolean}
       variant: {type: embedded}
-      variant.of: {type: reference, ref: Product, must: [create, update]}
-      variant.isMatrix: {type: boolean, must: [create, update, filter]}
+      variant.of: {type: reference, ref: Product, ops: [create, update]}
+      variant.isMatrix: {type: boolean, ops: [create, update, filter], proven: [update, filter]}
       bom: {type: embedded}
-      bom.items: {type: collection, must: [create, update]}
-      bom.items.product: {type: reference, ref: Product, must: [create, update]}
-      bom.items.quantity: {type: decimal, must: [create, update]}
-      bom.items.type: {type: select, must: [create, update]}
-      bom.items.reference: {type: string, must: [create, update]}
-      suppliers:
-        type: collection
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              The default supplier IS writable (mapped to v2 standardSupplier); multi-supplier
-              sourcing (several suppliers with per-supplier price/number) needs a suppliers
-              include/relation not yet mapped, plus a write path.
-      suppliers.supplier: {type: reference, ref: Supplier, must: [create, update]}
+      bom.items: {type: collection, ops: [create, update]}
+      bom.items.product: {type: reference, ref: Product, ops: [create, update]}
+      bom.items.quantity: {type: decimal, ops: [create, update]}
+      bom.items.type: {type: select, ops: [create, update], options: [shopping part, information part / service, provision]}
+      bom.items.reference: {type: string, ops: [create, update]}
+      suppliers: {type: collection}
+      suppliers.supplier: {type: reference, ref: Supplier, ops: [create, update]}
       suppliers.supplierProductNumber: {type: string}
-      suppliers.isDefault: {type: boolean, must: [create, update]}
+      suppliers.isDefault: {type: boolean, ops: [create, update]}
       customFields: {type: collection}
-      customFields.number: {type: integer, must: [create, update]}
+      customFields.number: {type: integer, ops: [create, update]}
       customFields.label: {type: string}
-      customFields.value: {type: string, must: [create, update]}
+      customFields.value: {type: string, ops: [create, update]}
       properties: {type: collection}
-      properties.property: {type: reference, ref: ProductProperty, must: [create, update]}
+      properties.property: {type: reference, ref: ProductProperty, ops: [create, update]}
       properties.name: {type: string}
-      properties.value: {type: string, must: [create, update]}
-      properties.unit: {type: string, must: [create, update]}
+      properties.value: {type: string, ops: [create, update]}
+      properties.unit: {type: string, ops: [create, update]}
       createdAt: {type: datetime}
-      updatedAt: {type: datetime, must: [filter, sort]}
+      updatedAt: {type: datetime, ops: [filter, sort], proven: [filter, sort]}
     can:
-      activate: {evidence: null}
       deactivate: {evidence: null}
+      activate: {evidence: null}
     cannot:
       adjustStock: >-
         No public product-level stock adjustment; v1 storageLocations/setTotalStock works per
@@ -2794,31 +1460,23 @@ masterdata:
       object: {type: string}
       id: {type: string}
       currency: {type: string}
-      entries:
-        type: collection
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              v1 salesPrices exposes flat price rows (this entity is one row); the grouped
-              priceList with a tier array needs a composer (ADR-012). Write each tier as its own
-              entry (create/update/delete are live via v3/v1 salesPrices).
+      entries: {type: collection}
       entries.product: {type: reference, ref: Product}
       entries.unitPrice: {type: string}
       entries.minQuantity: {type: number}
-      product: {type: reference, ref: Product, required: true, must: [create, filter]}
+      product: {type: reference, ref: Product, required: true, ops: [create, filter], proven: [create, filter]}
       scope: {type: embedded}
-      scope.customer: {type: reference, ref: Customer, must: [create]}
-      scope.customerGroup: {type: string, must: [create]}
-      minQuantity: {type: decimal, must: [create, update]}
+      scope.customer: {type: reference, ref: Customer, ops: [create]}
+      scope.customerGroup: {type: string, ops: [create]}
+      minQuantity: {type: decimal, ops: [create, update], proven: [create, update]}
       unitPrice: {type: embedded}
-      unitPrice.amount: {type: string, must: [create, update]}
-      unitPrice.currency: {type: string, must: [create, update]}
+      unitPrice.amount: {type: string, ops: [create, update], proven: [create, update]}
+      unitPrice.currency: {type: string, ops: [create, update], proven: [update]}
       unitPrice.amountGross: {type: string}
       unitPrice.taxRate: {type: string}
-      validFrom: {type: date, must: [create, update]}
-      validUntil: {type: date, must: [create, update]}
-      remark: {type: string, must: [create, update]}
+      validFrom: {type: date, ops: [create, update]}
+      validUntil: {type: date, ops: [create, update], proven: [update]}
+      remark: {type: string, ops: [create, update], proven: [update]}
       createdAt: {type: datetime}
       updatedAt: {type: datetime}
     cannot:
@@ -2837,19 +1495,19 @@ masterdata:
     fields:
       object: {type: string}
       id: {type: string}
-      product: {type: reference, ref: Product, required: true, must: [create, filter]}
-      supplier: {type: reference, ref: Supplier, required: true, must: [create, update, filter]}
-      isStandardSupplier: {type: boolean, must: [create, update]}
-      supplierDesignation: {type: string, must: [create, update]}
-      supplierItemNumber: {type: string, must: [create, update]}
-      minQuantity: {type: decimal, must: [create, update]}
-      packageAmount: {type: decimal, must: [create, update]}
+      product: {type: reference, ref: Product, required: true, ops: [create, filter], proven: [create, filter]}
+      supplier: {type: reference, ref: Supplier, required: true, ops: [create, update, filter], proven: [create, filter]}
+      isStandardSupplier: {type: boolean, ops: [create, update], proven: [update]}
+      supplierDesignation: {type: string, ops: [create, update], proven: [update]}
+      supplierItemNumber: {type: string, ops: [create, update], proven: [update]}
+      minQuantity: {type: decimal, ops: [create, update], proven: [create, update]}
+      packageAmount: {type: decimal, ops: [create, update]}
       unitPrice: {type: embedded}
-      unitPrice.amount: {type: string, must: [create, update]}
-      unitPrice.currency: {type: string, must: [create, update]}
-      validFrom: {type: date, must: [create, update]}
-      validUntil: {type: date, must: [create, update]}
-      remark: {type: string, must: [create, update]}
+      unitPrice.amount: {type: string, ops: [create, update], proven: [create, update]}
+      unitPrice.currency: {type: string, ops: [create, update], proven: [update]}
+      validFrom: {type: date, ops: [create, update]}
+      validUntil: {type: date, ops: [create, update]}
+      remark: {type: string, ops: [create, update], proven: [update]}
       createdAt: {type: datetime}
       updatedAt: {type: datetime}
   StorageLocation:
@@ -2860,57 +1518,32 @@ masterdata:
       object: {type: string}
       id: {type: string}
       status: {type: select, options: [active, blocked]}
-      name: {type: string, required: true, must: [create, update, filter]}
-      warehouse: {type: reference, ref: Warehouse, required: true, must: [create, filter]}
+      name: {type: string, required: true, ops: [create, update, filter], proven: [create, update, filter]}
+      warehouse: {type: reference, ref: Warehouse, required: true, ops: [create, filter], proven: [filter]}
       usage: {type: embedded}
-      usage.replenishment: {type: boolean, must: [create, update]}
-      usage.consumption: {type: boolean, must: [create, update]}
-      usage.blocked: {type: boolean, must: [create, update]}
-      usage.production: {type: boolean, must: [create, update]}
-      usage.pointOfSale: {type: boolean, must: [create, update]}
-      abcCategory: {type: select, must: [create, update]}
-      pickingOrder: {type: integer, must: [create, update]}
+      usage.replenishment: {type: boolean, ops: [create, update], proven: [update]}
+      usage.consumption: {type: boolean, ops: [create, update], proven: [update]}
+      usage.blocked: {type: boolean, ops: [create, update], proven: [update]}
+      usage.production: {type: boolean, ops: [create, update], proven: [update]}
+      usage.pointOfSale: {type: boolean, ops: [create, update], proven: [update]}
+      abcCategory: {type: select, ops: [create, update], proven: [update], options: [A, B, C]}
+      pickingOrder: {type: integer, ops: [create, update], proven: [update]}
       dimensions: {type: embedded}
-      dimensions.length: {type: decimal, must: [create, update]}
-      dimensions.width: {type: decimal, must: [create, update]}
-      dimensions.height: {type: decimal, must: [create, update]}
-      description:
-        type: string
-        must: [create, update]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              Upstream returns the bin description but rejects it on create and update ("The
-              attribute description is not allowed.") — the field is read-only for every API
-              generation we have. Measured on mvp 2026-08-02.
+      dimensions.length: {type: decimal, ops: [create, update], proven: [update]}
+      dimensions.width: {type: decimal, ops: [create, update], proven: [update]}
+      dimensions.height: {type: decimal, ops: [create, update], proven: [update]}
+      description: {type: string}
       contents: {type: collection}
       contents.product: {type: reference, ref: Product}
       contents.batch: {type: reference, ref: Batch}
       contents.quantity: {type: embedded}
       contents.quantity.value: {type: decimal}
       contents.quantity.unit: {type: string}
-      contents.reserved:
-        type: embedded
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Location contents are composed from the StockLevel projection now; the reserved
-              portion per location stays unavailable — upstream reports reservations only as a
-              product total.
+      contents.reserved: {type: embedded}
       contents.reserved.value: {type: decimal}
       contents.reserved.unit: {type: string}
       createdAt: {type: datetime}
       updatedAt: {type: datetime}
-      locationType:
-        missing: true
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              v1 accepts a `locationType` on write with 204 but never returns it on any read, so
-              a value written there cannot be verified or shown. Not modelled until upstream
-              reads it back. Measured on mvp 2026-08-02.
     can:
       putaway: {evidence: reachable, params: [product, quantity]}
       stockRemoval: {evidence: reachable, params: [product, quantity]}
@@ -2931,50 +1564,17 @@ masterdata:
     fields:
       object: {type: string}
       id: {type: string}
-      product: {type: reference, ref: Product, must: [filter]}
-      warehouse: {type: reference, ref: Warehouse, must: [filter]}
-      storageLocation: {type: reference, ref: StorageLocation, must: [filter]}
-      batch:
-        type: reference
-        ref: Batch
-        must: [read, list]
-        gaps:
-          - ops: [read, list]
-            reason: >-
-              The batch split exists on the v2 items path (qualityControlAttributes) but not on
-              /v1/products/{id}/storageLocations. Emitting batch rows on one anchor only would
-              make the grain depend on the filter, so the projection stays product × storage
-              location. A unified GET /v3/stockLevels is the clean ask (docs/05 #18).
-      quantity:
-        type: embedded
-        must: [list]
-        gaps:
-          - ops: [list]
-            reason: >-
-              The list needs an anchor filter (product or storageLocation): upstream has no
-              global stock collection, so an unanchored query would mean fanning out over every
-              product of the tenant.
+      product: {type: reference, ref: Product, ops: [filter]}
+      warehouse: {type: reference, ref: Warehouse, ops: [filter]}
+      storageLocation: {type: reference, ref: StorageLocation, ops: [filter]}
+      batch: {type: reference, ref: Batch}
+      quantity: {type: embedded}
       quantity.value: {type: decimal}
       quantity.unit: {type: string}
-      reserved:
-        type: embedded
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              No per-location reservation is exposed upstream; /v1/products/{id}/stocks reports
-              reserved only as a product TOTAL. The projection reports quantity and leaves
-              reserved/available blank rather than spreading a total over locations.
+      reserved: {type: embedded}
       reserved.value: {type: decimal}
       reserved.unit: {type: string}
-      available:
-        type: embedded
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Same gap as reserved: available = quantity - reserved is only derivable per
-              product, not per storage location.
+      available: {type: embedded}
       available.value: {type: decimal}
       available.unit: {type: string}
   Batch:
@@ -2983,42 +1583,15 @@ masterdata:
     operations: []
     fields:
       object: {type: string}
-      id:
-        type: string
-        must: [read, list]
-        gaps:
-          - ops: [list, read]
-            reason: >-
-              Batches exist only as read-only v3 Product includes — no batch resource, no list,
-              no detail (docs/05 #4). GET /v3/batches is the ask.
-      number: {type: string, must: [filter, search]}
-      product: {type: reference, ref: Product, must: [filter]}
-      bestBefore:
-        type: date
-        must: [update, filter, sort]
-        gaps:
-          - ops: [update]
-            reason: >-
-              Correcting a best-before date via API — internal web routes only today.
-      status:
-        type: select
-        must: [update, filter]
-        gaps:
-          - ops: [update]
-            reason: >-
-              Blocking/releasing a batch (quality hold) via API — maintenance happens only
-              through internal web routes today.
+      id: {type: string}
+      number: {type: string, ops: [filter, search]}
+      product: {type: reference, ref: Product, ops: [filter]}
+      bestBefore: {type: date, ops: [filter, sort]}
+      status: {type: select, ops: [filter], options: [released, blocked]}
       stock: {type: embedded}
       stock.available: {type: decimal}
       stock.reserved: {type: decimal}
-      trace:
-        type: embedded
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Batch trace (which goods receipts brought it in, which delivery notes shipped it —
-              recall scenario) has no API at all (docs/05 #4).
+      trace: {type: embedded}
       trace.goodsReceipts: {type: collection}
       trace.goodsReceipts.id: {type: string}
       trace.deliveryNotes: {type: collection}
@@ -3037,59 +1610,18 @@ masterdata:
     fields:
       object: {type: string}
       id: {type: string}
-      platform:
-        type: select
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              The platform kind (shopify/amazon/…) is not exposed — the BF salesChannel entity
-              carries only a name (05 #17).
-      defaults:
-        type: embedded
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Channel defaults (price list, warehouse) are not exposed (05 #17).
+      platform: {type: select, options: [shopify, shopware, amazon, ebay, otto, pos, direct, api]}
+      defaults: {type: embedded}
       defaults.priceList: {type: reference, ref: PriceList}
       defaults.warehouse: {type: reference, ref: Warehouse}
-      name:
-        type: string
-        must: [create, update, filter, search]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              REVISED (docs/05 #17): BF salesChannel has CRUD — our facade write-mapping + live
-              verification is pending.
-      type:
-        type: select
-        must: [read, create, update]
-        gaps:
-          - ops: [read, create, update]
-            reason: >-
-              The channel type (shop/marketplace/direct/pos) is not on the BF salesChannel
-              record — needed for channel-specific routing.
-      active:
-        type: boolean
-        must: [read, create, update]
-        gaps:
-          - ops: [read, create, update]
-            reason: >-
-              Enable/disable state is not on the BF salesChannel record.
-      sync:
-        type: embedded
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              Channel sync-run status (last run, success/failure) is not exposed — needed to
-              monitor shop imports (docs/05 #17, still open after the BF salesChannel entity
-              covered the list).
+      name: {type: string, ops: [filter, search], proven: [filter, search]}
+      type: {type: select, options: [shop, marketplace, direct, pos]}
+      active: {type: boolean}
+      sync: {type: embedded}
       sync.lastRunAt: {type: datetime}
       sync.status: {type: select}
-      createdAt: {type: datetime, must: [sort]}
-      updatedAt: {type: datetime, must: [sort]}
+      createdAt: {type: datetime, ops: [sort], proven: [sort]}
+      updatedAt: {type: datetime, ops: [sort], proven: [sort]}
     cannot:
       syncOrders: >-
         The channel API (05 #17) exposes no sync triggers.
@@ -3110,21 +1642,21 @@ masterdata:
     fields:
       object: {type: string}
       id: {type: string}
-      name: {type: string, required: true, must: [create, update, filter, search]}
-      kind: {type: select, must: [create, update, filter]}
-      code: {type: string, must: [create, update, filter, search]}
-      isActive: {type: boolean, must: [create, update, filter]}
-      internalNote: {type: string, must: [create, update]}
-      project: {type: reference, ref: Project, must: [create, update]}
+      name: {type: string, required: true, ops: [create, update, filter, search], proven: [create, update, filter, search]}
+      kind: {type: select, ops: [create, update, filter], proven: [create, update, filter], options: [customerGroup, priceGroup, salesRepresentative]}
+      code: {type: string, ops: [create, update, filter, search], proven: [create, update, filter, search]}
+      isActive: {type: boolean, ops: [create, update, filter], proven: [create, update]}
+      internalNote: {type: string, ops: [create, update], proven: [create, update]}
+      project: {type: reference, ref: Project, ops: [create, update], proven: [update]}
       conditions: {type: embedded}
-      conditions.baseDiscount: {type: decimal, must: [create, update]}
-      conditions.paymentTermDays: {type: integer, must: [create, update]}
-      conditions.cashDiscountRate: {type: decimal, must: [create, update]}
-      conditions.cashDiscountDays: {type: integer, must: [create, update]}
-      conditions.freeShippingFrom: {type: decimal, must: [create, update]}
-      conditions.freeShippingActive: {type: boolean, must: [create, update]}
-      createdAt: {type: datetime, must: [sort]}
-      updatedAt: {type: datetime, must: [sort]}
+      conditions.baseDiscount: {type: decimal, ops: [create, update], proven: [create]}
+      conditions.paymentTermDays: {type: integer, ops: [create, update], proven: [create, update]}
+      conditions.cashDiscountRate: {type: decimal, ops: [create, update], proven: [create]}
+      conditions.cashDiscountDays: {type: integer, ops: [create, update], proven: [create, update]}
+      conditions.freeShippingFrom: {type: decimal, ops: [create, update], proven: [create]}
+      conditions.freeShippingActive: {type: boolean, ops: [create, update], proven: [create]}
+      createdAt: {type: datetime, ops: [sort], proven: [sort]}
+      updatedAt: {type: datetime, ops: [sort], proven: [sort]}
   SerialNumber:
     label: Serial number
     reviewed: null
@@ -3132,10 +1664,10 @@ masterdata:
     fields:
       object: {type: string}
       id: {type: string}
-      number: {type: string, must: [filter, search]}
-      product: {type: reference, ref: Product, must: [filter]}
-      status: {type: select, must: [filter]}
-      customer: {type: reference, ref: Customer, must: [filter]}
+      number: {type: string, ops: [filter, search]}
+      product: {type: reference, ref: Product, ops: [filter]}
+      status: {type: select, ops: [filter], options: [inStock, delivered, returned]}
+      customer: {type: reference, ref: Customer, ops: [filter]}
       trace: {type: embedded}
       trace.goodsReceipts: {type: collection}
       trace.goodsReceipts.id: {type: string}
@@ -3155,12 +1687,12 @@ masterdata:
     fields:
       object: {type: string}
       id: {type: string}
-      label: {type: string, must: [filter, search]}
-      slug: {type: string, must: [filter]}
+      label: {type: string, ops: [filter, search], proven: [filter, search]}
+      slug: {type: string, ops: [filter], proven: [filter]}
       color: {type: string}
-      group: {type: string, must: [filter]}
-      createdAt: {type: datetime, must: [sort]}
-      updatedAt: {type: datetime, must: [sort]}
+      group: {type: string, ops: [filter]}
+      createdAt: {type: datetime, ops: [sort], proven: [sort]}
+      updatedAt: {type: datetime, ops: [sort], proven: [sort]}
   Task:
     label: Task
     reviewed: null
@@ -3168,65 +1700,40 @@ masterdata:
     fields:
       object: {type: string}
       id: {type: string}
-      title: {type: string, required: true, must: [create, update, filter, search]}
-      description: {type: string, must: [create, update, search]}
-      status: {type: select, must: [create, update, filter], options: [open, inProgress, completed]}
-      priority: {type: select, must: [create, update, filter], options: [low, normal, high]}
-      assignee:
-        type: reference
-        ref: Employee
-        must: [create, update, filter]
-        gaps:
-          - ops: [create, update]
-            reason: >-
-              The one thing that would make a task a work item. `assignee` is readOnly upstream:
-              a create or update carrying it answers 2xx and leaves the field null. Measured on
-              mvp 2026-08-02.
-      notes: {type: string, must: [create, update]}
+      title: {type: string, required: true, ops: [create, update, filter, search], proven: [create, update, filter, search]}
+      description: {type: string, ops: [create, update, search], proven: [create, update]}
+      status: {type: select, ops: [create, update, filter], proven: [create, update, filter], options: [open, inProgress, completed]}
+      priority: {type: select, ops: [create, update, filter], proven: [create, update, filter], options: [low, normal, high]}
+      assignee: {type: reference, ref: Employee, ops: [filter], proven: [filter]}
+      notes: {type: string, ops: [create, update], proven: [create, update]}
       dates: {type: embedded}
-      dates.due: {type: date, must: [create, update, filter, sort]}
-      dates.dueTime: {type: string, must: [create, update]}
-      dates.isAllDay: {type: boolean, must: [create, update]}
-      dates.completed:
-        type: date
-        must: [update, filter, sort]
-        gaps:
-          - ops: [update]
-            reason: >-
-              Completing a task through the API does not stamp its completion date: `status:
-              completed` persists, `completionDate` stays null.
-      dates.created: {type: date, must: [filter, sort]}
+      dates.due: {type: date, ops: [create, update, filter, sort], proven: [create, update, filter, sort]}
+      dates.dueTime: {type: string, ops: [create, update], proven: [create, update]}
+      dates.isAllDay: {type: boolean, ops: [create, update], proven: [create, update]}
+      dates.completed: {type: date, ops: [filter, sort], proven: [filter]}
+      dates.created: {type: date, ops: [filter, sort], proven: [filter, sort]}
       recurrence: {type: embedded}
-      recurrence.interval: {type: select, must: [create, update, filter]}
+      recurrence.interval: {type: select, ops: [create, update, filter], proven: [create, update, filter], options: [once, daily, weekly, monthly, yearly]}
       links: {type: embedded}
-      links.customer: {type: reference, ref: Customer, must: [create, update, filter]}
-      links.contactPerson: {type: reference, must: [create, update, filter]}
-      links.project: {type: reference, ref: Project, must: [create, update]}
-      links.subProject: {type: reference, must: [create, update]}
+      links.customer: {type: reference, ref: Customer, ops: [create, update, filter]}
+      links.contactPerson: {type: reference, ops: [create, update, filter]}
+      links.project: {type: reference, ref: Project, ops: [create, update]}
+      links.subProject: {type: reference, ops: [create, update]}
       visibility: {type: embedded}
-      visibility.isPublic: {type: boolean, must: [create, update, filter]}
-      visibility.onStartPage: {type: boolean, must: [create, update, filter]}
-      visibility.onBulletinBoard: {type: boolean, must: [create, update, filter]}
+      visibility.isPublic: {type: boolean, ops: [create, update, filter], proven: [create, update, filter]}
+      visibility.onStartPage: {type: boolean, ops: [create, update, filter], proven: [create, update, filter]}
+      visibility.onBulletinBoard: {type: boolean, ops: [create, update, filter], proven: [update, filter]}
       reminder: {type: embedded}
-      reminder.byEmail: {type: boolean, must: [create, update]}
-      reminder.daysBefore: {type: integer, must: [create, update]}
-      reminder.advanceNoticeDays: {type: integer, must: [create, update]}
+      reminder.byEmail: {type: boolean, ops: [create, update], proven: [create, update]}
+      reminder.daysBefore: {type: integer, ops: [create, update], proven: [create]}
+      reminder.advanceNoticeDays: {type: integer, ops: [create, update], proven: [create]}
       timeTracking: {type: embedded}
-      timeTracking.hours: {type: decimal, must: [create, update]}
-      timeTracking.required: {type: boolean, must: [create, update]}
-      timeTracking.billable: {type: boolean, must: [create, update]}
-      timeTracking.loggedAt: {type: datetime, must: [create, update, sort]}
-      createdAt: {type: datetime, must: [sort]}
-      updatedAt: {type: datetime, must: [sort]}
-      timeline:
-        missing: true
-        must: [read]
-        gaps:
-          - ops: [read]
-            reason: >-
-              The task's comment thread. Declared `readWrite` with a full sub-node and returned
-              by NO read — not the list, not the single read, and no include/expand parameter
-              produces it. Not modelled until it reads back.
+      timeTracking.hours: {type: decimal, ops: [create, update], proven: [create]}
+      timeTracking.required: {type: boolean, ops: [create, update], proven: [create, update]}
+      timeTracking.billable: {type: boolean, ops: [create, update], proven: [create, update]}
+      timeTracking.loggedAt: {type: datetime, ops: [create, update, sort], proven: [sort]}
+      createdAt: {type: datetime, ops: [sort], proven: [sort]}
+      updatedAt: {type: datetime, ops: [sort], proven: [sort]}
 
 crm:
   Correspondence:
@@ -3236,40 +1743,40 @@ crm:
     fields:
       object: {type: string}
       id: {type: string}
-      kind: {type: select, must: [create, update, filter], options: [email, letter, fax, phone, note]}
-      customer: {type: reference, ref: Customer, required: true, must: [create, update, filter]}
-      subject: {type: string, must: [create, update, filter, search]}
-      content: {type: string, must: [create, update]}
-      date: {type: date, must: [create, update, filter]}
-      time: {type: string, must: [create, update]}
-      internalDesignation: {type: string, must: [create, update]}
-      editor: {type: string, must: [create, update]}
-      project: {type: reference, ref: Project, must: [create, update, filter]}
+      kind: {type: select, ops: [create, update, filter], proven: [create, update, filter], options: [email, letter, fax, phone, note]}
+      customer: {type: reference, ref: Customer, required: true, ops: [create, update, filter], proven: [create, filter]}
+      subject: {type: string, ops: [create, update, filter, search], proven: [create, update, filter, search]}
+      content: {type: string, ops: [create, update], proven: [create, update]}
+      date: {type: date, ops: [create, update, filter], proven: [create, update, filter]}
+      time: {type: string, ops: [create, update], proven: [create, update]}
+      internalDesignation: {type: string, ops: [create, update], proven: [create, update]}
+      editor: {type: string, ops: [create, update], proven: [update]}
+      project: {type: reference, ref: Project, ops: [create, update, filter], proven: [update, filter]}
       sender: {type: embedded}
-      sender.partner: {type: reference, ref: Customer, must: [create, update, filter]}
-      sender.name: {type: string, must: [create, update]}
-      sender.company: {type: string, must: [create, update, search]}
+      sender.partner: {type: reference, ref: Customer, ops: [create, update, filter], proven: [filter]}
+      sender.name: {type: string, ops: [create, update], proven: [create, update]}
+      sender.company: {type: string, ops: [create, update, search], proven: [create, update]}
       recipient: {type: embedded}
-      recipient.email: {type: string, must: [create, update]}
-      recipient.company: {type: string, must: [create, update]}
+      recipient.email: {type: string, ops: [create, update], proven: [create, update]}
+      recipient.company: {type: string, ops: [create, update], proven: [create, update]}
       recipient.address: {type: embedded}
-      recipient.address.name: {type: string, must: [create, update]}
-      recipient.address.street: {type: string, must: [create, update]}
-      recipient.address.contactPerson: {type: string, must: [create, update]}
-      recipient.address.postalCode: {type: string, must: [create, update]}
-      recipient.address.city: {type: string, must: [create, update]}
-      recipient.address.country: {type: string, must: [create, update]}
+      recipient.address.name: {type: string, ops: [create, update], proven: [update]}
+      recipient.address.street: {type: string, ops: [create, update], proven: [update]}
+      recipient.address.contactPerson: {type: string, ops: [create, update], proven: [update]}
+      recipient.address.postalCode: {type: string, ops: [create, update], proven: [update]}
+      recipient.address.city: {type: string, ops: [create, update], proven: [update]}
+      recipient.address.country: {type: string, ops: [create, update], proven: [update]}
       delivery: {type: embedded}
-      delivery.sendAs: {type: string, must: [create, update]}
-      delivery.emailCc: {type: string, must: [create, update]}
-      delivery.emailBcc: {type: string, must: [create, update]}
-      delivery.emailAddress: {type: string, must: [create, update]}
-      delivery.hasSignature: {type: boolean, must: [create, update]}
-      delivery.isFax: {type: boolean, must: [create, update]}
-      delivery.isSent: {type: boolean, must: [create, update, filter]}
-      delivery.printer: {type: integer, must: [create, update]}
-      createdAt: {type: datetime, must: [sort]}
-      updatedAt: {type: datetime, must: [sort]}
+      delivery.sendAs: {type: string, ops: [create, update], proven: [create, update]}
+      delivery.emailCc: {type: string, ops: [create, update], proven: [create, update]}
+      delivery.emailBcc: {type: string, ops: [create, update], proven: [update]}
+      delivery.emailAddress: {type: string, ops: [create, update], proven: [update]}
+      delivery.hasSignature: {type: boolean, ops: [create, update], proven: [create, update]}
+      delivery.isFax: {type: boolean, ops: [create, update], proven: [update]}
+      delivery.isSent: {type: boolean, ops: [create, update, filter], proven: [update, filter]}
+      delivery.printer: {type: integer, ops: [create, update], proven: [update]}
+      createdAt: {type: datetime, ops: [sort], proven: [sort]}
+      updatedAt: {type: datetime, ops: [sort], proven: [sort]}
 
 settings:
   Warehouse:
@@ -3279,7 +1786,7 @@ settings:
     fields:
       object: {type: string}
       id: {type: string}
-      name: {type: string, required: true, must: [create, update, filter]}
+      name: {type: string, required: true, ops: [create, update, filter], proven: [create, update, filter]}
       project: {type: reference, ref: Project}
   AddressCustomField:
     label: Address custom-field definition
@@ -3289,7 +1796,7 @@ settings:
       object: {type: string}
       id: {type: string}
       name: {type: string}
-      type: {type: select}
+      type: {type: select, options: [single_line, multi_line, date, checkbox, select]}
       allowedValues: {type: collection}
       allowedValues.label: {type: string}
       allowedValues.value: {type: string}
@@ -3300,11 +1807,11 @@ settings:
     fields:
       object: {type: string}
       id: {type: string}
-      number: {type: string, must: [create, update, filter, search]}
-      name: {type: string, required: true, must: [create, update, filter, search]}
-      internalNote: {type: string, must: [create, update]}
-      createdAt: {type: datetime, must: [filter, sort]}
-      updatedAt: {type: datetime, must: [filter, sort]}
+      number: {type: string, ops: [create, update, filter, search], proven: [create, update, filter, search]}
+      name: {type: string, required: true, ops: [create, update, filter, search], proven: [create, update, filter, search]}
+      internalNote: {type: string, ops: [create, update], proven: [create, update]}
+      createdAt: {type: datetime, ops: [filter, sort], proven: [filter, sort]}
+      updatedAt: {type: datetime, ops: [filter, sort], proven: [filter, sort]}
   DeliveryTerm:
     label: Delivery term
     reviewed: null
@@ -3312,7 +1819,7 @@ settings:
     fields:
       object: {type: string}
       id: {type: string}
-      name: {type: string, must: [filter]}
+      name: {type: string, ops: [filter], proven: [filter]}
   EmailAccount:
     label: Email account
     reviewed: null
@@ -3335,8 +1842,8 @@ settings:
     fields:
       object: {type: string}
       id: {type: string}
-      name: {type: string, must: [filter]}
-      number: {type: string, must: [filter]}
+      name: {type: string, ops: [filter], proven: [filter]}
+      number: {type: string, ops: [filter], proven: [filter]}
       email: {type: string}
   MerchandiseGroup:
     label: Merchandise group
@@ -3357,8 +1864,8 @@ settings:
       object: {type: string}
       id: {type: string}
       name: {type: string}
-      type: {type: string, must: [filter]}
-      project: {type: reference, ref: Project, must: [filter]}
+      type: {type: string, ops: [filter], proven: [filter]}
+      project: {type: reference, ref: Project, ops: [filter], proven: [filter]}
   PaymentTermsGroup:
     label: Payment terms group
     reviewed: null
@@ -3366,9 +1873,9 @@ settings:
     fields:
       object: {type: string}
       id: {type: string}
-      key: {type: string, must: [filter]}
-      name: {type: string, must: [filter]}
-      isActive: {type: boolean, must: [filter]}
+      key: {type: string, ops: [filter], proven: [filter]}
+      name: {type: string, ops: [filter], proven: [filter]}
+      isActive: {type: boolean, ops: [filter]}
       comment: {type: string}
       paymentTerms: {type: embedded}
       paymentTerms.basicDiscount: {type: decimal}
@@ -3385,8 +1892,8 @@ settings:
       name: {type: string}
       designation: {type: string}
       active: {type: boolean}
-      connection: {type: select}
-      useCase: {type: select}
+      connection: {type: select, options: [cups, pdf, download, nextgen_spooler, spooler, adapterbox]}
+      useCase: {type: select, options: [shipping-labels, shipping-documents, other]}
       printMethod: {type: string}
       spooler: {type: string}
       deviceId: {type: string}
@@ -3401,36 +1908,36 @@ settings:
     fields:
       object: {type: string}
       id: {type: string}
-      name: {type: string, required: true, must: [create, update, filter, search]}
-      parent: {type: reference, ref: ProductCategory, must: [create, update]}
-      project: {type: reference, ref: Project, must: [create, update, filter]}
+      name: {type: string, required: true, ops: [create, update, filter, search], proven: [create, update, filter, search]}
+      parent: {type: reference, ref: ProductCategory, ops: [create, update]}
+      project: {type: reference, ref: Project, ops: [create, update, filter], proven: [filter]}
       numberRange: {type: embedded}
-      numberRange.usesMainRange: {type: boolean, must: [create, update]}
-      numberRange.nextNumber: {type: string, must: [create, update]}
+      numberRange.usesMainRange: {type: boolean, ops: [create, update], proven: [create, update]}
+      numberRange.nextNumber: {type: string, ops: [create, update], proven: [create, update]}
       accounts: {type: embedded}
       accounts.revenue: {type: embedded}
-      accounts.revenue.standard: {type: string, must: [create, update]}
-      accounts.revenue.reduced: {type: string, must: [create, update]}
-      accounts.revenue.taxExempt: {type: string, must: [create, update]}
-      accounts.revenue.nonTaxable: {type: string, must: [create, update]}
-      accounts.revenue.intraCommunity: {type: string, must: [create, update]}
-      accounts.revenue.euStandard: {type: string, must: [create, update]}
-      accounts.revenue.euReduced: {type: string, must: [create, update]}
-      accounts.revenue.export: {type: string, must: [create, update]}
+      accounts.revenue.standard: {type: string, ops: [create, update], proven: [create, update]}
+      accounts.revenue.reduced: {type: string, ops: [create, update], proven: [create, update]}
+      accounts.revenue.taxExempt: {type: string, ops: [create, update], proven: [create, update]}
+      accounts.revenue.nonTaxable: {type: string, ops: [create, update], proven: [create, update]}
+      accounts.revenue.intraCommunity: {type: string, ops: [create, update], proven: [create, update]}
+      accounts.revenue.euStandard: {type: string, ops: [create, update], proven: [create, update]}
+      accounts.revenue.euReduced: {type: string, ops: [create, update], proven: [create, update]}
+      accounts.revenue.export: {type: string, ops: [create, update], proven: [create, update]}
       accounts.expense: {type: embedded}
-      accounts.expense.standard: {type: string, must: [create, update]}
-      accounts.expense.reduced: {type: string, must: [create, update]}
-      accounts.expense.taxExempt: {type: string, must: [create, update]}
-      accounts.expense.nonTaxable: {type: string, must: [create, update]}
-      accounts.expense.intraCommunity: {type: string, must: [create, update]}
-      accounts.expense.euStandard: {type: string, must: [create, update]}
-      accounts.expense.euReduced: {type: string, must: [create, update]}
-      accounts.expense.import: {type: string, must: [create, update]}
+      accounts.expense.standard: {type: string, ops: [create, update], proven: [create, update]}
+      accounts.expense.reduced: {type: string, ops: [create, update], proven: [create, update]}
+      accounts.expense.taxExempt: {type: string, ops: [create, update], proven: [create, update]}
+      accounts.expense.nonTaxable: {type: string, ops: [create, update], proven: [create, update]}
+      accounts.expense.intraCommunity: {type: string, ops: [create, update], proven: [create, update]}
+      accounts.expense.euStandard: {type: string, ops: [create, update], proven: [create, update]}
+      accounts.expense.euReduced: {type: string, ops: [create, update], proven: [create, update]}
+      accounts.expense.import: {type: string, ops: [create, update], proven: [create, update]}
       taxTexts: {type: embedded}
-      taxTexts.export: {type: string, must: [create, update]}
-      taxTexts.intraCommunity: {type: string, must: [create, update]}
-      createdAt: {type: datetime, must: [sort]}
-      updatedAt: {type: datetime, must: [sort]}
+      taxTexts.export: {type: string, ops: [create, update], proven: [create, update]}
+      taxTexts.intraCommunity: {type: string, ops: [create, update], proven: [create, update]}
+      createdAt: {type: datetime, ops: [sort], proven: [sort]}
+      updatedAt: {type: datetime, ops: [sort], proven: [sort]}
   ProductFreeField:
     label: Product free-field definition
     reviewed: null
@@ -3438,7 +1945,7 @@ settings:
     fields:
       object: {type: string}
       id: {type: string}
-      name: {type: string, must: [filter]}
+      name: {type: string, ops: [filter], proven: [filter]}
   ProductProperty:
     label: Product property
     reviewed: null
@@ -3455,7 +1962,7 @@ settings:
     fields:
       object: {type: string}
       id: {type: string}
-      name: {type: string, must: [filter]}
+      name: {type: string, ops: [filter], proven: [filter]}
       color: {type: string}
   Project:
     label: Project
@@ -3464,10 +1971,10 @@ settings:
     fields:
       object: {type: string}
       id: {type: string}
-      name: {type: string, must: [filter]}
-      keyName: {type: string, must: [filter]}
+      name: {type: string, ops: [filter], proven: [filter]}
+      keyName: {type: string, ops: [filter], proven: [filter]}
       description: {type: string}
-      currency: {type: string, must: [filter]}
+      currency: {type: string, ops: [filter], proven: [filter]}
       normalTaxRate: {type: decimal}
       reducedTaxRate: {type: decimal}
       defaultCustomerPaymentMethod: {type: reference, ref: PaymentMethod}
@@ -3507,13 +2014,13 @@ settings:
     fields:
       object: {type: string}
       id: {type: string}
-      country: {type: string, must: [filter]}
+      country: {type: string, ops: [filter], proven: [filter]}
       rate: {type: decimal}
-      type: {type: string, must: [filter]}
+      type: {type: string, ops: [filter]}
       name: {type: string}
       source: {type: string}
-      date: {type: date, must: [filter]}
-      product: {type: reference, ref: Product, must: [filter]}
+      date: {type: date, ops: [filter], proven: [filter]}
+      product: {type: reference, ref: Product, ops: [filter]}
       project: {type: reference, ref: Project}
   TextTemplate:
     label: Text template
@@ -3522,7 +2029,7 @@ settings:
     fields:
       object: {type: string}
       id: {type: string}
-      documentType: {type: select}
+      documentType: {type: select, options: [offer, order, invoice, delivery_note, credit_note, purchase_order, work_report, commission_credit_note, proforma_invoice]}
       header: {type: string}
       footer: {type: string}
       disableStationery: {type: boolean}
@@ -3533,10 +2040,10 @@ settings:
     fields:
       object: {type: string}
       id: {type: string}
-      username: {type: string, must: [filter]}
-      email: {type: string, must: [filter]}
-      isActive: {type: boolean, must: [filter]}
-      isAdmin: {type: boolean, must: [filter]}
+      username: {type: string, ops: [filter], proven: [filter]}
+      email: {type: string, ops: [filter], proven: [filter]}
+      isActive: {type: boolean, ops: [filter], proven: [filter]}
+      isAdmin: {type: boolean, ops: [filter], proven: [filter]}
       locale: {type: string}
       contactId: {type: string}
       globalUserId: {type: string}

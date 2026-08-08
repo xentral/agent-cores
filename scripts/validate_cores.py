@@ -114,7 +114,6 @@ _SPEC_ENTITY_KEYS = frozenset(
         "fields",
         "can",
         "cannot",
-        "fieldGaps",
     }
 )
 

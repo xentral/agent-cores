@@ -1,63 +1,39 @@
-"""A core must do what its specification says — and prove it.
+"""The specification must describe the core exactly — and say what was proven.
 
-``erp-spec.yaml`` is the core's ERP specification: what the system must be able to do
-and to record, written and signed off by a domain expert. This module replays every
-statement in it against two independent sources — the core's own ``metadata()`` (what
-the code declares) and ``verified.json`` (what a live run against a real tenant
-actually demonstrated).
+``erp-spec.yaml`` is a DESCRIPTION, not a demand. Per entity it states the fields the
+core has with the operations each supports (`ops`), which of those a live run against a
+real tenant demonstrated (`proven`), the capabilities that are executable with how
+strong a proof, and the ones the upstream cannot do with the measured reason.
 
-It is organised ``category → entity → everything about that entity``, so one block
-answers "what can this system do with an order". Every rule below addresses a single
-entity, so ``_spec`` flattens the grouping once and exactly one rule checks it — the
-categories are the adapters' own ``manifest.category``, not a taxonomy the file owns.
+That is a deliberate retreat. The file used to carry an inherited wish list, and the
+first spec-driven probe run showed what that was worth: gaps claiming search does not
+work on fields where it demonstrably does, never once tried. Requirements come back one
+at a time now, from a human who decided them, and `reviewed` records when.
 
-**The direction of proof runs from the spec to the code.** When the two disagree the
-default reading is that the core is wrong, and the assertion messages say so. That is
-a reversal: this file used to treat the core as ground truth and the document as a
-claim about it, which meant every failure read as "go fix the prose".
+So these rules no longer assert that anything MUST be possible. They assert that the
+description is true: every field the core has is described and nothing invented, `ops`
+matches the schema flags, `proven` matches ``verified.json`` by value, every executable
+capability is listed with its parameters, and every recorded gap is still a gap in the
+core.
 
-The spec is deliberately NOT generated. It is checked against the very metadata a
-generator would derive it from, so generating it would turn every assertion here into
-a tautology that can never fail again — nine green tests guarding nothing. A spec
-derived from the implementation also cannot state what is still missing, which is the
-only reason a domain expert would read it.
+Two things carry the most weight:
 
-``playbook.md`` is the prose companion, written for agents rather than people: it
-names entities, actions and field paths so a workflow builder can go straight to the
-right call. It is checked here too, because prose of that kind is only useful while
-it is true. The machine-only statements live in the spec rather than in the prose so
-the playbook stays short enough to be read in one pass.
+* **`ops` and `proven` are different claims.** An operation can be declared and never
+  have been tried — measured when this was written: 738 of the flags had ever been
+  probed, and the ones that had not were exactly where the stale gaps hid. Conflating
+  them is the mistake the whole arrangement exists to prevent.
+* **`read` cannot prove anything about the upstream.** A read verdict shows only that
+  OUR model produced a value, and the model invents some (`Customer.addresses.isDefault`
+  is a hard-coded True). It is excluded from `proven` for that reason.
 
-The document itself is read, not just a list describing it: every dotted field path
-and every ``Entity.name`` reference in its code spans must resolve against the core.
-That is the difference between checking a hand-written mirror of the prose and
-checking the prose. It does NOT extend to bare backticked words — most of them are
-tool names, filter operators and status values rather than fields, and a rule over
-them would need a ~67-entry exclusion list, which is the hand-maintenance being
-removed. Nor does it bind a path to an entity: the prose writes
-`references.customerOrderNumber` under a heading about orders, never
-`SalesOrder.references.customerOrderNumber`, and inferring the entity from document
-structure would assert a claim the text does not make.
+``playbook.md`` is the prose companion for agents. It is checked here too — every dotted
+field path and every ``Entity.name`` in its code spans must resolve against the core —
+because prose about a moving core is only useful while it is true.
 
-The rules that carry the most weight:
+A core whose roster is only knowable at request time may carry no spec at all: its
+adapters come from an ``adapters_factory`` that needs a live connection, so nothing here
+could check them.
 
-* **A capability claimed executable must carry no wish**, and a claimed wish must
-  still be one. Getting this backwards in either direction is the expensive failure —
-  a builder either designs around a capability that exists, or ships a workflow that
-  is refused on the first real record.
-* **A capability in ``can`` is a claim about the code, not about reality.** Each one
-  records the verdict a live run returned, checked against ``verified.json`` by value.
-  Without that, a route that merely exists reads identically to one whose effect was
-  observed — measured when this was written: of 80 capabilities, 25 proven, 34 only
-  `reachable`, 3 `executed`, 18 never tested at all.
-* **The spec must be complete over the core**, not merely over the entities it
-  happens to mention: one block per entity, every CRUD surface, every capability,
-  every parameter-carrying command. Partial coverage is the dangerous kind, because a
-  reviewer reads a subset and believes they reviewed the whole.
-* **A core whose roster is only knowable at request time may not carry a spec at
-  all.** Its adapters come from an ``adapters_factory`` that needs a live
-  connection, so nothing here could check them and every statement would be an
-  unverifiable assertion about someone else's instance.
 """
 
 from __future__ import annotations
@@ -86,17 +62,20 @@ CATEGORIES = ("documents", "masterdata", "crm", "settings")
 
 #: What an entity block may state. Anything else is a typo, not a new rule — see
 #: test_no_unknown_categories_or_entity_keys.
-ENTITY_KEYS = frozenset(
-    {
-        "label",
-        "reviewed",
-        "operations",
-        "fields",
-        "can",
-        "cannot",
-        "fieldGaps",
-    }
-)
+ENTITY_KEYS = frozenset({"label", "reviewed", "operations", "fields", "can", "cannot"})
+
+#: What a field entry may state. All of it describes the core and is checked against
+#: the core — the file claims no requirements of its own.
+FIELD_KEYS = frozenset({"type", "ref", "required", "ops", "proven", "options"})
+
+#: op → the schema flag that carries it.
+OP_FLAG = {
+    "create": "creatable",
+    "update": "updatable",
+    "filter": "filterable",
+    "sort": "sortable",
+    "search": "searchable",
+}
 
 
 class StrictLoader(yaml.SafeLoader):
@@ -220,8 +199,14 @@ def _verified(core_id: str) -> dict:
     if not path.is_file():
         return {}
     entities = json.loads(path.read_text("utf-8")).get("entities") or {}
+    # Actions and step commands are one namespace to a reviewer (a capability key is
+    # unique across both); `fields` stays nested so the field rules can address a path.
     return {
-        key: {**(entry.get("actions") or {}), **(entry.get("processSteps") or {})}
+        key: {
+            **(entry.get("actions") or {}),
+            **(entry.get("processSteps") or {}),
+            "fields": entry.get("fields") or {},
+        }
         for key, entry in entities.items()
     }
 
@@ -488,101 +473,77 @@ def test_declared_operations_match(core):
         )
 
 
-def test_status_vocabularies_match(core):
-    """`options` on the field, not a `statuses` section beside it — a status vocabulary
-    is a property of the field that carries it."""
+def test_the_fields_describe_the_core_exactly(core):
+    """One entry per field the core has, and nothing else — with `ops`, `required`,
+    `options` and `ref` matching what the core declares.
+
+    The file no longer states requirements. It describes, and this is what makes the
+    description worth reading: a field the core grows appears here or the build fails,
+    and a line here that the core does not back cannot survive. Requirements come back
+    one at a time, from a human, and `reviewed` records when.
+    """
     for key, block in core["spec"].items():
         entity = _entity(core, key)
-        for path, field in (block.get("fields") or {}).items():
-            if not field.get("options"):
-                continue
-            spec = entity["fields"].get(path)
-            assert spec is not None, f"{key}.{path}: no such field"
-            actual = {
-                o.get("value") if isinstance(o, dict) else o for o in (spec.get("options") or [])
-            }
-            assert actual, f"{key}.{path}: the field declares no options"
-            assert actual == set(field["options"]), (
-                f"{key}.{path}: the spec requires {sorted(field['options'])}, core offers "
-                f"{sorted(actual)}"
-            )
-
-
-def test_required_for_create_matches(core):
-    """Both directions: every field the spec marks required must be required in the
-    core, and every field the core requires must be marked. Dropping the mark used to
-    be invisible — it lived in a section that only checked what it named."""
-    for key, block in core["spec"].items():
-        entity = _entity(core, key)
-        declared = {p for p, f in (block.get("fields") or {}).items() if f.get("required")}
-        actual = {
-            path
-            for path, spec in entity["fields"].items()
-            if "required" in (spec.get("rules") or [])
-        }
-        assert declared == actual, (
-            f"{key}: the spec requires {sorted(declared)} on create, core requires {sorted(actual)}"
+        declared, actual = block.get("fields") or {}, entity["fields"]
+        missing = sorted(set(actual) - set(declared))
+        invented = sorted(set(declared) - set(actual))
+        assert not missing and not invented, (
+            f"{key}: fields the core has and the spec does not describe: {missing or 'none'}; "
+            f"described but not in the core: {invented or 'none'}"
         )
+        for path, described in declared.items():
+            spec = actual[path]
+            unknown = sorted(set(described) - FIELD_KEYS)
+            assert not unknown, f"{key}.{path}: unknown key(s) {unknown}"
+            assert described.get("type") == spec.get("type"), (
+                f"{key}.{path}: type {described.get('type')!r}, core says {spec.get('type')!r}"
+            )
+            assert described.get("ref") == spec.get("reference"), (
+                f"{key}.{path}: ref {described.get('ref')!r}, core says {spec.get('reference')!r}"
+            )
+            assert bool(described.get("required")) == ("required" in (spec.get("rules") or [])), (
+                f"{key}.{path}: `required` disagrees with the core"
+            )
+            ops = sorted(described.get("ops") or [])
+            expected = sorted(op for op, flag in OP_FLAG.items() if spec.get(flag))
+            assert ops == expected, f"{key}.{path}: ops {ops}, core offers {expected}"
+            options = described.get("options")
+            if options is not None or spec.get("options"):
+                have = {
+                    o.get("value") if isinstance(o, dict) else o
+                    for o in (spec.get("options") or [])
+                }
+                assert set(options or []) == have, (
+                    f"{key}.{path}: options {sorted(options or [])}, core offers {sorted(have)}"
+                )
 
 
-def test_the_spec_states_every_field_the_core_has(core):
-    """Spec-driven: the specification names the model, and the core must match it.
+def test_proven_matches_the_live_run(core):
+    """`proven` is what a live run demonstrated — not what the core declares.
 
-    Both directions. A field the core grew without a spec entry is unspecified — nobody
-    decided it should exist. A field the spec names that the core does not have is a
-    requirement not met, and must say so with `missing: true` and a gap explaining what
-    is wanted; silently listing it would make the file describe a system that does not
-    exist.
+    Those are different claims and conflating them is the mistake this whole
+    arrangement exists to prevent: an operation can be flagged and never have been
+    tried. Checked by value in both directions, so a field that gains a proof has to be
+    written down and one that loses it struck.
+
+    `read` is excluded. A read verdict only shows that OUR model produced a value, and
+    the model invents some (`Customer.addresses.isDefault` is a hard-coded True), so it
+    says nothing about the upstream.
     """
-    if not core["spec"]:
+    if not core["verified"]:
         return
+    drift = {}
     for key, block in core["spec"].items():
-        entity = _entity(core, key)
-        declared = set(block.get("fields") or {})
-        actual = set(entity["fields"])
-        unspecified = sorted(actual - declared)
-        assert not unspecified, f"{key}: the core has fields the spec does not state: {unspecified}"
-        for path in sorted(declared - actual):
-            field = block["fields"][path]
-            assert field.get("missing") is True, (
-                f"{key}.{path}: the spec states this field, the core does not have it. "
-                f"Mark it `missing: true` with a gap saying what is needed, or drop it."
-            )
-            assert field.get("gaps"), (
-                f"{key}.{path}: marked missing with no gap — say what it is for"
-            )
-
-
-def test_declared_operations_are_supported(core):
-    """`must` is the requirement: these operations have to work on this field.
-
-    Where the core supports the operation the two agree by construction. Where it does
-    not, the field must carry a gap naming exactly that operation — otherwise the spec
-    is asking for something and nothing records that it is missing.
-    """
-    flag = {
-        "create": "creatable",
-        "update": "updatable",
-        "filter": "filterable",
-        "sort": "sortable",
-        "search": "searchable",
-    }
-    for key, block in core["spec"].items():
-        entity = _entity(core, key)
-        for path, field in (block.get("fields") or {}).items():
-            spec = entity["fields"].get(path)
-            if spec is None:  # `missing`, covered by the rule above
-                continue
-            covered = {op for gap in (field.get("gaps") or []) for op in gap.get("ops") or []}
-            unmet = sorted(
-                op
-                for op in field.get("must") or []
-                if op in flag and not spec.get(flag[op]) and op not in covered
-            )
-            assert not unmet, (
-                f"{key}.{path}: the spec requires {unmet} and the core does not support "
-                f"that, with no gap saying so. Build it, or record the gap."
-            )
+        marks = (core["verified"].get(key) or {}).get("fields") or {}
+        for path, described in (block.get("fields") or {}).items():
+            recorded = sorted(described.get("proven") or [])
+            measured = sorted(op for op in OP_FLAG if (marks.get(path) or {}).get(op) == PROVEN)
+            if recorded != measured:
+                drift[f"{key}.{path}"] = (recorded, measured)
+    assert not drift, (
+        f"{core['id']}: `proven` disagrees with {VERIFIED} (spec, live): "
+        f"{dict(sorted(drift.items()))}"
+    )
 
 
 def test_playbook_field_paths_exist(core):
@@ -692,73 +653,6 @@ def test_commands_cover_every_parameterised_capability(core):
     assert not missing, (
         f"{core['id']}: these capabilities take required parameters that the spec does not "
         f"state: {missing}"
-    )
-
-
-def test_contested_field_gaps_are_recorded_exactly(core):
-    """Where the core says a field IS writable and the spec says it is not.
-
-    `describe` then answers with both at once — `creatable: true` on the field and a
-    reason why you cannot set it. A builder reading that has to guess which half to
-    believe. Measured when this rule was written: 16 entries, 24 field × operation,
-    among them `Quote.shipping.method`, which the adapter has mapped since the
-    API-729 parity work.
-
-    A declared flag deliberately does NOT retire the gap. `_proven` records why: the
-    schema can declare a writable leaf while the capability the gap is about has no
-    write path at all (`Product.suppliers` — the default supplier maps through, the
-    multi-supplier sourcing the gap means does not), so dropping a gap on a flag would
-    erase a real one. Only a LIVE probe settles it.
-
-    So the contradiction is written down instead of resolved by guesswork, and the set
-    must match exactly in both directions — a new one fails the build, and one that a
-    probe has settled has to be struck by hand. It is a work list, not an exemption:
-    every entry here is one live create/update away from being either deleted or
-    hardened.
-
-    NOTE the facet exclusion. `read` cannot appear here, and must not: a read verdict
-    only shows that OUR model produced a value, and the model invents some
-    (`Customer.addresses.isDefault` is a hard-coded True). A read gap disputes what the
-    upstream supplies, which observing our own output cannot answer — a live run once
-    reported 14 read wishes as obsolete and every one was still true.
-    """
-    if not core["spec"] or not core["verified"]:
-        return
-    flag = {
-        "create": "creatable",
-        "update": "updatable",
-        "filter": "filterable",
-        "sort": "sortable",
-        "search": "searchable",
-    }
-    declared, actual = {}, {}
-    for key, block in core["spec"].items():
-        fields = _entity(core, key)["fields"]
-        marks = (core["verified"].get(key) or {}).get("fields") or {}
-        for path, field in (block.get("fields") or {}).items():
-            spec_field = fields.get(path)
-            for gap in field.get("gaps") or []:
-                if gap.get("contested"):
-                    declared.setdefault(f"{key}.{path}", []).extend(gap["contested"])
-                if spec_field is None:
-                    continue
-                contested = [
-                    op
-                    for op in gap.get("ops") or []
-                    if op in flag
-                    and spec_field.get(flag[op])
-                    and (marks.get(path) or {}).get(op) != PROVEN
-                ]
-                if contested:
-                    actual.setdefault(f"{key}.{path}", []).extend(contested)
-    declared = {k: sorted(set(v)) for k, v in declared.items()}
-    actual = {k: sorted(set(v)) for k, v in actual.items()}
-    assert declared == actual, (
-        f"{core['id']}: `contested` disagrees with the core. "
-        f"settled or gone, strike them: "
-        f"{sorted(set(declared) - set(actual)) or 'none'}; "
-        f"the core declares these writable while the spec calls them gaps, record them: "
-        f"{ {k: v for k, v in actual.items() if declared.get(k) != v} or 'none' }"
     )
 
 

@@ -22,28 +22,18 @@ from xentral_entity_cores.agentos_neo_xentral.emulated.supplier import SupplierA
 
 
 def _field_gaps() -> dict:
-    """The field-gap entries per entity, out of the core's one specification file.
+    """The parked field gaps per entity, out of backlog.yaml.
 
-    `erp-spec.yaml` groups `category -> entity -> block`; this flattens to
-    `entity -> [gap]`, the shape these assertions care about.
+    The gaps left the specification when the core stopped rendering them: the spec now
+    describes what the system IS, and the backlog is a plain work list nothing loads.
+    These assertions still care that a recorded gap says what it always said.
     """
     import pathlib
 
     import yaml
 
-    path = pathlib.Path(__file__).parent.parent / "cores/agentos_neo_xentral/erp-spec.yaml"
-    grouped = yaml.safe_load(path.read_text(encoding="utf-8"))
-    out: dict = {}
-    for entities in grouped.values():
-        for key, block in entities.items():
-            entries = [
-                {"field": p, **g}
-                for p, f in (block.get("fields") or {}).items()
-                for g in (f.get("gaps") or [])
-            ]
-            if entries:
-                out[key] = entries
-    return out
+    path = pathlib.Path(__file__).parent.parent / "cores/agentos_neo_xentral/backlog.yaml"
+    return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
 
 
 def _f() -> dict[str, Any]:
