@@ -54,15 +54,20 @@ _SPEAKING_ID = re.compile(r"^[a-z]+_[0-9]+$")
 
 
 @functools.lru_cache(maxsize=1)
-def _field_gaps() -> dict[str, Any]:
-    """Per-entity field gaps from the core's field-gaps.yaml — the field axis of the
-    specification (docs/03-mapping-layer.md §5). Missing file → empty.
+def _spec() -> dict[str, Any]:
+    """The core's ERP specification, grouped ``category → entity → everything``.
 
-    YAML rather than JSON because the payload is prose: each entry carries a business
+    YAML rather than JSON because the payload is prose: every gap carries a business
     reason that a reviewer writes and edits, and JSON can neither comment it nor wrap
     it. Parsed once per process (lru_cache), so the slower parser costs nothing.
+
+    Missing or malformed → empty. This runs lazily on the request path, so a typo in
+    the specification must cost a sentence in `describe`, never a 500. The loudness
+    lives in CI instead: `validate_cores.py` refuses a malformed file, and
+    `test_no_rendered_wish_carries_the_runtime_placeholder` fails the build if any gap
+    comes out of here without its reason.
     """
-    path = os.path.join(os.path.dirname(__file__), "..", "field-gaps.yaml")
+    path = os.path.join(os.path.dirname(__file__), "..", "erp-spec.yaml")
     try:
         with open(path, encoding="utf-8") as fh:
             return yaml.safe_load(fh) or {}
@@ -71,22 +76,49 @@ def _field_gaps() -> dict[str, Any]:
 
 
 @functools.lru_cache(maxsize=1)
-def _wish_reasons() -> dict[str, Any]:
-    """Why each declared-but-not-executable capability cannot run, from the core's
-    capabilities.spec.yaml (``wishes`` → ``<Entity>`` → ``<key>`` → reason).
+def _entities() -> dict[str, Any]:
+    """Entity key → its specification block, flattened across the category grouping.
 
-    The adapters say WHICH capabilities are gaps; this file says WHY. Keeping the two
-    apart is what lets the playbook test compare them: a spec that also decided the
-    classification would be checking itself. The text lives here because it is a
-    business statement the specification's owner must be able to edit without touching
-    Python. Missing file → empty, and `_wish_reason` then names the omission.
+    The categories are how a REVIEWER navigates 50 entities; every consumer in this
+    module addresses one entity by key. Flattening once, here, is what keeps the
+    grouping a presentation decision instead of something each caller has to know
+    about — and it is why the two views below kept the shapes their callers already
+    expected when the two spec files were merged into one.
     """
-    path = os.path.join(os.path.dirname(__file__), "..", "capabilities.spec.yaml")
-    try:
-        with open(path, encoding="utf-8") as fh:
-            return (yaml.safe_load(fh) or {}).get("wishes") or {}
-    except (FileNotFoundError, ValueError, yaml.YAMLError):
-        return {}
+    out: dict[str, Any] = {}
+    for entities in _spec().values():
+        if isinstance(entities, dict):
+            out.update({k: v for k, v in entities.items() if isinstance(v, dict)})
+    return out
+
+
+@functools.lru_cache(maxsize=1)
+def _field_gaps() -> dict[str, Any]:
+    """Per-entity field gaps (``fieldGaps``) — the field axis of the specification
+    (docs/03-mapping-layer.md §5). ``<Entity>`` → ``[{field, ops, reason}]``."""
+    return {
+        key: block["fieldGaps"]
+        for key, block in _entities().items()
+        if isinstance(block.get("fieldGaps"), list)
+    }
+
+
+@functools.lru_cache(maxsize=1)
+def _wish_reasons() -> dict[str, Any]:
+    """Why each declared-but-not-executable capability cannot run (``cannot``):
+    ``<Entity>`` → ``<key>`` → reason.
+
+    The adapters say WHICH capabilities are gaps; the specification says WHY. Keeping
+    the two apart is what lets the playbook test compare them — a specification that
+    also decided the classification would be checking itself. The text lives there
+    because it is a business statement its owner must be able to edit without touching
+    Python. Missing entry → `_spec_wish_reason` names the omission.
+    """
+    return {
+        key: block["cannot"]
+        for key, block in _entities().items()
+        if isinstance(block.get("cannot"), dict)
+    }
 
 
 @functools.lru_cache(maxsize=1)
@@ -312,7 +344,7 @@ def map_item_totals(li: dict[str, Any], currency: str = "EUR") -> dict[str, Any]
     pass-through, and squarely on the unresolved legacy rounding-parity question
     (docs/03-mapping-layer.md Kategorie 3 §1, ``projekt.preisberechnung``). A derived
     number would be indistinguishable from an upstream one while being free to
-    disagree with the printed document. The gap is a blue wish in field-gaps.yaml;
+    disagree with the printed document. The gap is a blue wish in erp-spec.yaml;
     per-rate tax is available on the document's ``totals``."""
     rev = li.get("lineItemRevenue") or {}
     net = ((rev.get("net") or {}).get("amount"), (rev.get("net") or {}).get("currency"))
@@ -483,7 +515,7 @@ class FacadeAdapterBase:
         the action-side twin of the blue field gaps (ADR-014).
 
         The adapter states only THAT a capability is a gap; the reason text lives in
-        ``capabilities.spec.yaml``, where the reviewer who owns the requirement can
+        ``erp-spec.yaml``, where the reviewer who owns the requirement can
         edit it. Those texts are business statements ("the transition happens only in
         the UI"), and they used to sit in this Python file where that reviewer could
         not reach them.
@@ -539,7 +571,7 @@ class FacadeAdapterBase:
             reason
             if isinstance(reason, str) and reason.strip()
             else (
-                f"Declared as not executable, but capabilities.spec.yaml records no reason "
+                f"Declared as not executable, but erp-spec.yaml records no reason "
                 f"for {self.manifest.key}.{key}."
             )
         )
@@ -606,7 +638,7 @@ class FacadeAdapterBase:
         )
 
     def _apply_field_gaps(self, properties: dict[str, Any]) -> None:
-        """Stamp the hand-curated blue wishes (field-gaps.yaml) onto the schema —
+        """Stamp the hand-curated blue wishes (erp-spec.yaml) onto the schema —
         the living backlog (docs/03-mapping-layer.md §5). Renders blue only where
         the op is actually unavailable.
 
@@ -1514,7 +1546,7 @@ class FacadeAdapterBase:
         outside the default path (salesOrder splits its line items off before
         delegating) must answer identically instead of dropping the rejection.
 
-        The per-field ``reasons`` come from field-gaps.yaml. They matter because
+        The per-field ``reasons`` come from erp-spec.yaml. They matter because
         "not writable" covers two different things, and a blanket "read-only
         upstream" would be a false statement for the second: the upstream genuinely
         cannot do it, OR it could and we decline (a document number is always drawn
@@ -1530,7 +1562,7 @@ class FacadeAdapterBase:
             "detail": (
                 "Either the upstream cannot write them today or the core declines them "
                 "by decision (ADR-014: no overlay, no silent drop). See `reasons`, and "
-                "field-gaps.yaml for the full backlog."
+                "erp-spec.yaml for the full backlog."
             ),
             "fields": sorted(rejected),
         }

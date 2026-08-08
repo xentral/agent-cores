@@ -18,9 +18,6 @@ from __future__ import annotations
 import json
 import pathlib
 
-import yaml
-from typing import Any
-
 from xentral_entity_cores.agentos_neo_xentral.emulated.credit_note import CreditNoteAdapter
 from xentral_entity_cores.agentos_neo_xentral.emulated.delivery_note import DeliveryNoteAdapter
 from xentral_entity_cores.agentos_neo_xentral.emulated.purchase_order import PurchaseOrderAdapter
@@ -45,9 +42,23 @@ _DOES_NOT = [
 _ALL = _TAKES_IT + _DOES_NOT
 
 
-def _field_gaps() -> dict[str, Any]:
-    path = pathlib.Path(__file__).parent.parent / "cores/agentos_neo_xentral/field-gaps.yaml"
-    return yaml.safe_load(path.read_text(encoding="utf-8"))
+def _field_gaps() -> dict:
+    """The field-gap entries per entity, out of the core's one specification file.
+
+    `erp-spec.yaml` groups `category -> entity -> block`; this flattens to
+    `entity -> [gap]`, the shape these assertions care about.
+    """
+
+    import yaml
+
+    path = pathlib.Path(__file__).parent.parent / "cores/agentos_neo_xentral/erp-spec.yaml"
+    grouped = yaml.safe_load(path.read_text(encoding="utf-8"))
+    return {
+        key: block["fieldGaps"]
+        for entities in grouped.values()
+        for key, block in entities.items()
+        if block.get("fieldGaps")
+    }
 
 
 # ---- where Xentral takes a number ---------------------------------------

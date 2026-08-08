@@ -10,20 +10,33 @@ other, nothing is being checked any more.
 
 ## Owned by the ERP expert — the requirement
 
-| File | What it says |
+**`erp-spec.yaml`** — one file, grouped `category → entity → everything about that
+entity`, so one block answers *"what can this system do with an order"*:
+
+| Per entity | What it says |
 |---|---|
-| `capabilities.spec.yaml` | What the ERP must be able to **do**: per entity, which actions and status steps must exist, which statuses, which fields are mandatory on create, what must be filterable — **and, for each capability the upstream cannot do, why not**. |
-| `field-gaps.yaml` | What the ERP must be able to **record and find**: field × operation the merchant needs but the Xentral API cannot do today, each with the business reason ("a clerk must be able to set and correct the customer's PO number"). |
+| `operations` | read-only or writable |
+| `statuses` | the lifecycle vocabulary of each status field |
+| `requiredForCreate` · `filterable` · `notFilterable` · `fields` | what a create must carry, what must be queryable, the documented traps, the paths the reviewer decided must exist |
+| `can` | the capability works — with the verdict a live run returned, and the parameters it takes |
+| `cannot` | the capability is needed and the upstream cannot do it — **with the reason** |
+| `fieldGaps` | field × operation the merchant needs and the API cannot serve, with the business reason |
+| `reviewed` | the date a domain expert went through this entity, or `null` |
 
-Two files, one specification, two axes: what must be *doable*, and what must be
-*recordable and findable*. Both are hand-written. Neither is generated from the
-code — a specification derived from the implementation cannot state what is still
-missing, which is the only reason anyone would review it.
+Two axes in one document: what must be *doable* (`can` / `cannot`) and what must be
+*recordable and findable* (`fieldGaps`). Hand-written, never generated from the code —
+a specification derived from the implementation cannot state what is still missing,
+which is the only reason anyone would review it.
 
-Both ship. The core loads them at runtime and renders each recorded gap where it
-applies — on the field, or on the action — so a builder reads *"not possible, and
-here is why"* at the point of use instead of mere absence. Absence is
-indistinguishable from "nobody looked".
+It ships. The core loads it at runtime and renders each recorded gap where it applies —
+on the action, or on the field — so a builder reads *"not possible, and here is why"*
+at the point of use instead of mere absence. Absence is indistinguishable from "nobody
+looked".
+
+The grouping is the core's **own** `manifest.category`, the same value `describe`
+ships, and a rule enforces that every entity sits under the one its adapter declares.
+Two owners for one fact is how a reviewer reads `documents`, believes they have seen
+every document, and misses one filed elsewhere because it felt related.
 
 That is why the reasons live here and not in the code. They are business
 statements — *"the transition happens only in the UI"*, *"digest-authenticated and
@@ -56,15 +69,15 @@ carries the weight:
 | `fail` | Tested and broken. |
 | *(absent)* | Never tested. |
 
-Measured when this README was written: of 80 capabilities the spec calls
-executable, **25 are proven**. The rest are listed by name in the spec's
-`evidenceGaps` section, and CI keeps that list matching reality in both
-directions — so the count cannot drift upward quietly, and a capability that gains
-a real proof has to be struck from it by hand.
+Measured when this README was written: of 80 capabilities the spec says the system
+`can` do, **25 are proven** — 34 are only `reachable`, 3 `executed`, 18 never tested.
+Each carries its verdict in the spec next to the capability, and CI checks it against
+`verified.json` by value in both directions: a capability that gains a proof has to be
+upgraded by hand, one that loses it downgraded. The count cannot drift upward quietly.
 
 ## The review sheet
 
-`review.xlsx` is what a domain expert actually reads. It joins all three sources
+`review.xlsx` is what a domain expert actually reads. It joins both sources
 onto one row, ordered along the process chain (customer → quote → order → delivery
 → invoice → return → credit note, then purchasing, then master data) rather than
 alphabetically, so a document sits next to the one it produces.

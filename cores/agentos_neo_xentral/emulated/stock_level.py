@@ -26,7 +26,7 @@ Not covered at this grain: ``reserved``/``available`` (no per-location reservati
 is exposed upstream — only the product totals in ``/v1/products/{id}/stocks``) and
 the batch split (the v2 items rows carry ``qualityControlAttributes``, the product
 endpoint does not — emitting batch rows on one path only would make the grain
-depend on the filter). Both stay blue wishes in field-gaps.yaml.
+depend on the filter). Both stay blue wishes in erp-spec.yaml.
 """
 
 from __future__ import annotations
@@ -368,7 +368,7 @@ class StockLevelAdapter(FacadeAdapterBase):
                     "title": "stockLevel: batch is not a filterable grain",
                     "detail": (
                         "This projection reports product × storage location. The batch "
-                        "split is a blue wish (field-gaps.yaml)."
+                        "split is a blue wish (erp-spec.yaml)."
                     ),
                 },
             )
