@@ -175,10 +175,10 @@ class ChannelAdapter(FacadeAdapterBase):
                 "label": "Status",
                 "commands": [
                     self.step_cmd(
-                        "pause", "Pause", wish="The channel API (05 #17) exposes no state writes."
+                        "pause", "Pause", wish=True
                     ),
                     self.step_cmd(
-                        "resume", "Resume", wish="The channel API (05 #17) exposes no state writes."
+                        "resume", "Resume", wish=True
                     ),
                 ],
             }
@@ -189,20 +189,20 @@ class ChannelAdapter(FacadeAdapterBase):
             self.action_def(
                 "syncOrders",
                 "Sync orders",
-                wish="The channel API (05 #17) exposes no sync triggers.",
+                wish=True,
             ),
             self.action_def(
-                "syncStock", "Sync stock", wish="The channel API (05 #17) exposes no sync triggers."
+                "syncStock", "Sync stock", wish=True
             ),
             self.action_def(
                 "syncProducts",
                 "Sync products",
-                wish="The channel API (05 #17) exposes no sync triggers.",
+                wish=True,
             ),
             self.action_def(
                 "testConnection",
                 "Test connection",
-                wish="The channel API (05 #17) exposes no connection test.",
+                wish=True,
             ),
         ]
 

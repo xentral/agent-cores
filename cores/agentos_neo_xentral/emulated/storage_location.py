@@ -61,12 +61,12 @@ class StorageLocationAdapter(FacadeAdapterBase):
                     self.step_cmd(
                         "block",
                         "Block",
-                        wish="v1 storageLocations exposes no block/release state write.",
+                        wish=True,
                     ),
                     self.step_cmd(
                         "release",
                         "Release",
-                        wish="v1 storageLocations exposes no block/release state write.",
+                        wish=True,
                     ),
                 ],
             }
@@ -202,7 +202,7 @@ class StorageLocationAdapter(FacadeAdapterBase):
                 ),
             ),
             self.action_def(
-                "printLabel", "Print label", wish="Storage-location labels have no public endpoint."
+                "printLabel", "Print label", wish=True
             ),
         ]
 

@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import json
 import pathlib
+
+import yaml
 from typing import Any
 
 from xentral_entity_cores.agentos_neo_xentral.emulated.credit_note import CreditNoteAdapter
@@ -43,9 +45,9 @@ _DOES_NOT = [
 _ALL = _TAKES_IT + _DOES_NOT
 
 
-def _priorities() -> dict[str, Any]:
-    path = pathlib.Path(__file__).parent.parent / "cores/agentos_neo_xentral/priorities.json"
-    return json.loads(path.read_text(encoding="utf-8"))["entities"]
+def _field_gaps() -> dict[str, Any]:
+    path = pathlib.Path(__file__).parent.parent / "cores/agentos_neo_xentral/field-gaps.yaml"
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
 # ---- where Xentral takes a number ---------------------------------------
@@ -102,13 +104,13 @@ def test_number_left_the_ignore_set_everywhere():
 
 
 def test_the_reason_says_which_of_the_two_it_is():
-    prio = _priorities()
+    gaps = _field_gaps()
     for _cls, name in _TAKES_IT:
-        wishes = [w for w in prio[name] if w["field"] == "number"]
+        wishes = [w for w in gaps[name] if w["field"] == "number"]
         assert wishes and wishes[0]["ops"] == ["update"], name
         assert "PATCH has no slot" in wishes[0]["reason"], name
     for _cls, name in _DOES_NOT:
-        wishes = [w for w in prio[name] if w["field"] == "number"]
+        wishes = [w for w in gaps[name] if w["field"] == "number"]
         assert wishes and wishes[0]["ops"] == ["create"], name
         assert "does not declare" in wishes[0]["reason"], name
 

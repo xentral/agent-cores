@@ -204,14 +204,12 @@ def test_customer_can_be_deleted():
 def test_lead_flag_is_read_only_and_carried_as_a_wish():
     """No v3 customers payload exposes the lead flag, so `type` must not claim to be
     writable — and the gap has to stay visible rather than disappear."""
-    import json
     import pathlib
 
+    import yaml
+
     assert _f()["type"]["access"] == "readOnly"
-    prio = json.loads(
-        (
-            pathlib.Path(__file__).parent.parent / "cores/agentos_neo_xentral/priorities.json"
-        ).read_text(encoding="utf-8")
-    )
-    wishes = [w for w in prio["entities"]["Customer"] if w["field"] == "type"]
+    path = pathlib.Path(__file__).parent.parent / "cores/agentos_neo_xentral/field-gaps.yaml"
+    gaps = yaml.safe_load(path.read_text(encoding="utf-8"))
+    wishes = [w for w in gaps["Customer"] if w["field"] == "type"]
     assert wishes and set(wishes[0]["ops"]) == {"create", "update"}

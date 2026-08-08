@@ -5,7 +5,7 @@ Outward: the new salesOrder model. Inward: reads/writes Xentral v3
 trafficLights → holds, financials/totals → money strings). Per ADR-014 there is
 no overlay: a field is ``creatable/updatable`` only where the upstream can write
 it TODAY; everything else is read-only here and tracked as a blue wish in
-priorities.json (a write that includes it answers 409 with the field list).
+field-gaps.yaml (a write that includes it answers 409 with the field list).
 """
 
 from __future__ import annotations
@@ -309,7 +309,7 @@ class SalesOrderAdapter(FacadeAdapterBase):
             self.action_def(
                 "createDeliveryNote",
                 "Create delivery note",
-                wish="v1 dispatch couples delivery-note creation with shipping side-effects; a clean createDeliveryNote(items?) needs a dedicated endpoint.",
+                wish=True,
             ),
             self.action_def(
                 "createSalesInvoice",
@@ -319,22 +319,20 @@ class SalesOrderAdapter(FacadeAdapterBase):
             self.action_def(
                 "createPickingRun",
                 "Create picking run",
-                wish="Pick list creation has no public endpoint (05 #12).",
+                wish=True,
             ),
             self.action_def(
                 "addHold",
                 "Add hold",
-                wish="Holds map to trafficLights — readable, but there is no public write API.",
-            ),
+                wish=True            ),
             self.action_def(
                 "releaseHold",
                 "Release hold",
-                wish="Holds map to trafficLights — readable, but there is no public write API.",
-            ),
+                wish=True            ),
             self.action_def(
                 "allocateStock",
                 "Allocate stock",
-                wish="Stock allocation runs upstream automatically; no manual trigger is exposed.",
+                wish=True,
             ),
             self.action_def(
                 "split",
@@ -375,7 +373,7 @@ class SalesOrderAdapter(FacadeAdapterBase):
                     },
                 },
             ),
-            self.action_def("duplicate", "Duplicate", wish="No duplicate endpoint upstream."),
+            self.action_def("duplicate", "Duplicate", wish=True),
             self.action_def(
                 "downloadPdf",
                 "Download PDF",
@@ -582,7 +580,7 @@ class SalesOrderAdapter(FacadeAdapterBase):
                     "auto": prop("boolean", "Auto dispatch", **_CU),
                     "priority": prop("select", "Priority", options=_PRIORITY_OPTIONS, **_CU),
                     # No upstream slot: the read hardcodes "allowed". Read-only until
-                    # v3 exposes a partial-shipping policy (priorities.json wish).
+                    # v3 exposes a partial-shipping policy (field-gaps.yaml wish).
                     "partialShipping": prop("select", "Partial shipping", **RO),
                 },
             ),

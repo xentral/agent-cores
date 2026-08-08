@@ -44,18 +44,17 @@ class ShipmentAdapter(FacadeAdapterBase):
             self.action_def(
                 "createLabel",
                 "Create label",
-                wish="Carrier labels run through the beta printShippingLabel API (CIS) on delivery notes — not public.",
+                wish=True            ),
+            self.action_def(
+                "cancelLabel", "Cancel label", wish=True
             ),
             self.action_def(
-                "cancelLabel", "Cancel label", wish="Label cancellation is not exposed."
-            ),
-            self.action_def(
-                "downloadLabel", "Download label", wish="Label download is not exposed."
+                "downloadLabel", "Download label", wish=True
             ),
             self.action_def(
                 "refreshTracking",
                 "Refresh tracking",
-                wish="Tracking refresh has no public trigger.",
+                wish=True,
             ),
         ]
 

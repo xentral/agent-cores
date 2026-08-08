@@ -142,10 +142,9 @@ class ReturnAdapter(FacadeAdapterBase):
                     self.step_cmd(
                         "receive",
                         "Receive",
-                        wish="Receiving has no upstream endpoint — v3 returnOrders offers complete/cancel only.",
-                    ),
+                        wish=True                    ),
                     self.step_cmd(
-                        "check", "Check", wish="The check step has no upstream endpoint."
+                        "check", "Check", wish=True
                     ),
                     self.step_cmd("settle", "Settle"),
                     self.step_cmd("cancel", "Cancel"),
@@ -196,8 +195,7 @@ class ReturnAdapter(FacadeAdapterBase):
             self.action_def(
                 "sendReturnLabel",
                 "Send return label",
-                wish="Return labels run through the beta carrier label API — not public.",
-            ),
+                wish=True            ),
             self.action_def(
                 "createCreditNote",
                 "Create credit note",
@@ -222,7 +220,7 @@ class ReturnAdapter(FacadeAdapterBase):
             self.action_def(
                 "createReplacementOrder",
                 "Create replacement order",
-                wish="No replacement-order endpoint upstream.",
+                wish=True,
             ),
             self.action_def(
                 "restock",
@@ -607,7 +605,7 @@ class ReturnAdapter(FacadeAdapterBase):
     # configured number range, so a caller supplying one must be told it was refused
     # rather than get a 201 and a different number. Upstream would accept it on three
     # of these types (salesOrder / invoice / creditNote, verified on mvp) — declining
-    # it everywhere is a product decision, recorded as such in priorities.json.
+    # it everywhere is a product decision, recorded as such in field-gaps.yaml.
     _IGNORE = {
         "object",
         "id",

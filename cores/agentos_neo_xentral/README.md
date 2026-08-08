@@ -12,16 +12,30 @@ other, nothing is being checked any more.
 
 | File | What it says |
 |---|---|
-| `capabilities.spec.yaml` | What the ERP must be able to **do**: per entity, which actions and status steps must exist, which statuses, which fields are mandatory on create, what must be filterable. |
-| `priorities.json` | What the ERP must be able to **record and find**: field × operation the merchant needs but the Xentral API cannot do today, each with the business reason ("a clerk must be able to set and correct the customer's PO number"). |
+| `capabilities.spec.yaml` | What the ERP must be able to **do**: per entity, which actions and status steps must exist, which statuses, which fields are mandatory on create, what must be filterable — **and, for each capability the upstream cannot do, why not**. |
+| `field-gaps.yaml` | What the ERP must be able to **record and find**: field × operation the merchant needs but the Xentral API cannot do today, each with the business reason ("a clerk must be able to set and correct the customer's PO number"). |
 
-Two files, one specification, two axes. Both are hand-written. Neither is
-generated from the code — a specification derived from the implementation cannot
-state what is still missing, which is the only reason anyone would review it.
+Two files, one specification, two axes: what must be *doable*, and what must be
+*recordable and findable*. Both are hand-written. Neither is generated from the
+code — a specification derived from the implementation cannot state what is still
+missing, which is the only reason anyone would review it.
 
-Gaps recorded in `priorities.json` are rendered into the live `describe` output at
-the field they concern, so a builder sees *"not possible, and here is why"* instead
-of mere absence. Absence is indistinguishable from "nobody looked".
+Both ship. The core loads them at runtime and renders each recorded gap where it
+applies — on the field, or on the action — so a builder reads *"not possible, and
+here is why"* at the point of use instead of mere absence. Absence is
+indistinguishable from "nobody looked".
+
+That is why the reasons live here and not in the code. They are business
+statements — *"the transition happens only in the UI"*, *"digest-authenticated and
+behind a killswitch"* — and until recently the 100 capability reasons sat in the
+adapter Python, where the person who owns the requirement could not edit them. The
+adapter now says only **that** something is a gap (`wish=True`); this file says
+**why**.
+
+The split is deliberate and load-bearing: if the specification decided *which*
+capabilities are gaps as well as why, the two rules that matter most — a required
+capability must not be a gap, a recorded gap must still be one — would be comparing
+the specification against itself.
 
 ## Written by the machine — the result
 

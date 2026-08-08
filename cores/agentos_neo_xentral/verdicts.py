@@ -9,7 +9,7 @@ path before any payload was looked at; and 34 of 62 action verdicts green on not
 but a 4xx proving the route exists.
 
 That is not cosmetic. ``FacadeAdapterBase._proven`` retires a hand-written wish from
-``priorities.json`` when a facet passes, so a weak verdict deletes a real backlog
+``field-gaps.yaml`` when a facet passes, so a weak verdict deletes a real backlog
 entry. The old design's answer was a hand-maintained allowlist that excluded ``read``
 — a rule living in one consumer's head while the other two kept rendering it green.
 

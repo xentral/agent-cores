@@ -160,10 +160,9 @@ class PurchaseInvoiceAdapter(FacadeAdapterBase):
                     self.step_cmd(
                         "approve",
                         "Approve",
-                        wish="The BF InvoiceCheck/DocumentStatus process steps are readable, but the write transition is not exposed. Candidate: v1 liabilities/{id}/actions/release — needs the numeric id, which the BF rows do not carry.",
-                    ),
+                        wish=True                    ),
                     self.step_cmd(
-                        "reject", "Reject", wish="Rejecting has no exposed write transition."
+                        "reject", "Reject", wish=True
                     ),
                 ],
             }
@@ -174,21 +173,19 @@ class PurchaseInvoiceAdapter(FacadeAdapterBase):
             self.action_def(
                 "rematch",
                 "Re-run 3-way match",
-                wish="Matching runs upstream automatically; no re-trigger endpoint is exposed.",
+                wish=True,
             ),
             self.action_def(
                 "registerPayment",
                 "Register payment",
-                wish="The payments API is not public — no endpoint to register an outgoing payment.",
-            ),
+                wish=True            ),
             self.action_def(
-                "schedulePayment", "Schedule payment", wish="Payment runs have no public API."
+                "schedulePayment", "Schedule payment", wish=True
             ),
             self.action_def(
                 "attachFile",
                 "Attach file",
-                wish="Candidate: v1 liabilities/{id}/documents (upload) — needs the numeric id, which the BF rows do not carry.",
-            ),
+                wish=True            ),
         ]
 
     def fields(self) -> dict[str, dict[str, Any]]:

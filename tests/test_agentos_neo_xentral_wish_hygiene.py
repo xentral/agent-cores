@@ -58,7 +58,7 @@ class _Adapter(QuoteAdapter):
 
 def _priority(adapter: QuoteAdapter, path: str) -> dict[str, str] | None:
     props = adapter.fields()
-    adapter._apply_priorities(props)
+    adapter._apply_field_gaps(props)
     spec = adapter._resolve_path(props, path) if "." in path else props.get(path)
     return (spec or {}).get("priority")
 

@@ -78,12 +78,12 @@ class SupplierAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
                 "label": "Status",
                 "commands": [
                     self.step_cmd(
-                        "archive", "Archive", wish="No archive flag is writable via v1 suppliers."
+                        "archive", "Archive", wish=True
                     ),
                     self.step_cmd(
                         "reactivate",
                         "Reactivate",
-                        wish="No archive flag is writable via v1 suppliers.",
+                        wish=True,
                     ),
                 ],
             }
@@ -92,23 +92,22 @@ class SupplierAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
     def actions(self):
         return [
             self.action_def(
-                "setHold", "Set hold", wish="Supplier holds are not writable via the public API."
+                "setHold", "Set hold", wish=True
             ),
             self.action_def(
                 "releaseHold",
                 "Release hold",
-                wish="Supplier holds are not writable via the public API.",
+                wish=True,
             ),
             self.action_def(
-                "mergeInto", "Merge into", wish="Duplicate merge is a UI-only feature — no API."
-            ),
+                "mergeInto", "Merge into", wish=True           ),
             self.action_def(
-                "runCreditCheck", "Run credit check", wish="Credit checks have no public trigger."
+                "runCreditCheck", "Run credit check", wish=True
             ),
             self.action_def(
                 "statement",
                 "Open-items statement",
-                wish="An open-items statement is not exposed via the public API.",
+                wish=True,
             ),
         ]
 

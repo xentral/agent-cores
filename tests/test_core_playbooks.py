@@ -250,6 +250,33 @@ def test_wishes_are_still_wishes(core):
             )
 
 
+def test_every_wish_carries_a_reason(core):
+    """A recorded gap must say WHY, in the spec, where its owner can edit it.
+
+    The reason used to live in the adapter as a prose block on ``wish=``. That put a
+    business statement — "the transition happens only in the UI", "digest-authenticated
+    and behind a killswitch" — in a Python file the person who owns the requirement
+    cannot touch. It now sits beside the key in ``wishes``, and the adapter only
+    classifies.
+
+    Without this rule the move would fail open: an entry with no text renders a
+    placeholder naming the omission, which is honest at runtime but must not survive a
+    build. A gap with no reason cannot be told apart from one nobody investigated.
+    """
+    for key, ops in (core["spec"].get("wishes") or {}).items():
+        assert isinstance(ops, dict), (
+            f"{key}: `wishes` must map each capability to its reason, not list bare keys"
+        )
+        for op, reason in ops.items():
+            assert isinstance(reason, str) and reason.strip(), (
+                f"{key}.{op}: recorded as an upstream gap with no reason. Say what the "
+                f"upstream cannot do and how that was established."
+            )
+            assert "records no reason" not in reason, (
+                f"{key}.{op}: carries the runtime placeholder as its reason"
+            )
+
+
 def test_evidence_gaps_match_the_live_run(core):
     """Which executable capabilities a live run has NOT actually proven.
 

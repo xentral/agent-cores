@@ -131,9 +131,7 @@ class CreditNoteAdapter(FacadeAdapterBase):
                         "cancel",
                         "Cancel",
                         wish=(
-                            "A released credit note can only be cancelled in the "
-                            "Xentral UI (legacy); v3 exposes no cancel action. Drafts "
-                            "are removed with `delete`."
+                            True
                         ),
                     ),
                 ],
@@ -151,12 +149,11 @@ class CreditNoteAdapter(FacadeAdapterBase):
             self.action_def(
                 "registerRefund",
                 "Register refund",
-                wish="The payments API is not public — no endpoint to register an outgoing refund.",
-            ),
+                wish=True            ),
             self.action_def(
                 "offsetAgainstInvoice",
                 "Offset against invoice",
-                wish="Offsetting has no public endpoint.",
+                wish=True,
             ),
             self.action_def(
                 "downloadPdf",
@@ -246,7 +243,7 @@ class CreditNoteAdapter(FacadeAdapterBase):
                     "issued": prop("date", "Issued", **_CU, filterable=True, sortable=True),
                     # Unlike the invoice, the credit-note v3 DTOs still carry no
                     # `deliveryDate` — the write drops this silently, so the schema must
-                    # not advertise it as writable (priorities.json keeps the wish).
+                    # not advertise it as writable (field-gaps.yaml keeps the wish).
                     "serviceDate": prop(
                         "date",
                         "Service date",

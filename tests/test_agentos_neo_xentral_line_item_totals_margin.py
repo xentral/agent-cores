@@ -105,8 +105,9 @@ def test_no_tax_is_invented_for_a_line():
     figure Xentral never reported, indistinguishable from a real one and free to
     disagree with the printed document (legacy rounding is an open question). The gap
     is carried as a blue wish, not filled in."""
-    import json
     import pathlib
+
+    import yaml
 
     raw = _raw(
         lineItemRevenue={
@@ -119,12 +120,12 @@ def test_no_tax_is_invented_for_a_line():
         assert set(totals) == {"net", "gross"}, cls.__name__
         assert "tax" not in cls().fields()["items"]["node"]["properties"]["totals"]["properties"]
 
-    prio = json.loads(
+    gaps = yaml.safe_load(
         (
-            pathlib.Path(__file__).parent.parent / "cores/agentos_neo_xentral/priorities.json"
+            pathlib.Path(__file__).parent.parent / "cores/agentos_neo_xentral/field-gaps.yaml"
         ).read_text(encoding="utf-8")
     )
     for ent in ("Quote", "SalesOrder", "SalesInvoice", "CreditNote"):
-        wishes = [w for w in prio["entities"][ent] if w["field"] == "items.totals.tax"]
+        wishes = [w for w in gaps[ent] if w["field"] == "items.totals.tax"]
         assert wishes, f"{ent}: the missing per-line tax must stay visible as a wish"
         assert wishes[0]["ops"] == ["read"], ent
