@@ -182,8 +182,6 @@ def ship_addr_from_v3(a: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": f"adr_s{a.get('id')}" if a.get("id") is not None else None,
         "type": "shipping",
-        "label": None,
-        "isDefault": False,
         "name": a.get("name"),
         "contactPerson": a.get("contactPerson"),
         "street": a.get("street"),
@@ -265,8 +263,6 @@ def bill_addr_from_dba(a: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": "adr_billing",
         "type": "billing",
-        "label": None,
-        "isDefault": False,
         "name": a.get("name"),
         "contactPerson": a.get("contactPerson"),
         "street": a.get("street"),
@@ -340,8 +336,13 @@ def contacts_prop(prop, RO, CU, REQUIRED) -> dict[str, Any]:  # noqa: N803 - sch
 def addresses_prop(prop, RO, CU) -> dict[str, Any]:  # noqa: N803 - schema-flag bundles
     """Schema fragment for the unified ``addresses`` collection.
 
-    ONE list: the main address is the default row (``type`` "both", ``isDefault``),
-    plus optional deviating billing and shipping rows. The geo leaves carry the v3
+    ONE list: the main address is the row typed "both", plus optional deviating
+    billing and shipping rows.
+
+    It carried a `label` and an `isDefault` until the first domain review dropped
+    both: v3 knows address ROLES, not named locations and not a default marker, so
+    `label` was always null and `isDefault` a hard-coded False on every row — a flag
+    that reads as a statement ("this is not the default") while saying nothing. The geo leaves carry the v3
     filter/sort/search the record supports on its main address (mapped via the
     adapter's ``query_aliases``: addresses.city → city …)."""
     q = {"filterable": True, "sortable": True, "searchable": True}
@@ -383,8 +384,6 @@ def addresses_prop(prop, RO, CU) -> dict[str, Any]:  # noqa: N803 - schema-flag 
                         {"value": "both", "label": "Both"},
                     ],
                 ),
-                "label": prop("string", "Label", **CU),
-                "isDefault": prop("boolean", "Default", **CU),
                 "name": prop("string", "Name", **CU),
                 "contactPerson": prop("string", "Contact person", **CU),
                 "street": prop("string", "Street", **CU, **q),

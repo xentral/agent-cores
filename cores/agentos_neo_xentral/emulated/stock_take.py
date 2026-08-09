@@ -100,16 +100,6 @@ class StockTakeAdapter(FacadeAdapterBase):
                     "posted": prop("datetime", "Posted", **RO),
                 },
             ),
-            "totals": prop(
-                "embedded",
-                "Totals",
-                **RO,
-                section="general",
-                properties={
-                    "positions": prop("integer", "Positions", **RO),
-                    "differences": prop("integer", "Differences", **RO),
-                },
-            ),
             "name": prop(
                 "string",
                 "Name",
@@ -230,7 +220,6 @@ class StockTakeAdapter(FacadeAdapterBase):
         return {
             "object": "stockTake",
             "dates": {"keyDate": None, "started": r.get("createdAt"), "posted": None},
-            "totals": {"positions": None, "differences": None},
             "id": (f"stk_{r.get('id')}" if r.get("id") is not None else None),
             "name": r.get("name"),
             "status": status_map(_STATUS, r.get("status"), "draft"),
