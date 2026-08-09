@@ -109,16 +109,22 @@ def test_number_left_the_ignore_set_everywhere():
         assert "number" not in cls._IGNORE, name
 
 
-def test_the_reason_says_which_of_the_two_it_is():
+def test_the_backlog_keeps_only_the_correction_case():
+    """Where upstream TAKES a number on create, the open ask is correcting it later —
+    v3 PATCH has no slot for it.
+
+    The other half is gone. Four documents ignore a supplied number silently, and the
+    core refuses it for that reason (asserted above, in
+    `test_number_is_refused_where_upstream_ignores_it`) — but the domain review decided
+    that carrying a foreign number onto those four is not wanted, so the entries were
+    dropped. The refusal stands; only the ASK went away."""
     gaps = _field_gaps()
     for _cls, name in _TAKES_IT:
         wishes = [w for w in gaps[name] if w["field"] == "number"]
         assert wishes and wishes[0]["ops"] == ["update"], name
         assert "PATCH has no slot" in wishes[0]["reason"], name
     for _cls, name in _DOES_NOT:
-        wishes = [w for w in gaps[name] if w["field"] == "number"]
-        assert wishes and wishes[0]["ops"] == ["create"], name
-        assert "does not declare" in wishes[0]["reason"], name
+        assert not [w for w in gaps.get(name, []) if w["field"] == "number"], name
 
 
 def test_the_409_refuses_and_names_the_fields():

@@ -20,7 +20,7 @@
 documents:
   Quote:
     label: Quote
-    reviewed: null
+    reviewed: 2026-08-09
     operations: [list, read, create, update, delete]
     fields:
       object: {type: string}

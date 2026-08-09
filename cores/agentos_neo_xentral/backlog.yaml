@@ -14,12 +14,6 @@
 # spec-driven run: of the entries that had never been probed, several were already false.
 
 Quote:
-  - field: number
-    ops: [create]
-    reason: >-
-      Carrying a quote number over from another system. The v3 create does not declare
-      documentNumber for this document type and ignores a supplied value without an error, so
-      the core refuses it instead. salesOrder, invoice and creditNote do accept one.
   - field: customer
     ops: [update]
     reason: >-
@@ -32,10 +26,6 @@ Quote:
     ops: [create, update]
     reason: >-
       Offer validity date — drives auto-expiry and follow-up; must be settable per quote.
-  - field: dates.expectedOrderDate
-    ops: [create, update]
-    reason: >-
-      Expected order date feeds the sales forecast — settable per quote.
   - field: dates.requestedDelivery
     ops: [create, update]
     reason: >-
@@ -144,12 +134,6 @@ SalesOrder:
       totals; the line needs its own.
 
 DeliveryNote:
-  - field: number
-    ops: [create]
-    reason: >-
-      Carrying a delivery note number over from another system. The v3 create does not declare
-      documentNumber for this document type and ignores a supplied value without an error, so
-      the core refuses it instead. salesOrder, invoice and creditNote do accept one.
   - field: customer
     ops: [update]
     reason: >-
@@ -310,12 +294,6 @@ Payment:
       outstanding amounts are impossible (docs/05 #2).
 
 Return:
-  - field: number
-    ops: [create]
-    reason: >-
-      Carrying a return number over from another system. The v3 create does not declare
-      documentNumber for this document type and ignores a supplied value without an error, so
-      the core refuses it instead. salesOrder, invoice and creditNote do accept one.
   - field: customer
     ops: [update]
     reason: >-
@@ -418,12 +396,6 @@ CreditNote:
       totals; the line needs its own.
 
 PurchaseOrder:
-  - field: number
-    ops: [create]
-    reason: >-
-      Carrying a purchase order number over from another system. The v3 create does not declare
-      documentNumber for this document type and ignores a supplied value without an error, so
-      the core refuses it instead. salesOrder, invoice and creditNote do accept one.
   - field: supplier
     ops: [update]
     reason: >-
@@ -502,7 +474,7 @@ GoodsReceipt:
 
 PurchaseInvoice:
   - field: number
-    ops: [create, update]
+    ops: [update]
     reason: >-
       The document number is system-assigned: sending `documentNumber` on create answers 201 and
       the record comes back with an empty number (measured on mvp 2026-08-02). Same behaviour as
