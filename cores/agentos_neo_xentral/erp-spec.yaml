@@ -316,15 +316,15 @@ documents:
       dates.shipped: {type: date}
       dates.delivered: {type: date}
       warehouse: {type: reference, ref: Warehouse}
-      billingAddress: {type: embedded}
-      billingAddress.name: {type: string, ops: [create, update], proven: [create, update]}
-      billingAddress.street: {type: string, ops: [create, update], proven: [create, update]}
-      billingAddress.zip: {type: string, ops: [create, update], proven: [create, update, search]}
-      billingAddress.city: {type: string, ops: [create, update], proven: [create, update]}
-      billingAddress.country: {type: string, ops: [create, update], proven: [create, update]}
-      billingAddress.email: {type: string, ops: [create, update], proven: [create, update]}
-      billingAddress.phone: {type: string, ops: [create, update], proven: [create, update]}
-      billingAddress.vatId: {type: string, ops: [create, update], proven: [create, update]}
+      deliveryAddress: {type: embedded}
+      deliveryAddress.name: {type: string, ops: [create, update], proven: [create, update]}
+      deliveryAddress.street: {type: string, ops: [create, update], proven: [create, update]}
+      deliveryAddress.zip: {type: string, ops: [create, update], proven: [create, update, search]}
+      deliveryAddress.city: {type: string, ops: [create, update], proven: [create, update]}
+      deliveryAddress.country: {type: string, ops: [create, update], proven: [create, update]}
+      deliveryAddress.email: {type: string, ops: [create, update], proven: [create, update]}
+      deliveryAddress.phone: {type: string, ops: [create, update], proven: [create, update]}
+      deliveryAddress.vatId: {type: string, ops: [create, update], proven: [create, update]}
       items: {type: collection}
       items.object: {type: string}
       items.id: {type: string}

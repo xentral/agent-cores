@@ -110,9 +110,9 @@ class DeliveryNoteAdapter(FacadeAdapterBase):
     native_search_fields = (
         "number",
         "dates.issued",
-        "billingAddress.name",
-        "billingAddress.email",
-        "billingAddress.zip",
+        "deliveryAddress.name",
+        "deliveryAddress.email",
+        "deliveryAddress.zip",
         "references.customerOrderNumber",
     )
     manifest = EmulationManifest(
@@ -319,7 +319,13 @@ class DeliveryNoteAdapter(FacadeAdapterBase):
                 renderProperty="name",
                 section="shipping",
             ),
-            "billingAddress": prop(
+            # The ONE address a delivery note carries, and it is where the goods go.
+            # It was called `billingAddress` because all seven documents map v3's
+            # neutral `documentAddress` and the name was applied uniformly — but this
+            # document has no second address, and every description under it already
+            # said "delivery address". A reader who trusts the NAME ships to the
+            # wrong place, and nothing in `describe` contradicts them.
+            "deliveryAddress": prop(
                 "embedded", "Address", section="address", properties=_address_props()
             ),
             "items": prop(
@@ -512,7 +518,7 @@ class DeliveryNoteAdapter(FacadeAdapterBase):
                 (r.get("preferredWarehouse") or {}).get("name"),
                 "warehouses",
             ),
-            "billingAddress": addr(r.get("documentAddress"), r.get("vatId")),
+            "deliveryAddress": addr(r.get("documentAddress"), r.get("vatId")),
             "items": items,
             "shipments": [],
             "customs": {"totalWeight": None, "incoterm": None, "note": None},
@@ -539,7 +545,7 @@ class DeliveryNoteAdapter(FacadeAdapterBase):
         "costCenter",
         "note",
         "texts",
-        "billingAddress",
+        "deliveryAddress",
         "items",
         "dates",
         "tags",
@@ -610,10 +616,10 @@ class DeliveryNoteAdapter(FacadeAdapterBase):
                 v3["bodyOutroduction"] = t["outro"]
         if "note" in model:
             v3["internalComment"] = model["note"]
-        if "billingAddress" in model:
-            v3["documentAddress"] = self._addr_to_v3(model["billingAddress"])
-            if (model["billingAddress"] or {}).get("vatId"):
-                v3["vatId"] = model["billingAddress"]["vatId"]
+        if "deliveryAddress" in model:
+            v3["documentAddress"] = self._addr_to_v3(model["deliveryAddress"])
+            if (model["deliveryAddress"] or {}).get("vatId"):
+                v3["vatId"] = model["deliveryAddress"]["vatId"]
         if "dates" in model:
             d = model["dates"] or {}
             if d.get("issued"):
