@@ -94,37 +94,15 @@ SalesOrder:
     reason: >-
       The customer's own order / PO number (B2B standard field). Read-only upstream today; a
       clerk must be able to set and correct it.
-  - field: references.customerOrderNumber
-    ops: [search]
-    disproven: [search]   # measured 2026-08-08
-    reason: >-
-      On the phone the customer quotes their PO number, not the ERP number — the full-text
-      search must reach it.
   - field: references.externalId
     ops: [search]
     reason: >-
       Automated reconciliation matches by the external id.
-  - field: references.externalNumber
-    ops: [search]
-    disproven: [search]   # measured 2026-08-08
-    reason: >-
-      Support finds shop orders by the SHOP number the customer has.
   - field: dates.requestedDelivery
     ops: [update]
     reason: >-
       Desired delivery date — core fulfilment field; one of the first things entered on an
       order. Not writable upstream today.
-  - field: billingAddress.zip
-    ops: [search]
-    disproven: [search]   # measured 2026-08-08
-    reason: >-
-      Postal-code search is a standard phone use-case (shop orders).
-  - field: billingAddress.email
-    ops: [search]
-    disproven: [search]   # measured 2026-08-08
-    reason: >-
-      Email search is a standard use-case for shop orders — often the only identifier support
-      has.
   - field: items.taxRate
     ops: [create, update]
     reason: >-
@@ -190,11 +168,6 @@ DeliveryNote:
     reason: >-
       The picking/shipping warehouse — must be selectable per delivery note, not fixed to the
       default.
-  - field: billingAddress.zip
-    ops: [search]
-    disproven: [search]   # measured 2026-08-08
-    reason: >-
-      Postal-code search — standard phone use-case for delivery lookups.
   - field: items
     ops: [update]
     reason: >-
@@ -272,11 +245,6 @@ SalesInvoice:
     reason: >-
       Deviating debtor account for the FiBu/DATEV export — settable when it differs from the
       customer default.
-  - field: billingAddress.email
-    ops: [search]
-    disproven: [search]   # measured 2026-08-08
-    reason: >-
-      Email search — standard use-case for finding a customer's invoices.
   - field: items.taxRate
     ops: [create, update]
     reason: >-
@@ -305,16 +273,6 @@ SalesInvoice:
     ops: [create, update]
     reason: >-
       Cash-discount period in days — pairs with the discount.
-  - field: dunning.blocked
-    ops: [update]
-    disproven: [update]   # measured 2026-08-08
-    reason: >-
-      Block/unblock dunning per invoice — a core AR control not writable upstream today.
-  - field: dunning.note
-    ops: [update]
-    disproven: [update]   # measured 2026-08-08
-    reason: >-
-      A dunning note for the AR clerk — must be writable.
   - field: eInvoice
     ops: [read]
     reason: >-
