@@ -447,12 +447,6 @@ GoodsReceipt:
       on the BF goodsReceipt record — creation still goes through the PO action only.
 
 PurchaseInvoice:
-  - field: number
-    ops: [update]
-    reason: >-
-      The document number is system-assigned: sending `documentNumber` on create answers 201 and
-      the record comes back with an empty number (measured on mvp 2026-08-02). Same behaviour as
-      the other documents.
   - field: status
     ops: [filter]
     reason: >-
@@ -739,11 +733,6 @@ Batch:
       scenario) has no API at all (docs/05 #4).
 
 Channel:
-  - field: platform
-    ops: [read]
-    reason: >-
-      The platform kind (shopify/amazon/…) is not exposed — the BF salesChannel entity carries
-      only a name (05 #17).
   - field: name
     ops: [create, update]
     reason: >-
