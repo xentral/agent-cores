@@ -143,7 +143,7 @@ documents:
         whitelists the status values and 'abgelehnt' is not among them.
   SalesOrder:
     label: Sales order
-    reviewed: null
+    reviewed: 2026-08-09
     operations: [list, read, create, update, delete]
     fields:
       object: {type: string}
@@ -298,7 +298,7 @@ documents:
         No duplicate endpoint upstream.
   DeliveryNote:
     label: Delivery note
-    reviewed: null
+    reviewed: 2026-08-09
     operations: [list, read, create, update, delete]
     fields:
       object: {type: string}
@@ -435,7 +435,7 @@ documents:
         Tracking refresh has no public trigger.
   SalesInvoice:
     label: Sales invoice
-    reviewed: null
+    reviewed: 2026-08-09
     operations: [list, read, create, update, delete]
     fields:
       object: {type: string}
@@ -588,7 +588,7 @@ documents:
         The payments API itself is missing upstream — refunds come with it.
   Return:
     label: Return
-    reviewed: null
+    reviewed: 2026-08-09
     operations: [list, read, create, update, delete]
     fields:
       object: {type: string}
@@ -667,7 +667,7 @@ documents:
         The check step has no upstream endpoint.
   CreditNote:
     label: Credit note
-    reviewed: null
+    reviewed: 2026-08-09
     operations: [list, read, create, update, delete]
     fields:
       object: {type: string}
@@ -759,7 +759,7 @@ documents:
         cancel action. Drafts are removed with `delete`.
   PurchaseOrder:
     label: Purchase order
-    reviewed: null
+    reviewed: 2026-08-09
     operations: [list, read, create, update, delete]
     fields:
       object: {type: string}
