@@ -35,7 +35,7 @@ class ChannelAdapter(FacadeAdapterBase):
     include = ""
     preview_template = "{{name}}"
     bf_sort = True
-    sections = {"general": {"label": "General"}, "sync": {"label": "Sync"}}
+    sections = {"general": {"label": "General"}}
 
     # Per-tenant {numeric channel id -> BF uuid} index. The channel speaking id
     # is the NUMERIC id (the form v3 document relations carry, so a document's
@@ -229,16 +229,6 @@ class ChannelAdapter(FacadeAdapterBase):
                     )
                 ],
             ),
-            "defaults": prop(
-                "embedded",
-                "Defaults",
-                **RO,
-                section="general",
-                properties={
-                    "priceList": prop("reference", "Price list", **RO, reference="PriceList"),
-                    "warehouse": prop("reference", "Warehouse", **RO, reference="Warehouse"),
-                },
-            ),
             "name": prop(
                 "string",
                 "Name",
@@ -259,16 +249,6 @@ class ChannelAdapter(FacadeAdapterBase):
                 ],
             ),
             "active": prop("boolean", "Active", **RO, section="general"),
-            "sync": prop(
-                "embedded",
-                "Sync",
-                **RO,
-                section="sync",
-                properties={
-                    "lastRunAt": prop("datetime", "Last run", **RO),
-                    "status": prop("select", "Status", **RO),
-                },
-            ),
             "createdAt": prop("datetime", "Created at", **RO, sortable=True),
             "updatedAt": prop("datetime", "Updated at", **RO, sortable=True),
         }
@@ -277,7 +257,6 @@ class ChannelAdapter(FacadeAdapterBase):
         return {
             "object": "channel",
             "platform": None,
-            "defaults": {"priceList": None, "warehouse": None},
             # NUMERIC self-id, matching the id v3 document relations carry, so a
             # document's channel reference and this record share one id. `get`
             # resolves the numeric id to the BF uuid via `_resolve_upstream_handle`
@@ -286,7 +265,6 @@ class ChannelAdapter(FacadeAdapterBase):
             "name": r.get("name"),
             "type": None,
             "active": None,
-            "sync": {"lastRunAt": None, "status": None},
             "createdAt": r.get("createdAt"),
             "updatedAt": r.get("updatedAt"),
         }
@@ -295,4 +273,4 @@ class ChannelAdapter(FacadeAdapterBase):
         self, model: dict[str, Any], *, creating: bool
     ) -> tuple[dict[str, Any], set[str]]:
         # BF salesChannel has CRUD (name) — write-mapping to be verified live next.
-        return {}, {k for k in model if k not in {"object", "id", "sync", "createdAt", "updatedAt"}}
+        return {}, {k for k in model if k not in {"object", "id", "createdAt", "updatedAt"}}

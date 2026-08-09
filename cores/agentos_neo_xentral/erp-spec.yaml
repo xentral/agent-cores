@@ -1020,9 +1020,6 @@ documents:
       dates.keyDate: {type: date}
       dates.started: {type: datetime}
       dates.posted: {type: datetime}
-      totals: {type: embedded}
-      totals.positions: {type: integer}
-      totals.differences: {type: integer}
       name: {type: string, ops: [filter], proven: [filter]}
       status: {type: select, options: [draft, counting, review, posted, cancelled]}
       warehouse: {type: reference, ref: Warehouse}
@@ -1144,8 +1141,6 @@ masterdata:
       addresses: {type: collection, ops: [create, update], proven: [create, update]}
       addresses.id: {type: string}
       addresses.type: {type: select, ops: [create, update], options: [billing, shipping, both]}
-      addresses.label: {type: string, ops: [create, update]}
-      addresses.isDefault: {type: boolean, ops: [create, update]}
       addresses.name: {type: string, ops: [create, update]}
       addresses.contactPerson: {type: string, ops: [create, update]}
       addresses.street: {type: string, ops: [create, update, filter, sort, search], proven: [filter, search]}
@@ -1257,8 +1252,6 @@ masterdata:
       addresses: {type: collection, ops: [create, update], proven: [create, update]}
       addresses.id: {type: string}
       addresses.type: {type: select, ops: [create, update], options: [billing, shipping, both]}
-      addresses.label: {type: string, ops: [create, update]}
-      addresses.isDefault: {type: boolean, ops: [create, update]}
       addresses.name: {type: string, ops: [create, update]}
       addresses.contactPerson: {type: string, ops: [create, update]}
       addresses.street: {type: string, ops: [create, update, filter, sort, search], proven: [filter, search]}
@@ -1611,15 +1604,9 @@ masterdata:
       object: {type: string}
       id: {type: string}
       platform: {type: select, options: [shopify, shopware, amazon, ebay, otto, pos, direct, api]}
-      defaults: {type: embedded}
-      defaults.priceList: {type: reference, ref: PriceList}
-      defaults.warehouse: {type: reference, ref: Warehouse}
       name: {type: string, ops: [filter, search], proven: [filter, search]}
       type: {type: select, options: [shop, marketplace, direct, pos]}
       active: {type: boolean}
-      sync: {type: embedded}
-      sync.lastRunAt: {type: datetime}
-      sync.status: {type: select}
       createdAt: {type: datetime, ops: [sort], proven: [sort]}
       updatedAt: {type: datetime, ops: [sort], proven: [sort]}
     cannot:

@@ -577,10 +577,6 @@ StockTake:
     ops: [read]
     reason: >-
       The posted timestamp is not exposed by v1 inventoryRuns.
-  - field: totals
-    ops: [read]
-    reason: >-
-      Position/difference totals are not exposed by v1 inventoryRuns.
   - field: positions
     ops: [read]
     reason: >-
@@ -668,16 +664,6 @@ Customer:
       Set the address role incl. the 'both' value (one address serving billing AND shipping) —
       v3 splits billing (primaryAddress/deviating) vs shipping (deliveryAddresses) by store, so
       the role is not a freely settable field.
-  - field: addresses.label
-    ops: [read, create, update]
-    reason: >-
-      Free label/name per address location (e.g. 'Lager München') — v3 knows only
-      billing/shipping roles, no named locations.
-  - field: addresses.isDefault
-    ops: [read, create, update]
-    reason: >-
-      Mark the standard address per type (unified-address model; at most one default per
-      customer & type) — v3 partner addresses carry no isDefault flag.
   - field: defaults.paymentMethod
     ops: [create, update]
     reason: >-
@@ -773,16 +759,6 @@ Supplier:
       Set the address role incl. the 'both' value (one address serving billing AND shipping) —
       v3 splits billing (primaryAddress/deviating) vs shipping (deliveryAddresses) by store, so
       the role is not a freely settable field.
-  - field: addresses.label
-    ops: [read, create, update]
-    reason: >-
-      Free label/name per address location (e.g. 'Lager München') — v3 knows only
-      billing/shipping roles, no named locations.
-  - field: addresses.isDefault
-    ops: [read, create, update]
-    reason: >-
-      Mark the standard address per type (unified-address model; at most one default per
-      customer & type) — v3 partner addresses carry no isDefault flag.
   - field: defaults.shippingMethod
     ops: [read, update]
     reason: >-
@@ -945,10 +921,6 @@ Channel:
     reason: >-
       The platform kind (shopify/amazon/…) is not exposed — the BF salesChannel entity carries
       only a name (05 #17).
-  - field: defaults
-    ops: [read]
-    reason: >-
-      Channel defaults (price list, warehouse) are not exposed (05 #17).
   - field: name
     ops: [create, update]
     reason: >-
@@ -959,16 +931,6 @@ Channel:
     reason: >-
       The channel type (shop/marketplace/direct/pos) is not on the BF salesChannel record —
       needed for channel-specific routing.
-  - field: active
-    ops: [read, create, update]
-    reason: >-
-      Enable/disable state is not on the BF salesChannel record.
-  - field: sync
-    ops: [read]
-    reason: >-
-      Channel sync-run status (last run, success/failure) is not exposed — needed to monitor
-      shop imports (docs/05 #17, still open after the BF salesChannel entity covered the list).
-
 Task:
   - field: assignee
     ops: [create, update]

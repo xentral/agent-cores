@@ -634,15 +634,9 @@
   },
   "Channel": {
     "platform": "The e-commerce platform / marketplace the channel runs on (shopify, amazon, ebay, …).",
-    "defaults": "Default settings applied to orders from this channel.",
-    "defaults.priceList": "Price list used for this channel's orders.",
-    "defaults.warehouse": "Warehouse orders from this channel are fulfilled from.",
     "name": "Display name of the sales channel.",
     "type": "Kind of channel: shop, marketplace, direct, or pos.",
-    "active": "Whether the channel is currently active.",
-    "sync": "Read-only status of the channel's last sync run.",
-    "sync.lastRunAt": "Timestamp of the last sync run.",
-    "sync.status": "Result of the last sync run (success / failure)."
+    "active": "Whether the channel is currently active."
   },
   "Product": {
     "status": "Lifecycle state of the product: active, inactive (disabled), or archived (deleted).",
@@ -825,8 +819,6 @@
     "dates.keyDate": "Effective inventory (cut-off) date the count reflects.",
     "dates.started": "When counting began.",
     "dates.posted": "When the count was posted and differences booked to stock.",
-    "totals.positions": "Number of positions in the count.",
-    "totals.differences": "Number of positions where counted quantity deviated from expected.",
     "name": "Name / title of the stock take run.",
     "status": "Lifecycle state: draft, counting, review, posted, or cancelled.",
     "warehouse": "The warehouse being counted.",

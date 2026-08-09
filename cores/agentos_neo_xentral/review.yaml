@@ -12,7 +12,7 @@ totals:
   proven: 25
   unproven: 55
   acceptedGaps: 100
-  fieldRequirements: 191
+  fieldRequirements: 183
   reviewedEntities: 0
 entities:
   Customer:
@@ -126,32 +126,6 @@ entities:
       nowDeclared:
       - create
       - update
-    - field: addresses.label
-      ops:
-      - read
-      - create
-      - update
-      status: recheck
-      reason: Free label/name per address location (e.g. 'Lager München') — v3 knows
-        only billing/shipping roles, no named locations.
-      nowDeclared:
-      - create
-      - update
-      nowProven:
-      - read
-    - field: addresses.isDefault
-      ops:
-      - read
-      - create
-      - update
-      status: recheck
-      reason: Mark the standard address per type (unified-address model; at most one
-        default per customer & type) — v3 partner addresses carry no isDefault flag.
-      nowDeclared:
-      - create
-      - update
-      nowProven:
-      - read
     - field: defaults.paymentMethod
       ops:
       - create
@@ -1449,32 +1423,6 @@ entities:
       nowDeclared:
       - create
       - update
-    - field: addresses.label
-      ops:
-      - read
-      - create
-      - update
-      status: recheck
-      reason: Free label/name per address location (e.g. 'Lager München') — v3 knows
-        only billing/shipping roles, no named locations.
-      nowDeclared:
-      - create
-      - update
-      nowProven:
-      - read
-    - field: addresses.isDefault
-      ops:
-      - read
-      - create
-      - update
-      status: recheck
-      reason: Mark the standard address per type (unified-address model; at most one
-        default per customer & type) — v3 partner addresses carry no isDefault flag.
-      nowDeclared:
-      - create
-      - update
-      nowProven:
-      - read
     - field: defaults.shippingMethod
       ops:
       - read
@@ -2200,13 +2148,6 @@ entities:
       - read
       status: open
       reason: The posted timestamp is not exposed by v1 inventoryRuns.
-    - field: totals
-      ops:
-      - read
-      status: recheck
-      reason: Position/difference totals are not exposed by v1 inventoryRuns.
-      nowProven:
-      - read
     - field: positions
       ops:
       - read
@@ -2413,13 +2354,6 @@ entities:
         entity carries only a name (05 #17).'
       nowProven:
       - read
-    - field: defaults
-      ops:
-      - read
-      status: recheck
-      reason: 'Channel defaults (price list, warehouse) are not exposed (05 #17).'
-      nowProven:
-      - read
     - field: name
       ops:
       - create
@@ -2435,24 +2369,6 @@ entities:
       status: open
       reason: The channel type (shop/marketplace/direct/pos) is not on the BF salesChannel
         record — needed for channel-specific routing.
-    - field: active
-      ops:
-      - read
-      - create
-      - update
-      status: recheck
-      reason: Enable/disable state is not on the BF salesChannel record.
-      nowProven:
-      - read
-    - field: sync
-      ops:
-      - read
-      status: recheck
-      reason: 'Channel sync-run status (last run, success/failure) is not exposed
-        — needed to monitor shop imports (docs/05 #17, still open after the BF salesChannel
-        entity covered the list).'
-      nowProven:
-      - read
   EmailAccount:
     reviewed: null
     capabilities:

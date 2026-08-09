@@ -35,17 +35,6 @@
      "read": "pass",
      "sort": "pass"
     },
-    "defaults": {
-     "read": "pass"
-    },
-    "defaults.priceList": {
-     "read": "unobserved",
-     "readNote": "declared, but none of the 80 sampled records carries a value — nothing proven either way"
-    },
-    "defaults.warehouse": {
-     "read": "unobserved",
-     "readNote": "declared, but none of the 80 sampled records carries a value — nothing proven either way"
-    },
     "id": {
      "read": "pass"
     },
@@ -59,17 +48,6 @@
     },
     "platform": {
      "read": "pass"
-    },
-    "sync": {
-     "read": "pass"
-    },
-    "sync.lastRunAt": {
-     "read": "unobserved",
-     "readNote": "declared, but none of the 80 sampled records carries a value — nothing proven either way"
-    },
-    "sync.status": {
-     "read": "unobserved",
-     "readNote": "declared, but none of the 80 sampled records carries a value — nothing proven either way"
     },
     "type": {
      "read": "unobserved",
@@ -692,12 +670,6 @@
     "addresses.id": {
      "read": "pass"
     },
-    "addresses.isDefault": {
-     "read": "pass"
-    },
-    "addresses.label": {
-     "read": "pass"
-    },
     "addresses.name": {
      "read": "pass"
     },
@@ -1000,10 +972,6 @@
     "addresses.email.update",
     "addresses.gln.create",
     "addresses.gln.update",
-    "addresses.isDefault.create",
-    "addresses.isDefault.update",
-    "addresses.label.create",
-    "addresses.label.update",
     "addresses.name.create",
     "addresses.name.update",
     "addresses.phone.create",
@@ -5403,17 +5371,6 @@
     "status": {
      "read": "pass"
     },
-    "totals": {
-     "read": "pass"
-    },
-    "totals.differences": {
-     "read": "unobserved",
-     "readNote": "declared, but none of the 27 sampled records carries a value — nothing proven either way"
-    },
-    "totals.positions": {
-     "read": "unobserved",
-     "readNote": "declared, but none of the 27 sampled records carries a value — nothing proven either way"
-    },
     "updatedAt": {
      "read": "pass"
     },
@@ -5615,12 +5572,6 @@
      "readNote": "declared, but none of the 42 sampled records carries a value — nothing proven either way"
     },
     "addresses.id": {
-     "read": "pass"
-    },
-    "addresses.isDefault": {
-     "read": "pass"
-    },
-    "addresses.label": {
      "read": "pass"
     },
     "addresses.name": {
@@ -5939,10 +5890,6 @@
     "addresses.email.update",
     "addresses.gln.create",
     "addresses.gln.update",
-    "addresses.isDefault.create",
-    "addresses.isDefault.update",
-    "addresses.label.create",
-    "addresses.label.update",
     "addresses.name.create",
     "addresses.name.update",
     "addresses.phone.create",
