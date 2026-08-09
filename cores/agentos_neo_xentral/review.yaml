@@ -13,7 +13,7 @@ totals:
   unproven: 55
   acceptedGaps: 100
   fieldRequirements: 146
-  reviewedEntities: 9
+  reviewedEntities: 17
 entities:
   Customer:
     reviewed: 2026-08-09
@@ -611,7 +611,7 @@ entities:
       reason: Custom field values on the delivery note — today only readable via include,
         not writable via API.
   Shipment:
-    reviewed: null
+    reviewed: 2026-08-09
     capabilities:
     - key: cancelLabel
       requirement: acceptedGap
@@ -1380,7 +1380,7 @@ entities:
       reason: Custom field values on the PO — today only readable via include, not
         writable via API.
   GoodsReceipt:
-    reviewed: null
+    reviewed: 2026-08-09
     capabilities:
     - key: cancel
       requirement: acceptedGap
@@ -1691,7 +1691,7 @@ entities:
         grouped priceList with a tier array needs a composer (ADR-012). Write each
         tier as its own entry (create/update/delete are live via v3/v1 salesPrices).
   StorageLocation:
-    reviewed: null
+    reviewed: 2026-08-09
     capabilities:
     - key: block
       requirement: acceptedGap
@@ -1760,7 +1760,7 @@ entities:
         any read, so a value written there cannot be verified or shown. Not modelled
         until upstream reads it back. Measured on mvp 2026-08-02.
   StockLevel:
-    reviewed: null
+    reviewed: 2026-08-09
     capabilities: []
     fieldRequirements:
     - field: batch
@@ -1794,7 +1794,7 @@ entities:
       reason: 'Same gap as reserved: available = quantity - reserved is only derivable
         per product, not per storage location.'
   StockMovement:
-    reviewed: null
+    reviewed: 2026-08-09
     capabilities: []
     fieldRequirements:
     - field: id
@@ -1823,7 +1823,7 @@ entities:
       reason: Movement valuation (unitCost at booking time) is required for GoBD-clean
         stock accounting (ADR-009e) — nothing upstream.
   StockTake:
-    reviewed: null
+    reviewed: 2026-08-09
     capabilities:
     - key: addPosition
       requirement: acceptedGap
@@ -1905,7 +1905,7 @@ entities:
       reason: 'Posted correction movements per stock take need the stockMovements
         API (docs/05 #1) to be traceable.'
   PickingRun:
-    reviewed: null
+    reviewed: 2026-08-09
     capabilities:
     - key: assign
       requirement: acceptedGap
@@ -1998,7 +1998,7 @@ entities:
       reason: 'Granular task-level pick confirmation with quantity + scans (docs/05
         #3) — today only whole-list start/complete exists.'
   Batch:
-    reviewed: null
+    reviewed: 2026-08-09
     capabilities:
     - key: block
       requirement: acceptedGap

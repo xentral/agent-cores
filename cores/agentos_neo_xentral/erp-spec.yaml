@@ -389,7 +389,7 @@ documents:
         Picking is driven by picking runs — no direct startPicking endpoint.
   Shipment:
     label: Shipment
-    reviewed: null
+    reviewed: 2026-08-09
     operations: [list, read]
     fields:
       object: {type: string}
@@ -862,7 +862,7 @@ documents:
         A bulk delivery-date update has no endpoint; per-item dates go through a normal update.
   GoodsReceipt:
     label: Goods receipt
-    reviewed: null
+    reviewed: 2026-08-09
     operations: [list, read]
     fields:
       object: {type: string}
@@ -986,7 +986,7 @@ documents:
         rows do not carry.
   StockMovement:
     label: Stock movement
-    reviewed: null
+    reviewed: 2026-08-09
     operations: [create]
     fields:
       object: {type: string}
@@ -1011,7 +1011,7 @@ documents:
       bookedAt: {type: datetime, ops: [filter, sort]}
   StockTake:
     label: Stock take
-    reviewed: null
+    reviewed: 2026-08-09
     operations: [list, read]
     fields:
       object: {type: string}
@@ -1062,7 +1062,7 @@ documents:
         Adding positions is not exposed via v1 inventoryRuns.
   PickingRun:
     label: Picking run
-    reviewed: null
+    reviewed: 2026-08-09
     operations: [list, read]
     fields:
       object: {type: string}
@@ -1479,7 +1479,7 @@ masterdata:
       updatedAt: {type: datetime}
   StorageLocation:
     label: Storage location
-    reviewed: null
+    reviewed: 2026-08-09
     operations: [list, read, create, update, delete]
     fields:
       object: {type: string}
@@ -1526,7 +1526,7 @@ masterdata:
         Storage-location labels have no public endpoint.
   StockLevel:
     label: Stock level
-    reviewed: null
+    reviewed: 2026-08-09
     operations: [list, read]
     fields:
       object: {type: string}
@@ -1546,7 +1546,7 @@ masterdata:
       available.unit: {type: string}
   Batch:
     label: Batch
-    reviewed: null
+    reviewed: 2026-08-09
     operations: []
     fields:
       object: {type: string}
