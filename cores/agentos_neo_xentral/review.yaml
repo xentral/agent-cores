@@ -12,8 +12,8 @@ totals:
   proven: 25
   unproven: 55
   acceptedGaps: 100
-  fieldRequirements: 152
-  reviewedEntities: 3
+  fieldRequirements: 146
+  reviewedEntities: 9
 entities:
   Customer:
     reviewed: 2026-08-09
@@ -288,7 +288,7 @@ entities:
         the printed document. Per-rate tax exists on the document totals; the line
         needs its own.'
   SalesOrder:
-    reviewed: null
+    reviewed: 2026-08-09
     capabilities:
     - key: addHold
       requirement: acceptedGap
@@ -486,7 +486,7 @@ entities:
         the printed document. Per-rate tax exists on the document totals; the line
         needs its own.'
   DeliveryNote:
-    reviewed: null
+    reviewed: 2026-08-09
     capabilities:
     - key: addTag
       requirement: required
@@ -564,19 +564,6 @@ entities:
       status: open
       reason: Reassign the delivery note's partner after creation — v3 accepts it
         only on create.
-    - field: references.customerOrderNumber
-      ops:
-      - create
-      status: recheck
-      reason: The customer's PO number on the delivery note (B2B) — read-only upstream
-        today; must be settable.
-      nowDeclared:
-      - create
-    - field: references.customerOrderNumber
-      ops:
-      - search
-      status: open
-      reason: Warehouse/support find a delivery note by the customer's PO number.
     - field: warehouse
       ops:
       - create
@@ -681,7 +668,7 @@ entities:
       reason: Support looks up a shipment by tracking number — needs a filterable/searchable
         upstream list parameter.
   SalesInvoice:
-    reviewed: null
+    reviewed: 2026-08-09
     capabilities:
     - key: addTag
       requirement: required
@@ -765,19 +752,6 @@ entities:
       status: open
       reason: Reassign the invoice's partner after creation — v3 accepts it only on
         create.
-    - field: references.customerOrderNumber
-      ops:
-      - create
-      status: recheck
-      reason: The customer's PO number on the invoice (B2B) — read-only upstream today;
-        must be settable and correctable.
-      nowDeclared:
-      - create
-    - field: references.customerOrderNumber
-      ops:
-      - search
-      status: open
-      reason: Support and accounting find invoices by the customer's PO number.
     - field: references.debtorAccountNumber
       ops:
       - create
@@ -898,7 +872,7 @@ entities:
       reason: 'Payment↔invoice allocations (n:m) are neither readable nor writable
         — without them exact outstanding amounts are impossible (docs/05 #2).'
   Return:
-    reviewed: null
+    reviewed: 2026-08-09
     capabilities:
     - key: addTag
       requirement: required
@@ -998,12 +972,6 @@ entities:
       - search
       status: open
       reason: Support finds a return by the RMA number the customer has.
-    - field: references.customerOrderNumber
-      ops:
-      - create
-      - update
-      status: open
-      reason: The customer's PO number on the return — read-only upstream today.
     - field: warehouse
       ops:
       - create
@@ -1053,7 +1021,7 @@ entities:
       reason: Custom field values on the return — today only readable via include,
         not writable via API.
   CreditNote:
-    reviewed: null
+    reviewed: 2026-08-09
     capabilities:
     - key: addTag
       requirement: required
@@ -1123,14 +1091,6 @@ entities:
       - update
       status: open
       reason: Reassign the partner after creation — v3 accepts it only on create.
-    - field: references.customerOrderNumber
-      ops:
-      - create
-      status: recheck
-      reason: The customer's PO number on the credit note (B2B) — read-only upstream
-        today.
-      nowDeclared:
-      - create
     - field: references.debtorAccountNumber
       ops:
       - create
@@ -1267,7 +1227,7 @@ entities:
       reason: Custom field values on the supplier — today only readable, not writable
         via API.
   PurchaseOrder:
-    reviewed: null
+    reviewed: 2026-08-09
     capabilities:
     - key: addTag
       requirement: required

@@ -138,15 +138,6 @@ DeliveryNote:
     ops: [update]
     reason: >-
       Reassign the delivery note's partner after creation — v3 accepts it only on create.
-  - field: references.customerOrderNumber
-    ops: [create]
-    reason: >-
-      The customer's PO number on the delivery note (B2B) — read-only upstream today; must be
-      settable.
-  - field: references.customerOrderNumber
-    ops: [search]
-    reason: >-
-      Warehouse/support find a delivery note by the customer's PO number.
   - field: warehouse
     ops: [create, update]
     reason: >-
@@ -215,15 +206,6 @@ SalesInvoice:
     ops: [update]
     reason: >-
       Reassign the invoice's partner after creation — v3 accepts it only on create.
-  - field: references.customerOrderNumber
-    ops: [create]
-    reason: >-
-      The customer's PO number on the invoice (B2B) — read-only upstream today; must be settable
-      and correctable.
-  - field: references.customerOrderNumber
-    ops: [search]
-    reason: >-
-      Support and accounting find invoices by the customer's PO number.
   - field: references.debtorAccountNumber
     ops: [create, update]
     reason: >-
@@ -306,10 +288,6 @@ Return:
     ops: [search]
     reason: >-
       Support finds a return by the RMA number the customer has.
-  - field: references.customerOrderNumber
-    ops: [create, update]
-    reason: >-
-      The customer's PO number on the return — read-only upstream today.
   - field: warehouse
     ops: [create, update]
     reason: >-
@@ -351,10 +329,6 @@ CreditNote:
     ops: [update]
     reason: >-
       Reassign the partner after creation — v3 accepts it only on create.
-  - field: references.customerOrderNumber
-    ops: [create]
-    reason: >-
-      The customer's PO number on the credit note (B2B) — read-only upstream today.
   - field: references.debtorAccountNumber
     ops: [create, update]
     reason: >-
