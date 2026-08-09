@@ -659,65 +659,14 @@ Customer:
     reason: >-
       Custom field values on the customer — today only readable, not writable via API.
 Supplier:
-  - field: status
-    ops: [read, update]
-    reason: >-
-      Active/archived state is not exposed via v3 suppliers — needed for honest archiving (plan
-      §6.1).
-  - field: parent
-    ops: [read, update]
-    reason: >-
-      B2B hierarchy (branch → HQ) is not exposed via the public API (plan §6.1 parent).
-  - field: billTo
-    ops: [read, update]
-    reason: >-
-      Central billing (Zentralregulierung — invoice to association/HQ) is not exposed (plan §6.1
-      billTo).
-  - field: channels
-    ops: [read]
-    reason: >-
-      Per-channel external ids (channel links) are not exposed via the public API.
-  - field: purchasing.confirmationRequired
-    ops: [create, update]
-    reason: >-
-      Whether an order confirmation (AB) is required from this supplier — drives purchasing
-      workflow; not settable via API today.
-  - field: purchasing.sendOrdersVia
-    ops: [create, update]
-    reason: >-
-      How POs are sent to the supplier (email/portal/EDI) — a supplier default that must be
-      settable.
-  - field: purchasing.deliveryDays
-    ops: [create, update]
-    reason: >-
-      Standard supplier lead time in days — feeds replenishment planning.
-  - field: addresses.type
-    ops: [create, update]
-    reason: >-
-      Set the address role incl. the 'both' value (one address serving billing AND shipping) —
-      v3 splits billing (primaryAddress/deviating) vs shipping (deliveryAddresses) by store, so
-      the role is not a freely settable field.
   - field: defaults.shippingMethod
-    ops: [read, update]
+    ops: [update]
     reason: >-
       The default shipping method is not surfaced by the v3 partner read.
-  - field: defaults.priceList
-    ops: [read, update]
-    reason: >-
-      The assigned price list is not surfaced by the v3 partner read.
-  - field: defaults.partialShipping
-    ops: [read, update]
-    reason: >-
-      The partial-shipping preference is not surfaced by the v3 partner read.
   - field: defaults.paymentTerms.dueDays
     ops: [create, update]
     reason: >-
       Default supplier payment term — drives liability due dates.
-  - field: finance.openAmount
-    ops: [read]
-    reason: >-
-      Aggregated open liabilities per supplier are computed nowhere in the API — must be
-      derived/served.
   - field: finance.creditorAccountNumber
     ops: [update]
     reason: >-
@@ -726,16 +675,6 @@ Supplier:
     ops: [create, update]
     reason: >-
       Custom field values on the supplier — today only readable, not writable via API.
-  - field: contacts.address
-    ops: [read, create, update]
-    reason: >-
-      Bind a contact person to a specific address (person-at-location) — v3 stores only a
-      free-text contactPerson on delivery addresses, not a reference.
-  - field: contacts.isPrimary
-    ops: [read, create, update]
-    reason: >-
-      Mark the main contact person — v3 contactPersons carry no primary flag.
-
 Product:
   - field: kind
     ops: [create, update]

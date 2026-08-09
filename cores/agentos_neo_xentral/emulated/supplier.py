@@ -126,35 +126,6 @@ class SupplierAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
                 previewable=True,
             ),
             "type": prop("select", "Type", section="general"),
-            "status": prop(
-                "select",
-                "Status",
-                **RO,
-                section="general",
-                options=[{"value": v, "label": v.capitalize()} for v in ("active", "archived")],
-            ),
-            "parent": prop(
-                "reference", "Parent (HQ)", **RO, section="general", reference="Supplier"
-            ),
-            "billTo": prop(
-                "reference",
-                "Bill-to (central billing)",
-                **RO,
-                section="general",
-                reference="Supplier",
-            ),
-            "channels": prop(
-                "collection",
-                "Channel links",
-                **RO,
-                section="general",
-                node={
-                    "properties": {
-                        "channel": prop("reference", "Channel", **RO, reference="Channel"),
-                        "externalId": prop("string", "External id", **RO),
-                    }
-                },
-            ),
             "name": prop(
                 "string",
                 "Name",
@@ -191,9 +162,6 @@ class SupplierAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
                     # deviatingSupplierNumber upstream: writable, but not a query
                     # field on v3 /suppliers (so no filter/sort/search).
                     "ourCustomerNumber": prop("string", "Our customer number", **_CU),
-                    "confirmationRequired": prop("boolean", "Confirmation required"),
-                    "sendOrdersVia": prop("select", "Send orders via"),
-                    "deliveryDays": prop("integer", "Delivery days"),
                     "minimumOrderValue": prop(
                         "embedded",
                         "Minimum order value",
@@ -222,8 +190,6 @@ class SupplierAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
                     "shippingMethod": prop(
                         "reference", "Shipping method", **RO, reference="ShippingMethod"
                     ),
-                    "priceList": prop("reference", "Price list", **RO, reference="PriceList"),
-                    "partialShipping": prop("select", "Partial shipping", **RO),
                     "paymentTerms": prop(
                         "embedded",
                         "Payment terms",
@@ -241,15 +207,6 @@ class SupplierAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
                 **RO,
                 section="finance",
                 properties={
-                    "openAmount": prop(
-                        "embedded",
-                        "Open amount",
-                        **RO,
-                        properties={
-                            "amount": prop("string", "Amount", **RO),
-                            "currency": prop("string", "Currency", **RO),
-                        },
-                    ),
                     "onHold": prop("boolean", "On hold"),
                     "creditorAccountNumber": prop("string", "Creditor account"),
                 },
@@ -298,10 +255,6 @@ class SupplierAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
             "id": (f"sup_{r.get('id')}" if r.get("id") is not None else None),
             "number": r.get("number"),
             "type": pa.get("type"),
-            "status": None,
-            "parent": None,
-            "billTo": None,
-            "channels": None,
             "name": pa.get("name"),
             "email": pa.get("email"),
             "phone": pa.get("phone"),
@@ -310,9 +263,6 @@ class SupplierAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
             "language": comm.get("language"),
             "purchasing": {
                 "ourCustomerNumber": r.get("deviatingSupplierNumber"),
-                "confirmationRequired": None,
-                "sendOrdersVia": None,
-                "deliveryDays": None,
                 "minimumOrderValue": None,
             },
             # ONE unified address list: the main address (v3 primaryAddress) is the
@@ -347,8 +297,6 @@ class SupplierAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
             "contacts": contacts_from_include(r),
             "defaults": {
                 "shippingMethod": None,
-                "priceList": None,
-                "partialShipping": None,
                 "currency": fin.get("currency"),
                 "language": comm.get("language"),
                 "paymentMethod": ref(
@@ -361,7 +309,6 @@ class SupplierAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
                 "paymentTerms": {"dueDays": None, "discountPercent": None, "discountDays": None},
             },
             "finance": {
-                "openAmount": None,
                 # Same upstream source the customer reads it from: a delivery block
                 # lives in `fulfillment`, not in a field of its own.
                 "onHold": (r.get("fulfillment") or {}).get("deliveryBlock"),
