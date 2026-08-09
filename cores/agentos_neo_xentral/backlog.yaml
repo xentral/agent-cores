@@ -633,37 +633,6 @@ Customer:
     reason: >-
       Correcting a customer number after the fact. v3 accepts a number on POST but not on PATCH,
       so a typo in a migrated number can only be fixed in the UI.
-  - field: type
-    ops: [create, update]
-    reason: >-
-      Customer vs. lead (Interessent). v2 has isLead, but no v3 customers payload carries it —
-      not in the record, not behind any allowed include — so the core cannot set it without
-      leaving v3. Roughly half a typical CRM migration is leads, so they all land as customers
-      today.
-  - field: status
-    ops: [read, update]
-    reason: >-
-      Active/archived state is not exposed via v3 customers — needed for honest archiving (plan
-      §6.1).
-  - field: parent
-    ops: [read, update]
-    reason: >-
-      B2B hierarchy (branch → HQ) is not exposed via the public API (plan §6.1 parent).
-  - field: billTo
-    ops: [read, update]
-    reason: >-
-      Central billing (Zentralregulierung — invoice to association/HQ) is not exposed (plan §6.1
-      billTo).
-  - field: channels
-    ops: [read]
-    reason: >-
-      Per-channel external ids (channel links) are not exposed via the public API.
-  - field: addresses.type
-    ops: [create, update]
-    reason: >-
-      Set the address role incl. the 'both' value (one address serving billing AND shipping) —
-      v3 splits billing (primaryAddress/deviating) vs shipping (deliveryAddresses) by store, so
-      the role is not a freely settable field.
   - field: defaults.paymentMethod
     ops: [create, update]
     reason: >-
@@ -672,27 +641,10 @@ Customer:
     ops: [create, update]
     reason: >-
       Default payment term for the customer — drives every order/invoice; must be settable.
-  - field: defaults.taxation
-    ops: [create, update]
-    reason: >-
-      Default taxation scheme (domestic/euB2B/euOss/export) per customer.
   - field: defaults.shippingMethod
-    ops: [read, update]
+    ops: [update]
     reason: >-
       The default shipping method is not surfaced by the v3 partner read.
-  - field: defaults.priceList
-    ops: [read, update]
-    reason: >-
-      The assigned price list is not surfaced by the v3 partner read.
-  - field: defaults.partialShipping
-    ops: [read, update]
-    reason: >-
-      The partial-shipping preference is not surfaced by the v3 partner read.
-  - field: finance.openAmount
-    ops: [read]
-    reason: >-
-      Aggregated open amount per customer is computed nowhere in the API (docs/05 #14) — must be
-      derived/served.
   - field: finance.creditLimit
     ops: [update]
     reason: >-
@@ -702,24 +654,10 @@ Customer:
     ops: [update]
     reason: >-
       Put a customer on delivery/credit hold — UI-only today (docs/05 #14).
-  - field: finance.dunningBlocked
-    ops: [update]
-    reason: >-
-      Block dunning for a customer — UI-only today.
   - field: customFields
     ops: [create, update]
     reason: >-
       Custom field values on the customer — today only readable, not writable via API.
-  - field: contacts.address
-    ops: [read, create, update]
-    reason: >-
-      Bind a contact person to a specific address (person-at-location) — v3 stores only a
-      free-text contactPerson on delivery addresses, not a reference.
-  - field: contacts.isPrimary
-    ops: [read, create, update]
-    reason: >-
-      Mark the main contact person — v3 contactPersons carry no primary flag.
-
 Supplier:
   - field: status
     ops: [read, update]

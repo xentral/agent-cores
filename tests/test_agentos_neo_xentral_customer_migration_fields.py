@@ -216,9 +216,12 @@ def test_customer_can_be_deleted():
 # ---- the gap that stays a gap -------------------------------------------
 
 
-def test_lead_flag_is_read_only_and_carried_as_a_wish():
-    """No v3 customers payload exposes the lead flag, so `type` must not claim to be
-    writable — and the gap has to stay visible rather than disappear."""
+def test_lead_flag_is_read_only():
+    """No v3 customers payload lets the lead flag be WRITTEN, so `type` must not claim
+    to be writable.
+
+    It used to carry a gap demanding create and update. The domain review dropped that:
+    the distinction is not needed here, and the gap's own premise was shaky — it claimed
+    no v3 response carries the flag at all, while `map_read` does read `type` off the
+    partner record.""" 
     assert _f()["type"]["access"] == "readOnly"
-    wishes = [w for w in _field_gaps()["Customer"] if w["field"] == "type"]
-    assert wishes and set(wishes[0]["ops"]) == {"create", "update"}

@@ -76,11 +76,17 @@ def test_hold_and_debtor_account_still_map(record):
     assert record["finance"]["debtorAccountNumber"] == "711999"
 
 
-def test_the_three_fields_with_no_upstream_slot_stay_null(record):
-    """Not an oversight — asserted so a later "fix" cannot quietly invent them."""
-    assert record["defaults"]["priceList"] is None
-    assert record["defaults"]["partialShipping"] is None
-    assert record["finance"]["openAmount"] is None
+def test_the_fields_with_no_upstream_slot_are_not_described_at_all(record):
+    """They used to be asserted null so a later "fix" could not quietly invent them.
+
+    The domain review went a step further and removed them: a field that is always null
+    is not a null value, it is a promise the entity does not keep — and a reader of
+    `describe` takes it for something merely empty on THIS record. `priceList`,
+    `partialShipping` and `openAmount` are gone from the model; the assertion is now
+    that they stay gone."""
+    assert "priceList" not in record["defaults"]
+    assert "partialShipping" not in record["defaults"]
+    assert "openAmount" not in record["finance"]
 
 
 def test_an_empty_upstream_payload_does_not_raise(record):
