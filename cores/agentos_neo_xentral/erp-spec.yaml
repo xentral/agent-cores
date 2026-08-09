@@ -1240,7 +1240,7 @@ masterdata:
       addresses.gln: {type: string, ops: [create, update]}
       addresses.email: {type: string, ops: [create, update]}
       addresses.phone: {type: string, ops: [create, update]}
-      contacts: {type: collection, ops: [create, update], proven: [create, update]}
+      contacts: {type: collection, ops: [create, update], proven: [create]}
       contacts.id: {type: string}
       contacts.type: {type: select, ops: [create, update], options: [mr, mrs, company, other]}
       contacts.name: {type: string, required: true, ops: [create, update]}

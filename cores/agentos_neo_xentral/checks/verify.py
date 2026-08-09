@@ -401,50 +401,55 @@ def _line_eq(got: Any, want: Any) -> bool:
 
 @functools.lru_cache(maxsize=1)
 def _spec_must() -> dict[str, dict[str, set[str]]]:
-    """``<Entity>`` → ``<field path>`` → the operations the SPECIFICATION requires.
+    """``<Entity>`` → ``<field path>`` → the operations a RECORDED GAP asks for.
 
-    This is what makes the run spec-driven. It used to walk the schema and probe
-    whatever the core happened to declare — which can only ever confirm what the code
-    already says, and can never settle a gap, because the op a gap is about is the one
-    the core does not declare.
+    This is what lets the run settle a gap instead of merely confirming the code. The
+    schema can only ever say what the core already declares, and the op a gap is about
+    is precisely the one it does not — so an unprobed gap stays a hypothesis forever.
 
-    Empty when the file is missing: a core without a specification falls back to the
-    schema flags, which is what every core did before.
+    The requirements used to sit in ``erp-spec.yaml`` under a per-field ``must``. They
+    moved to ``backlog.yaml`` when the specification became purely descriptive, and this
+    function kept reading the old key: it returned an empty requirement for every entity,
+    so every field fell through to the schema flag and the run quietly stopped testing
+    gaps at all. Measured on the 2026-08-09 run — 79 verdicts vanished against the run
+    before it, 32 of them ``fail``, and not one new verdict appeared.
+
+    Empty when the file is missing: a core without a backlog falls back to the schema
+    flags, which is what every core did before.
     """
-    path = os.path.join(os.path.dirname(__file__), "..", "erp-spec.yaml")
+    path = os.path.join(os.path.dirname(__file__), "..", "backlog.yaml")
     try:
         with open(path, encoding="utf-8") as fh:
             doc = yaml.safe_load(fh) or {}
     except (FileNotFoundError, ValueError, yaml.YAMLError):
         return {}
     out: dict[str, dict[str, set[str]]] = {}
-    for entities in doc.values():
-        if not isinstance(entities, dict):
+    for key, entries in doc.items():
+        if not isinstance(entries, list):
             continue
-        for key, block in entities.items():
-            fields = (block or {}).get("fields")
-            if not isinstance(fields, dict):
+        wanted: dict[str, set[str]] = {}
+        for entry in entries:
+            if not isinstance(entry, dict) or not entry.get("field"):
                 continue
-            out[key] = {
-                p: set(f.get("must") or [])
-                for p, f in fields.items()
-                if isinstance(f, dict) and f.get("must")
-            }
+            wanted.setdefault(entry["field"], set()).update(entry.get("ops") or [])
+        if wanted:
+            out[key] = wanted
     return out
 
 
 def _wants(key: str, path: str, op: str, spec: dict[str, Any], flag: str) -> bool:
     """Whether this run should probe ``op`` on ``key.path``.
 
-    The specification decides where it says anything about the field; the schema flag
-    decides otherwise. Both directions matter: an op the spec requires is probed even
-    though the core does not offer it — that is how a recorded gap can ever be settled
-    — and an op the core offers but nobody requires is left alone.
+    The union of two sources, not a choice between them. A recorded gap adds the op it
+    asks for — that is how a gap can ever be settled, since the core by definition does
+    not declare it. The schema flag keeps everything the core does offer, so a field that
+    happens to carry a gap does not lose the ops it already supports: `prices.sale` asks
+    for `read` and would otherwise stop being probed for the create and update that
+    demonstrably work.
     """
-    required = _spec_must().get(key)
-    if required is None or path not in required:
-        return bool(spec.get(flag))
-    return op in required[path]
+    if op in _spec_must().get(key, {}).get(path, ()):
+        return True
+    return bool(spec.get(flag))
 
 
 def _update_targets(
