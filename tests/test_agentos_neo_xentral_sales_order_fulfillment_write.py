@@ -11,8 +11,11 @@ These pin:
     select ↔ boolean translation for priority (only "high" means fastLane);
   * that a merchant can flip the flag OFF, not just on — `False` must reach the
     payload, so the mapping may not use truthiness to decide what to send;
-  * that `partialShipping` stays rejected: the read hardcodes "allowed" and there is
-    no upstream slot, so silently swallowing a write would be a lie.
+  * that `partialShipping` stays rejected — and is no longer read at all. The read used
+    to emit a hardcoded "allowed" for every order on every tenant, which is not an empty
+    value but a policy statement nobody had checked; the same reasoning that removed
+    `defaults.partialShipping` from the customer. Refusing the write was always right;
+    claiming to know the answer on the read was not.
 """
 
 from __future__ import annotations
@@ -54,10 +57,20 @@ def test_priority_translates_to_fast_lane_boolean():
     assert _write({"fulfillmentPolicy": {"priority": "normal"}})[0] == {"fastLane": False}
 
 
-def test_partial_shipping_change_is_rejected_not_swallowed():
-    v3, rejected = _write({"fulfillmentPolicy": {"partialShipping": "forbidden"}})
-    assert rejected == {"fulfillmentPolicy.partialShipping"}
-    assert "partialShipping" not in v3
+def test_partial_shipping_is_not_read_at_all():
+    """It used to come back "allowed" for every order, whatever the order actually said."""
+    record = SalesOrderAdapter().map_read({"id": 1, "autoDispatch": True})
+    assert "partialShipping" not in record["fulfillmentPolicy"]
+
+
+def test_any_partial_shipping_write_is_rejected_not_swallowed():
+    """Every mention, not just a change. While the read emitted "allowed", that one value
+    had to pass as a no-op so round-tripping clients were not punished for echoing us.
+    Nothing echoes it now, so the exception has no reason to exist."""
+    for value in ("forbidden", "allowed"):
+        v3, rejected = _write({"fulfillmentPolicy": {"partialShipping": value}})
+        assert rejected == {"fulfillmentPolicy.partialShipping"}, value
+        assert "partialShipping" not in v3, value
 
 
 def test_partial_shipping_rejection_survives_a_mixed_write():
@@ -71,9 +84,9 @@ def test_partial_shipping_rejection_survives_a_mixed_write():
 
 
 def test_round_trip_write_is_not_a_409():
-    # The read emits partialShipping unconditionally, so a read-modify-write client
-    # echoes it back on every PATCH. Echoing the unchanged value must be a no-op —
-    # otherwise turning auto-dispatch off via a full-model write is impossible.
+    # A read-modify-write client PATCHes back whatever the read gave it. This used to be
+    # the reason `partialShipping: "allowed"` had to be tolerated on the write; with the
+    # field gone from the read, the round trip is clean without that exception.
     read_back = SalesOrderAdapter().map_read({"id": 1, "autoDispatch": True})
     policy = read_back["fulfillmentPolicy"]
     policy["auto"] = False  # the merchant unticks "Autoversand", everything else as read
@@ -88,6 +101,6 @@ def test_schema_advertises_the_new_write_flags():
     assert props["auto"]["creatable"] and props["auto"]["updatable"]
     assert props["priority"]["creatable"] and props["priority"]["updatable"]
     assert [o["value"] for o in props["priority"]["options"]] == ["normal", "high"]
-    # partialShipping must NOT advertise itself as writable while it is rejected
-    assert not props["partialShipping"].get("creatable")
-    assert not props["partialShipping"].get("updatable")
+    # Not read-only — absent. A field described but never writable and never truthfully
+    # read is a promise the entity does not keep.
+    assert "partialShipping" not in props

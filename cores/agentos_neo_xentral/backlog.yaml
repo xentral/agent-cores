@@ -107,8 +107,9 @@ SalesOrder:
   - field: fulfillmentPolicy.partialShipping
     ops: [create, update]
     reason: >-
-      Partial-shipping policy has no upstream slot — the read reports a hardcoded "allowed".
-      Needs a real v3 field before it can be written or trusted.
+      Partial-shipping policy has no upstream slot. The read used to report a hardcoded
+      "allowed" for every order; that was removed, so the field is now absent rather than
+      wrong. Needs a real v3 field before it can be written or read.
   - field: discounts
     ops: [read]
     reason: >-

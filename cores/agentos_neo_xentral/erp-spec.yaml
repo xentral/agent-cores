@@ -240,7 +240,6 @@ documents:
       fulfillmentPolicy: {type: embedded}
       fulfillmentPolicy.auto: {type: boolean, ops: [create, update], proven: [update]}
       fulfillmentPolicy.priority: {type: select, ops: [create, update], proven: [update], options: [normal, high]}
-      fulfillmentPolicy.partialShipping: {type: select}
       holds: {type: collection}
       holds.type: {type: string}
       holds.state: {type: string}

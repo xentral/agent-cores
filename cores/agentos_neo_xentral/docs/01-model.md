@@ -149,7 +149,7 @@ nicht wiederholt — sie existieren in jedem Beleg.
     "terms": { "dueDays": 0, "discountPercent": 0, "discountDays": 0 }, "status": "paid" },
   "shipping": { "method": { "id": "ship_dhl", "name": "DHL Paket", "href": "/v1/shippingMethods/ship_dhl" },
     "status": "open", "cost": { "amount": "4.90", "currency": "EUR" } },
-  "fulfillmentPolicy": { "auto": true, "priority": "normal", "partialShipping": "allowed" },
+  "fulfillmentPolicy": { "auto": true, "priority": "normal" },
   "holds": [],                                  // [{type: creditLimit|payment|manual|address|fraud, since, by}]
   "texts": { "intro": "…", "outro": "…" }, "note": "VIP-Kunde, bitte priorisieren.",
   "documents": {
@@ -386,10 +386,8 @@ und persistieren nicht; sie werden abgelehnt statt still verworfen.
   "contacts": [{ "id": "con_1", "type": "mrs", "name": "Erika Beispiel", "title": "Dr.", "position": "Leiterin", "department": "Einkauf", "subDepartment": null, "email": "…", "phone": "…", "mobile": "…", "remarks": "…", "internalNote": null }],
   "defaults": { "currency": "EUR", "language": "de",
     "paymentMethod": { "…": "Ref" }, "paymentTerms": { "dueDays": 30, "discountPercent": 2, "discountDays": 10 },
-    "shippingMethod": { "…": "Ref" }, "priceList": { "…": "Ref" },
-    "taxation": "domestic", "partialShipping": "allowed" },
+    "shippingMethod": { "…": "Ref" }, "taxation": "domestic" },
   "finance": {                                  // read-only
-    "openAmount": { "amount": "1240.00", "currency": "EUR" },
     "creditLimit": { "amount": "5000.00", "currency": "EUR" },
     "overdueAmount": { "amount": "0.00", "currency": "EUR" },
     "onHold": false, "dunningBlocked": false },
