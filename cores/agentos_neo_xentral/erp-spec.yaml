@@ -1119,19 +1119,13 @@ documents:
 masterdata:
   Customer:
     label: Customer
-    reviewed: null
+    reviewed: 2026-08-09
     operations: [list, read, create, update, delete]
     fields:
       object: {type: string}
       id: {type: string}
       number: {type: string, ops: [create, filter, sort, search], proven: [filter, sort, search]}
       type: {type: select}
-      status: {type: select, options: [active, archived]}
-      parent: {type: reference, ref: Customer}
-      billTo: {type: reference, ref: Customer}
-      channels: {type: collection}
-      channels.channel: {type: reference, ref: Channel}
-      channels.externalId: {type: string}
       name: {type: string, required: true, ops: [create, update, filter, sort, search], proven: [create, update, filter, sort, search]}
       email: {type: string, ops: [create, update, filter, search], proven: [create, update, filter, search]}
       phone: {type: string, ops: [create, update], proven: [create, update]}
@@ -1179,17 +1173,11 @@ masterdata:
       defaults.paymentTerms.discountDays: {type: integer}
       defaults.taxation: {type: select}
       defaults.shippingMethod: {type: reference, ref: ShippingMethod}
-      defaults.priceList: {type: reference, ref: PriceList}
-      defaults.partialShipping: {type: select}
       finance: {type: embedded}
-      finance.openAmount: {type: embedded}
-      finance.openAmount.amount: {type: string}
-      finance.openAmount.currency: {type: string}
       finance.creditLimit: {type: embedded}
       finance.creditLimit.amount: {type: string}
       finance.creditLimit.currency: {type: string}
       finance.onHold: {type: boolean}
-      finance.dunningBlocked: {type: boolean}
       finance.debtorAccountNumber: {type: string}
       project: {type: reference, ref: Project, ops: [create, update], proven: [update]}
       channel: {type: reference, ref: Channel, ops: [create, update]}

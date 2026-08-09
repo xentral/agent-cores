@@ -141,35 +141,6 @@ class CustomerAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
                 previewable=True,
             ),
             "type": prop("select", "Type", **RO, section="general"),
-            "status": prop(
-                "select",
-                "Status",
-                **RO,
-                section="general",
-                options=[{"value": v, "label": v.capitalize()} for v in ("active", "archived")],
-            ),
-            "parent": prop(
-                "reference", "Parent (HQ)", **RO, section="general", reference="Customer"
-            ),
-            "billTo": prop(
-                "reference",
-                "Bill-to (central billing)",
-                **RO,
-                section="general",
-                reference="Customer",
-            ),
-            "channels": prop(
-                "collection",
-                "Channel links",
-                **RO,
-                section="general",
-                node={
-                    "properties": {
-                        "channel": prop("reference", "Channel", **RO, reference="Channel"),
-                        "externalId": prop("string", "External id", **RO),
-                    }
-                },
-            ),
             "name": prop(
                 "string",
                 "Name",
@@ -226,8 +197,6 @@ class CustomerAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
                     "shippingMethod": prop(
                         "reference", "Shipping method", **RO, reference="ShippingMethod"
                     ),
-                    "priceList": prop("reference", "Price list", **RO, reference="PriceList"),
-                    "partialShipping": prop("select", "Partial shipping", **RO),
                 },
             ),
             "finance": prop(
@@ -236,15 +205,6 @@ class CustomerAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
                 **RO,
                 section="finance",
                 properties={
-                    "openAmount": prop(
-                        "embedded",
-                        "Open amount",
-                        **RO,
-                        properties={
-                            "amount": prop("string", "Amount", **RO),
-                            "currency": prop("string", "Currency", **RO),
-                        },
-                    ),
                     "creditLimit": prop(
                         "embedded",
                         "Credit limit",
@@ -254,7 +214,6 @@ class CustomerAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
                         },
                     ),
                     "onHold": prop("boolean", "On hold"),
-                    "dunningBlocked": prop("boolean", "Dunning blocked"),
                     "debtorAccountNumber": prop("string", "Debtor account"),
                 },
             ),
@@ -313,10 +272,6 @@ class CustomerAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
             "id": (f"cus_{r.get('id')}" if r.get("id") is not None else None),
             "number": r.get("number"),
             "type": pa.get("type"),
-            "status": None,
-            "parent": None,
-            "billTo": None,
-            "channels": None,
             "name": pa.get("name"),
             "email": pa.get("email"),
             "phone": pa.get("phone"),
@@ -381,16 +336,12 @@ class CustomerAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
                 # No slot on the v3 customer resource — the price list a customer is
                 # assigned to, and whether partial shipping is allowed, are not part of
                 # this payload. Blue wishes rather than silent nulls.
-                "priceList": None,
-                "partialShipping": None,
             },
             "finance": {
                 # Open receivables are a computed A/R figure, not a customer field —
                 # nothing on this resource carries them.
-                "openAmount": None,
                 "creditLimit": money(fin.get("creditLimit"), fin.get("defaultCurrency")),
                 "onHold": ful.get("deliveryBlock"),
-                "dunningBlocked": None,
                 "debtorAccountNumber": r.get("deviatingDebtorAccountNumber"),
             },
             "project": ref(

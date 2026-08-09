@@ -50,9 +50,6 @@
   "Customer": {
     "number": "The merchant's own customer number. Settable on create — supply it to keep the number from your previous system, omit it to let Xentral draw one from the number range. It is filterable, so it is also the key that makes a repeated import idempotent. Not changeable afterwards.",
     "type": "Customer or lead (Interessent). Read-only: no v3 customers payload exposes the lead flag, so it cannot be set through the core today.",
-    "status": "Lifecycle state of the customer: active or archived.",
-    "parent": "Parent company in a branch → HQ hierarchy: this record is a branch of the referenced customer.",
-    "billTo": "Central billing: invoices for this customer are addressed to this OTHER partner (e.g. a buying group or HQ). Null = billed directly.",
     "name": "Customer / company name (the main address name).",
     "email": "Primary email of the customer.",
     "phone": "Primary phone of the customer.",
@@ -70,13 +67,9 @@
     "defaults.paymentTerms.discountDays": "Days within which the cash-discount applies.",
     "defaults.taxation": "Default tax scheme for this customer (domestic / EU B2B / EU OSS / export).",
     "defaults.shippingMethod": "Default carrier / shipping method.",
-    "defaults.priceList": "Price list assigned to this customer.",
-    "defaults.partialShipping": "Whether the customer's orders may ship in partial deliveries.",
     "finance": "Read-only financial standing of the customer (A/R).",
-    "finance.openAmount": "Total currently unpaid amount (open receivables) for this customer.",
     "finance.creditLimit": "Maximum outstanding amount allowed before orders are put on hold.",
     "finance.onHold": "Delivery/credit hold — when true, orders are blocked from fulfilment.",
-    "finance.dunningBlocked": "Excludes the customer from the dunning (payment-reminder) run.",
     "finance.debtorAccountNumber": "Deviating debtor (A/R) account for the bookkeeping / DATEV export.",
     "notes": "Free-text note on the customer (\"Sonstiges\" in the mask) — the usual home for migrated CRM remarks.",
     "customFields": "Values of the company's custom fields (Freifelder) on this customer. `key` and `label` identify the field, `value` holds the content; `label` is required on write. Which fields exist is listed by the AddressCustomField entity. Note these are NOT filterable upstream — use `number` to match records on re-import."
