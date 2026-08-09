@@ -554,7 +554,7 @@ documents:
         E-invoice (XRechnung/ZUGFeRD) rendering is not exposed via the public API.
   Payment:
     label: Payment
-    reviewed: null
+    reviewed: 2026-08-09
     operations: [list, read]
     fields:
       object: {type: string}
@@ -906,7 +906,7 @@ documents:
         Batch labels have no public endpoint.
   PurchaseInvoice:
     label: Purchase invoice
-    reviewed: null
+    reviewed: 2026-08-09
     operations: [list, read, create, update, delete]
     fields:
       object: {type: string}
@@ -1301,7 +1301,7 @@ masterdata:
         An open-items statement is not exposed via the public API.
   Product:
     label: Product
-    reviewed: null
+    reviewed: 2026-08-09
     operations: [list, read, create, update, delete]
     fields:
       object: {type: string}
@@ -1421,7 +1421,7 @@ masterdata:
         v2 products rejects isDeleted writes (400).
   PriceList:
     label: Price list
-    reviewed: null
+    reviewed: 2026-08-09
     operations: [list, read, create, update, delete]
     fields:
       object: {type: string}
@@ -1572,7 +1572,7 @@ masterdata:
         The batch API itself is missing upstream (the entity is blocked).
   Channel:
     label: Channel
-    reviewed: null
+    reviewed: 2026-08-09
     operations: [list, read]
     fields:
       object: {type: string}
@@ -1656,7 +1656,7 @@ masterdata:
       updatedAt: {type: datetime, ops: [sort], proven: [sort]}
   Task:
     label: Task
-    reviewed: null
+    reviewed: 2026-08-09
     operations: [list, read, create, update, delete]
     fields:
       object: {type: string}

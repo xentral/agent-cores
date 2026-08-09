@@ -1,10 +1,10 @@
 """Document numbers: settable where Xentral takes one, refused loudly where it does not.
 
-Three of the seven documents accept a number on create — verified in the monorepo
+Three of the eight documents accept a number on create — verified in the monorepo
 (`documentNumber` is declared on the Create*Data and applied by the create action:
 normalizeDocumentNumber → uniqueness check → belegnr) and on mvp, where a sales
 order created as ALT-70001 still carried it after actions/release. Omit it and the
-configured number range draws the next one. The other four do not declare the field
+configured number range draws the next one. The other five do not declare the field
 at all and ignore a supplied value without an error.
 
 Either way the core must not swallow it: `number` used to sit in every document's
@@ -20,6 +20,9 @@ import pathlib
 
 from xentral_entity_cores.agentos_neo_xentral.emulated.credit_note import CreditNoteAdapter
 from xentral_entity_cores.agentos_neo_xentral.emulated.delivery_note import DeliveryNoteAdapter
+from xentral_entity_cores.agentos_neo_xentral.emulated.purchase_invoice import (
+    PurchaseInvoiceAdapter,
+)
 from xentral_entity_cores.agentos_neo_xentral.emulated.purchase_order import PurchaseOrderAdapter
 from xentral_entity_cores.agentos_neo_xentral.emulated.quote import QuoteAdapter
 from xentral_entity_cores.agentos_neo_xentral.emulated.return_order import ReturnAdapter
@@ -38,7 +41,14 @@ _DOES_NOT = [
     (PurchaseOrderAdapter, "PurchaseOrder"),
     (DeliveryNoteAdapter, "DeliveryNote"),
     (ReturnAdapter, "Return"),
+    (PurchaseInvoiceAdapter, "PurchaseInvoice"),
 ]
+# The incoming invoice reached this list through the domain review rather than through a
+# monorepo reading: its number is system-assigned (a create carrying one answers 201 with
+# an empty number, measured on mvp 2026-08-02) and an update measured `fail`. The number a
+# clerk actually cares about there is the SUPPLIER's, and that one is a different field —
+# `references.supplierInvoiceNumber`, writable and proven on create, update, filter and
+# search. So the ask was dropped; the refusal asserted here is what has to stay.
 _ALL = _TAKES_IT + _DOES_NOT
 
 
@@ -104,16 +114,21 @@ def test_number_is_refused_where_upstream_ignores_it():
 
 
 def test_number_left_the_ignore_set_everywhere():
-    """`_IGNORE` is what makes a key vanish quietly."""
+    """`_IGNORE` is what makes a key vanish quietly.
+
+    Not every adapter has such a set — the incoming invoice does not, so there is no
+    quiet exit to guard there. Its refusal is asserted by
+    `test_number_is_refused_where_upstream_ignores_it` like every other document's.
+    """
     for cls, name in _ALL:
-        assert "number" not in cls._IGNORE, name
+        assert "number" not in getattr(cls, "_IGNORE", ()), name
 
 
 def test_the_backlog_keeps_only_the_correction_case():
     """Where upstream TAKES a number on create, the open ask is correcting it later —
     v3 PATCH has no slot for it.
 
-    The other half is gone. Four documents ignore a supplied number silently, and the
+    The other half is gone. Five documents ignore a supplied number silently, and the
     core refuses it for that reason (asserted above, in
     `test_number_is_refused_where_upstream_ignores_it`) — but the domain review decided
     that carrying a foreign number onto those four is not wanted, so the entries were
