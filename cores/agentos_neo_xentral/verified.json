@@ -5548,22 +5548,6 @@
      "sort": "accepted",
      "sortNote": "fewer than two distinct values on the page — order not assertable"
     },
-    "billTo": {
-     "read": "unobserved",
-     "readNote": "declared, but none of the 42 sampled records carries a value — nothing proven either way"
-    },
-    "channels": {
-     "read": "unobserved",
-     "readNote": "declared, but none of the 42 sampled records carries a value — nothing proven either way"
-    },
-    "channels.channel": {
-     "read": "unobserved",
-     "readNote": "no sampled record carries 'channels', so the leaf could not be observed — nothing proven either way"
-    },
-    "channels.externalId": {
-     "read": "unobserved",
-     "readNote": "no sampled record carries 'channels', so the leaf could not be observed — nothing proven either way"
-    },
     "contacts": {
      "create": "pass",
      "read": "pass",
@@ -5656,10 +5640,6 @@
     "defaults.language": {
      "read": "pass"
     },
-    "defaults.partialShipping": {
-     "read": "unobserved",
-     "readNote": "declared, but none of the 42 sampled records carries a value — nothing proven either way"
-    },
     "defaults.paymentMethod": {
      "read": "unobserved",
      "readNote": "declared, but none of the 42 sampled records carries a value — nothing proven either way"
@@ -5679,10 +5659,6 @@
      "read": "unobserved",
      "readNote": "declared, but none of the 42 sampled records carries a value — nothing proven either way",
      "updateNote": "no sample numeric value — not probed (a null number cannot be restored)"
-    },
-    "defaults.priceList": {
-     "read": "unobserved",
-     "readNote": "declared, but none of the 42 sampled records carries a value — nothing proven either way"
     },
     "defaults.shippingMethod": {
      "read": "unobserved",
@@ -5704,18 +5680,6 @@
     },
     "finance.onHold": {
      "read": "pass"
-    },
-    "finance.openAmount": {
-     "read": "unobserved",
-     "readNote": "declared, but none of the 42 sampled records carries a value — nothing proven either way"
-    },
-    "finance.openAmount.amount": {
-     "read": "unobserved",
-     "readNote": "no sampled record carries 'finance.openAmount', so the leaf could not be observed — nothing proven either way"
-    },
-    "finance.openAmount.currency": {
-     "read": "unobserved",
-     "readNote": "no sampled record carries 'finance.openAmount', so the leaf could not be observed — nothing proven either way"
     },
     "id": {
      "read": "pass"
@@ -5745,10 +5709,6 @@
     "object": {
      "read": "pass"
     },
-    "parent": {
-     "read": "unobserved",
-     "readNote": "declared, but none of the 42 sampled records carries a value — nothing proven either way"
-    },
     "phone": {
      "create": "pass",
      "read": "pass",
@@ -5761,16 +5721,6 @@
     },
     "purchasing": {
      "read": "pass"
-    },
-    "purchasing.confirmationRequired": {
-     "read": "unobserved",
-     "readNote": "declared, but none of the 42 sampled records carries a value — nothing proven either way",
-     "updateNote": "no sample boolean value — not probed (a null flag cannot be restored)"
-    },
-    "purchasing.deliveryDays": {
-     "read": "unobserved",
-     "readNote": "declared, but none of the 42 sampled records carries a value — nothing proven either way",
-     "updateNote": "no sample numeric value — not probed (a null number cannot be restored)"
     },
     "purchasing.minimumOrderValue": {
      "read": "unobserved",
@@ -5787,16 +5737,6 @@
     "purchasing.ourCustomerNumber": {
      "read": "pass",
      "update": "pass"
-    },
-    "purchasing.sendOrdersVia": {
-     "read": "unobserved",
-     "readNote": "declared, but none of the 42 sampled records carries a value — nothing proven either way"
-    },
-    "status": {
-     "read": "unobserved",
-     "readNote": "declared, but none of the 42 sampled records carries a value — nothing proven either way",
-     "update": "fail",
-     "updateNote": "upstream accepted the write but the value did not persist"
     },
     "tags": {
      "filter": "accepted",
@@ -5847,7 +5787,6 @@
     "addresses.type.update",
     "addresses.zip.create",
     "addresses.zip.update",
-    "billTo.update",
     "contacts.address.create",
     "contacts.address.update",
     "contacts.allowMarketingEmails.create",
@@ -5892,23 +5831,14 @@
     "customFields.update",
     "customFields.value.create",
     "customFields.value.update",
-    "defaults.partialShipping.update",
     "defaults.paymentTerms.dueDays.create",
     "defaults.paymentTerms.dueDays.update",
-    "defaults.priceList.update",
     "defaults.shippingMethod.update",
     "finance.creditorAccountNumber.update",
     "notes.create",
     "notes.update",
-    "parent.update",
     "project.create",
-    "purchasing.confirmationRequired.create",
-    "purchasing.confirmationRequired.update",
-    "purchasing.deliveryDays.create",
-    "purchasing.deliveryDays.update",
     "purchasing.ourCustomerNumber.create",
-    "purchasing.sendOrdersVia.create",
-    "purchasing.sendOrdersVia.update",
     "tags.create"
    ]
   },

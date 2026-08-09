@@ -1210,19 +1210,13 @@ masterdata:
         An open-items statement is not exposed via the public API.
   Supplier:
     label: Supplier
-    reviewed: null
+    reviewed: 2026-08-09
     operations: [list, read, create, update, delete]
     fields:
       object: {type: string}
       id: {type: string}
       number: {type: string, ops: [filter, sort, search], proven: [filter, sort, search]}
       type: {type: select}
-      status: {type: select, options: [active, archived]}
-      parent: {type: reference, ref: Supplier}
-      billTo: {type: reference, ref: Supplier}
-      channels: {type: collection}
-      channels.channel: {type: reference, ref: Channel}
-      channels.externalId: {type: string}
       name: {type: string, required: true, ops: [create, update, filter, sort, search], proven: [create, update, filter, sort, search]}
       email: {type: string, ops: [create, update, filter, search], proven: [create, update, filter, search]}
       phone: {type: string, ops: [create, update], proven: [create, update]}
@@ -1231,9 +1225,6 @@ masterdata:
       language: {type: string, ops: [create, update], proven: [create, update]}
       purchasing: {type: embedded}
       purchasing.ourCustomerNumber: {type: string, ops: [create, update], proven: [update]}
-      purchasing.confirmationRequired: {type: boolean}
-      purchasing.sendOrdersVia: {type: select}
-      purchasing.deliveryDays: {type: integer}
       purchasing.minimumOrderValue: {type: embedded}
       purchasing.minimumOrderValue.amount: {type: string}
       purchasing.minimumOrderValue.currency: {type: string}
@@ -1273,16 +1264,11 @@ masterdata:
       defaults.language: {type: string}
       defaults.paymentMethod: {type: reference, ref: PaymentMethod}
       defaults.shippingMethod: {type: reference, ref: ShippingMethod}
-      defaults.priceList: {type: reference, ref: PriceList}
-      defaults.partialShipping: {type: select}
       defaults.paymentTerms: {type: embedded}
       defaults.paymentTerms.dueDays: {type: integer}
       defaults.paymentTerms.discountPercent: {type: decimal}
       defaults.paymentTerms.discountDays: {type: integer}
       finance: {type: embedded}
-      finance.openAmount: {type: embedded}
-      finance.openAmount.amount: {type: string}
-      finance.openAmount.currency: {type: string}
       finance.onHold: {type: boolean}
       finance.creditorAccountNumber: {type: string}
       project: {type: reference, ref: Project, ops: [create, update], proven: [update]}

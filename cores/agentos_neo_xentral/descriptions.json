@@ -77,9 +77,6 @@
   "Supplier": {
     "number": "Human-facing supplier number (e.g. 70001).",
     "type": "Kind of partner: person or company (salutation / legal form) — not the customer/supplier role.",
-    "status": "Lifecycle state of the supplier: active or archived.",
-    "parent": "Parent company in a branch → HQ hierarchy: this record is a branch of the referenced supplier.",
-    "billTo": "Central settlement: liabilities for this supplier are addressed to this OTHER partner. Null = settled directly.",
     "name": "Supplier / company name (the main address name).",
     "email": "Primary email of the supplier.",
     "phone": "Primary phone of the supplier.",
@@ -89,16 +86,12 @@
     "project": "Main project this supplier is assigned to.",
     "purchasing": "Supplier-specific purchasing defaults.",
     "purchasing.ourCustomerNumber": "Our customer number AT the supplier — how they identify us on their side.",
-    "purchasing.confirmationRequired": "Whether an order confirmation (AB) is required from this supplier.",
-    "purchasing.sendOrdersVia": "How purchase orders are sent to the supplier (email / portal / EDI).",
-    "purchasing.deliveryDays": "Standard supplier lead time in days (feeds replenishment planning).",
     "purchasing.minimumOrderValue": "Minimum order value the supplier requires.",
     "defaults": "Default commercial terms for purchasing from this supplier.",
     "defaults.currency": "Default currency for the supplier's documents.",
     "defaults.paymentMethod": "Default payment method for the supplier.",
     "defaults.paymentTerms": "Default payment terms towards the supplier.",
     "finance": "Read-only financial standing of the supplier (A/P).",
-    "finance.openAmount": "Total currently unpaid amount (open liabilities) towards this supplier.",
     "finance.creditorAccountNumber": "Deviating creditor (A/P) account for the bookkeeping / DATEV export."
   },
   "Quote": {

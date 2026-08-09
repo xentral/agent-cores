@@ -239,8 +239,10 @@ endpoint upstream, refused at runtime with the reason. The ones that change a de
 | `Payment.allocate`/`refund`, `StockTake.*`, `PickingRun.*`, `Channel.*` | read-only surfaces |
 
 Also read-only on the customer, though the order inherits them: `defaults.paymentTerms`,
-`taxation`, `shippingMethod`, `creditLimit` are readable; `priceList`, `partialShipping` and
-`finance.openAmount` have no upstream slot at all — never branch on them.
+`taxation`, `shippingMethod` and `creditLimit` are readable. The price list, the
+partial-shipping preference and the aggregated open amount are not there at all any
+more — the domain review removed them, because a field that is always null reads like
+one that merely happens to be empty on this record.
 
 Which price lives where: `Product.prices.sale` = the standard price, `PriceList` =
 customer/group/scale sale prices, `PurchasePrice` = the EK per supplier.
