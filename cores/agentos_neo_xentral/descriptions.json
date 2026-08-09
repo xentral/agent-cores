@@ -243,7 +243,6 @@
     "fulfillmentPolicy": "Rules governing how the order is fulfilled.",
     "fulfillmentPolicy.auto": "Whether the order dispatches automatically without manual release.",
     "fulfillmentPolicy.priority": "Fulfilment priority (e.g. normal, high / fast lane).",
-    "fulfillmentPolicy.partialShipping": "Whether partial shipments are allowed.",
     "holds": "Active fulfilment blocks — the curated reasons a dispatch would be rejected (read-only). Empty means nothing blocks. A 'stock' hold means an item is not in stock; check each line's product.stock.available to find which one.",
     "holds.type": "Kind of block: stock (item not available), creditLimit, manual (delivery block), or address.",
     "holds.state": "The blocking signal's raw state (e.g. false / no).",

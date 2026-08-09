@@ -60,9 +60,6 @@ _STATUS_OPTIONS = [
 ]
 # Fulfilment priority is the neutral face of v3 `fastLane` (a boolean upstream).
 _PRIORITY_OPTIONS = [{"value": "normal", "label": "Normal"}, {"value": "high", "label": "High"}]
-# The only partial-shipping policy the upstream can represent today; the read
-# reports it unconditionally, so the write treats it as the no-op value.
-_PARTIAL_SHIPPING = "allowed"
 # System trafficLights that represent an actual fulfilment BLOCK (→ holds) when
 # they sit in a blocking state. The full raw set is passed through as the read-only
 # `trafficLights` field (no interpretation); `holds` is the curated, evidence-based
@@ -321,14 +318,8 @@ class SalesOrderAdapter(FacadeAdapterBase):
                 "Create picking run",
                 wish=True,
             ),
-            self.action_def(
-                "addHold",
-                "Add hold",
-                wish=True            ),
-            self.action_def(
-                "releaseHold",
-                "Release hold",
-                wish=True            ),
+            self.action_def("addHold", "Add hold", wish=True),
+            self.action_def("releaseHold", "Release hold", wish=True),
             self.action_def(
                 "allocateStock",
                 "Allocate stock",
@@ -579,9 +570,6 @@ class SalesOrderAdapter(FacadeAdapterBase):
                 properties={
                     "auto": prop("boolean", "Auto dispatch", **_CU),
                     "priority": prop("select", "Priority", options=_PRIORITY_OPTIONS, **_CU),
-                    # No upstream slot: the read hardcodes "allowed". Read-only until
-                    # v3 exposes a partial-shipping policy (erp-spec.yaml wish).
-                    "partialShipping": prop("select", "Partial shipping", **RO),
                 },
             ),
             "holds": prop(
@@ -844,7 +832,6 @@ class SalesOrderAdapter(FacadeAdapterBase):
             "fulfillmentPolicy": {
                 "auto": r.get("autoDispatch"),
                 "priority": "high" if r.get("fastLane") else "normal",
-                "partialShipping": _PARTIAL_SHIPPING,
             },
             "holds": holds,
             "trafficLights": lights,
@@ -1021,10 +1008,12 @@ class SalesOrderAdapter(FacadeAdapterBase):
                 v3["autoDispatch"] = fp["auto"]
             if "priority" in fp:  # neutral select ↔ boolean fastLane upstream
                 v3["fastLane"] = fp["priority"] == "high"
-            # partialShipping has no upstream slot and the read hardcodes "allowed".
-            # Reject only a genuine CHANGE: echoing the value back (a read-modify-write
-            # round trip, which is how most clients PATCH) must stay a no-op, not a 409.
-            if fp.get("partialShipping", _PARTIAL_SHIPPING) != _PARTIAL_SHIPPING:
+            # partialShipping has no upstream slot at all. The read used to emit a
+            # hardcoded "allowed", which forced this write to accept that one value as a
+            # no-op so read-modify-write clients would not get a 409 for echoing us back.
+            # The read is gone (an unconditional "allowed" states a policy nobody checked),
+            # so nothing echoes it any more and every mention can be refused outright.
+            if "partialShipping" in fp:
                 rejected.add("fulfillmentPolicy.partialShipping")
         # create-only upstream
         if "customer" in model:
