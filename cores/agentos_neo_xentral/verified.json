@@ -24,7 +24,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:43:11+00:00"
+      "probedAt": "2026-08-09T20:34:13+00:00"
     },
     "Channel": {
       "fields": {
@@ -58,7 +58,7 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:38:06+00:00",
+      "probedAt": "2026-08-09T20:28:52+00:00",
       "unprobed": [
         "name.create",
         "name.update",
@@ -237,7 +237,7 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:42:17+00:00"
+      "probedAt": "2026-08-09T20:33:16+00:00"
     },
     "CostCenter": {
       "fields": {
@@ -277,7 +277,7 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:42:26+00:00"
+      "probedAt": "2026-08-09T20:33:28+00:00"
     },
     "CreditNote": {
       "actions": {
@@ -481,8 +481,7 @@
           "read": "pass",
           "search": "pass",
           "sort": "pass",
-          "update": "fail",
-          "updateNote": "PATCH 409: CreditNote: fields the core does not write"
+          "updateNote": "not probed — this core does not write the field, so the request never reached the ERP (409 from our own facade, ADR-014)"
         },
         "object": {
           "read": "pass"
@@ -587,7 +586,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:34:45+00:00",
+      "probedAt": "2026-08-09T20:25:36+00:00",
       "processSteps": {
         "release": "reachable"
       },
@@ -602,6 +601,7 @@
         "dates.serviceDate.update",
         "items.taxRate.create",
         "items.taxRate.update",
+        "number.update",
         "references.debtorAccountNumber.create",
         "settlement.mode.create"
       ]
@@ -785,8 +785,7 @@
         },
         "defaults.paymentTerms.dueDays": {
           "read": "pass",
-          "update": "fail",
-          "updateNote": "PATCH 409: Customer: fields the core does not write"
+          "updateNote": "not probed — this core does not write the field, so the request never reached the ERP (409 from our own facade, ADR-014)"
         },
         "defaults.shippingMethod": {
           "read": "unobserved",
@@ -844,8 +843,7 @@
           "read": "pass",
           "search": "pass",
           "sort": "pass",
-          "update": "fail",
-          "updateNote": "PATCH 409: Customer: fields the core does not write"
+          "updateNote": "not probed — this core does not write the field, so the request never reached the ERP (409 from our own facade, ADR-014)"
         },
         "object": {
           "read": "pass"
@@ -884,16 +882,18 @@
           "update": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:37:24+00:00",
+      "probedAt": "2026-08-09T20:28:13+00:00",
       "unprobed": [
         "customFields.create",
         "customFields.update",
         "defaults.paymentMethod.create",
         "defaults.paymentMethod.update",
         "defaults.paymentTerms.dueDays.create",
+        "defaults.paymentTerms.dueDays.update",
         "defaults.shippingMethod.update",
         "finance.creditLimit.update",
-        "finance.onHold.update"
+        "finance.onHold.update",
+        "number.update"
       ]
     },
     "CustomerGroup": {
@@ -983,7 +983,7 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:41:09+00:00"
+      "probedAt": "2026-08-09T20:32:10+00:00"
     },
     "DeliveryNote": {
       "actions": {
@@ -1032,14 +1032,12 @@
         "customs.incoterm": {
           "read": "unobserved",
           "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way",
-          "update": "fail",
-          "updateNote": "PATCH 409: DeliveryNote: fields the core does not write"
+          "updateNote": "not probed — this core does not write the field, so the request never reached the ERP (409 from our own facade, ADR-014)"
         },
         "customs.note": {
           "read": "unobserved",
           "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way",
-          "update": "fail",
-          "updateNote": "PATCH 409: DeliveryNote: fields the core does not write"
+          "updateNote": "not probed — this core does not write the field, so the request never reached the ERP (409 from our own facade, ADR-014)"
         },
         "customs.totalWeight": {
           "read": "unobserved",
@@ -1285,7 +1283,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:33:52+00:00",
+      "probedAt": "2026-08-09T20:24:42+00:00",
       "processSteps": {
         "cancel": "reachable",
         "markDelivered": "reachable",
@@ -1301,7 +1299,9 @@
         "customFields.update",
         "customer.update",
         "customs.incoterm.create",
+        "customs.incoterm.update",
         "customs.note.create",
+        "customs.note.update",
         "customs.totalWeight.create",
         "customs.totalWeight.update",
         "items.update",
@@ -1322,7 +1322,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:42:29+00:00"
+      "probedAt": "2026-08-09T20:33:31+00:00"
     },
     "EmailAccount": {
       "actions": {
@@ -1357,7 +1357,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:42:18+00:00"
+      "probedAt": "2026-08-09T20:33:18+00:00"
     },
     "Employee": {
       "fields": {
@@ -1379,7 +1379,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:42:39+00:00"
+      "probedAt": "2026-08-09T20:33:41+00:00"
     },
     "GoodsReceipt": {
       "fields": {
@@ -1475,7 +1475,7 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:35:58+00:00",
+      "probedAt": "2026-08-09T20:26:44+00:00",
       "unprobed": [
         "items.create",
         "items.update",
@@ -1505,7 +1505,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:43:08+00:00"
+      "probedAt": "2026-08-09T20:34:10+00:00"
     },
     "PaymentMethod": {
       "fields": {
@@ -1527,7 +1527,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:42:27+00:00"
+      "probedAt": "2026-08-09T20:33:29+00:00"
     },
     "PaymentTermsGroup": {
       "fields": {
@@ -1572,7 +1572,7 @@
           "readNote": "declared, but none of the 4 sampled records carries a value — nothing proven either way"
         }
       },
-      "probedAt": "2026-08-09T19:42:30+00:00"
+      "probedAt": "2026-08-09T20:33:32+00:00"
     },
     "PickingRun": {
       "fields": {
@@ -1697,7 +1697,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:40:51+00:00",
+      "probedAt": "2026-08-09T20:31:49+00:00",
       "unprobed": [
         "id.create",
         "strategy.create",
@@ -1794,7 +1794,7 @@
           "update": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:39:39+00:00"
+      "probedAt": "2026-08-09T20:30:37+00:00"
     },
     "Printer": {
       "actions": {
@@ -1841,7 +1841,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:42:17+00:00"
+      "probedAt": "2026-08-09T20:33:17+00:00"
     },
     "Product": {
       "fields": {
@@ -2241,7 +2241,7 @@
           "readNote": "declared, but none of the 111 sampled records carries a value — nothing proven either way"
         }
       },
-      "probedAt": "2026-08-09T19:39:30+00:00",
+      "probedAt": "2026-08-09T20:30:28+00:00",
       "unprobed": [
         "kind.create",
         "logistics.packagingUnits.create",
@@ -2402,7 +2402,7 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:43:07+00:00"
+      "probedAt": "2026-08-09T20:34:09+00:00"
     },
     "ProductFreeField": {
       "fields": {
@@ -2417,7 +2417,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:43:10+00:00"
+      "probedAt": "2026-08-09T20:34:12+00:00"
     },
     "ProductProperty": {
       "fields": {
@@ -2434,7 +2434,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:43:08+00:00"
+      "probedAt": "2026-08-09T20:34:10+00:00"
     },
     "ProductTag": {
       "fields": {
@@ -2452,7 +2452,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:43:09+00:00"
+      "probedAt": "2026-08-09T20:34:11+00:00"
     },
     "Project": {
       "fields": {
@@ -2499,7 +2499,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:42:36+00:00"
+      "probedAt": "2026-08-09T20:33:39+00:00"
     },
     "PurchaseInvoice": {
       "fields": {
@@ -2726,7 +2726,7 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:36:20+00:00",
+      "probedAt": "2026-08-09T20:27:04+00:00",
       "unprobed": [
         "approval.status.update",
         "match.status.update"
@@ -2986,14 +2986,12 @@
         },
         "references.ourCustomerNumber": {
           "read": "pass",
-          "update": "fail",
-          "updateNote": "PATCH 409: PurchaseOrder: fields the core does not write"
+          "updateNote": "not probed — this core does not write the field, so the request never reached the ERP (409 from our own facade, ADR-014)"
         },
         "references.supplierOfferNumber": {
           "filter": "pass",
           "read": "pass",
-          "update": "fail",
-          "updateNote": "PATCH 409: PurchaseOrder: fields the core does not write"
+          "updateNote": "not probed — this core does not write the field, so the request never reached the ERP (409 from our own facade, ADR-014)"
         },
         "status": {
           "filter": "pass",
@@ -3050,7 +3048,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:35:55+00:00",
+      "probedAt": "2026-08-09T20:26:40+00:00",
       "processSteps": {
         "cancel": "reachable",
         "close": "reachable",
@@ -3073,7 +3071,9 @@
         "items.taxRate.update",
         "items.update",
         "references.ourCustomerNumber.create",
+        "references.ourCustomerNumber.update",
         "references.supplierOfferNumber.create",
+        "references.supplierOfferNumber.update",
         "supplier.update",
         "warehouse.create",
         "warehouse.update"
@@ -3155,7 +3155,7 @@
           "updateNote": "no sample date value — not probed (a null date cannot be restored)"
         }
       },
-      "probedAt": "2026-08-09T19:39:50+00:00"
+      "probedAt": "2026-08-09T20:30:48+00:00"
     },
     "Quote": {
       "actions": {
@@ -3402,8 +3402,7 @@
         },
         "payment.terms.dueDays": {
           "read": "pass",
-          "update": "fail",
-          "updateNote": "PATCH 409: Quote: fields the core does not write"
+          "updateNote": "not probed — this core does not write the field, so the request never reached the ERP (409 from our own facade, ADR-014)"
         },
         "project": {
           "create": "pass",
@@ -3416,8 +3415,7 @@
         "references.customerInquiryNumber": {
           "filter": "pass",
           "read": "pass",
-          "update": "fail",
-          "updateNote": "PATCH 409: Quote: fields the core does not write"
+          "updateNote": "not probed — this core does not write the field, so the request never reached the ERP (409 from our own facade, ADR-014)"
         },
         "shipping": {
           "read": "pass"
@@ -3514,7 +3512,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:30:43+00:00",
+      "probedAt": "2026-08-09T20:21:36+00:00",
       "processSteps": {
         "cancel": "reachable",
         "release": "reachable"
@@ -3537,7 +3535,9 @@
         "payment.method.create",
         "payment.method.update",
         "payment.terms.dueDays.create",
+        "payment.terms.dueDays.update",
         "references.customerInquiryNumber.create",
+        "references.customerInquiryNumber.update",
         "shipping.method.create",
         "shipping.method.update"
       ]
@@ -3729,10 +3729,8 @@
         "references.rmaNumber": {
           "read": "unobserved",
           "readNote": "declared, but none of the 92 sampled records carries a value — nothing proven either way",
-          "search": "fail",
-          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is ['billingAddress.email', 'billingAddress.name', 'billingAddress.zip', 'dates.issued', 'number', 'references.customerOrderNumber'], so a consolidated search never looks at this field",
-          "update": "fail",
-          "updateNote": "PATCH 409: Return: fields the core does not write"
+          "searchNote": "not probed — this core has no search path for the field, so no query was ever sent to the ERP",
+          "updateNote": "not probed — this core does not write the field, so the request never reached the ERP (409 from our own facade, ADR-014)"
         },
         "resolution": {
           "read": "pass"
@@ -3782,7 +3780,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:35:20+00:00",
+      "probedAt": "2026-08-09T20:26:07+00:00",
       "processSteps": {
         "cancel": "reachable",
         "release": "reachable",
@@ -3805,6 +3803,8 @@
         "items.reason.update",
         "items.update",
         "references.rmaNumber.create",
+        "references.rmaNumber.search",
+        "references.rmaNumber.update",
         "warehouse.create",
         "warehouse.update"
       ]
@@ -3830,7 +3830,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:42:28+00:00"
+      "probedAt": "2026-08-09T20:33:30+00:00"
     },
     "SalesInvoice": {
       "actions": {
@@ -4102,8 +4102,7 @@
           "read": "pass",
           "search": "pass",
           "sort": "pass",
-          "update": "fail",
-          "updateNote": "PATCH 409: SalesInvoice: fields the core does not write"
+          "updateNote": "not probed — this core does not write the field, so the request never reached the ERP (409 from our own facade, ADR-014)"
         },
         "object": {
           "read": "pass"
@@ -4143,18 +4142,15 @@
         },
         "payment.terms.discountDays": {
           "read": "pass",
-          "update": "fail",
-          "updateNote": "PATCH 409: SalesInvoice: fields the core does not write"
+          "updateNote": "not probed — this core does not write the field, so the request never reached the ERP (409 from our own facade, ADR-014)"
         },
         "payment.terms.discountPercent": {
           "read": "pass",
-          "update": "fail",
-          "updateNote": "PATCH 409: SalesInvoice: fields the core does not write"
+          "updateNote": "not probed — this core does not write the field, so the request never reached the ERP (409 from our own facade, ADR-014)"
         },
         "payment.terms.dueDays": {
           "read": "pass",
-          "update": "fail",
-          "updateNote": "PATCH 409: SalesInvoice: fields the core does not write"
+          "updateNote": "not probed — this core does not write the field, so the request never reached the ERP (409 from our own facade, ADR-014)"
         },
         "project": {
           "create": "pass",
@@ -4235,7 +4231,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:33:22+00:00",
+      "probedAt": "2026-08-09T20:24:11+00:00",
       "processSteps": {
         "cancel": "executed",
         "release": "reachable"
@@ -4250,11 +4246,15 @@
         "customer.update",
         "items.taxRate.create",
         "items.taxRate.update",
+        "number.update",
         "payment.method.create",
         "payment.method.update",
         "payment.terms.discountDays.create",
+        "payment.terms.discountDays.update",
         "payment.terms.discountPercent.create",
+        "payment.terms.discountPercent.update",
         "payment.terms.dueDays.create",
+        "payment.terms.dueDays.update",
         "references.debtorAccountNumber.create"
       ]
     },
@@ -4576,8 +4576,7 @@
           "read": "pass",
           "search": "pass",
           "sort": "pass",
-          "update": "fail",
-          "updateNote": "PATCH 409: SalesOrder: fields the core does not write"
+          "updateNote": "not probed — this core does not write the field, so the request never reached the ERP (409 from our own facade, ADR-014)"
         },
         "object": {
           "read": "pass"
@@ -4624,8 +4623,7 @@
         "references.externalId": {
           "filter": "pass",
           "read": "pass",
-          "search": "fail",
-          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is ['billingAddress.email', 'billingAddress.name', 'billingAddress.zip', 'dates.issued', 'number', 'references.customerOrderNumber', 'references.externalNumber'], so a consolidated search never looks at this field",
+          "searchNote": "not probed — this core has no search path for the field, so no query was ever sent to the ERP",
           "update": "pass"
         },
         "references.externalNumber": {
@@ -4778,7 +4776,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:32:16+00:00",
+      "probedAt": "2026-08-09T20:23:04+00:00",
       "processSteps": {
         "cancel": "reachable",
         "close": "reachable",
@@ -4801,7 +4799,9 @@
         "fulfillmentPolicy.partialShipping.update",
         "items.taxRate.create",
         "items.taxRate.update",
+        "number.update",
         "references.customerOrderNumber.create",
+        "references.externalId.search",
         "shipping.method.create",
         "shipping.method.update"
       ]
@@ -4892,8 +4892,7 @@
         },
         "tracking.number": {
           "read": "pass",
-          "search": "fail",
-          "searchNote": "declared searchable, but not part of this entity's search fan-out — searchFields is empty, so a consolidated search never looks at this field"
+          "searchNote": "not probed — this core has no search path for the field, so no query was ever sent to the ERP"
         },
         "trackingNumber": {
           "read": "pass"
@@ -4918,9 +4917,10 @@
           "readNote": "no sampled record carries 'weight', so the leaf could not be observed — nothing proven either way"
         }
       },
-      "probedAt": "2026-08-09T19:39:50+00:00",
+      "probedAt": "2026-08-09T20:30:49+00:00",
       "unprobed": [
-        "id.create"
+        "id.create",
+        "tracking.number.search"
       ]
     },
     "ShippingMethod": {
@@ -4953,7 +4953,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:42:28+00:00"
+      "probedAt": "2026-08-09T20:33:30+00:00"
     },
     "StockTake": {
       "fields": {
@@ -5068,7 +5068,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:40:50+00:00",
+      "probedAt": "2026-08-09T20:31:48+00:00",
       "unprobed": [
         "id.create",
         "positions.counted.update"
@@ -5138,8 +5138,7 @@
         "description": {
           "read": "unobserved",
           "readNote": "declared, but none of the 60 sampled records carries a value — nothing proven either way",
-          "update": "fail",
-          "updateNote": "PATCH 409: StorageLocation: fields the core does not write"
+          "updateNote": "not probed — this core does not write the field, so the request never reached the ERP (409 from our own facade, ADR-014)"
         },
         "dimensions": {
           "read": "pass"
@@ -5207,9 +5206,10 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:40:49+00:00",
+      "probedAt": "2026-08-09T20:31:47+00:00",
       "unprobed": [
-        "description.create"
+        "description.create",
+        "description.update"
       ]
     },
     "Supplier": {
@@ -5498,7 +5498,7 @@
           "update": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:37:58+00:00",
+      "probedAt": "2026-08-09T20:28:48+00:00",
       "unprobed": [
         "customFields.create",
         "customFields.update",
@@ -5542,7 +5542,7 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:40:53+00:00"
+      "probedAt": "2026-08-09T20:31:53+00:00"
     },
     "Task": {
       "fields": {
@@ -5562,8 +5562,7 @@
           "read": "pass",
           "sort": "accepted",
           "sortNote": "fewer than two distinct values on the page — order not assertable",
-          "update": "fail",
-          "updateNote": "PATCH 409: Task: fields the core does not write"
+          "updateNote": "not probed — this core does not write the field, so the request never reached the ERP (409 from our own facade, ADR-014)"
         },
         "dates.created": {
           "filter": "pass",
@@ -5722,10 +5721,11 @@
           "update": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:41:36+00:00",
+      "probedAt": "2026-08-09T20:32:38+00:00",
       "unprobed": [
         "assignee.create",
-        "assignee.update"
+        "assignee.update",
+        "dates.completed.update"
       ]
     },
     "TaxRate": {
@@ -5767,7 +5767,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:42:32+00:00"
+      "probedAt": "2026-08-09T20:33:34+00:00"
     },
     "TextTemplate": {
       "fields": {
@@ -5790,7 +5790,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:43:15+00:00"
+      "probedAt": "2026-08-09T20:34:15+00:00"
     },
     "User": {
       "fields": {
@@ -5829,7 +5829,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:42:38+00:00"
+      "probedAt": "2026-08-09T20:33:40+00:00"
     },
     "Warehouse": {
       "fields": {
@@ -5849,7 +5849,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:42:35+00:00"
+      "probedAt": "2026-08-09T20:33:37+00:00"
     },
     "Webhook": {
       "fields": {
@@ -5872,7 +5872,7 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:43:12+00:00"
+      "probedAt": "2026-08-09T20:34:14+00:00"
     },
     "WebhookEventType": {
       "fields": {
@@ -5886,10 +5886,10 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T19:43:13+00:00"
+      "probedAt": "2026-08-09T20:34:14+00:00"
     }
   },
-  "generatedAt": "2026-08-09T19:43:15+00:00",
+  "generatedAt": "2026-08-09T20:34:15+00:00",
   "instance": "a2ad4180-0d41-4360-8044-9dca0c35608a",
   "schemaVersion": 2
 }

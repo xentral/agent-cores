@@ -988,6 +988,24 @@ class _AuthFailed(RuntimeError):
     """
 
 
+def _refused_by_the_facade(status: int, payload: Any) -> bool:
+    """Whether OUR core refused the write before it ever reached Xentral.
+
+    A facade that rejects a field it does not map (ADR-014, so a value is never
+    dropped in silence) answers 409 with the offending names. That is a true statement
+    about the core and says nothing whatever about the ERP — but the probe loop cannot
+    tell it apart from an upstream 4xx, so it used to be recorded as `fail`: "tested
+    and found broken". Measured on the 2026-08-09 run: 17 of 29 failing gap probes were
+    this, our own refusal read back to us as evidence about Xentral.
+    """
+    return (
+        status == 409
+        and isinstance(payload, dict)
+        and isinstance(payload.get("fields"), list)
+        and "does not write" in str(payload.get("title") or "")
+    )
+
+
 def _err(payload: Any) -> str:
     if not isinstance(payload, dict):
         return "upstream error"
@@ -1506,14 +1524,25 @@ async def _verify_entity(
             # `build_field_query` builds and asserts the record the value came from
             # comes back.
             if path not in searchable_fields:
-                mark(
-                    path,
-                    "search",
-                    False,
-                    "declared searchable, but not part of this entity's search fan-out — "
-                    f"searchFields is {sorted(searchable_fields) or 'empty'}, so a consolidated "
-                    "search never looks at this field",
-                )
+                if spec.get("searchable"):
+                    # A real defect of this core: the schema promises a search the
+                    # facade cannot perform. Consumers read the flag, so this is `fail`.
+                    mark(
+                        path,
+                        "search",
+                        False,
+                        "declared searchable, but not part of this entity's search fan-out — "
+                        f"searchFields is {sorted(searchable_fields) or 'empty'}, so a "
+                        "consolidated search never looks at this field",
+                    )
+                else:
+                    # Reached only because a recorded gap asked for it. The core never
+                    # claimed the field is searchable and the query was never sent, so
+                    # there is nothing to grade — least of all the ERP.
+                    fields.setdefault(path, {})["searchNote"] = (
+                        "not probed — this core has no search path for the field, so no "
+                        "query was ever sent to the ERP"
+                    )
                 continue
             sval = val if isinstance(val, str) and val else None
             fixture_used = False
@@ -1586,6 +1615,7 @@ async def _verify_entity(
         preferred: dict[str, Any] | None = None
         for path, spec in _update_targets(schema, key=key):
             last_note = "no updatable record found"
+            blocked_by_us = False
             done = False
             skip_note: str | None = None
             row_order = ([preferred] if preferred else []) + [
@@ -1676,6 +1706,11 @@ async def _verify_entity(
                 ust, upl = await p.req("PATCH", handle, body=body)
                 if ust >= 400:
                     last_note = f"PATCH {ust}: {_err(upl)}"
+                    if _refused_by_the_facade(ust, upl):
+                        # Trying another row cannot help: the refusal is ours and is the
+                        # same for every record.
+                        blocked_by_us = True
+                        break
                     continue  # e.g. write-protected — try the next row
                 if is_detail_only(path):
                     detail_cache.pop(handle, None)  # the write just changed it
@@ -1704,7 +1739,16 @@ async def _verify_entity(
                 done = True
                 break
             if not done:
-                if skip_note and last_note == "no updatable record found":
+                if blocked_by_us:
+                    # No verdict at all — "never tested" is the only true reading. `fail`
+                    # would state that the ERP cannot do this, which the probe never
+                    # asked; and under the retract-on-measurement rule for `proven` a
+                    # verdict here would also strike an earlier, genuine proof.
+                    fields.setdefault(path, {})["updateNote"] = (
+                        "not probed — this core does not write the field, so the request "
+                        "never reached the ERP (409 from our own facade, ADR-014)"
+                    )
+                elif skip_note and last_note == "no updatable record found":
                     fields.setdefault(path, {})["updateNote"] = skip_note
                 else:
                     mark(path, "update", False, last_note)
