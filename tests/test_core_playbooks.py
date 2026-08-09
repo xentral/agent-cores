@@ -523,8 +523,24 @@ def test_proven_matches_the_live_run(core):
 
     Those are different claims and conflating them is the mistake this whole
     arrangement exists to prevent: an operation can be flagged and never have been
-    tried. Checked by value in both directions, so a field that gains a proof has to be
-    written down and one that loses it struck.
+    tried.
+
+    A proof is kept until a run RETRACTS it, which is not the same as mirroring the
+    latest run. Which ops a run probes depends on what the backlog still asks for, so a
+    field stops being probed the moment its gap is decided away — and mirroring would
+    then erase a proof because the requirement went, not because the capability did.
+    Measured on the 2026-08-09 run: six `search` proofs would have been struck that way,
+    every one of them a capability the core does not even declare, which is exactly the
+    knowledge this file exists to hold.
+
+    So the two directions are deliberately asymmetric:
+
+      * measured `pass` and not recorded  → drift. A new proof has to be written down.
+      * recorded and measured NOT `pass`  → drift. The run tried and did not
+        demonstrate it (`fail`, or an `accepted` write that never read back); the proof
+        is retracted and must be struck.
+      * recorded and not measured at all  → stands. Nobody asked; that is silence, not
+        a counter-example.
 
     `read` is excluded. A read verdict only shows that OUR model produced a value, and
     the model invents some (`Customer.addresses.isDefault` is a hard-coded True), so it
@@ -532,17 +548,25 @@ def test_proven_matches_the_live_run(core):
     """
     if not core["verified"]:
         return
-    drift = {}
+    gained, retracted = {}, {}
     for key, block in core["spec"].items():
         marks = (core["verified"].get(key) or {}).get("fields") or {}
         for path, described in (block.get("fields") or {}).items():
-            recorded = sorted(described.get("proven") or [])
-            measured = sorted(op for op in OP_FLAG if (marks.get(path) or {}).get(op) == PROVEN)
-            if recorded != measured:
-                drift[f"{key}.{path}"] = (recorded, measured)
-    assert not drift, (
-        f"{core['id']}: `proven` disagrees with {VERIFIED} (spec, live): "
-        f"{dict(sorted(drift.items()))}"
+            recorded = set(described.get("proven") or [])
+            probed = marks.get(path) or {}
+            fresh = {op for op in OP_FLAG if probed.get(op) == PROVEN} - recorded
+            lost = {op for op in recorded if op in probed and probed[op] != PROVEN}
+            if fresh:
+                gained[f"{key}.{path}"] = sorted(fresh)
+            if lost:
+                retracted[f"{key}.{path}"] = sorted(lost)
+    assert not gained, (
+        f"{core['id']}: {VERIFIED} proves operations the spec does not record "
+        f"(add them to `proven`): {dict(sorted(gained.items()))}"
+    )
+    assert not retracted, (
+        f"{core['id']}: the run tried these and did not prove them; the recorded proof "
+        f"is retracted (strike them from `proven`): {dict(sorted(retracted.items()))}"
     )
 
 
