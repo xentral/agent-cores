@@ -40,7 +40,9 @@ from xentral_entity_cores.agentos_neo_xentral.manifest import CORE
 
 BASE = "https://tenant.xentral.biz"
 TOKEN = "tok"
-SECRET = "s3cret-key-long-enough-for-xentral"
+# Xentral rejects a signature key under 20 characters, so the fixture has to be
+# at least that long while staying obviously fake.
+SECRET = "not-a-real-signature-key-for-tests"
 TIMESTAMP = "1785735419"
 
 ENVELOPE = {"type": "com.xentral.salesOrder.created.v1", "body": {"salesOrderId": 22957}}
