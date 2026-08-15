@@ -18,6 +18,7 @@ is proven by live tests (``verified.json``) — the core carries its own backlog
 from __future__ import annotations
 
 from entity_registry.core_sdk import CoreManifest, EmulatedOnly
+from .events import XentralEventSource
 from .emulated.channel import ChannelAdapter
 from .emulated.correspondence import CorrespondenceAdapter
 from .emulated.cost_center import CostCenterAdapter
@@ -112,4 +113,11 @@ CORE = CoreManifest(
         "The agent-friendly next-generation model: a redesigned, simplified "
         "set of business objects, mapped live onto your existing Xentral data."
     ),
+    # The push half: how this ERP subscribes to events, verifies a delivery and
+    # decodes it. It lives with the core because every fact in it is Xentral's
+    # (the ``/api/v1/webhooks`` shapes, the id grammar, the HMAC recipe) — see
+    # ``events.py``. The two legacy Xentral cores share this source; the
+    # platform keeps that mapping because a live subscription must survive a
+    # core switch.
+    event_source=XentralEventSource(),
 )
