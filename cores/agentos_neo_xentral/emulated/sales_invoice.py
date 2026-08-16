@@ -247,16 +247,11 @@ class SalesInvoiceAdapter(FacadeAdapterBase):
                 destructive=True,
                 description="Send the invoice to the customer (v3 send — mails the document).",
             ),
-            self.action_def(
-                "registerPayment",
-                "Register payment",
-                wish=True            ),
+            self.action_def("registerPayment", "Register payment", wish=True),
             self.action_def(
                 "remind",
                 "Send reminder",
-                wish=(
-                    True
-                ),
+                wish=(True),
             ),
             self.action_def("writeOff", "Write off", wish=True),
             self.action_def(

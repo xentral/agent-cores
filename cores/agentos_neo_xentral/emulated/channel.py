@@ -174,12 +174,8 @@ class ChannelAdapter(FacadeAdapterBase):
                 "key": "documentStatus",
                 "label": "Status",
                 "commands": [
-                    self.step_cmd(
-                        "pause", "Pause", wish=True
-                    ),
-                    self.step_cmd(
-                        "resume", "Resume", wish=True
-                    ),
+                    self.step_cmd("pause", "Pause", wish=True),
+                    self.step_cmd("resume", "Resume", wish=True),
                 ],
             }
         ]
@@ -191,9 +187,7 @@ class ChannelAdapter(FacadeAdapterBase):
                 "Sync orders",
                 wish=True,
             ),
-            self.action_def(
-                "syncStock", "Sync stock", wish=True
-            ),
+            self.action_def("syncStock", "Sync stock", wish=True),
             self.action_def(
                 "syncProducts",
                 "Sync products",

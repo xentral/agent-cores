@@ -911,9 +911,7 @@ class ProductAdapter(FacadeAdapterBase):
                     self.step_cmd("deactivate", "Deactivate"),
                     self.step_cmd("activate", "Activate"),
                     # archive → v2 isDeleted:true is rejected (400) upstream.
-                    self.step_cmd(
-                        "archive", "Archive", wish=True
-                    ),
+                    self.step_cmd("archive", "Archive", wish=True),
                 ],
             }
         ]
@@ -936,8 +934,7 @@ class ProductAdapter(FacadeAdapterBase):
                 "Sync to channel",
                 wish=True,
             ),
-            self.action_def(
-                "mergeInto", "Merge into", wish=True           ),
+            self.action_def("mergeInto", "Merge into", wish=True),
         ]
 
     def fields(self) -> dict[str, dict[str, Any]]:

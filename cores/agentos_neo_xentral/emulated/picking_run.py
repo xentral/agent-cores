@@ -60,16 +60,11 @@ class PickingRunAdapter(FacadeAdapterBase):
                 "key": "documentStatus",
                 "label": "Status",
                 "commands": [
-                    self.step_cmd(
-                        "release", "Release", wish=True                   ),
-                    self.step_cmd(
-                        "start", "Start", wish=True                   ),
-                    self.step_cmd(
-                        "pause", "Pause", wish=True                   ),
-                    self.step_cmd(
-                        "complete", "Complete", wish=True                   ),
-                    self.step_cmd(
-                        "cancel", "Cancel", wish=True                   ),
+                    self.step_cmd("release", "Release", wish=True),
+                    self.step_cmd("start", "Start", wish=True),
+                    self.step_cmd("pause", "Pause", wish=True),
+                    self.step_cmd("complete", "Complete", wish=True),
+                    self.step_cmd("cancel", "Cancel", wish=True),
                 ],
             }
         ]
@@ -77,12 +72,8 @@ class PickingRunAdapter(FacadeAdapterBase):
     def actions(self):
         return [
             self.action_def("assign", "Assign picker", wish=True),
-            self.action_def(
-                "reprioritize", "Reprioritize", wish=True
-            ),
-            self.action_def(
-                "printPickList", "Print pick list", wish=True
-            ),
+            self.action_def("reprioritize", "Reprioritize", wish=True),
+            self.action_def("printPickList", "Print pick list", wish=True),
         ]
 
     def fields(self) -> dict[str, dict[str, Any]]:

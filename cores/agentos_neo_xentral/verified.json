@@ -2868,7 +2868,7 @@
     "PurchaseOrder": {
       "actions": {
         "addTag": "pass",
-        "createGoodsReceipt": "reachable",
+        "createGoodsReceipt": "pass",
         "downloadPdf": "pass",
         "removeTag": "pass",
         "removeWriteProtection": "pass",
@@ -2877,14 +2877,14 @@
       },
       "actionsNotes": {
         "addTag": "fresh title 'verify-probe-afb77a' attached — auto-create verified, net-zero",
-        "createGoodsReceipt": "reachable — 422 from the core's own validator: createGoodsReceipt needs command.date (YYYY-MM-DD) — upstream rejects a receipt without a posting date",
+        "createGoodsReceipt": "1 × prd_62007 booked onto loc_3 (wh_9): fulfillment.received went 0.0 → 1.0, read back from the line. Receipt gr_01a00b8c-e7ec-71d4-a0d6-2b9335b94c16; the document was deleted again, the BOOKING stays — a goods receipt has no delete and stock movements are append-only",
         "downloadPdf": "rendered PurchaseOrder-100000.pdf (2230 bytes of real PDF) — read-only, net-zero",
         "removeTag": "fresh title removed again — effect verified, net-zero",
         "removeWriteProtection": "writeProtection True → False, read back from the record — net-zero roundtrip",
         "send": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma",
         "setWriteProtection": "writeProtection False → True, read back from the record — net-zero roundtrip"
       },
-      "actionsProbedAt": "2026-08-16T17:00:33+00:00",
+      "actionsProbedAt": "2026-08-16T17:09:40+00:00",
       "fields": {
         "confirmation": {
           "read": "pass"
@@ -3194,7 +3194,7 @@
         "read": "pass",
         "update": "pass"
       },
-      "probedAt": "2026-08-16T17:00:33+00:00",
+      "probedAt": "2026-08-16T17:09:40+00:00",
       "processSteps": {
         "cancel": "pass",
         "close": "reachable",
@@ -3712,7 +3712,7 @@
         "downloadPdf": "pass",
         "removeTag": "pass",
         "removeWriteProtection": "pass",
-        "restock": "reachable",
+        "restock": "pass",
         "setWriteProtection": "pass"
       },
       "actionsNotes": {
@@ -3722,10 +3722,10 @@
         "downloadPdf": "rendered Return-500001.pdf (1990 bytes of real PDF) — read-only, net-zero",
         "removeTag": "fresh title removed again — effect verified, net-zero",
         "removeWriteProtection": "writeProtection True → False, read back from the record — net-zero roundtrip",
-        "restock": "reachable — 422 from the core's own validator: restock needs command.date (YYYY-MM-DD) — upstream rejects a receipt without a posting date",
+        "restock": "1 × prd_62007 booked onto loc_3 (wh_9): receivedQuantity went 0.0 → 1.0, read back from the line. Receipt gr_01a00b8c-2cad-7c8a-9f64-62f9789ce95c; the document was deleted again, the BOOKING stays — a goods receipt has no delete and stock movements are append-only",
         "setWriteProtection": "writeProtection False → True, read back from the record — net-zero roundtrip"
       },
-      "actionsProbedAt": "2026-08-16T16:59:49+00:00",
+      "actionsProbedAt": "2026-08-16T17:08:52+00:00",
       "fields": {
         "billingAddress": {
           "read": "pass"
@@ -3953,7 +3953,7 @@
         "read": "pass",
         "update": "pass"
       },
-      "probedAt": "2026-08-16T16:59:49+00:00",
+      "probedAt": "2026-08-16T17:08:52+00:00",
       "processSteps": {
         "cancel": "pass",
         "release": "pass",
@@ -6298,7 +6298,7 @@
       "probedAt": "2026-08-16T08:10:04+00:00"
     }
   },
-  "generatedAt": "2026-08-16T17:00:33+00:00",
+  "generatedAt": "2026-08-16T17:09:40+00:00",
   "instance": "a2ad4180-0d41-4360-8044-9dca0c35608a",
   "schemaVersion": 2
 }

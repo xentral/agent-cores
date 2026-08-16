@@ -2452,6 +2452,67 @@ def goods_receipt_command(line_field: str, line_label: str) -> dict[str, Any]:
     }
 
 
+async def goods_receipt_handle(
+    numeric_id: str | None,
+    base_url: str,
+    headers: dict[str, str],
+    client: httpx.AsyncClient | None = None,
+) -> str | None:
+    """`gr_<uuid>` — the handle the GoodsReceipt adapter can actually read.
+
+    v1 answers the create with ``Location: …/api/goodsReceipts/<numeric id>``, and both
+    receipt actions reported that id verbatim so "a workflow can read the receipt back
+    instead of having to search for it". It could not: the BF entity is keyed by uuid,
+    and ``GET /api/entity/goodsReceipt/<numeric>`` 404s. Measured on mvp — the action
+    returned ``gr_205`` and reading it back answered 404, while the record was sitting
+    there as ``gr_01a00b86-75a1-737b-93ed-5b305352a6cb``.
+
+    Resolving it is more work than it should be, because the BF list carries BOTH ids
+    and lets you search by neither: ``filter[id]`` and ``filter[uuid]`` answer 422, and
+    so does any ``sort``. Rows come back ascending by id, so a freshly created receipt
+    is the LAST one — read ``meta.total`` to find the last page, fetch it, and match the
+    numeric id there. Two requests, deterministic.
+
+    Returns None when it cannot be resolved; the caller then reports the numeric id as
+    before. A handle that is merely hard to use beats no handle at all.
+    """
+    if not numeric_id:
+        return None
+    url = f"{base_url.rstrip('/')}/api/entity/goodsReceipt"
+    page_size = 100
+
+    async def _resolve(c: httpx.AsyncClient) -> str | None:
+        head = await c.get(url, params={"page[size]": "1"}, headers=headers)
+        if head.status_code != 200:
+            return None
+        total = ((head.json() or {}).get("meta") or {}).get("total")
+        if not isinstance(total, int) or total < 1:
+            return None
+        last = max(1, -(-total // page_size))
+        # The page before it too: a receipt created by someone else in between shifts
+        # ours off the boundary, and one extra request is cheaper than a wrong answer.
+        for page in (last, last - 1) if last > 1 else (last,):
+            resp = await c.get(
+                url,
+                params={"page[size]": str(page_size), "page[number]": str(page)},
+                headers=headers,
+            )
+            if resp.status_code != 200:
+                continue
+            for row in (resp.json() or {}).get("data") or []:
+                if str(row.get("id")) == str(numeric_id) and row.get("uuid"):
+                    return f"gr_{row['uuid']}"
+        return None
+
+    try:
+        if client is None:
+            async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
+                return await _resolve(c)
+        return await _resolve(client)
+    except Exception:  # noqa: BLE001 — resolution is best-effort, never fatal
+        return None
+
+
 def goods_receipt_payload(
     command: dict[str, Any], *, line_field: str, line_key: str, ref_id
 ) -> tuple[dict[str, Any] | None, str | None]:

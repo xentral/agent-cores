@@ -56,16 +56,10 @@ class StockTakeAdapter(FacadeAdapterBase):
                 "key": "documentStatus",
                 "label": "Status",
                 "commands": [
-                    self.step_cmd(
-                        "startCounting",
-                        "Start counting",
-                        wish=True                    ),
-                    self.step_cmd(
-                        "submit", "Submit", wish=True                   ),
-                    self.step_cmd(
-                        "post", "Post", wish=True                   ),
-                    self.step_cmd(
-                        "cancel", "Cancel", wish=True                   ),
+                    self.step_cmd("startCounting", "Start counting", wish=True),
+                    self.step_cmd("submit", "Submit", wish=True),
+                    self.step_cmd("post", "Post", wish=True),
+                    self.step_cmd("cancel", "Cancel", wish=True),
                 ],
             }
         ]

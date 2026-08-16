@@ -77,9 +77,7 @@ class SupplierAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
                 "key": "documentStatus",
                 "label": "Status",
                 "commands": [
-                    self.step_cmd(
-                        "archive", "Archive", wish=True
-                    ),
+                    self.step_cmd("archive", "Archive", wish=True),
                     self.step_cmd(
                         "reactivate",
                         "Reactivate",
@@ -91,19 +89,14 @@ class SupplierAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
 
     def actions(self):
         return [
-            self.action_def(
-                "setHold", "Set hold", wish=True
-            ),
+            self.action_def("setHold", "Set hold", wish=True),
             self.action_def(
                 "releaseHold",
                 "Release hold",
                 wish=True,
             ),
-            self.action_def(
-                "mergeInto", "Merge into", wish=True           ),
-            self.action_def(
-                "runCreditCheck", "Run credit check", wish=True
-            ),
+            self.action_def("mergeInto", "Merge into", wish=True),
+            self.action_def("runCreditCheck", "Run credit check", wish=True),
             self.action_def(
                 "statement",
                 "Open-items statement",

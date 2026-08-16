@@ -21,6 +21,7 @@ from .base import (
     _TIMEOUT,
     FacadeAdapterBase,
     goods_receipt_command,
+    goods_receipt_handle,
     goods_receipt_payload,
     RO,
     line_qty,
@@ -946,7 +947,15 @@ class ReturnAdapter(FacadeAdapterBase):
             )
         location = resp.headers.get("Location") or ""
         created = location.rstrip("/").rsplit("/", 1)[-1] if location else None
+        # The Location id is NUMERIC; the GoodsReceipt adapter reads by uuid. Resolve it
+        # so the handle we hand back can actually be read — see goods_receipt_handle.
+        handle = await goods_receipt_handle(created, base_url, headers, client)
         return self._json(
             201,
-            {"data": {"object": "goodsReceipt", "id": f"gr_{created}" if created else None}},
+            {
+                "data": {
+                    "object": "goodsReceipt",
+                    "id": handle or (f"gr_{created}" if created else None),
+                }
+            },
         )

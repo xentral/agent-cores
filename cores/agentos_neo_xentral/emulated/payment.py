@@ -38,18 +38,9 @@ class PaymentAdapter(FacadeAdapterBase):
 
     def actions(self):
         return [
-            self.action_def(
-                "allocate",
-                "Allocate",
-                wish=True            ),
-            self.action_def(
-                "unallocate",
-                "Unallocate",
-                wish=True            ),
-            self.action_def(
-                "refund",
-                "Refund",
-                wish=True            ),
+            self.action_def("allocate", "Allocate", wish=True),
+            self.action_def("unallocate", "Unallocate", wish=True),
+            self.action_def("refund", "Refund", wish=True),
         ]
 
     def fields(self) -> dict[str, dict[str, Any]]:

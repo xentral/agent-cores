@@ -157,13 +157,8 @@ class PurchaseInvoiceAdapter(FacadeAdapterBase):
                 "key": "documentStatus",
                 "label": "Document status",
                 "commands": [
-                    self.step_cmd(
-                        "approve",
-                        "Approve",
-                        wish=True                    ),
-                    self.step_cmd(
-                        "reject", "Reject", wish=True
-                    ),
+                    self.step_cmd("approve", "Approve", wish=True),
+                    self.step_cmd("reject", "Reject", wish=True),
                 ],
             }
         ]
@@ -175,17 +170,9 @@ class PurchaseInvoiceAdapter(FacadeAdapterBase):
                 "Re-run 3-way match",
                 wish=True,
             ),
-            self.action_def(
-                "registerPayment",
-                "Register payment",
-                wish=True            ),
-            self.action_def(
-                "schedulePayment", "Schedule payment", wish=True
-            ),
-            self.action_def(
-                "attachFile",
-                "Attach file",
-                wish=True            ),
+            self.action_def("registerPayment", "Register payment", wish=True),
+            self.action_def("schedulePayment", "Schedule payment", wish=True),
+            self.action_def("attachFile", "Attach file", wish=True),
         ]
 
     def fields(self) -> dict[str, dict[str, Any]]:

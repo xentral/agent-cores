@@ -186,6 +186,25 @@ _PROBE_INVOICE_STORNO = os.environ.get("VERIFY_INVOICE_STORNO") == "1"
 # Says what it is on the document itself, so a cancelled probe document found in the
 # tenant explains itself without anyone having to find this file.
 _RELEASE_NOTE = "verify release probe — safe to delete"
+# `Return.restock` and `PurchaseOrder.createGoodsReceipt` are the two receive-and-book
+# actions. Unlike `release` they are safe to probe generically — both REQUIRE `date`
+# and `items`, and the core validates before the upstream is ever called, so an empty
+# command cannot book anything. What they cannot do is earn a `pass` that way.
+#
+# Earning one means booking real stock, and stock is the one thing on this tenant that
+# cannot be put back: goods receipts have no delete (and no read — GET answers 501),
+# stock movements are append-only, and cancelling a receipt exists only in the legacy
+# UI. Measured on mvp: the source document itself IS still deletable afterwards (it
+# never takes a number), so the probe cleans up what it can and the booking stays.
+#
+# Its own flag, because that residue is a decision: one unit of one product on one
+# location, per entity, per run.
+_PROBE_GOODS_RECEIPT = os.environ.get("VERIFY_GOODS_RECEIPT") == "1"
+# key → (action, the model path whose counter the booking moves)
+_GOODS_RECEIPT_ACTIONS = {
+    "Return": ("restock", "returnItem", "receivedQuantity"),
+    "PurchaseOrder": ("createGoodsReceipt", "orderItem", "fulfillment.received"),
+}
 # Comma-separated entity keys to (re)probe; when set, the run MERGES into the
 # existing verified.json instead of overwriting it — fast, low-side-effect
 # re-checks of just the entities you care about (e.g. VERIFY_ONLY=Product).
@@ -1420,6 +1439,158 @@ async def _linked_credit_note(credit_id: str, base_url: str, token: str) -> str 
             f"number {rec.get('number')!r}, {len(items)} line item(s)"
         )
     return None
+
+
+async def _stock_fixture(base_url: str, token: str) -> dict[str, str] | None:
+    """A storage location and its warehouse — the `putaways` target every booking needs.
+
+    Read rather than configured: upstream requires BOTH ids per stock movement, and
+    hard-coding them would tie the probe to one tenant. Returns None when no location
+    carries a warehouse, which skips the booking instead of guessing where to put it.
+    """
+    for other in CORE.adapters:
+        if other.manifest.key != "StorageLocation":
+            continue
+        st, pl = await _Probe(other, base_url, token).req(query=[("page[size]", "10")])
+        for row in (pl.get("data") or []) if st == 200 else []:
+            wh = (
+                (row.get("warehouse") or {}).get("id")
+                if isinstance(row.get("warehouse"), dict)
+                else None
+            )
+            if wh and row.get("id"):
+                return {"warehouse": str(wh), "storageLocation": str(row["id"])}
+    return None
+
+
+def _counter_at(item: dict[str, Any], path: str) -> float:
+    """A line item's booked-quantity counter, as a number. Absent or null reads 0 —
+    upstream leaves it null until the first receipt, and `None < 1` would crash the
+    comparison that is the whole point of the probe."""
+    node: Any = item
+    for part in path.split("."):
+        node = (node or {}).get(part) if isinstance(node, dict) else None
+    try:
+        return float(node)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+async def _probe_goods_receipt(
+    adapter: Any,
+    body: dict[str, Any],
+    partner_field: str,
+    partner_ids: list[str],
+    base_url: str,
+    token: str,
+    *,
+    fixture: dict[str, str],
+) -> dict[str, tuple[str, str]]:
+    """Effect-checked receive-and-book, on a document the probe creates itself.
+
+    The effect is read off the SOURCE document's line item, because the receipt itself
+    cannot be read: `GET /api/goodsReceipts/{id}` answers 501, and the BF entity is a
+    different id space again. What does move, and is readable, is the line's booked
+    counter — `items[].receivedQuantity` on a return, `items[].fulfillment.received` on
+    a purchase order (upstream `deliveredQuantity`). One unit is booked and the counter
+    must go up by exactly that.
+
+    Measured on mvp while building this: the source document does NOT have to be
+    released first — a draft purchase order accepts the receipt and the counter moves —
+    and the document stays deletable afterwards, so it is cleaned up. The booking is
+    not: stock movements are append-only and the receipt has no delete. The note
+    therefore names product, location, quantity and the receipt handle, so what stayed
+    behind can be found without reading this file.
+
+    Returns {} when no document could be created, which leaves the verdict to the
+    generic probe — harmless here, since an empty command is refused by our own
+    validator before it reaches upstream.
+    """
+    key = adapter.manifest.key
+    action_key, line_field, counter = _GOODS_RECEIPT_ACTIONS[key]
+    p = _Probe(adapter, base_url, token)
+    made = await _create_unreleased(adapter, body, partner_field, partner_ids, base_url, token)
+    if not made:
+        return {}
+    handle, _ = made
+
+    async def lines() -> list[dict[str, Any]]:
+        _, pl = await p.req(handle=handle)
+        rec = (pl.get("data") or {}) if isinstance(pl, dict) else {}
+        return [i for i in (rec.get("items") or []) if isinstance(i, dict)]
+
+    items = await lines()
+    line = next((i for i in items if (i.get("product") or {}).get("id")), None)
+    if not line:
+        dst, _ = await p.req("DELETE", handle)
+        print(f"    ({key}.{action_key}: created document carries no line — discarded, {dst})")
+        return {}
+
+    product = (line.get("product") or {}).get("id")
+    before = _counter_at(line, counter)
+    command = {
+        "date": _stamp()[:10],
+        "items": [
+            {
+                "product": product,
+                "quantity": 1,
+                line_field: line.get("id"),
+                "putaways": [
+                    {
+                        "quantity": 1,
+                        "warehouse": fixture["warehouse"],
+                        "storageLocation": fixture["storageLocation"],
+                    }
+                ],
+            }
+        ],
+    }
+    resp = await adapter.action(
+        action_key=action_key,
+        handle=handle,
+        body=json.dumps({"ids": [handle], "command": command}).encode(),
+        base_url=base_url,
+        token=token,
+    )
+    try:
+        payload = json.loads(resp.content or b"{}")
+    except ValueError:
+        payload = {}
+    if resp.status_code in (401, 403):
+        raise _AuthFailed(f"{action_key} answered {resp.status_code}: {_err(payload)}")
+    receipt = ((payload.get("data") or {}) if isinstance(payload, dict) else {}).get("id")
+
+    after_line = next((i for i in await lines() if i.get("id") == line.get("id")), {})
+    after = _counter_at(after_line, counter)
+    # Clean up the document — it never took a number, so it is still deletable, and a
+    # booked receipt does not hold it. The BOOKING is what stays.
+    dst, _ = await p.req("DELETE", handle)
+
+    where = f"{fixture['storageLocation']} ({fixture['warehouse']})"
+    if resp.status_code >= 400:
+        return {
+            action_key: (
+                "fail",
+                f"{action_key} on a document we created → {resp.status_code}: {_err(payload)}",
+            )
+        }
+    if after - before < 1:
+        return {
+            action_key: (
+                "fail",
+                f"{action_key} answered {resp.status_code} but {counter} on the booked line "
+                f"still reads {after} (was {before}) — accepted without effect",
+            )
+        }
+    print(f"    !! {key}: booked 1 × {product} onto {where}, receipt {receipt} — stock stays")
+    return {
+        action_key: (
+            PROVEN,
+            f"1 × {product} booked onto {where}: {counter} went {before} → {after}, read back "
+            f"from the line. Receipt {receipt}; the document was deleted again, the BOOKING "
+            f"stays — a goods receipt has no delete and stock movements are append-only",
+        )
+    }
 
 
 async def _probe_invoice_storno(
@@ -2805,6 +2976,8 @@ async def _verify_entity(
         can_make_own = bool(release_partner) and "create" in adapter.manifest.operations
         release_eligible = _PROBE_RELEASE and key in _RELEASE_REVERSIBLE and can_make_own
         storno_eligible = _PROBE_INVOICE_STORNO and key == "SalesInvoice" and can_make_own
+        receipt_eligible = _PROBE_GOODS_RECEIPT and key in _GOODS_RECEIPT_ACTIONS and can_make_own
+        receipt_results: dict[str, tuple[str, str]] | None = None
         if _ACTIONS_ONLY:
             targets = [t for t in targets if t[0] in _ACTIONS_ONLY]
         for akey, res_map, note_map in targets:
@@ -2821,6 +2994,31 @@ async def _verify_entity(
                 # fallback IS the hazard. A key the roundtrip could not cover stays
                 # untested (status None), which is honest and leaves the document alone.
                 status, note = wp_results.get(akey, (None, None))
+            elif receipt_eligible and akey == _GOODS_RECEIPT_ACTIONS[key][0]:
+                if receipt_results is None:
+                    fixture = await _stock_fixture(base_url, token)
+                    if fixture:
+                        receipt_results = await _make_own_and_probe(
+                            functools.partial(_probe_goods_receipt, fixture=fixture),
+                            adapter,
+                            rows,
+                            release_partner,
+                            schema,
+                            writable,
+                            sample,
+                            product_id,
+                            tag_title,
+                            base_url,
+                            token,
+                        )
+                    else:
+                        print(
+                            f"    ({key}.{akey}: no storage location with a warehouse — not booked)"
+                        )
+                        receipt_results = {}
+                # No fallback: a key the booking probe could not cover stays untested
+                # rather than being answered by a probe that books nothing.
+                status, note = receipt_results.get(akey, (None, None))
             elif key == "SalesInvoice" and akey in ("release", "cancel"):
                 if storno_eligible:
                     if rel_results is None:

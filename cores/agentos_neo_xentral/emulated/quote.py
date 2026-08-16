@@ -154,16 +154,12 @@ class QuoteAdapter(FacadeAdapterBase):
                     self.step_cmd(
                         "accept",
                         "Accept",
-                        wish=(
-                            True
-                        ),
+                        wish=(True),
                     ),
                     self.step_cmd(
                         "decline",
                         "Decline",
-                        wish=(
-                            True
-                        ),
+                        wish=(True),
                     ),
                     self.step_cmd("cancel", "Cancel"),
                 ],
@@ -181,16 +177,12 @@ class QuoteAdapter(FacadeAdapterBase):
             self.action_def(
                 "convertToSalesOrder",
                 "Convert to sales order",
-                wish=(
-                    True
-                ),
+                wish=(True),
             ),
             self.action_def(
                 "duplicate",
                 "Duplicate",
-                wish=(
-                    True
-                ),
+                wish=(True),
             ),
             self.action_def(
                 "downloadPdf",
