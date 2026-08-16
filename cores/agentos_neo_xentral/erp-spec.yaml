@@ -112,8 +112,8 @@ documents:
       removeTag: {evidence: pass, params: [title]}
       setWriteProtection: {evidence: pass}
       removeWriteProtection: {evidence: pass}
-      release: {evidence: reachable}
-      cancel: {evidence: reachable}
+      release: {evidence: pass}
+      cancel: {evidence: pass}
     cannot:
       convertToSalesOrder: >-
         No conversion endpoint we can reach. v3 has createFromSalesOrder and
@@ -277,9 +277,9 @@ documents:
       removeTag: {evidence: pass, params: [title]}
       setWriteProtection: {evidence: pass}
       removeWriteProtection: {evidence: pass}
-      release: {evidence: reachable}
+      release: {evidence: pass}
       close: {evidence: reachable}
-      cancel: {evidence: reachable}
+      cancel: {evidence: pass}
       dispatch: {evidence: reachable}
     cannot:
       createDeliveryNote: >-
@@ -375,9 +375,9 @@ documents:
       removeTag: {evidence: pass, params: [title]}
       setWriteProtection: {evidence: pass}
       removeWriteProtection: {evidence: pass}
-      release: {evidence: reachable}
+      release: {evidence: pass}
       markDelivered: {evidence: reachable}
-      cancel: {evidence: reachable}
+      cancel: {evidence: pass}
     cannot:
       createShipment: >-
         The carrier label API (printShippingLabel) is beta and not public.
@@ -601,7 +601,7 @@ documents:
       references.rmaNumber: {type: string}
       references.customerOrderNumber: {type: string, ops: [filter], proven: [filter]}
       dates: {type: embedded}
-      dates.requested: {type: date, ops: [create, update, filter, sort], proven: [create, update, filter]}
+      dates.requested: {type: date, ops: [create, update, filter, sort], proven: [create, update, filter, sort]}
       dates.received: {type: date}
       dates.settled: {type: date}
       warehouse: {type: reference, ref: Warehouse}
@@ -652,9 +652,9 @@ documents:
       removeTag: {evidence: pass, params: [title]}
       setWriteProtection: {evidence: pass}
       removeWriteProtection: {evidence: pass}
-      release: {evidence: reachable}
+      release: {evidence: pass}
       settle: {evidence: reachable}
-      cancel: {evidence: reachable}
+      cancel: {evidence: pass}
     cannot:
       sendReturnLabel: >-
         Return labels run through the beta carrier label API — not public.
@@ -846,9 +846,9 @@ documents:
       removeTag: {evidence: pass, params: [title]}
       setWriteProtection: {evidence: pass}
       removeWriteProtection: {evidence: pass}
-      release: {evidence: reachable}
+      release: {evidence: pass}
       close: {evidence: reachable}
-      cancel: {evidence: reachable}
+      cancel: {evidence: pass}
     cannot:
       recordConfirmation: >-
         Supplier order confirmations have no public endpoint.
