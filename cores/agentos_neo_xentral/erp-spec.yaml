@@ -450,7 +450,7 @@ documents:
       references.customerOrderNumber: {type: string, ops: [create, update, filter], proven: [update]}
       references.debtorAccountNumber: {type: string}
       dates: {type: embedded}
-      dates.issued: {type: date, ops: [create, update, filter, sort], proven: [create, update, filter, sort]}
+      dates.issued: {type: date, ops: [create, update, filter, sort], proven: [create, update, filter]}
       dates.serviceDate: {type: date, ops: [create, update], proven: [create, update]}
       dates.servicePeriod: {type: string}
       taxation: {type: select, ops: [create, update], proven: [create, update]}
@@ -539,7 +539,7 @@ documents:
       setWriteProtection: {evidence: pass}
       removeWriteProtection: {evidence: pass}
       release: {evidence: pass}
-      cancel: {evidence: fail}
+      cancel: {evidence: pass}
     cannot:
       registerPayment: >-
         The payments API is not public — no endpoint to register an incoming payment.

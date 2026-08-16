@@ -1388,6 +1388,40 @@ async def _make_own_and_probe(
     return await probe(adapter, body, partner_field, partner_ids, base_url, token)
 
 
+async def _linked_credit_note(credit_id: str, base_url: str, token: str) -> str | None:
+    """Read the storno credit note back and describe what upstream actually made.
+
+    Returns a short description when the credit note exists AND points at an invoice,
+    else None. The description carries the SHAPE, because that is the part nobody
+    would guess: measured on mvp, the storno lands as a `draft` with no document
+    number and no line items — a counter-document that carries no amounts. Recording
+    that in the note is the difference between "the storno works" and "the storno
+    creates something that still has to be filled in by hand".
+    """
+    if not credit_id:
+        return None
+    for other in CORE.adapters:
+        if other.manifest.key != "CreditNote":
+            continue
+        st, pl = await _Probe(other, base_url, token).req(handle=credit_id)
+        rec = (pl.get("data") or {}) if isinstance(pl, dict) else {}
+        if st != 200 or not rec:
+            return None
+        # `documents.salesInvoice`, which is what the CORE calls it — upstream's own
+        # word is `invoice`, and reading the upstream name off a mapped record finds
+        # nothing and reports a missing link that is right there.
+        invoice = (rec.get("documents") or {}).get("salesInvoice")
+        inv_id = invoice.get("id") if isinstance(invoice, dict) else invoice
+        if not inv_id:
+            return None
+        items = rec.get("items") or rec.get("lineItems") or []
+        return (
+            f"invoice {inv_id}, status {rec.get('status')!r}, "
+            f"number {rec.get('number')!r}, {len(items)} line item(s)"
+        )
+    return None
+
+
 async def _probe_invoice_storno(
     adapter: Any,
     body: dict[str, Any],
@@ -1454,27 +1488,32 @@ async def _probe_invoice_storno(
     cancelled, _ = await state()
     credit = ((cpl.get("result") or {}) if isinstance(cpl, dict) else {}) or {}
     credit_id = credit.get("id") or (credit.get("data") or {}).get("id")
-    if cst < 400 and cancelled == "cancelled" and credit_id:
+    # The id alone is the response's word for it. READ THE CREDIT NOTE, and read the
+    # link back off it — that is what makes this a proof rather than an echo, and it
+    # is also how the shape of what upstream produces gets recorded instead of
+    # assumed.
+    linked = await _linked_credit_note(str(credit_id or ""), base_url, token)
+    if cst < 400 and cancelled == "cancelled" and linked:
         out["cancel"] = (
             PROVEN,
-            f"invoice {handle} ({number}) reads {cancelled!r} and the storno credit note "
-            f"{credit_id} came back under `result` — both halves read back; both documents "
-            f"stay, a released invoice cannot be deleted",
+            f"invoice {handle} ({number}) reads {cancelled!r} and storno credit note "
+            f"{credit_id} reads back linked to it ({linked}) — both halves read back; "
+            f"both documents stay, a released invoice cannot be deleted",
         )
     elif cst < 400 and cancelled == "cancelled":
-        # The half that matters for the books. The invoice is closed and
-        # write-protected, and nothing answers for the money — measured on mvp with
-        # si_2260 (402089): upstream took the POST, cancelled the invoice, and no
-        # credit note came back under `result` nor appeared in the tenant (all 38 that
-        # exist predate the run). A storno without its counter-document is not a
-        # storno, so this is `fail` however friendly the status looks.
+        # The invoice is closed but nothing came back to answer for it. Do NOT call
+        # that "no credit note was created" — that claim cost a whole investigation
+        # once: upstream answers 201 with an EMPTY body and the new credit note only
+        # in the Location header, so the counter-document existed all along and the
+        # probe simply could not see it. What is reportable is only what is true:
+        # the invoice is cancelled and the storno could not be identified.
         out["cancel"] = (
             "fail",
-            f"invoice {handle} ({number}) reads {cancelled!r} but NO storno credit note "
-            f"came back under `result` — the counter-document the core promises was not "
-            f"created; the invoice is closed with nothing answering for it",
+            f"invoice {handle} ({number}) reads {cancelled!r} but no storno credit note "
+            f"could be identified — upstream returned neither a record nor a Location "
+            f"to read one back from, so the counter-document cannot be confirmed",
         )
-        print(f"    !! SalesInvoice {handle} ({number}) cancelled WITHOUT a credit note")
+        print(f"    !! SalesInvoice {handle} ({number}) cancelled, storno unconfirmed")
     else:
         out["cancel"] = (
             "fail",
