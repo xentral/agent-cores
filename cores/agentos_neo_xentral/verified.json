@@ -3829,6 +3829,9 @@
         "items.creditedQuantity": {
           "read": "pass"
         },
+        "items.deliveredQuantity": {
+          "read": "pass"
+        },
         "items.deliveryNoteItem": {
           "read": "pass"
         },
@@ -3953,7 +3956,7 @@
         "read": "pass",
         "update": "pass"
       },
-      "probedAt": "2026-08-16T17:08:52+00:00",
+      "probedAt": "2026-08-16T17:31:02+00:00",
       "processSteps": {
         "cancel": "pass",
         "release": "pass",
@@ -6298,7 +6301,7 @@
       "probedAt": "2026-08-16T08:10:04+00:00"
     }
   },
-  "generatedAt": "2026-08-16T17:09:40+00:00",
+  "generatedAt": "2026-08-16T17:31:02+00:00",
   "instance": "a2ad4180-0d41-4360-8044-9dca0c35608a",
   "schemaVersion": 2
 }

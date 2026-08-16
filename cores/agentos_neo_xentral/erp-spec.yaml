@@ -626,6 +626,7 @@ documents:
       items.reason: {type: reference, ref: ReturnReason, required: true, ops: [create]}
       items.condition: {type: select}
       items.action: {type: select}
+      items.deliveredQuantity: {type: decimal}
       items.receivedQuantity: {type: decimal}
       items.creditedQuantity: {type: decimal}
       resolution: {type: embedded}
