@@ -36,6 +36,15 @@ hit):
             VERIFY_CREATE_NONZERO, leaving one labelled record behind.
             This runner IS the destructive suite for this core.
 
+operations (list/read/create/update/delete) — the entity-level CRUD verdicts the
+  app's capability cards render. Not probed separately: DERIVED from what the run
+  above already did. `list` from the list read that every entity starts with,
+  `read` from a single read of the sampled record (its id must come back),
+  `create`/`update` from the field suite (one field that demonstrably persisted
+  proves the operation; attempted-and-only-failed is `fail`; attempted without an
+  assertion is `accepted`), `delete` from the cleanup DELETE the create probes
+  fire. An operation the entity declares but this run never saw work stays absent.
+
 actions + process steps (opt-in, VERIFY_ACTIONS=1 — these EXECUTE real upstream
   operations on a sampled record, so they are NOT net-zero): each is invoked
   through the facade with an empty command.
@@ -1214,6 +1223,37 @@ async def _probe_tag_actions(
     return out
 
 
+def _delete_verdict(previous: str | None, status: int) -> str:
+    """One cleanup DELETE folded into the entity's `delete` verdict.
+
+    Worst answer wins: an entity whose create probes delete several records is only
+    as good as its worst cleanup, so one failure is not washed out by the successes
+    that follow it. (The create probes also record a failed cleanup per field, but
+    that note says "manual cleanup needed" — a different claim from "delete is
+    broken".)
+    """
+    if previous == "fail":
+        return "fail"
+    return PROVEN if status < 400 else "fail"
+
+
+def _operation_from_counts(counter: collections.Counter[str]) -> str | None:
+    """`create`/`update` as an OPERATION, from the field suite's per-field verdicts.
+
+    One field that demonstrably persisted proves the operation, whatever the rest
+    did — the operation asks "can this entity be written at all", not "is every
+    field writable". A facet attempted and only ever failed is a failed operation.
+    One attempted without a single assertion (`accepted`, `unobserved`) means the
+    request went through and nothing was checked, which must not read as proof.
+    Nothing attempted at all returns None: absent, i.e. untested.
+    """
+    if counter[PROVEN]:
+        return PROVEN
+    if counter["fail"]:
+        return "fail"
+    return "accepted" if sum(counter.values()) else None
+
+
 async def _probe_write_protection(
     adapter: Any, sample_id: str, base_url: str, token: str
 ) -> dict[str, tuple[str, str]]:
@@ -1437,6 +1477,51 @@ async def _verify_entity(
     sample = max(
         rows, key=lambda r: sum(1 for v in (r or {}).values() if v not in (None, "", [], {}))
     )
+
+    # ---- operation-level verdicts (list/read/create/update/delete) -----------
+    # Every consumer of the manifest has read `entities.<key>.operations` all along —
+    # the backend reader documents the shape, `validate_cores.py` walks it, the app's
+    # CRUD cards render it — and this run never wrote one. So "Browse all", "Open a
+    # single record", "Create", "Edit" and "Delete" showed `untested` on entities
+    # whose field suite had just exercised all five, hundreds of times over.
+    # (`xentral_api` writes the block; the newer core silently did not.)
+    #
+    # DERIVED from measurements this run makes anyway, never from what the adapter
+    # declares: an operation the entity offers but this run never saw work stays
+    # absent, which is the entire point of the file.
+    operations: dict[str, str] = {}
+    declared_ops = set(adapter.manifest.operations)
+
+    def note_delete(status: int) -> None:
+        """The create probes DELETE what they made, and that cleanup is the only
+        delete evidence this run produces."""
+        if "delete" not in declared_ops:
+            return
+        operations["delete"] = _delete_verdict(operations.get("delete"), status)
+
+    # Getting this far already required a 200 with rows from the list read at the top
+    # (the function returns early otherwise), so `list` is proven by arrival.
+    if "list" in declared_ops:
+        operations["list"] = PROVEN
+
+    # The single read is its own capability — a working list says nothing about
+    # GET /<id>, and for the detail-only entities this is the very call whose
+    # sub-resources the field suite is judged on. Seeding `detail_cache` keeps it at
+    # one request rather than two.
+    if "read" in declared_ops and (sample_handle := str(sample.get("id") or "")):
+        rst, rpl = await p.req(handle=sample_handle)
+        record = (rpl.get("data") or {}) if isinstance(rpl, dict) else {}
+        if rst in (401, 403):
+            raise _AuthFailed(f"{key} single read answered {rst}: {_err(rpl)}")
+        if rst == 200 and str(record.get("id") or "") == sample_handle:
+            operations["read"] = PROVEN
+            detail_cache[sample_handle] = record
+        elif rst == 200:
+            # Answered, but not demonstrably with the record we asked for. That is not
+            # a working single read, and it is not a broken route either.
+            operations["read"] = "accepted"
+        else:
+            operations["read"] = "fail"
 
     # Detail-only sections come from a sub-resource the adapter calls only on a
     # single read, so every list row carries null for them. Grading those against
@@ -2034,6 +2119,7 @@ async def _verify_entity(
                             else "sent on create but did not persist on the created record",
                         )
                     dst, _ = await p.req("DELETE", str(new_id))
+                    note_delete(dst)
                     if dst >= 400:
                         fields.setdefault("note", {})["createNote"] = (
                             f"created {new_id} but DELETE returned {dst} — manual cleanup needed"
@@ -2191,6 +2277,7 @@ async def _verify_entity(
                             None if ok_a else f"PATCH {ust}: {_err(upl)}",
                         )
                 dst, _ = await p.req("DELETE", str(new_id))
+                note_delete(dst)
                 if dst >= 400:
                     fields.setdefault("name", {})["createNote"] = (
                         f"created {new_id} but DELETE returned {dst} — manual cleanup needed "
@@ -2251,6 +2338,7 @@ async def _verify_entity(
                         )
                     if can_delete:
                         dst, _ = await p.req("DELETE", str(new_id))
+                        note_delete(dst)
                         if dst >= 400:
                             fields.setdefault("name", {})["createNote"] = (
                                 f"created {new_id} but DELETE returned {dst} — manual cleanup needed"
@@ -2331,6 +2419,15 @@ async def _verify_entity(
         c = counts[facet]
         return f"{c[PROVEN]}✓/{c['accepted']}~/{c['fail']}✗"
 
+    # `create` and `update` as OPERATIONS follow from the field suite — the rule and
+    # its reasoning live in `_operation_from_counts`.
+    for op in ("create", "update"):
+        if op not in declared_ops:
+            continue
+        verdict = _operation_from_counts(counts[op])
+        if verdict:
+            operations[op] = verdict
+
     observed = sum(1 for f in fields.values() if f.get("read") == PROVEN)
     summary = (
         f"read {observed}/{len(fields)} paths observed in {len(seen_records)} records | "
@@ -2339,6 +2436,8 @@ async def _verify_entity(
     )
     if _PROBE_ACTIONS:
         summary += f" | actions/steps {act_counts[0]}✓/{act_counts[1]}✗"
+    if operations:
+        summary += " | ops " + ",".join(f"{op}={v}" for op, v in sorted(operations.items()))
 
     # When these numbers were taken. Without it the workbook can only show the
     # file's mtime, which after a fresh clone is the checkout time — and a manifest
@@ -2358,6 +2457,8 @@ async def _verify_entity(
         summary += f" | {len(uncovered)} required op(s) unprobed"
 
     result: dict[str, Any] = {"probedAt": _stamp(), "fields": fields}
+    if operations:
+        result["operations"] = operations
     if uncovered:
         result["unprobed"] = uncovered
     if actions_res or steps_res:
@@ -2485,6 +2586,10 @@ async def _main() -> None:
             before = previous.get(key) or {}
             if "actionsProbedAt" not in result and "actionsProbedAt" in before:
                 result["actionsProbedAt"] = before["actionsProbedAt"]
+            # Same rule for the operation block: a run that could not derive one must
+            # not delete what an earlier run measured.
+            if "operations" not in result and "operations" in before:
+                result["operations"] = before["operations"]
             for res_key, note_key in (
                 ("actions", "actionsNotes"),
                 ("processSteps", "processStepsNotes"),
