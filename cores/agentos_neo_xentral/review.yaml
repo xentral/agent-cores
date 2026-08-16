@@ -5,12 +5,12 @@
 # it was built from, so a diff here means a fact moved, not that it was re-run.
 core: agentos_neo_xentral
 source:
-  probedAt: '2026-08-09T20:34:15+00:00'
+  probedAt: '2026-08-16T07:13:59+00:00'
   instance: a2ad4180-0d41-4360-8044-9dca0c35608a
 totals:
   required: 80
-  proven: 25
-  unproven: 55
+  proven: 39
+  unproven: 41
   acceptedGaps: 100
   fieldRequirements: 144
   reviewedEntities: 23
@@ -192,8 +192,8 @@ entities:
     - key: removeWriteProtection
       requirement: required
       implementation: built
-      evidence: null
-      proven: false
+      evidence: pass
+      proven: true
     - key: send
       requirement: required
       implementation: built
@@ -202,8 +202,8 @@ entities:
     - key: setWriteProtection
       requirement: required
       implementation: built
-      evidence: null
-      proven: false
+      evidence: pass
+      proven: true
     fieldRequirements:
     - field: customer
       ops:
@@ -372,8 +372,8 @@ entities:
     - key: removeWriteProtection
       requirement: required
       implementation: built
-      evidence: null
-      proven: false
+      evidence: pass
+      proven: true
     - key: sendConfirmation
       requirement: required
       implementation: built
@@ -382,8 +382,8 @@ entities:
     - key: setWriteProtection
       requirement: required
       implementation: built
-      evidence: null
-      proven: false
+      evidence: pass
+      proven: true
     - key: split
       requirement: required
       implementation: built
@@ -546,13 +546,13 @@ entities:
     - key: removeWriteProtection
       requirement: required
       implementation: built
-      evidence: null
-      proven: false
+      evidence: pass
+      proven: true
     - key: setWriteProtection
       requirement: required
       implementation: built
-      evidence: null
-      proven: false
+      evidence: pass
+      proven: true
     - key: startPicking
       requirement: acceptedGap
       implementation: blockedUpstream
@@ -722,8 +722,8 @@ entities:
     - key: removeWriteProtection
       requirement: required
       implementation: built
-      evidence: null
-      proven: false
+      evidence: pass
+      proven: true
     - key: send
       requirement: required
       implementation: built
@@ -732,8 +732,8 @@ entities:
     - key: setWriteProtection
       requirement: required
       implementation: built
-      evidence: null
-      proven: false
+      evidence: pass
+      proven: true
     - key: writeOff
       requirement: acceptedGap
       implementation: blockedUpstream
@@ -933,8 +933,8 @@ entities:
     - key: removeWriteProtection
       requirement: required
       implementation: built
-      evidence: null
-      proven: false
+      evidence: pass
+      proven: true
     - key: restock
       requirement: required
       implementation: built
@@ -949,8 +949,8 @@ entities:
     - key: setWriteProtection
       requirement: required
       implementation: built
-      evidence: null
-      proven: false
+      evidence: pass
+      proven: true
     - key: settle
       requirement: required
       implementation: built
@@ -1068,8 +1068,8 @@ entities:
     - key: removeWriteProtection
       requirement: required
       implementation: built
-      evidence: null
-      proven: false
+      evidence: pass
+      proven: true
     - key: send
       requirement: required
       implementation: built
@@ -1078,8 +1078,8 @@ entities:
     - key: setWriteProtection
       requirement: required
       implementation: built
-      evidence: null
-      proven: false
+      evidence: pass
+      proven: true
     fieldRequirements:
     - field: number
       ops:
@@ -1282,8 +1282,8 @@ entities:
     - key: removeWriteProtection
       requirement: required
       implementation: built
-      evidence: null
-      proven: false
+      evidence: pass
+      proven: true
     - key: requestConfirmation
       requirement: acceptedGap
       implementation: blockedUpstream
@@ -1298,8 +1298,8 @@ entities:
     - key: setWriteProtection
       requirement: required
       implementation: built
-      evidence: null
-      proven: false
+      evidence: pass
+      proven: true
     - key: updateDeliveryDates
       requirement: acceptedGap
       implementation: blockedUpstream
