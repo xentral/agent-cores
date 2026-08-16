@@ -18,9 +18,11 @@ of the tenant — thousands of calls for one list. The request is refused with 4
 naming the supported combinations instead, so a caller learns the contract from
 the error rather than from a timeout.
 
-This is the read-back path for stock writes: ``stockMovement`` books, this reads
-the effect. Without it a booking is unverifiable, because the movement ledger
-itself has no read API at all (docs/05 #1).
+This is the balance side of stock: ``stockMovement`` is the ledger of individual
+postings (readable since API-805), this is the resulting quantity per product ×
+location. Use this to answer "how much is there now" and the ledger to answer
+"how did it get there" — the two are not derivable from one another here, because
+the ledger's ``stockLevelAfter`` is the level recorded at booking time.
 
 Not covered at this grain: ``reserved``/``available`` (no per-location reservation
 is exposed upstream — only the product totals in ``/v1/products/{id}/stocks``) and

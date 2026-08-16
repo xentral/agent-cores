@@ -1,8 +1,36 @@
 """Xentral V3 facade · stockMovement — Lagerbewegung (docs/01-model.md §7.4, ADR-010).
 
-READING is impossible and therefore NOT DECLARED (docs/05 #1): the upstream has no
-Lagerprotokoll API, so this entity is write-only until ``GET /v3/stockMovements``
-ships. WRITING works today: the v1 storage-item endpoints book DELTA movements
+READING now exists. ``GET /api/v3/stockMovements`` shipped with API-805 and closes
+the single biggest gap this core carried (docs/05 #1) — the stock ledger was the
+one core object with no read API at all. Live-verified against mvp on 2026-08-16:
+the list answers 200, every declared filter was checked against the rows it
+returned (not against its status), and every declared sort against a reversal.
+
+What that measurement changed about the contract:
+
+  * ``postedAt`` must be filtered as a DATETIME. A bare date answers 400, and the
+    upstream compares the column itself so an index on ``zeit`` can be used — a
+    date would wrap it in ``date(zeit)`` where no index can. ``base`` would trim
+    the value if ``datetime_filters_take_date_only`` were set; it must NOT be.
+  * The operator is ``greaterThanOrEquals``, plural. The OpenAPI example on the
+    endpoint says ``greaterThanOrEqual`` and that is refused with a 400 naming the
+    valid set — the example is wrong, reported back on API-805.
+  * ``?search=`` is accepted and SILENTLY IGNORED (a term matching three rows
+    answers with the same first page as no term at all), so it is not declared as
+    a native search. ``source.reason``/``source.editor`` are searchable through the
+    base's ``contains`` fan-out, which was verified to actually narrow the set.
+  * ``page[size]`` caps at 100 and the envelope reports NO total, so lists carry
+    page/perPage but no ``lastPage``. Reporting one would be invented.
+  * ``warehouse`` filters through the storage location and is NOT echoed in the
+    payload (verified: filter warehouse.id=9 returns location 3, whose warehouse
+    is 9). It is a filter-only field here; the value stays null.
+
+READING SINGLE: the upstream has no ``/{id}`` (404, deliberately out of scope on
+the ticket), so ``read`` is composed from ``filter[id]`` — the substitute the
+ticket itself names. Declared rather than left out: the emulation is exact, and a
+caller that holds an id should not have to know it must build a list query.
+
+WRITING is unchanged: the v1 storage-item endpoints book DELTA movements
 (``POST/PATCH /v1/warehouses/{wh}/storageLocations/{loc}/items`` — add resp.
 retrieve, incl. batch/bestBefore/serialNumbers/reason), so ``create`` is a real
 write-orchestrator:
@@ -23,12 +51,23 @@ the upstream ``Location`` header — which the spec promises but mvp does NOT se
 rather than being invented. The handling is kept because it is spec-conformant
 and starts working the day Xentral ships the header.
 
-Consequence for callers, since neither an id nor a ledger exists: a repeated
-DELTA booking cannot be detected afterwards, only avoided. ``receipt``/``issue``
-are therefore not retry-safe by construction, while ``correction`` +
-``setQuantityTo`` is — it re-reads the location and books the difference, so a
-repeat books zero. The EFFECT of any booking is readable via ``stockLevel`` for
-the touched location and ``Product.stock`` for the total.
+Consequence for callers: a booking still returns no identity of its own (the v1
+item endpoints answer 201 with an empty body and mvp does not send the promised
+header), so ``receipt``/``issue`` remain not retry-safe by construction, while
+``correction`` + ``setQuantityTo`` is — it re-reads the location and books the
+difference, so a repeat books zero. What the ledger changes is the aftermath: a
+suspected double booking is now DETECTABLE, by listing the movements of that
+product and location around the booking time. Before it could only be avoided.
+
+The READ side reports one posting per stock change, which is not the grain of the
+WRITE side: a ``transfer`` is one command and two postings, one ``outbound`` and
+one ``inbound``. The read therefore reports ``direction`` and the single
+``storageLocation`` it touched — ``type``/``from``/``to`` are create-only and stay
+null, because deriving a ``type`` from a direction would invent the distinction
+between a receipt, the arrival half of a transfer and a positive correction.
+Upstream ``stockTransactionId`` is what ties the two halves back together, and it
+is filled for ~0.1% of postings today (the stock management writing it is still
+being rolled out) — so it is exposed and documented as such, not relied on.
 """
 
 from __future__ import annotations
@@ -40,13 +79,57 @@ import httpx
 
 from entity_registry.core_sdk import AdapterResponse, EmulationManifest
 
-from .base import FacadeAdapterBase, REQUIRED, RO, prop
+from .base import FacadeAdapterBase, REQUIRED, RO, eid, prop, ref
 from .stock_shared import resolve_location_pair
 
 _TYPE_OPTIONS = [
     {"value": v, "label": v.capitalize()} for v in ("receipt", "issue", "transfer", "correction")
 ]
+_DIRECTION_OPTIONS = [
+    {"value": "inbound", "label": "Inbound"},
+    {"value": "outbound", "label": "Outbound"},
+]
 _TIMEOUT = 60.0
+
+# Upstream `StockMovementCause` — what caused the posting. Deliberately broader
+# than the business documents: measured across the fleet, stocktaking runs, goods
+# posting documents and parcel receipts account for the majority of all postings,
+# and mapping them through the document vocabulary alone reported 3.8 million of
+# them as having no cause at all (API-805).
+_CAUSE_OPTIONS = [
+    {"value": v, "label": label}
+    for v, label in (
+        ("offer", "Offer"),
+        ("salesOrder", "Sales order"),
+        ("deliveryNote", "Delivery note"),
+        ("invoice", "Invoice"),
+        ("creditNote", "Credit note"),
+        ("proformaInvoice", "Proforma invoice"),
+        ("returnOrder", "Return order"),
+        ("purchaseOrder", "Purchase order"),
+        ("production", "Production"),
+        ("inventoryRun", "Inventory run"),
+        ("goodsPostingDocument", "Goods posting document"),
+        ("parcelReceipt", "Parcel receipt"),
+        ("serviceOrder", "Service order"),
+    )
+]
+
+# Causes this core models as an entity of its own, so the ledger can hand out a
+# record a caller can `get` straight away. The five that are missing
+# (proformaInvoice, production, goodsPostingDocument, parcelReceipt, serviceOrder)
+# report `type` + `id` and a null record — a speaking id pointing at an entity
+# that does not exist would be worse than no link.
+_CAUSE_RECORDS = {
+    "offer": ("quo_", "quotes"),
+    "salesOrder": ("so_", "salesOrders"),
+    "deliveryNote": ("dn_", "deliveryNotes"),
+    "invoice": ("si_", "salesInvoices"),
+    "creditNote": ("cn_", "creditNotes"),
+    "returnOrder": ("ret_", "returnOrders"),
+    "purchaseOrder": ("po_", "purchaseOrders"),
+    "inventoryRun": ("stk_", "stockTakes"),
+}
 
 
 def _ref_id(value: Any) -> str | None:
@@ -79,37 +162,62 @@ class StockMovementAdapter(FacadeAdapterBase):
         rollout_batch="agentos_neo_xentral",
         adapter="agentos_neo_xentral.stockMovement",
         source_apis=("agentos_neo_xentral",),
-        # WRITE-ONLY on purpose. There is no stock-ledger API upstream (docs/05 #1,
-        # verified 404 on mvp), and unlike a missing filter this will not arrive by
-        # accident — so list/read are NOT declared. Declaring them cost every caller
-        # a failed round-trip to learn what the contract can state directly.
-        operations=("create",),
+        # `read` is composed from filter[id] — the upstream has no /{id} route
+        # (see the module docstring). `update`/`delete` stay undeclared: the ledger
+        # is append-only upstream and there is nothing to route them to.
+        operations=("list", "read", "create"),
         description=(
-            "Low-level booking primitive. PREFER the named StorageLocation actions "
-            "(putaway / stockRemoval / stockTransfer / inventoryCount / "
-            "stockAdjustment) — same orchestration, but each with its own command "
-            "schema and a stock-level read-back. Movements CANNOT be read back: "
-            "Xentral has no stock-ledger API, so verify an effect via StockLevel "
-            "(per location) or Product.stock (total)."
+            "The warehouse ledger: one record per stock change of one product on "
+            "one storage location. READ it to analyse movements (per product, "
+            "location, warehouse, period or cause) and to verify what a booking "
+            "did. To WRITE, PREFER the named StorageLocation actions (putaway / "
+            "stockRemoval / stockTransfer / inventoryCount / stockAdjustment) — "
+            "same orchestration as create here, but each with its own command "
+            "schema and a stock-level read-back. Read and write do not share a "
+            "grain: a transfer is one create and two ledger rows."
         ),
     )
-    v3_path = "/api/v3/stockMovements"  # proposed endpoint — 404 until built
+    v3_path = "/api/v3/stockMovements"
     include = ""
-    preview_template = "{{product.name}}"
+    # Not the product name: the ledger returns the product as an id only and
+    # hydrating a name would cost one call per row.
+    preview_template = "{{source.reason}}"
     sections = {"general": {"label": "General"}, "source": {"label": "Source"}}
+    # Model path -> upstream filter/sort key. The upstream names its references
+    # with a `.id` suffix and calls the posting time `postedAt`.
+    query_aliases = {
+        "product": "product.id",
+        "storageLocation": "storageLocation.id",
+        "warehouse": "warehouse.id",
+        "project": "project.id",
+        "bookedAt": "postedAt",
+        "source.reason": "reference",
+        "source.editor": "editor",
+    }
+    # MUST stay False: this collection rejects a bare date on `postedAt` with a
+    # 400, and filtering the datetime column directly is what lets an index on
+    # `zeit` be used at all (SPS-147). Trimming the value here would break both.
+    datetime_filters_take_date_only = False
 
     def fields(self) -> dict[str, dict[str, Any]]:
         return {
             "object": prop("string", "Object", **RO, section="general"),
-            "id": prop("string", "ID", **RO, section="general"),
-            "date": prop("datetime", "Date", **RO, section="general", sortable=True),
+            "id": prop("string", "ID", **RO, section="general", filterable=True, sortable=True),
+            "direction": prop(
+                "select",
+                "Direction",
+                **RO,
+                section="general",
+                options=_DIRECTION_OPTIONS,
+                filterable=True,
+                previewable=True,
+            ),
             "type": prop(
                 "select",
                 "Type",
                 **REQUIRED,
                 section="general",
                 options=_TYPE_OPTIONS,
-                filterable=True,
                 previewable=True,
                 creatable=True,
             ),
@@ -129,10 +237,30 @@ class StockMovementAdapter(FacadeAdapterBase):
                 "Quantity",
                 section="general",
                 creatable=True,
+                sortable=True,
                 properties={
                     "value": prop("decimal", "Value", creatable=True),
                     "unit": prop("string", "Unit", creatable=True),
                 },
+            ),
+            "stockLevelAfter": prop("decimal", "Stock level after", **RO, section="general"),
+            "storageLocation": prop(
+                "reference",
+                "Storage location",
+                **RO,
+                reference="StorageLocation",
+                renderProperty="name",
+                section="general",
+                filterable=True,
+            ),
+            "warehouse": prop(
+                "reference",
+                "Warehouse",
+                **RO,
+                reference="Warehouse",
+                renderProperty="name",
+                section="general",
+                filterable=True,
             ),
             "from": prop(
                 "reference",
@@ -181,29 +309,120 @@ class StockMovementAdapter(FacadeAdapterBase):
                     "currency": prop("string", "Currency", **RO),
                 },
             ),
+            "project": prop(
+                "reference",
+                "Project",
+                **RO,
+                reference="Project",
+                renderProperty="name",
+                section="general",
+                filterable=True,
+            ),
+            "causedBy": prop(
+                "embedded",
+                "Caused by",
+                **RO,
+                section="source",
+                properties={
+                    "type": prop("select", "Type", **RO, options=_CAUSE_OPTIONS, filterable=True),
+                    "id": prop("string", "ID", **RO, filterable=True),
+                    "record": prop("reference", "Record", **RO, renderProperty="name"),
+                },
+            ),
+            "stockMovementType": prop(
+                "embedded",
+                "Stock movement type",
+                **RO,
+                section="source",
+                properties={"id": prop("string", "ID", **RO, filterable=True)},
+            ),
+            "systemType": prop("string", "System type", **RO, section="source"),
+            "stockTransactionId": prop("string", "Stock transaction ID", **RO, section="source"),
             "source": prop(
                 "embedded",
                 "Source",
                 section="source",
                 creatable=True,
                 properties={
-                    "document": prop("string", "Document", **RO),
-                    "user": prop(
-                        "reference", "User", reference="User", renderProperty="name", **RO
+                    "reason": prop(
+                        "string", "Reason", creatable=True, filterable=True, searchable=True
                     ),
-                    "reason": prop("string", "Reason", creatable=True),
+                    "editor": prop("string", "Editor", **RO, filterable=True, searchable=True),
                 },
             ),
             "bookedAt": prop("datetime", "Booked at", **RO, filterable=True, sortable=True),
+            "createdAt": prop("datetime", "Created at", **RO, filterable=True, sortable=True),
+            "updatedAt": prop("datetime", "Updated at", **RO),
+        }
+
+    @staticmethod
+    def _node_id(node: Any) -> Any:
+        """The bare id out of an upstream ``{"id": "…"}`` node, or None.
+
+        `product`, `storageLocation` and `project` are all nullable upstream —
+        the legacy columns are plain integers whose `0` placeholder is reported as
+        no reference at all — so every one of these has to survive a null.
+        """
+        return node.get("id") if isinstance(node, dict) else None
+
+    def _caused_by(self, r: dict[str, Any]) -> dict[str, Any] | None:
+        cause = r.get("causedBy")
+        if not isinstance(cause, dict):
+            return None
+        ctype, cid = cause.get("type"), cause.get("id")
+        record = None
+        known = _CAUSE_RECORDS.get(str(ctype))
+        if known and cid not in (None, ""):
+            record = ref(known[0], cid, None, None, known[1])
+        return {
+            "type": ctype,
+            "id": (str(cid) if cid not in (None, "") else None),
+            "record": record,
         }
 
     def map_read(self, r: dict[str, Any]) -> dict[str, Any]:
-        # No upstream payload exists yet — passthrough placeholder for the day it does.
+        smt = self._node_id(r.get("stockMovementType"))
         return {
             "object": "stockMovement",
-            "date": r.get("bookedAt") or r.get("date"),
-            "id": (f"stm_{r.get('id')}" if r.get("id") is not None else None),
-            **r,
+            "id": eid("stm_", r.get("id")),
+            "direction": r.get("direction"),
+            # Create-only vocabulary: a posting carries a direction, not a command.
+            # See the module docstring on why this is not derived.
+            "type": None,
+            "product": ref("prd_", self._node_id(r.get("product")), None, None, "products"),
+            # Signed by the direction upstream, so movements sum without a case
+            # distinction. No unit is reported — reading one would cost a product
+            # call per row.
+            "quantity": {"value": r.get("quantity"), "unit": None},
+            "stockLevelAfter": r.get("stockLevelAfter"),
+            "storageLocation": ref(
+                "loc_", self._node_id(r.get("storageLocation")), None, None, "storageLocations"
+            ),
+            # Filter-only: the ledger does not echo the warehouse (it is reached
+            # through the storage location). Resolve it via `storageLocation`.
+            "warehouse": None,
+            "from": None,
+            "to": None,
+            "setQuantityTo": None,
+            # Not reported by the ledger, though a booking can carry one.
+            "batch": None,
+            # Movement valuation is not exposed upstream at all (backlog blue wish).
+            "unitCost": {"amount": None, "currency": None},
+            "project": ref("prj_", self._node_id(r.get("project")), None, None, "projects"),
+            "causedBy": self._caused_by(r),
+            "stockMovementType": ({"id": str(smt)} if smt not in (None, "") else None),
+            "systemType": r.get("systemType"),
+            "stockTransactionId": r.get("stockTransactionId"),
+            "source": {
+                # Upstream `reference` is the same free text a create writes as
+                # `source.reason`, so a booking reads back where it was written.
+                "reason": r.get("reference") or None,
+                # A username as stored, not a resolvable user record.
+                "editor": r.get("editor") or None,
+            },
+            "bookedAt": r.get("postedAt"),
+            "createdAt": r.get("createdAt"),
+            "updatedAt": r.get("updatedAt"),
         }
 
     # ---- write orchestration (v1 storage-item endpoints) -------------------
@@ -214,6 +433,8 @@ class StockMovementAdapter(FacadeAdapterBase):
             return await self._create_movement(
                 query, body, base_url, token, accept_language, client
             )
+        if method.upper() == "GET" and handle and "read" in self.manifest.operations:
+            return await self._read_one(handle, base_url, token, accept_language, client)
         return await super().request(
             method=method,
             handle=handle,
@@ -224,6 +445,48 @@ class StockMovementAdapter(FacadeAdapterBase):
             accept_language=accept_language,
             client=client,
         )
+
+    async def _read_one(
+        self, handle: str, base_url, token, accept_language, client
+    ) -> AdapterResponse:
+        """Single read through ``filter[id]`` — the upstream has no ``/{id}``.
+
+        ``GET /api/v3/stockMovements/{id}`` answers 404: the ticket left the detail
+        route out of scope and named the id filter as the way to reach one record.
+        Emulating it here keeps the contract whole; going through ``_get`` with a
+        handle would build exactly the 404 route.
+        """
+        numeric = handle.split("_", 1)[1] if "_" in handle else handle
+        if not numeric.isdigit():
+            return self._json(
+                422,
+                {
+                    "title": f"stockMovement: malformed id {handle!r}",
+                    "detail": "Expected stm_<numeric ledger id>.",
+                },
+            )
+        status, payload = await self._get(
+            base_url,
+            token,
+            handle=None,
+            query=[
+                ("filter[0][key]", "id"),
+                ("filter[0][op]", "equals"),
+                ("filter[0][value]", numeric),
+                ("page[number]", "1"),
+                ("page[size]", "1"),
+            ],
+            accept_language=accept_language,
+            client=client,
+        )
+        if status >= 400:
+            return self._json(
+                status, payload if isinstance(payload, dict) else {"title": "upstream error"}
+            )
+        rows = (payload.get("data") if isinstance(payload, dict) else None) or []
+        if not rows or not isinstance(rows[0], dict):
+            return self._json(404, {"title": f"stockMovement {handle} not found"})
+        return self._json(200, {"data": self.map_read(rows[0])})
 
     async def _lookup(self, adapter, handle, base_url, token, accept_language, client):
         resp = await adapter.request(
