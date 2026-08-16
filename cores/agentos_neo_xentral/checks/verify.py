@@ -40,9 +40,10 @@ actions + process steps (opt-in, VERIFY_ACTIONS=1 — these EXECUTE real upstrea
   operations on a sampled record, so they are NOT net-zero): each is invoked
   through the facade with an empty command.
     pass       — the effect was seen. Only the net-zero probes reach it: the
-                 addTag/removeTag roundtrip and downloadPdf (which renders a
-                 document and changes nothing, so the body can be checked for
-                 `%PDF-`).
+                 addTag/removeTag roundtrip, the set/removeWriteProtection
+                 roundtrip (flip the flag, read it back off the record, flip it
+                 home) and downloadPdf (which renders a document and changes
+                 nothing, so the body can be checked for `%PDF-`).
     executed   — 2xx, effect not read back.
     reachable  — the route refused our empty command (400/422) or the record's
                  state (409). The note says whether the refusal came from upstream
@@ -1055,7 +1056,10 @@ async def _probe_action(
       None       — 409 wish (declared-but-not-upstream-yet; stays blue)
 
     ``pass`` is not reachable from here: seeing an effect needs a net-zero
-    round-trip, which only ``_probe_tag_actions`` does. For `send` (mails a real
+    round-trip, which only ``_probe_tag_actions`` and ``_probe_write_protection``
+    do. Note that an input-free action (setWriteProtection, release …) is NOT
+    rejected at validation by the empty command — it commits, which is why the
+    write-protection pair is routed away from here. For `send` (mails a real
     customer) and `cancel` (mutates a document) it is not reachable at all on a live
     tenant — `executed` is their final answer, not a to-do.
 
@@ -1207,6 +1211,110 @@ async def _probe_tag_actions(
             else f"removeTag with fresh title → {st}: {_err(pl)}",
         )
     await _delete_catalogue_tag(adapter, title, base_url, token)
+    return out
+
+
+async def _probe_write_protection(
+    adapter: Any, sample_id: str, base_url: str, token: str
+) -> dict[str, tuple[str, str]]:
+    """Effect-checked, net-zero roundtrip for setWriteProtection/removeWriteProtection.
+
+    The generic probe is actively wrong for this pair. `setWriteProtection` takes no
+    input, so an empty command does not get rejected at validation — it COMMITS, earns
+    `executed`, and leaves the sampled document locked on a live tenant. The lock is
+    then never lifted, because `removeWriteProtection` is probed as a separate,
+    independent action and may run on a different record or not at all.
+
+    So both are probed as one roundtrip against the ORIGINAL state: flip it, read it
+    back, flip it home, read it back. The document ends where it started whichever way
+    round it began, which is why the order is chosen from the current value rather than
+    fixed — starting with `set` on an already-protected document would prove nothing and
+    then `remove` would unlock a document somebody had deliberately locked.
+
+    The verdict is decided on the `writeProtection` FIELD from a fresh single read, not
+    on the action's own echo and emphatically not on whether some other write succeeds:
+    upstream's `writeProtectionBypassFields()` lets `internebemerkung` and `status`
+    through, so a successful note write on a locked document is normal and inferring
+    "not protected" from it is the documented way to fool this probe
+    (`tests/test_agentos_neo_xentral_write_protection.py`).
+
+    Returns {} when the sample carries no boolean `writeProtection`, which sends both
+    keys back to the generic probe rather than inventing a verdict.
+    """
+    p = _Probe(adapter, base_url, token)
+
+    async def current() -> tuple[int, bool | None]:
+        st, pl = await p.req(handle=sample_id)
+        if st in (401, 403):
+            raise _AuthFailed(f"writeProtection read answered {st}: {_err(pl)}")
+        value = (pl.get("data") or {}).get("writeProtection") if isinstance(pl, dict) else None
+        return st, value if isinstance(value, bool) else None
+
+    async def flip(key: str) -> tuple[int, Any]:
+        resp = await adapter.action(
+            action_key=key,
+            handle=sample_id,
+            body=json.dumps({"ids": [sample_id], "command": {}}).encode(),
+            base_url=base_url,
+            token=token,
+        )
+        try:
+            payload = json.loads(resp.content or b"{}")
+        except ValueError:
+            payload = {}
+        if resp.status_code in (401, 403):
+            raise _AuthFailed(f"{key} answered {resp.status_code}: {_err(payload)}")
+        return resp.status_code, payload
+
+    rst, initial = await current()
+    if initial is None:
+        # Not a failure of the actions — this probe simply has nothing to assert
+        # against. Fall back to the generic reachability probe.
+        print(f"    (writeProtection unreadable on the sample: read {rst} — generic probe)")
+        return {}
+
+    away = "removeWriteProtection" if initial else "setWriteProtection"
+    home = "setWriteProtection" if initial else "removeWriteProtection"
+    out: dict[str, tuple[str, str]] = {}
+
+    st, pl = await flip(away)
+    if st >= 400:
+        out[away] = (
+            "fail",
+            f"{away} on a document with writeProtection={initial} → {st}: {_err(pl)}",
+        )
+        return out
+    _, flipped = await current()
+    if flipped is not initial:
+        out[away] = (
+            PROVEN,
+            f"writeProtection {initial} → {flipped}, read back from the record — net-zero roundtrip",
+        )
+    else:
+        out[away] = (
+            "fail",
+            f"{away} answered {st} but writeProtection still reads {flipped} — "
+            "the action was accepted and had no effect",
+        )
+        return out
+
+    st, pl = await flip(home)
+    _, restored = await current()
+    if st < 400 and restored is initial:
+        out[home] = (
+            PROVEN,
+            f"writeProtection {flipped} → {restored}, read back from the record — net-zero roundtrip",
+        )
+    else:
+        # The document is left in the flipped state. Say so loudly and by id: this is
+        # the one outcome of this probe that is not net-zero, and a locked document
+        # silently left behind is a support ticket, not a verdict.
+        out[home] = (
+            "fail",
+            f"{home} → {st}, writeProtection still reads {restored}: {_err(pl)} — "
+            f"RECORD {sample_id} LEFT AT writeProtection={restored}, NOT restored to {initial}",
+        )
+        print(f"    !! {adapter.manifest.key} {sample_id} left at writeProtection={restored}")
     return out
 
 
@@ -2184,6 +2292,11 @@ async def _verify_entity(
         # _probe_tag_actions. Falls back to the generic probe when the
         # roundtrip could not cover the key (e.g. removeTag after a failed add).
         tag_results: dict[str, tuple[str, str]] | None = None
+        # set/removeWriteProtection likewise get a REAL roundtrip. They take no input,
+        # so the generic empty-command probe COMMITS instead of being rejected — and
+        # probed independently it would leave the document locked. See
+        # _probe_write_protection.
+        wp_results: dict[str, tuple[str, str]] | None = None
         if _ACTIONS_ONLY:
             targets = [t for t in targets if t[0] in _ACTIONS_ONLY]
         for akey, res_map, note_map in targets:
@@ -2193,6 +2306,13 @@ async def _verify_entity(
                 status, note = tag_results.get(akey) or await _probe_action(
                     adapter, akey, sample_id, base_url, token
                 )
+            elif akey in ("setWriteProtection", "removeWriteProtection") and sample_id:
+                if wp_results is None:
+                    wp_results = await _probe_write_protection(adapter, sample_id, base_url, token)
+                # NO fallback to the generic probe here, unlike the tag pair: the
+                # fallback IS the hazard. A key the roundtrip could not cover stays
+                # untested (status None), which is honest and leaves the document alone.
+                status, note = wp_results.get(akey, (None, None))
             elif akey == "downloadPdf" and sample_id:
                 status, note = await _probe_download_pdf(adapter, sample_id, base_url, token)
             else:

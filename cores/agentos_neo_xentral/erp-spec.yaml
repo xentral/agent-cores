@@ -110,8 +110,8 @@ documents:
       downloadPdf: {evidence: pass}
       addTag: {evidence: pass, params: [title]}
       removeTag: {evidence: pass, params: [title]}
-      setWriteProtection: {evidence: null}
-      removeWriteProtection: {evidence: null}
+      setWriteProtection: {evidence: pass}
+      removeWriteProtection: {evidence: pass}
       release: {evidence: reachable}
       cancel: {evidence: reachable}
     cannot:
@@ -266,7 +266,7 @@ documents:
       discounts.amount: {type: string}
       customFields: {type: embedded}
       createdAt: {type: datetime, ops: [filter, sort], proven: [filter, sort]}
-      updatedAt: {type: datetime, ops: [filter, sort], proven: [filter]}
+      updatedAt: {type: datetime, ops: [filter, sort], proven: [filter, sort]}
     can:
       createSalesInvoice: {evidence: executed}
       split: {evidence: reachable}
@@ -275,8 +275,8 @@ documents:
       sendConfirmation: {evidence: reachable}
       addTag: {evidence: pass, params: [title]}
       removeTag: {evidence: pass, params: [title]}
-      setWriteProtection: {evidence: null}
-      removeWriteProtection: {evidence: null}
+      setWriteProtection: {evidence: pass}
+      removeWriteProtection: {evidence: pass}
       release: {evidence: reachable}
       close: {evidence: reachable}
       cancel: {evidence: reachable}
@@ -373,8 +373,8 @@ documents:
       downloadPdf: {evidence: pass}
       addTag: {evidence: pass, params: [title]}
       removeTag: {evidence: pass, params: [title]}
-      setWriteProtection: {evidence: null}
-      removeWriteProtection: {evidence: null}
+      setWriteProtection: {evidence: pass}
+      removeWriteProtection: {evidence: pass}
       release: {evidence: reachable}
       markDelivered: {evidence: reachable}
       cancel: {evidence: reachable}
@@ -530,14 +530,14 @@ documents:
       writeProtection: {type: boolean, ops: [filter], proven: [filter]}
       customFields: {type: embedded}
       createdAt: {type: datetime, ops: [filter, sort], proven: [filter, sort]}
-      updatedAt: {type: datetime, ops: [filter, sort], proven: [filter]}
+      updatedAt: {type: datetime, ops: [filter, sort], proven: [filter, sort]}
     can:
       send: {evidence: reachable}
       downloadPdf: {evidence: pass}
       addTag: {evidence: pass, params: [title]}
       removeTag: {evidence: pass, params: [title]}
-      setWriteProtection: {evidence: null}
-      removeWriteProtection: {evidence: null}
+      setWriteProtection: {evidence: pass}
+      removeWriteProtection: {evidence: pass}
       release: {evidence: reachable}
       cancel: {evidence: executed}
     cannot:
@@ -650,8 +650,8 @@ documents:
       downloadPdf: {evidence: pass}
       addTag: {evidence: pass, params: [title]}
       removeTag: {evidence: pass, params: [title]}
-      setWriteProtection: {evidence: null}
-      removeWriteProtection: {evidence: null}
+      setWriteProtection: {evidence: pass}
+      removeWriteProtection: {evidence: pass}
       release: {evidence: reachable}
       settle: {evidence: reachable}
       cancel: {evidence: reachable}
@@ -745,8 +745,8 @@ documents:
       downloadPdf: {evidence: pass}
       addTag: {evidence: pass, params: [title]}
       removeTag: {evidence: pass, params: [title]}
-      setWriteProtection: {evidence: null}
-      removeWriteProtection: {evidence: null}
+      setWriteProtection: {evidence: pass}
+      removeWriteProtection: {evidence: pass}
       release: {evidence: reachable}
     cannot:
       registerRefund: >-
@@ -844,8 +844,8 @@ documents:
       downloadPdf: {evidence: pass}
       addTag: {evidence: pass, params: [title]}
       removeTag: {evidence: pass, params: [title]}
-      setWriteProtection: {evidence: null}
-      removeWriteProtection: {evidence: null}
+      setWriteProtection: {evidence: pass}
+      removeWriteProtection: {evidence: pass}
       release: {evidence: reachable}
       close: {evidence: reachable}
       cancel: {evidence: reachable}
