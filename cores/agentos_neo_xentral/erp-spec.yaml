@@ -985,17 +985,20 @@ documents:
         rows do not carry.
   StockMovement:
     label: Stock movement
-    reviewed: 2026-08-09
-    operations: [create]
+    reviewed: 2026-08-16
+    operations: [list, read, create]
     fields:
       object: {type: string}
-      id: {type: string}
-      date: {type: datetime, ops: [sort]}
-      type: {type: select, required: true, ops: [create, filter], options: [receipt, issue, transfer, correction]}
+      id: {type: string, ops: [filter, sort]}
+      direction: {type: select, ops: [filter], options: [inbound, outbound]}
+      type: {type: select, required: true, ops: [create], options: [receipt, issue, transfer, correction]}
       product: {type: reference, ref: Product, required: true, ops: [create, filter]}
-      quantity: {type: embedded, ops: [create]}
+      quantity: {type: embedded, ops: [create, sort]}
       quantity.value: {type: decimal, ops: [create]}
       quantity.unit: {type: string, ops: [create]}
+      stockLevelAfter: {type: decimal}
+      storageLocation: {type: reference, ref: StorageLocation, ops: [filter]}
+      warehouse: {type: reference, ref: Warehouse, ops: [filter]}
       from: {type: reference, ref: StorageLocation, ops: [create]}
       to: {type: reference, ref: StorageLocation, ops: [create]}
       setQuantityTo: {type: decimal, ops: [create]}
@@ -1003,11 +1006,21 @@ documents:
       unitCost: {type: embedded}
       unitCost.amount: {type: string}
       unitCost.currency: {type: string}
+      project: {type: reference, ref: Project, ops: [filter]}
+      causedBy: {type: embedded}
+      causedBy.type: {type: select, ops: [filter], options: [offer, salesOrder, deliveryNote, invoice, creditNote, proformaInvoice, returnOrder, purchaseOrder, production, inventoryRun, goodsPostingDocument, parcelReceipt, serviceOrder]}
+      causedBy.id: {type: string, ops: [filter]}
+      causedBy.record: {type: reference}
+      stockMovementType: {type: embedded}
+      stockMovementType.id: {type: string, ops: [filter]}
+      systemType: {type: string}
+      stockTransactionId: {type: string}
       source: {type: embedded, ops: [create]}
-      source.document: {type: string}
-      source.user: {type: reference, ref: User}
-      source.reason: {type: string, ops: [create]}
+      source.reason: {type: string, ops: [create, filter, search]}
+      source.editor: {type: string, ops: [filter, search]}
       bookedAt: {type: datetime, ops: [filter, sort]}
+      createdAt: {type: datetime, ops: [filter, sort]}
+      updatedAt: {type: datetime}
   StockTake:
     label: Stock take
     reviewed: 2026-08-09

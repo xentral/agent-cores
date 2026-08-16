@@ -112,6 +112,16 @@ mit Pflicht-`reason`). Belege buchen automatisch und erscheinen als `source.docu
 (Dokument ODER User+reason) — der Trail ist lückenlos.
 **Ergänzt durch ADR-017:** Die Bewegung bleibt der Datensatz der Wahrheit, ist aber
 nicht mehr die Bedienoberfläche — gebucht wird über benannte Lager-Actions.
+**Nachtrag 16.08.2026 (API-805):** Der Kontext „kein lesbares Lagerprotokoll" ist
+überholt — `GET /api/v3/stockMovements` liefert es und der Core liest es
+(list/read). Zwei Korrekturen am Wortlaut oben: das Feld heißt nicht mehr
+`source.document`, sondern `causedBy` mit eigenem Vokabular (Belege *plus*
+Inventurlauf, Umbuchungsbeleg, Paketannahme, Serviceauftrag — die Beleg-Sprache
+allein hätte die Mehrheit der Buchungen als ursachenlos gemeldet); und der Trail
+ist nicht lückenlos: knapp ein Drittel der Buchungen nennt keine Ursache, dort
+tragen `source.reason` und `systemType` die Herkunft. Lesen und Schreiben haben
+außerdem nicht dieselbe Granularität — ein `transfer` ist ein Kommando und zwei
+Bewegungszeilen.
 
 ## ADR-011 · Flags → Enums (Produkt und überall)
 

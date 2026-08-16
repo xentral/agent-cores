@@ -11,6 +11,12 @@ A declared-but-dead operation is worse than an absent one: an agent plans from
 `describe`, so it plans a read that cannot work and cannot tell why it failed.
 These pin the honest contract and that the gate refuses the dead ops locally,
 without a round-trip to Xentral.
+
+StockMovement has since gained its reads: `GET /api/v3/stockMovements` shipped
+with API-805 and was verified live on mvp, so its `list`/`read` are declared and
+the entity is no longer part of the dead-read set. The rule is unchanged — the
+declaration follows the route, in both directions. What stays refused there is
+`update`/`delete`: the ledger is append-only upstream.
 """
 
 from __future__ import annotations
@@ -47,8 +53,16 @@ def _call(adapter, method: str, handle: str | None = None):
     return asyncio.run(go())
 
 
-def test_stock_movement_is_write_only():
-    assert set(StockMovementAdapter.manifest.operations) == {"create"}
+def test_stock_movement_reads_the_ledger_but_never_mutates_it():
+    assert set(StockMovementAdapter.manifest.operations) == {"list", "read", "create"}
+
+
+def test_stock_movement_refuses_update_and_delete_locally():
+    """The ledger is append-only upstream; neither op has a route to reach."""
+    for method in ("PATCH", "DELETE"):
+        resp = _call(StockMovementAdapter(), method, "stm_1")
+        assert resp.status_code == 405, method
+        assert "not supported" in json.loads(resp.content)["title"]
 
 
 def test_batch_and_serial_declare_nothing():
@@ -63,7 +77,7 @@ def test_stock_level_keeps_its_reads():
 
 
 def test_dead_reads_are_refused_locally_not_upstream():
-    for adapter in (StockMovementAdapter(), BatchAdapter(), SerialNumberAdapter()):
+    for adapter in (BatchAdapter(), SerialNumberAdapter()):
         for method, handle in (("GET", None), ("GET", "x_1")):
             resp = _call(adapter, method, handle)
             assert resp.status_code == 405, (adapter.manifest.key, handle)
@@ -80,13 +94,15 @@ def test_every_dead_entity_says_why_in_its_catalogue_description():
         assert len(desc) > 40
 
 
-def test_stock_movement_description_names_the_read_back_and_the_preferred_surface():
-    """create stays as the primitive, but must route a caller to the named
-    warehouse actions (ADR-017) rather than being the obvious first choice."""
+def test_stock_movement_description_still_routes_writes_to_the_named_actions():
+    """Gaining reads must not turn the low-level booking primitive into the
+    obvious way to WRITE stock — the named warehouse actions stay preferred
+    (ADR-017), and the differing grain has to be stated where an agent picks the
+    entity."""
     desc = StockMovementAdapter.manifest.description
-    assert "StockLevel" in desc  # where the effect is verified
-    assert "inventoryCount" in desc  # the retry-safe write, now an action
     assert "PREFER" in desc
+    assert "inventoryCount" in desc  # the retry-safe write, an action
+    assert "grain" in desc  # one create, two ledger rows
 
 
 def test_writes_still_reach_the_orchestrator():

@@ -77,8 +77,10 @@ quo_      so_          │    dn_              ship_                          po
 | `Printer` / `EmailAccount` | — | `printDocument` / `sendEmail` |
 
 Read-only: `Shipment`, `Payment`, `StockLevel`, `StockTake`, `PickingRun`, `Tag`, `Channel`.
-`StockMovement` is create-only. **`Batch` and `SerialNumber` have no operations at all** —
-Xentral exposes no such resource; do not design around them.
+`StockMovement` reads the warehouse ledger and creates bookings, but never updates or deletes
+one — read and write do not share a grain there (one create, two ledger rows for a transfer).
+**`Batch` and `SerialNumber` have no operations at all** — Xentral exposes no such resource;
+do not design around them.
 
 Lookups you resolve references against (`list`, some `+read`): `ShippingMethod` (Versandart),
 `PaymentMethod`, `PaymentTermsGroup`, `ReturnReason`, `TaxRate`, `Warehouse`, `Project`,

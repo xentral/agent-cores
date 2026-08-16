@@ -484,12 +484,16 @@ PurchaseInvoice:
       The approval timestamp is not exposed by the BF supplierInvoice entity.
 
 StockMovement:
-  - field: id
-    ops: [list, read]
+  - field: quantity.unit
+    ops: [read]
     reason: >-
-      The stock ledger (Lagerprotokoll) has NO read API at all — the single biggest gap (docs/05
-      #1). GET /v3/stockMovements is the ask. Until it ships the entity does not declare
-      list/read at all, so a caller learns this from the contract instead of a 404.
+      The ledger reports a bare number, no unit. Reading one would cost a product call per row,
+      so the field stays empty until the payload carries it.
+  - field: batch
+    ops: [read]
+    reason: >-
+      A booking can name a batch, but the ledger does not report which one the posting hit — so
+      a batch's movement history is not reconstructable from it (docs/05 #4).
   - field: id
     ops: [create]
     reason: >-
@@ -530,8 +534,9 @@ StockTake:
   - field: documents.stockMovements
     ops: [read]
     reason: >-
-      Posted correction movements per stock take need the stockMovements API (docs/05 #1) to be
-      traceable.
+      Posted correction movements per stock take are no longer unreachable — StockMovement lists
+      them via filter[causedBy.type]=inventoryRun + filter[causedBy.id]=<run>. What is missing is
+      composing that into the stock take's own payload.
 
 PickingRun:
   - field: id

@@ -8,7 +8,7 @@
 
 | Tabelle / Datenbereich | Was gebraucht wird | Ziel-API (Vorschlag) |
 |---|---|---|
-| **Lagerprotokoll / Lagerbewegungen** | komplette Bewegungshistorie: Artikel, Menge, Von/Nach-Lagerplatz, Charge/SN, Grund, User, Zeitpunkt, EK-Wert | GET+POST /v3/stockMovements |
+| **Lagerprotokoll / Lagerbewegungen** — LESEN geliefert (API-805, 16.08.2026) | Artikel, Menge (vorzeichenbehaftet), Lagerplatz, Grund, User, Zeitpunkt und Ursache kommen aus `GET /api/v3/stockMovements`. Offen bleiben Charge/SN je Buchung und der EK-Wert, sowie generisches Schreiben | POST /v3/stockMovements + Charge/SN und unitCost in der Payload |
 | **beleg_chargesnmhd** | tatsächlich gebuchte Seriennummern/Chargen/MHD je Belegposition (LS, Rechnung …) | Teil der DN-/WE-Item-Payloads + /v3/batches\|serialNumbers |
 | **seriennummern / chargen / lager_mindesthaltbarkeitsdatum** (als Ressourcen) | Charge/SN als Objekt mit Status, Bestand, Trace (WE↔LS), SN→Kunde (Garantie) | /v3/batches, /v3/serialNumbers (+/trace) |
 | **Nummernkreise** (firmendaten: next_*-Zähler) | Formate, Zählerstände, Lückenprotokoll je Belegtyp | GET /v3/numberRanges (+/gaps) |
