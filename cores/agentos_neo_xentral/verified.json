@@ -4021,7 +4021,7 @@
         "send": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma",
         "setWriteProtection": "writeProtection False → True, read back from the record — net-zero roundtrip"
       },
-      "actionsProbedAt": "2026-08-16T07:11:14+00:00",
+      "actionsProbedAt": "2026-08-16T11:21:51+00:00",
       "fields": {
         "billingAddress": {
           "read": "pass"
@@ -4412,14 +4412,14 @@
         "read": "pass",
         "update": "pass"
       },
-      "probedAt": "2026-08-16T07:59:04+00:00",
+      "probedAt": "2026-08-16T11:21:51+00:00",
       "processSteps": {
-        "cancel": "executed",
-        "release": "reachable"
+        "cancel": "pass",
+        "release": "pass"
       },
       "processStepsNotes": {
-        "cancel": "EXECUTED on the sampled record (200) — effect not read back",
-        "release": "reachable — 409 from upstream: Resource status invalid for requested operation"
+        "cancel": "invoice si_2268 (402094) reads 'cancelled' and storno credit note 167 reads back linked to it (invoice si_2268, status 'draft', number None, 1 line item(s)) — both halves read back; both documents stay, a released invoice cannot be deleted",
+        "release": "an unreleased invoice this probe created left 'draft' for 'open' and took number 402094 from the range — effect read back from the record"
       },
       "unprobed": [
         "customFields.create",
@@ -6294,7 +6294,7 @@
       "probedAt": "2026-08-16T08:10:04+00:00"
     }
   },
-  "generatedAt": "2026-08-16T10:49:50+00:00",
+  "generatedAt": "2026-08-16T11:21:51+00:00",
   "instance": "a2ad4180-0d41-4360-8044-9dca0c35608a",
   "schemaVersion": 2
 }

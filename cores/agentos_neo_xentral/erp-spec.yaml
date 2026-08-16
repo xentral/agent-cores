@@ -538,8 +538,8 @@ documents:
       removeTag: {evidence: pass, params: [title]}
       setWriteProtection: {evidence: pass}
       removeWriteProtection: {evidence: pass}
-      release: {evidence: reachable}
-      cancel: {evidence: executed}
+      release: {evidence: pass}
+      cancel: {evidence: pass}
     cannot:
       registerPayment: >-
         The payments API is not public — no endpoint to register an incoming payment.
