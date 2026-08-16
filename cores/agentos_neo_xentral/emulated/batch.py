@@ -65,10 +65,7 @@ class BatchAdapter(FacadeAdapterBase):
 
     def actions(self):
         return [
-            self.action_def(
-                "traceReport",
-                "Trace report",
-                wish=True            ),
+            self.action_def("traceReport", "Trace report", wish=True),
         ]
 
     def fields(self) -> dict[str, dict[str, Any]]:

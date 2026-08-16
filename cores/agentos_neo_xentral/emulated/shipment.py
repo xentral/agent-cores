@@ -41,16 +41,9 @@ class ShipmentAdapter(FacadeAdapterBase):
 
     def actions(self):
         return [
-            self.action_def(
-                "createLabel",
-                "Create label",
-                wish=True            ),
-            self.action_def(
-                "cancelLabel", "Cancel label", wish=True
-            ),
-            self.action_def(
-                "downloadLabel", "Download label", wish=True
-            ),
+            self.action_def("createLabel", "Create label", wish=True),
+            self.action_def("cancelLabel", "Cancel label", wish=True),
+            self.action_def("downloadLabel", "Download label", wish=True),
             self.action_def(
                 "refreshTracking",
                 "Refresh tracking",

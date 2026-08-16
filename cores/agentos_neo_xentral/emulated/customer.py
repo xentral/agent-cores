@@ -86,9 +86,7 @@ class CustomerAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
                 "key": "documentStatus",
                 "label": "Status",
                 "commands": [
-                    self.step_cmd(
-                        "archive", "Archive", wish=True
-                    ),
+                    self.step_cmd("archive", "Archive", wish=True),
                     self.step_cmd(
                         "reactivate",
                         "Reactivate",
@@ -110,11 +108,8 @@ class CustomerAdapter(PartnerSubresourcesMixin, FacadeAdapterBase):
                 "Release hold",
                 wish=True,
             ),
-            self.action_def(
-                "mergeInto", "Merge into", wish=True           ),
-            self.action_def(
-                "runCreditCheck", "Run credit check", wish=True
-            ),
+            self.action_def("mergeInto", "Merge into", wish=True),
+            self.action_def("runCreditCheck", "Run credit check", wish=True),
             self.action_def(
                 "statement",
                 "Open-items statement",

@@ -68,9 +68,7 @@ class GoodsReceiptAdapter(FacadeAdapterBase):
                     self.step_cmd(
                         "post",
                         "Post",
-                        wish=(
-                            True
-                        ),
+                        wish=(True),
                     ),
                     self.step_cmd(
                         "cancel",

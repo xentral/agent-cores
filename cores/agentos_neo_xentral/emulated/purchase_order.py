@@ -20,6 +20,7 @@ from .base import (
     _TIMEOUT,
     FacadeAdapterBase,
     goods_receipt_command,
+    goods_receipt_handle,
     goods_receipt_payload,
     line_price_net,
     line_qty,
@@ -759,7 +760,8 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
             ref_id=self._ref_id,
         )
         if error:
-            return self._json(422, {"title": f"createGoodsReceipt {error}"})
+            # Ours, not upstream's — see the same correction in Return._restock.
+            return self._refuse(422, f"createGoodsReceipt {error}")
 
         url = f"{base_url.rstrip('/')}/api/v1/purchaseOrders/{order['id']}/goodsReceipts"
         headers = self._headers(token, accept_language)
@@ -785,7 +787,15 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
         # workflow can read the receipt back instead of having to search for it.
         location = resp.headers.get("Location") or ""
         created = location.rstrip("/").rsplit("/", 1)[-1] if location else None
+        # The Location id is NUMERIC; the GoodsReceipt adapter reads by uuid. Resolve it
+        # so the handle we hand back can actually be read — see goods_receipt_handle.
+        handle = await goods_receipt_handle(created, base_url, headers, client)
         return self._json(
             201,
-            {"data": {"object": "goodsReceipt", "id": f"gr_{created}" if created else None}},
+            {
+                "data": {
+                    "object": "goodsReceipt",
+                    "id": handle or (f"gr_{created}" if created else None),
+                }
+            },
         )

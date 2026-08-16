@@ -183,10 +183,7 @@ class DeliveryNoteAdapter(FacadeAdapterBase):
                 "label": "Document status",
                 "commands": [
                     self.step_cmd("release", "Release"),
-                    self.step_cmd(
-                        "startPicking",
-                        "Start picking",
-                        wish=True                    ),
+                    self.step_cmd("startPicking", "Start picking", wish=True),
                     self.step_cmd("markDelivered", "Mark delivered"),
                     self.step_cmd("cancel", "Cancel"),
                 ],

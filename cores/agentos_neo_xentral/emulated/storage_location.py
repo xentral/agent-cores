@@ -201,9 +201,7 @@ class StorageLocationAdapter(FacadeAdapterBase):
                     ["product", "quantity", "reason"],
                 ),
             ),
-            self.action_def(
-                "printLabel", "Print label", wish=True
-            ),
+            self.action_def("printLabel", "Print label", wish=True),
         ]
 
     def fields(self) -> dict[str, dict[str, Any]]:

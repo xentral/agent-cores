@@ -130,9 +130,7 @@ class CreditNoteAdapter(FacadeAdapterBase):
                     self.step_cmd(
                         "cancel",
                         "Cancel",
-                        wish=(
-                            True
-                        ),
+                        wish=(True),
                     ),
                 ],
             }
@@ -146,10 +144,7 @@ class CreditNoteAdapter(FacadeAdapterBase):
                 destructive=True,
                 description="Send the credit note to the customer (v3 send — mails the document).",
             ),
-            self.action_def(
-                "registerRefund",
-                "Register refund",
-                wish=True            ),
+            self.action_def("registerRefund", "Register refund", wish=True),
             self.action_def(
                 "offsetAgainstInvoice",
                 "Offset against invoice",
