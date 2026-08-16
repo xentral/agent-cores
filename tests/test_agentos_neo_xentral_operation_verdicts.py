@@ -153,3 +153,20 @@ def test_one_failed_cleanup_outranks_the_successes_around_it() -> None:
     earlier failure, and an earlier success must not soften a later one."""
     assert verify._delete_verdict(PROVEN, 500) == "fail"
     assert verify._delete_verdict("fail", 204) == "fail"
+
+
+# ---- the note has to carry the upstream message ------------------------
+
+
+def test_a_wrapped_legacy_error_is_unwrapped_for_the_note() -> None:
+    """The legacy generations wrap it. Reading only the top level turned a response
+    that spells out the problem into the bare word "error" — measured on StockTake,
+    whose note read "answered 404: error"."""
+    wrapped = {"error": {"code": 7431, "http_code": 404, "message": "Route not found"}}
+    assert verify._err(wrapped) == "Route not found"
+
+
+def test_the_modern_shape_still_wins() -> None:
+    assert verify._err({"title": "Generic request validation failed."}) == (
+        "Generic request validation failed."
+    )

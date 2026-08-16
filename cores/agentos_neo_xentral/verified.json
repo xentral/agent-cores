@@ -24,7 +24,10 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:34:13+00:00"
+      "operations": {
+        "list": "pass"
+      },
+      "probedAt": "2026-08-16T08:09:59+00:00"
     },
     "Channel": {
       "fields": {
@@ -58,7 +61,11 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:28:52+00:00",
+      "operations": {
+        "list": "pass",
+        "read": "pass"
+      },
+      "probedAt": "2026-08-16T08:04:19+00:00",
       "unprobed": [
         "name.create",
         "name.update",
@@ -237,7 +244,14 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:33:16+00:00"
+      "operations": {
+        "create": "pass",
+        "delete": "pass",
+        "list": "pass",
+        "read": "pass",
+        "update": "pass"
+      },
+      "probedAt": "2026-08-16T08:09:04+00:00"
     },
     "CostCenter": {
       "fields": {
@@ -277,7 +291,14 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:33:28+00:00"
+      "operations": {
+        "create": "pass",
+        "delete": "pass",
+        "list": "pass",
+        "read": "pass",
+        "update": "pass"
+      },
+      "probedAt": "2026-08-16T08:09:15+00:00"
     },
     "CreditNote": {
       "actions": {
@@ -590,7 +611,14 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-16T07:12:43+00:00",
+      "operations": {
+        "create": "pass",
+        "delete": "pass",
+        "list": "pass",
+        "read": "pass",
+        "update": "pass"
+      },
+      "probedAt": "2026-08-16T08:00:46+00:00",
       "processSteps": {
         "release": "reachable"
       },
@@ -886,7 +914,14 @@
           "update": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:28:13+00:00",
+      "operations": {
+        "create": "pass",
+        "delete": "pass",
+        "list": "pass",
+        "read": "pass",
+        "update": "pass"
+      },
+      "probedAt": "2026-08-16T08:03:37+00:00",
       "unprobed": [
         "customFields.create",
         "customFields.update",
@@ -924,17 +959,20 @@
         },
         "conditions.cashDiscountRate": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
+          "readNote": "declared, but none of the 23 sampled records carries a value — nothing proven either way",
           "updateNote": "no sample numeric value — not probed (a null number cannot be restored)"
         },
         "conditions.freeShippingActive": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
+          "readNote": "declared, but none of the 23 sampled records carries a value — nothing proven either way",
           "updateNote": "no sample boolean value — not probed (a null flag cannot be restored)"
         },
         "conditions.freeShippingFrom": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
+          "readNote": "declared, but none of the 23 sampled records carries a value — nothing proven either way",
           "updateNote": "no sample numeric value — not probed (a null number cannot be restored)"
         },
         "conditions.paymentTermDays": {
@@ -987,7 +1025,14 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:32:10+00:00"
+      "operations": {
+        "create": "pass",
+        "delete": "pass",
+        "list": "pass",
+        "read": "pass",
+        "update": "pass"
+      },
+      "probedAt": "2026-08-16T08:07:55+00:00"
     },
     "DeliveryNote": {
       "actions": {
@@ -1291,7 +1336,14 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-16T07:11:48+00:00",
+      "operations": {
+        "create": "pass",
+        "delete": "pass",
+        "list": "pass",
+        "read": "pass",
+        "update": "pass"
+      },
+      "probedAt": "2026-08-16T07:59:42+00:00",
       "processSteps": {
         "cancel": "reachable",
         "markDelivered": "reachable",
@@ -1330,7 +1382,10 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:33:31+00:00"
+      "operations": {
+        "list": "pass"
+      },
+      "probedAt": "2026-08-16T08:09:19+00:00"
     },
     "EmailAccount": {
       "actions": {
@@ -1365,7 +1420,11 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:33:18+00:00"
+      "operations": {
+        "list": "pass",
+        "read": "pass"
+      },
+      "probedAt": "2026-08-16T08:09:06+00:00"
     },
     "Employee": {
       "fields": {
@@ -1387,7 +1446,10 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:33:41+00:00"
+      "operations": {
+        "list": "pass"
+      },
+      "probedAt": "2026-08-16T08:09:29+00:00"
     },
     "GoodsReceipt": {
       "fields": {
@@ -1483,7 +1545,11 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:26:44+00:00",
+      "operations": {
+        "list": "pass",
+        "read": "pass"
+      },
+      "probedAt": "2026-08-16T08:02:08+00:00",
       "unprobed": [
         "items.create",
         "items.update",
@@ -1513,7 +1579,11 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:34:10+00:00"
+      "operations": {
+        "list": "pass",
+        "read": "pass"
+      },
+      "probedAt": "2026-08-16T08:09:56+00:00"
     },
     "PaymentMethod": {
       "fields": {
@@ -1535,7 +1605,10 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:33:29+00:00"
+      "operations": {
+        "list": "pass"
+      },
+      "probedAt": "2026-08-16T08:09:16+00:00"
     },
     "PaymentTermsGroup": {
       "fields": {
@@ -1580,7 +1653,11 @@
           "readNote": "declared, but none of the 4 sampled records carries a value — nothing proven either way"
         }
       },
-      "probedAt": "2026-08-09T20:33:32+00:00"
+      "operations": {
+        "list": "pass",
+        "read": "pass"
+      },
+      "probedAt": "2026-08-16T08:09:20+00:00"
     },
     "PickingRun": {
       "fields": {
@@ -1705,7 +1782,11 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:31:49+00:00",
+      "operations": {
+        "list": "pass",
+        "read": "pass"
+      },
+      "probedAt": "2026-08-16T08:07:37+00:00",
       "unprobed": [
         "id.create",
         "strategy.create",
@@ -1802,7 +1883,14 @@
           "update": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:30:37+00:00"
+      "operations": {
+        "create": "pass",
+        "delete": "pass",
+        "list": "pass",
+        "read": "pass",
+        "update": "pass"
+      },
+      "probedAt": "2026-08-16T08:06:04+00:00"
     },
     "Printer": {
       "actions": {
@@ -1849,7 +1937,10 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:33:17+00:00"
+      "operations": {
+        "list": "pass"
+      },
+      "probedAt": "2026-08-16T08:09:05+00:00"
     },
     "Product": {
       "fields": {
@@ -2249,7 +2340,14 @@
           "readNote": "declared, but none of the 111 sampled records carries a value — nothing proven either way"
         }
       },
-      "probedAt": "2026-08-09T20:30:28+00:00",
+      "operations": {
+        "create": "pass",
+        "delete": "pass",
+        "list": "pass",
+        "read": "pass",
+        "update": "pass"
+      },
+      "probedAt": "2026-08-16T08:05:52+00:00",
       "unprobed": [
         "kind.create",
         "logistics.packagingUnits.create",
@@ -2410,7 +2508,14 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:34:09+00:00"
+      "operations": {
+        "create": "pass",
+        "delete": "pass",
+        "list": "pass",
+        "read": "pass",
+        "update": "pass"
+      },
+      "probedAt": "2026-08-16T08:09:55+00:00"
     },
     "ProductFreeField": {
       "fields": {
@@ -2425,7 +2530,11 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:34:12+00:00"
+      "operations": {
+        "list": "pass",
+        "read": "pass"
+      },
+      "probedAt": "2026-08-16T08:09:59+00:00"
     },
     "ProductProperty": {
       "fields": {
@@ -2442,7 +2551,10 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:34:10+00:00"
+      "operations": {
+        "list": "pass"
+      },
+      "probedAt": "2026-08-16T08:09:57+00:00"
     },
     "ProductTag": {
       "fields": {
@@ -2460,7 +2572,10 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:34:11+00:00"
+      "operations": {
+        "list": "pass"
+      },
+      "probedAt": "2026-08-16T08:09:58+00:00"
     },
     "Project": {
       "fields": {
@@ -2507,7 +2622,10 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:33:39+00:00"
+      "operations": {
+        "list": "pass"
+      },
+      "probedAt": "2026-08-16T08:09:26+00:00"
     },
     "PurchaseInvoice": {
       "fields": {
@@ -2734,7 +2852,14 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:27:04+00:00",
+      "operations": {
+        "create": "pass",
+        "delete": "pass",
+        "list": "pass",
+        "read": "pass",
+        "update": "pass"
+      },
+      "probedAt": "2026-08-16T08:02:27+00:00",
       "unprobed": [
         "approval.status.update",
         "match.status.update"
@@ -3060,7 +3185,14 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-16T07:13:59+00:00",
+      "operations": {
+        "create": "pass",
+        "delete": "pass",
+        "list": "pass",
+        "read": "pass",
+        "update": "pass"
+      },
+      "probedAt": "2026-08-16T08:02:05+00:00",
       "processSteps": {
         "cancel": "reachable",
         "close": "reachable",
@@ -3167,7 +3299,14 @@
           "updateNote": "no sample date value — not probed (a null date cannot be restored)"
         }
       },
-      "probedAt": "2026-08-09T20:30:48+00:00"
+      "operations": {
+        "create": "pass",
+        "delete": "pass",
+        "list": "pass",
+        "read": "pass",
+        "update": "pass"
+      },
+      "probedAt": "2026-08-16T08:06:16+00:00"
     },
     "Quote": {
       "actions": {
@@ -3528,7 +3667,14 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-16T07:08:21+00:00",
+      "operations": {
+        "create": "pass",
+        "delete": "pass",
+        "list": "pass",
+        "read": "pass",
+        "update": "pass"
+      },
+      "probedAt": "2026-08-16T07:56:29+00:00",
       "processSteps": {
         "cancel": "reachable",
         "release": "reachable"
@@ -3800,7 +3946,14 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-16T07:13:21+00:00",
+      "operations": {
+        "create": "pass",
+        "delete": "pass",
+        "list": "pass",
+        "read": "pass",
+        "update": "pass"
+      },
+      "probedAt": "2026-08-16T08:01:27+00:00",
       "processSteps": {
         "cancel": "reachable",
         "release": "reachable",
@@ -3850,7 +4003,10 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:33:30+00:00"
+      "operations": {
+        "list": "pass"
+      },
+      "probedAt": "2026-08-16T08:09:18+00:00"
     },
     "SalesInvoice": {
       "actions": {
@@ -4192,8 +4348,7 @@
           "update": "pass"
         },
         "references.debtorAccountNumber": {
-          "read": "unobserved",
-          "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way",
+          "read": "pass",
           "update": "fail",
           "updateNote": "upstream accepted the write but the value did not persist"
         },
@@ -4254,7 +4409,14 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-16T07:11:14+00:00",
+      "operations": {
+        "create": "pass",
+        "delete": "pass",
+        "list": "pass",
+        "read": "pass",
+        "update": "pass"
+      },
+      "probedAt": "2026-08-16T07:59:04+00:00",
       "processSteps": {
         "cancel": "executed",
         "release": "reachable"
@@ -4795,14 +4957,22 @@
         "updatedAt": {
           "filter": "pass",
           "read": "pass",
-          "sort": "pass"
+          "sort": "accepted",
+          "sortNote": "fewer than two distinct values on the page — order not assertable"
         },
         "writeProtection": {
           "filter": "pass",
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-16T07:09:59+00:00",
+      "operations": {
+        "create": "pass",
+        "delete": "pass",
+        "list": "pass",
+        "read": "pass",
+        "update": "pass"
+      },
+      "probedAt": "2026-08-16T07:57:58+00:00",
       "processSteps": {
         "cancel": "reachable",
         "close": "reachable",
@@ -4943,7 +5113,14 @@
           "readNote": "no sampled record carries 'weight', so the leaf could not be observed — nothing proven either way"
         }
       },
-      "probedAt": "2026-08-09T20:30:49+00:00",
+      "operations": {
+        "list": "pass",
+        "read": "fail"
+      },
+      "operationsNotes": {
+        "read": "GET /shp_2 answered 500: Server Error"
+      },
+      "probedAt": "2026-08-16T08:13:16+00:00",
       "unprobed": [
         "id.create",
         "tracking.number.search"
@@ -4979,7 +5156,157 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:33:30+00:00"
+      "operations": {
+        "list": "pass",
+        "read": "pass"
+      },
+      "probedAt": "2026-08-16T08:09:17+00:00"
+    },
+    "StockMovement": {
+      "fields": {
+        "batch": {
+          "read": "unobserved",
+          "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way"
+        },
+        "bookedAt": {
+          "filter": "pass",
+          "read": "pass",
+          "sort": "pass"
+        },
+        "causedBy": {
+          "read": "pass"
+        },
+        "causedBy.id": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "causedBy.record": {
+          "read": "pass"
+        },
+        "causedBy.type": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "createdAt": {
+          "filter": "pass",
+          "read": "pass",
+          "sort": "pass"
+        },
+        "direction": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "from": {
+          "read": "unobserved",
+          "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way"
+        },
+        "id": {
+          "filter": "accepted",
+          "filterNote": "accepted, but returned nothing — the record the value came from is missing",
+          "read": "pass",
+          "sort": "pass"
+        },
+        "object": {
+          "read": "pass"
+        },
+        "product": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "project": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "unobserved",
+          "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way"
+        },
+        "quantity": {
+          "read": "pass",
+          "sort": "accepted",
+          "sortNote": "fewer than two distinct values on the page — order not assertable"
+        },
+        "quantity.unit": {
+          "read": "unobserved",
+          "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way"
+        },
+        "quantity.value": {
+          "read": "pass"
+        },
+        "setQuantityTo": {
+          "read": "unobserved",
+          "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way"
+        },
+        "source": {
+          "read": "pass"
+        },
+        "source.editor": {
+          "filter": "pass",
+          "read": "pass",
+          "search": "pass"
+        },
+        "source.reason": {
+          "filter": "pass",
+          "read": "pass",
+          "search": "pass"
+        },
+        "stockLevelAfter": {
+          "read": "pass"
+        },
+        "stockMovementType": {
+          "read": "unobserved",
+          "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way"
+        },
+        "stockMovementType.id": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "unobserved",
+          "readNote": "no sampled record carries 'stockMovementType', so the leaf could not be observed — nothing proven either way"
+        },
+        "stockTransactionId": {
+          "read": "unobserved",
+          "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way"
+        },
+        "storageLocation": {
+          "filter": "pass",
+          "read": "pass"
+        },
+        "systemType": {
+          "read": "unobserved",
+          "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way"
+        },
+        "to": {
+          "read": "unobserved",
+          "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way"
+        },
+        "type": {
+          "read": "unobserved",
+          "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way"
+        },
+        "unitCost": {
+          "read": "pass"
+        },
+        "unitCost.amount": {
+          "read": "unobserved",
+          "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way"
+        },
+        "unitCost.currency": {
+          "read": "unobserved",
+          "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way"
+        },
+        "updatedAt": {
+          "read": "pass"
+        },
+        "warehouse": {
+          "filterNote": "no sample value on the test instance — filter not probed",
+          "read": "unobserved",
+          "readNote": "declared, but none of the 110 sampled records carries a value — nothing proven either way"
+        }
+      },
+      "operations": {
+        "list": "pass",
+        "read": "pass"
+      },
+      "probedAt": "2026-08-16T08:06:35+00:00",
+      "unprobed": [
+        "id.create"
+      ]
     },
     "StockTake": {
       "fields": {
@@ -5094,7 +5421,14 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:31:48+00:00",
+      "operations": {
+        "list": "pass",
+        "read": "fail"
+      },
+      "operationsNotes": {
+        "read": "GET /stk_019bd6c3-deca-7798-b744-4a4a1e945bb8 answered 404: Route not found"
+      },
+      "probedAt": "2026-08-16T08:14:05+00:00",
       "unprobed": [
         "id.create",
         "positions.counted.update"
@@ -5232,7 +5566,14 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:31:47+00:00",
+      "operations": {
+        "create": "pass",
+        "delete": "pass",
+        "list": "pass",
+        "read": "pass",
+        "update": "pass"
+      },
+      "probedAt": "2026-08-16T08:07:35+00:00",
       "unprobed": [
         "description.create",
         "description.update"
@@ -5524,7 +5865,14 @@
           "update": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:28:48+00:00",
+      "operations": {
+        "create": "pass",
+        "delete": "pass",
+        "list": "pass",
+        "read": "pass",
+        "update": "pass"
+      },
+      "probedAt": "2026-08-16T08:04:13+00:00",
       "unprobed": [
         "customFields.create",
         "customFields.update",
@@ -5568,7 +5916,11 @@
           "sort": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:31:53+00:00"
+      "operations": {
+        "list": "pass",
+        "read": "pass"
+      },
+      "probedAt": "2026-08-16T08:07:41+00:00"
     },
     "Task": {
       "fields": {
@@ -5703,7 +6055,8 @@
         },
         "timeTracking.hours": {
           "create": "pass",
-          "read": "pass",
+          "read": "unobserved",
+          "readNote": "declared, but none of the 25 sampled records carries a value — nothing proven either way",
           "updateNote": "no sample numeric value — not probed (a null number cannot be restored)"
         },
         "timeTracking.loggedAt": {
@@ -5747,7 +6100,14 @@
           "update": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:32:38+00:00",
+      "operations": {
+        "create": "pass",
+        "delete": "pass",
+        "list": "pass",
+        "read": "pass",
+        "update": "pass"
+      },
+      "probedAt": "2026-08-16T08:08:24+00:00",
       "unprobed": [
         "assignee.create",
         "assignee.update",
@@ -5793,7 +6153,10 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:33:34+00:00"
+      "operations": {
+        "list": "pass"
+      },
+      "probedAt": "2026-08-16T08:09:21+00:00"
     },
     "TextTemplate": {
       "fields": {
@@ -5816,7 +6179,11 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:34:15+00:00"
+      "operations": {
+        "list": "pass",
+        "read": "pass"
+      },
+      "probedAt": "2026-08-16T08:10:05+00:00"
     },
     "User": {
       "fields": {
@@ -5855,7 +6222,10 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:33:40+00:00"
+      "operations": {
+        "list": "pass"
+      },
+      "probedAt": "2026-08-16T08:09:28+00:00"
     },
     "Warehouse": {
       "fields": {
@@ -5875,7 +6245,13 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:33:37+00:00"
+      "operations": {
+        "create": "pass",
+        "delete": "pass",
+        "list": "pass",
+        "update": "pass"
+      },
+      "probedAt": "2026-08-16T08:09:25+00:00"
     },
     "Webhook": {
       "fields": {
@@ -5898,7 +6274,11 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:34:14+00:00"
+      "operations": {
+        "list": "pass",
+        "read": "pass"
+      },
+      "probedAt": "2026-08-16T08:10:03+00:00"
     },
     "WebhookEventType": {
       "fields": {
@@ -5912,10 +6292,13 @@
           "read": "pass"
         }
       },
-      "probedAt": "2026-08-09T20:34:14+00:00"
+      "operations": {
+        "list": "pass"
+      },
+      "probedAt": "2026-08-16T08:10:04+00:00"
     }
   },
-  "generatedAt": "2026-08-16T07:13:59+00:00",
+  "generatedAt": "2026-08-16T08:14:05+00:00",
   "instance": "a2ad4180-0d41-4360-8044-9dca0c35608a",
   "schemaVersion": 2
 }

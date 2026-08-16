@@ -266,7 +266,7 @@ documents:
       discounts.amount: {type: string}
       customFields: {type: embedded}
       createdAt: {type: datetime, ops: [filter, sort], proven: [filter, sort]}
-      updatedAt: {type: datetime, ops: [filter, sort], proven: [filter, sort]}
+      updatedAt: {type: datetime, ops: [filter, sort], proven: [filter]}
     can:
       createSalesInvoice: {evidence: executed}
       split: {evidence: reachable}
@@ -989,15 +989,15 @@ documents:
     operations: [list, read, create]
     fields:
       object: {type: string}
-      id: {type: string, ops: [filter, sort]}
-      direction: {type: select, ops: [filter], options: [inbound, outbound]}
+      id: {type: string, ops: [filter, sort], proven: [sort]}
+      direction: {type: select, ops: [filter], options: [inbound, outbound], proven: [filter]}
       type: {type: select, required: true, ops: [create], options: [receipt, issue, transfer, correction]}
-      product: {type: reference, ref: Product, required: true, ops: [create, filter]}
+      product: {type: reference, ref: Product, required: true, ops: [create, filter], proven: [filter]}
       quantity: {type: embedded, ops: [create, sort]}
       quantity.value: {type: decimal, ops: [create]}
       quantity.unit: {type: string, ops: [create]}
       stockLevelAfter: {type: decimal}
-      storageLocation: {type: reference, ref: StorageLocation, ops: [filter]}
+      storageLocation: {type: reference, ref: StorageLocation, ops: [filter], proven: [filter]}
       warehouse: {type: reference, ref: Warehouse, ops: [filter]}
       from: {type: reference, ref: StorageLocation, ops: [create]}
       to: {type: reference, ref: StorageLocation, ops: [create]}
@@ -1008,18 +1008,18 @@ documents:
       unitCost.currency: {type: string}
       project: {type: reference, ref: Project, ops: [filter]}
       causedBy: {type: embedded}
-      causedBy.type: {type: select, ops: [filter], options: [offer, salesOrder, deliveryNote, invoice, creditNote, proformaInvoice, returnOrder, purchaseOrder, production, inventoryRun, goodsPostingDocument, parcelReceipt, serviceOrder]}
-      causedBy.id: {type: string, ops: [filter]}
+      causedBy.type: {type: select, ops: [filter], options: [offer, salesOrder, deliveryNote, invoice, creditNote, proformaInvoice, returnOrder, purchaseOrder, production, inventoryRun, goodsPostingDocument, parcelReceipt, serviceOrder], proven: [filter]}
+      causedBy.id: {type: string, ops: [filter], proven: [filter]}
       causedBy.record: {type: reference}
       stockMovementType: {type: embedded}
       stockMovementType.id: {type: string, ops: [filter]}
       systemType: {type: string}
       stockTransactionId: {type: string}
       source: {type: embedded, ops: [create]}
-      source.reason: {type: string, ops: [create, filter, search]}
-      source.editor: {type: string, ops: [filter, search]}
-      bookedAt: {type: datetime, ops: [filter, sort]}
-      createdAt: {type: datetime, ops: [filter, sort]}
+      source.reason: {type: string, ops: [create, filter, search], proven: [filter, search]}
+      source.editor: {type: string, ops: [filter, search], proven: [filter, search]}
+      bookedAt: {type: datetime, ops: [filter, sort], proven: [filter, sort]}
+      createdAt: {type: datetime, ops: [filter, sort], proven: [filter, sort]}
       updatedAt: {type: datetime}
   StockTake:
     label: Stock take

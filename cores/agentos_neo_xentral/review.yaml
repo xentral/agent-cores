@@ -5,7 +5,7 @@
 # it was built from, so a diff here means a fact moved, not that it was re-run.
 core: agentos_neo_xentral
 source:
-  probedAt: '2026-08-16T07:13:59+00:00'
+  probedAt: '2026-08-16T08:14:05+00:00'
   instance: a2ad4180-0d41-4360-8044-9dca0c35608a
 totals:
   required: 80
@@ -1818,9 +1818,11 @@ entities:
     - field: unitCost
       ops:
       - read
-      status: open
+      status: recheck
       reason: Movement valuation (unitCost at booking time) is required for GoBD-clean
         stock accounting (ADR-009e) — nothing upstream.
+      nowProven:
+      - read
   StockTake:
     reviewed: 2026-08-09
     capabilities:
