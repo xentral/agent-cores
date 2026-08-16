@@ -1053,7 +1053,7 @@
         "removeWriteProtection": "writeProtection True → False, read back from the record — net-zero roundtrip",
         "setWriteProtection": "writeProtection False → True, read back from the record — net-zero roundtrip"
       },
-      "actionsProbedAt": "2026-08-16T07:11:48+00:00",
+      "actionsProbedAt": "2026-08-16T10:36:30+00:00",
       "fields": {
         "channel": {
           "read": "unobserved",
@@ -1343,16 +1343,16 @@
         "read": "pass",
         "update": "pass"
       },
-      "probedAt": "2026-08-16T07:59:42+00:00",
+      "probedAt": "2026-08-16T10:36:30+00:00",
       "processSteps": {
-        "cancel": "reachable",
+        "cancel": "pass",
         "markDelivered": "reachable",
-        "release": "reachable"
+        "release": "pass"
       },
       "processStepsNotes": {
-        "cancel": "reachable — 409 from upstream: Resource status invalid for requested operation",
+        "cancel": "the released document went to 'cancelled' — effect read back; dn_1427 (301297) stays cancelled, a released document cannot be deleted",
         "markDelivered": "reachable — 409 from upstream: Resource status invalid for requested operation",
-        "release": "reachable — 409 from upstream: Resource status invalid for requested operation"
+        "release": "a draft this probe created left 'draft' for 'picking' and took number 301297 from the range — effect read back from the record"
       },
       "unprobed": [
         "customFields.create",
@@ -2882,7 +2882,7 @@
         "send": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma",
         "setWriteProtection": "writeProtection False → True, read back from the record — net-zero roundtrip"
       },
-      "actionsProbedAt": "2026-08-16T07:13:59+00:00",
+      "actionsProbedAt": "2026-08-16T10:37:46+00:00",
       "fields": {
         "confirmation": {
           "read": "pass"
@@ -3192,16 +3192,16 @@
         "read": "pass",
         "update": "pass"
       },
-      "probedAt": "2026-08-16T08:02:05+00:00",
+      "probedAt": "2026-08-16T10:37:46+00:00",
       "processSteps": {
-        "cancel": "reachable",
+        "cancel": "pass",
         "close": "reachable",
-        "release": "reachable"
+        "release": "pass"
       },
       "processStepsNotes": {
-        "cancel": "reachable — 409 from upstream: Resource status invalid for requested operation",
+        "cancel": "the released document went to 'cancelled' — effect read back; po_193 (100054) stays cancelled, a released document cannot be deleted",
         "close": "reachable — 409 from upstream: Resource status invalid for requested operation",
-        "release": "reachable — 409 from upstream: Resource status invalid for requested operation"
+        "release": "a draft this probe created left 'draft' for 'sent' and took number 100054 from the range — effect read back from the record"
       },
       "unprobed": [
         "confirmation.status.update",
@@ -3325,7 +3325,7 @@
         "send": "reachable — 400: At least one of email, printer or markAsSent must be provided. (and 2 more errors) {\"email\": [\"At least one of email, printer or markAsSent must be provided.\"], \"printer\": [\"At least one of email, printer or markAsSent must be provided.\"], \"ma",
         "setWriteProtection": "writeProtection False → True, read back from the record — net-zero roundtrip"
       },
-      "actionsProbedAt": "2026-08-16T07:08:21+00:00",
+      "actionsProbedAt": "2026-08-16T10:34:12+00:00",
       "fields": {
         "billingAddress": {
           "read": "pass"
@@ -3372,12 +3372,12 @@
         },
         "channel": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 18 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 20 sampled records carries a value — nothing proven either way"
         },
         "costCenter": {
           "create": "pass",
           "read": "unobserved",
-          "readNote": "declared, but none of the 18 sampled records carries a value — nothing proven either way",
+          "readNote": "declared, but none of the 20 sampled records carries a value — nothing proven either way",
           "update": "pass"
         },
         "createdAt": {
@@ -3392,7 +3392,7 @@
         },
         "customFields": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 18 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 20 sampled records carries a value — nothing proven either way"
         },
         "customer": {
           "create": "pass",
@@ -3405,7 +3405,7 @@
         "dates.expectedOrderDate": {
           "filterNote": "no sample value on the test instance — filter not probed",
           "read": "unobserved",
-          "readNote": "declared, but none of the 18 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 20 sampled records carries a value — nothing proven either way"
         },
         "dates.issued": {
           "create": "pass",
@@ -3417,7 +3417,7 @@
         "dates.requestedDelivery": {
           "filterNote": "no sample value on the test instance — filter not probed",
           "read": "unobserved",
-          "readNote": "declared, but none of the 18 sampled records carries a value — nothing proven either way",
+          "readNote": "declared, but none of the 20 sampled records carries a value — nothing proven either way",
           "updateNote": "no sample date value — not probed (a null date cannot be restored)"
         },
         "dates.validUntil": {
@@ -3431,7 +3431,7 @@
         },
         "documents.salesOrders": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 18 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 20 sampled records carries a value — nothing proven either way"
         },
         "documents.salesOrders.id": {
           "read": "unobserved",
@@ -3474,7 +3474,7 @@
         },
         "items.priceSource": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 18 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 20 sampled records carries a value — nothing proven either way"
         },
         "items.product": {
           "create": "pass",
@@ -3593,8 +3593,7 @@
         },
         "shippingAddress.email": {
           "create": "pass",
-          "read": "unobserved",
-          "readNote": "declared, but none of the 18 sampled records carries a value — nothing proven either way",
+          "read": "pass",
           "update": "pass"
         },
         "shippingAddress.name": {
@@ -3604,8 +3603,7 @@
         },
         "shippingAddress.phone": {
           "create": "pass",
-          "read": "unobserved",
-          "readNote": "declared, but none of the 18 sampled records carries a value — nothing proven either way",
+          "read": "pass",
           "update": "pass"
         },
         "shippingAddress.street": {
@@ -3615,7 +3613,7 @@
         },
         "shippingAddress.vatId": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 18 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 20 sampled records carries a value — nothing proven either way"
         },
         "shippingAddress.zip": {
           "create": "pass",
@@ -3674,14 +3672,14 @@
         "read": "pass",
         "update": "pass"
       },
-      "probedAt": "2026-08-16T07:56:29+00:00",
+      "probedAt": "2026-08-16T10:34:12+00:00",
       "processSteps": {
-        "cancel": "reachable",
-        "release": "reachable"
+        "cancel": "pass",
+        "release": "pass"
       },
       "processStepsNotes": {
-        "cancel": "reachable — 409 from upstream: Resource status invalid for requested operation",
-        "release": "reachable — 409 from upstream: Resource status invalid for requested operation"
+        "cancel": "the released document went to 'cancelled' — effect read back; quo_123 (2026-30006) stays cancelled, a released document cannot be deleted",
+        "release": "a draft this probe created left 'draft' for 'sent' and took number 2026-30006 from the range — effect read back from the record"
       },
       "unprobed": [
         "customFields.create",
@@ -3723,7 +3721,7 @@
         "removeWriteProtection": "writeProtection True → False, read back from the record — net-zero roundtrip",
         "setWriteProtection": "writeProtection False → True, read back from the record — net-zero roundtrip"
       },
-      "actionsProbedAt": "2026-08-16T07:13:21+00:00",
+      "actionsProbedAt": "2026-08-16T10:49:50+00:00",
       "fields": {
         "billingAddress": {
           "read": "pass"
@@ -3760,8 +3758,7 @@
         },
         "billingAddress.vatId": {
           "create": "pass",
-          "read": "unobserved",
-          "readNote": "declared, but none of the 92 sampled records carries a value — nothing proven either way",
+          "read": "pass",
           "update": "pass"
         },
         "billingAddress.zip": {
@@ -3776,7 +3773,7 @@
         },
         "customFields": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 92 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 93 sampled records carries a value — nothing proven either way"
         },
         "customer": {
           "create": "pass",
@@ -3788,19 +3785,18 @@
         },
         "dates.received": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 92 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 93 sampled records carries a value — nothing proven either way"
         },
         "dates.requested": {
           "create": "pass",
           "filter": "pass",
           "read": "pass",
-          "sort": "accepted",
-          "sortNote": "fewer than two distinct values on the page — order not assertable",
+          "sort": "pass",
           "update": "pass"
         },
         "dates.settled": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 92 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 93 sampled records carries a value — nothing proven either way"
         },
         "documents": {
           "read": "pass"
@@ -3820,11 +3816,11 @@
         },
         "items.action": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 92 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 93 sampled records carries a value — nothing proven either way"
         },
         "items.condition": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 92 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 93 sampled records carries a value — nothing proven either way"
         },
         "items.creditedQuantity": {
           "read": "pass"
@@ -3894,7 +3890,7 @@
         },
         "references.rmaNumber": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 92 sampled records carries a value — nothing proven either way",
+          "readNote": "declared, but none of the 93 sampled records carries a value — nothing proven either way",
           "searchNote": "not probed — this core has no search path for the field, so no query was ever sent to the ERP",
           "updateNote": "not probed — this core does not write the field, so the request never reached the ERP (409 from our own facade, ADR-014)"
         },
@@ -3939,7 +3935,7 @@
         },
         "warehouse": {
           "read": "unobserved",
-          "readNote": "declared, but none of the 92 sampled records carries a value — nothing proven either way"
+          "readNote": "declared, but none of the 93 sampled records carries a value — nothing proven either way"
         },
         "writeProtection": {
           "filter": "pass",
@@ -3953,15 +3949,15 @@
         "read": "pass",
         "update": "pass"
       },
-      "probedAt": "2026-08-16T08:01:27+00:00",
+      "probedAt": "2026-08-16T10:49:50+00:00",
       "processSteps": {
-        "cancel": "reachable",
-        "release": "reachable",
+        "cancel": "pass",
+        "release": "pass",
         "settle": "reachable"
       },
       "processStepsNotes": {
-        "cancel": "reachable — 409 from upstream: Resource status invalid for requested operation",
-        "release": "reachable — 409 from upstream: Resource status invalid for requested operation",
+        "cancel": "the released document went to 'cancelled' — effect read back; ret_156 (500078) stays cancelled, a released document cannot be deleted",
+        "release": "an unreleased document this probe created stayed 'requested' and took number 500078 from the range — effect read back from the record",
         "settle": "reachable — 409 from upstream: Resource status invalid for requested operation"
       },
       "unprobed": [
@@ -4466,7 +4462,7 @@
         "split": "reachable — 400: Generic request validation failed.",
         "splitOrder": "reachable — 422: splitOrder needs command.items = [{lineItem|product, quantity}]"
       },
-      "actionsProbedAt": "2026-08-16T07:09:59+00:00",
+      "actionsProbedAt": "2026-08-16T10:47:41+00:00",
       "fields": {
         "billingAddress": {
           "read": "pass"
@@ -4972,18 +4968,18 @@
         "read": "pass",
         "update": "pass"
       },
-      "probedAt": "2026-08-16T07:57:58+00:00",
+      "probedAt": "2026-08-16T10:47:41+00:00",
       "processSteps": {
-        "cancel": "reachable",
+        "cancel": "pass",
         "close": "reachable",
         "dispatch": "reachable",
-        "release": "reachable"
+        "release": "pass"
       },
       "processStepsNotes": {
-        "cancel": "reachable — 409 from upstream: Resource status invalid for requested operation",
+        "cancel": "the released document went to 'cancelled' — effect read back; so_22983 (221969) stays cancelled, a released document cannot be deleted",
         "close": "reachable — 409 from upstream: Resource status invalid for requested operation",
         "dispatch": "reachable — 400: Generic request validation failed.",
-        "release": "reachable — 409 from upstream: Resource status invalid for requested operation"
+        "release": "an unreleased document this probe created left 'draft' for 'confirmed' and took number 221969 from the range — effect read back from the record"
       },
       "unprobed": [
         "customFields.create",
@@ -6298,7 +6294,7 @@
       "probedAt": "2026-08-16T08:10:04+00:00"
     }
   },
-  "generatedAt": "2026-08-16T08:14:05+00:00",
+  "generatedAt": "2026-08-16T10:49:50+00:00",
   "instance": "a2ad4180-0d41-4360-8044-9dca0c35608a",
   "schemaVersion": 2
 }

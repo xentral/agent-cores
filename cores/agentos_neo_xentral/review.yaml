@@ -5,12 +5,12 @@
 # it was built from, so a diff here means a fact moved, not that it was re-run.
 core: agentos_neo_xentral
 source:
-  probedAt: '2026-08-16T08:14:05+00:00'
+  probedAt: '2026-08-16T10:49:50+00:00'
   instance: a2ad4180-0d41-4360-8044-9dca0c35608a
 totals:
   required: 80
-  proven: 39
-  unproven: 41
+  proven: 49
+  unproven: 31
   acceptedGaps: 100
   fieldRequirements: 145
   reviewedEntities: 23
@@ -138,8 +138,8 @@ entities:
     - key: cancel
       requirement: required
       implementation: built
-      evidence: reachable
-      proven: false
+      evidence: pass
+      proven: true
     - key: convertToSalesOrder
       requirement: acceptedGap
       implementation: blockedUpstream
@@ -182,8 +182,8 @@ entities:
     - key: release
       requirement: required
       implementation: built
-      evidence: reachable
-      proven: false
+      evidence: pass
+      proven: true
     - key: removeTag
       requirement: required
       implementation: built
@@ -311,8 +311,8 @@ entities:
     - key: cancel
       requirement: required
       implementation: built
-      evidence: reachable
-      proven: false
+      evidence: pass
+      proven: true
     - key: close
       requirement: required
       implementation: built
@@ -355,8 +355,8 @@ entities:
     - key: release
       requirement: required
       implementation: built
-      evidence: reachable
-      proven: false
+      evidence: pass
+      proven: true
     - key: releaseHold
       requirement: acceptedGap
       implementation: blockedUpstream
@@ -498,8 +498,8 @@ entities:
     - key: cancel
       requirement: required
       implementation: built
-      evidence: reachable
-      proven: false
+      evidence: pass
+      proven: true
     - key: createReturn
       requirement: required
       implementation: built
@@ -536,8 +536,8 @@ entities:
     - key: release
       requirement: required
       implementation: built
-      evidence: reachable
-      proven: false
+      evidence: pass
+      proven: true
     - key: removeTag
       requirement: required
       implementation: built
@@ -884,8 +884,8 @@ entities:
     - key: cancel
       requirement: required
       implementation: built
-      evidence: reachable
-      proven: false
+      evidence: pass
+      proven: true
     - key: check
       requirement: acceptedGap
       implementation: blockedUpstream
@@ -923,8 +923,8 @@ entities:
     - key: release
       requirement: required
       implementation: built
-      evidence: reachable
-      proven: false
+      evidence: pass
+      proven: true
     - key: removeTag
       requirement: required
       implementation: built
@@ -1239,8 +1239,8 @@ entities:
     - key: cancel
       requirement: required
       implementation: built
-      evidence: reachable
-      proven: false
+      evidence: pass
+      proven: true
     - key: close
       requirement: required
       implementation: built
@@ -1272,8 +1272,8 @@ entities:
     - key: release
       requirement: required
       implementation: built
-      evidence: reachable
-      proven: false
+      evidence: pass
+      proven: true
     - key: removeTag
       requirement: required
       implementation: built

@@ -153,6 +153,33 @@ _ACTIONS_ONLY = {
 # — it leaves a clearly-labelled record behind. Opt-in so a normal run stays clean;
 # entities that DO have delete (PriceList, PurchasePrice) always run net-zero.
 _PROBE_CREATE_NONZERO = os.environ.get("VERIFY_CREATE_NONZERO") == "1"
+# `release` is the other input-free action: an empty command does not get refused,
+# it COMMITS. Today it hides behind the sampled record's state (a released document
+# answers 409), so the run has never actually released anything — but sample a draft
+# and it will, silently, and the document takes a number from the range on its way.
+#
+# Effect-checking it therefore cannot be a round trip. Measured on mvp: create →
+# draft, release → status `sent` AND number `2026-30005`, cancel → status
+# `cancelled`, delete → 409 (only drafts are deletable). So the document stays. What
+# the probe CAN do is confine that to a document it made itself and then cancel it,
+# which costs exactly one cancelled document and one number per entity — and proves
+# `release` and `cancel` together, both of which have only ever been `reachable`.
+#
+# That is a real cost on a real tenant, so it is opt-in and never implied by
+# VERIFY_ACTIONS.
+_PROBE_RELEASE = os.environ.get("VERIFY_RELEASE") == "1"
+# Documents whose reversal is a status flip on the SAME record. SalesInvoice and
+# CreditNote are deliberately absent and must stay absent:
+#   SalesInvoice  `cancel` is not a status flip — it POSTs a cancellation credit
+#                 note (GoBD; a released invoice is write-protected). Releasing one
+#                 cannot be undone, only answered with a SECOND permanent numbered
+#                 document, so the probe would book two.
+#   CreditNote    v3 exposes no cancel at all; only the legacy UI can do it. A
+#                 released credit note would stay released forever.
+_RELEASE_REVERSIBLE = ("Quote", "SalesOrder", "DeliveryNote", "Return", "PurchaseOrder")
+# Says what it is on the document itself, so a cancelled probe document found in the
+# tenant explains itself without anyone having to find this file.
+_RELEASE_NOTE = "verify release probe — safe to delete"
 # Comma-separated entity keys to (re)probe; when set, the run MERGES into the
 # existing verified.json instead of overwriting it — fast, low-side-effect
 # re-checks of just the entities you care about (e.g. VERIFY_ONLY=Product).
@@ -1227,6 +1254,161 @@ async def _probe_tag_actions(
             else f"removeTag with fresh title → {st}: {_err(pl)}",
         )
     await _delete_catalogue_tag(adapter, title, base_url, token)
+    return out
+
+
+async def _probe_release_fallback(
+    adapter: Any, action_key: str, sample_id: str, sample: dict[str, Any], base_url: str, token: str
+) -> tuple[str | None, str | None]:
+    """The generic probe for `release`, but only where it cannot commit.
+
+    `release` takes no input, so the empty command is not refused at validation the
+    way `send` or `splitOrder` are — it runs. That it has never actually released
+    anything is luck, not design: the sampled documents are already released and
+    upstream answers 409 on their state. Sample a DRAFT and the identical call
+    releases it, takes a number from the range, and records `executed` as the only
+    trace of a document that now exists in the merchant's books.
+
+    So the sample's state decides. A draft is left alone and stays untested (None),
+    which is honest; anything else is safe to poke and still earns its `reachable`.
+    """
+    if str(sample.get("status") or "") == "draft":
+        print(f"    ({adapter.manifest.key}.{action_key}: sample is a draft — not probed)")
+        return None, None
+    return await _probe_action(adapter, action_key, sample_id, base_url, token)
+
+
+async def _probe_release_cancel(
+    adapter: Any,
+    body: dict[str, Any],
+    partner_field: str,
+    partner_ids: list[str],
+    base_url: str,
+    token: str,
+) -> dict[str, tuple[str, str]]:
+    """Effect-checked `release` (and `cancel` with it), on a document we made.
+
+    NOT net-zero, and it cannot be — see `_PROBE_RELEASE`. The point is to confine
+    the damage: the probe never touches a sampled record, only a draft it created,
+    and it cancels that draft afterwards so nothing is left in a live state.
+
+    The effect is read off the RECORD, twice over, because release leaves two
+    independent traces: the status moves off `draft`, and a document number is
+    assigned from the range. Requiring both is what separates "the route answered
+    200" from "the document was released" — measured on mvp, a released quote goes
+    `draft` → `sent` and gains `2026-30005`.
+
+    The draft is built with the SAME payload the create probe uses, because a minimal
+    partner+note body is not universally accepted — measured on mvp, it creates a
+    quote but SalesOrder and Return answer 400. Reusing the payload that create
+    already proves works for these entities keeps one recipe rather than two.
+
+    Returns {} when the draft could not be created, which leaves both verdicts to the
+    generic probe rather than inventing one.
+    """
+    p = _Probe(adapter, base_url, token)
+    # A sampled partner may not be usable for a create — measured on mvp, the first
+    # customer on the SalesOrder page carries an address id upstream then rejects
+    # ("The specified address with ID 6 does not exist"). The create probe already
+    # walks several partners for this reason; so does this one.
+    draft: dict[str, Any] = {}
+    handle = ""
+    last = ""
+    for pid in partner_ids[:4]:
+        cst, cpl = await p.req("POST", body={**body, partner_field: {"id": pid}})
+        payload = (cpl.get("data") or {}) if isinstance(cpl, dict) else {}
+        if cst < 400 and payload.get("id"):
+            draft, handle = payload, str(payload["id"])
+            break
+        last = f"POST {cst}: {_err(cpl)}"
+    if not handle:
+        print(f"    (release probe: no draft could be created — {last})")
+        return {}
+
+    # UNRELEASED, judged by the absence of a document number rather than by the word
+    # `draft`. Not every document starts there — measured on mvp, a fresh Return is
+    # created as `requested` — and a status list would have to be maintained per
+    # entity and would be wrong the first time upstream added a state. The number is
+    # the invariant that matters anyway: no number means the document is not in the
+    # books yet, which is exactly what makes it safe to release and, if release
+    # fails, still deletable.
+    before = str(draft.get("status") or "")
+    if draft.get("number"):
+        dst, _ = await p.req("DELETE", handle)
+        print(
+            f"    (release probe: created record already carries number "
+            f"{draft.get('number')} — discarded, DELETE {dst})"
+        )
+        return {}
+
+    async def act(key: str) -> tuple[int, Any]:
+        resp = await adapter.action(
+            action_key=key,
+            handle=handle,
+            body=json.dumps({"ids": [handle], "command": {}}).encode(),
+            base_url=base_url,
+            token=token,
+        )
+        try:
+            payload = json.loads(resp.content or b"{}")
+        except ValueError:
+            payload = {}
+        if resp.status_code in (401, 403):
+            raise _AuthFailed(f"{key} answered {resp.status_code}: {_err(payload)}")
+        return resp.status_code, payload
+
+    async def state() -> tuple[Any, Any]:
+        _, pl = await p.req(handle=handle)
+        rec = (pl.get("data") or {}) if isinstance(pl, dict) else {}
+        return rec.get("status"), rec.get("number")
+
+    out: dict[str, tuple[str, str]] = {}
+    rst, rpl = await act("release")
+    status, number = await state()
+    if rst >= 400:
+        out["release"] = ("fail", f"release on a fresh draft → {rst}: {_err(rpl)}")
+    elif number:
+        # The NUMBER is the proof, not the status. The probe only ever releases a
+        # record it created without one, so a number appearing can have come from
+        # nothing but this call. The status is reported but not required: measured on
+        # mvp, a SalesOrder goes `draft` → `confirmed` while a Return stays
+        # `requested` and only takes its number. Requiring both graded that a failure,
+        # and the failure path then tried to DELETE a document that upstream had just
+        # numbered — which is how ret_154 came to be left released.
+        moved = f"left {before!r} for {status!r}" if status != before else f"stayed {status!r}"
+        out["release"] = (
+            PROVEN,
+            f"an unreleased document this probe created {moved} and took number "
+            f"{number} from the range — effect read back from the record",
+        )
+    else:
+        out["release"] = (
+            "fail",
+            f"release answered {rst} but the document still reads status {status!r} / "
+            f"number {number!r} — accepted without effect",
+        )
+    if out["release"][0] != PROVEN:
+        # No number was assigned, so it is still outside the books and deletable.
+        dst, _ = await p.req("DELETE", handle)
+        print(f"    (release probe: draft {handle} discarded, DELETE {dst})")
+        return out
+
+    cst2, cpl2 = await act("cancel")
+    cancelled, _ = await state()
+    if cst2 < 400 and cancelled == "cancelled":
+        out["cancel"] = (
+            PROVEN,
+            f"the released document went to {cancelled!r} — effect read back; "
+            f"{handle} ({number}) stays cancelled, a released document cannot be deleted",
+        )
+    else:
+        # The one outcome that leaves a LIVE document behind. Name it and its number.
+        out["cancel"] = (
+            "fail",
+            f"cancel → {cst2}, document reads {cancelled!r}: {_err(cpl2)} — "
+            f"{handle} ({number}) IS LEFT RELEASED, not cancelled",
+        )
+        print(f"    !! {adapter.manifest.key} {handle} ({number}) left RELEASED")
     return out
 
 
@@ -2412,6 +2594,16 @@ async def _verify_entity(
         # probed independently it would leave the document locked. See
         # _probe_write_protection.
         wp_results: dict[str, tuple[str, str]] | None = None
+        # release/cancel on a document the probe creates — opt-in, because unlike the
+        # two round trips above it cannot be undone. See _probe_release_cancel.
+        rel_results: dict[str, tuple[str, str]] | None = None
+        release_partner = _CREATE_PARTNER.get(key)
+        release_eligible = (
+            _PROBE_RELEASE
+            and key in _RELEASE_REVERSIBLE
+            and bool(release_partner)
+            and "create" in adapter.manifest.operations
+        )
         if _ACTIONS_ONLY:
             targets = [t for t in targets if t[0] in _ACTIONS_ONLY]
         for akey, res_map, note_map in targets:
@@ -2428,6 +2620,42 @@ async def _verify_entity(
                 # fallback IS the hazard. A key the roundtrip could not cover stays
                 # untested (status None), which is honest and leaves the document alone.
                 status, note = wp_results.get(akey, (None, None))
+            elif akey == "release" and not release_eligible:
+                # The bare hazard, with no effect probe to take its place: `release`
+                # takes no input, so the generic probe commits. Today it survives on
+                # luck — the sampled documents are released already and upstream
+                # answers 409 on state. Sample a DRAFT and the same call releases it
+                # and burns a number from the range, silently, with `executed` as the
+                # only trace. So the state is checked instead of trusted.
+                status, note = await _probe_release_fallback(
+                    adapter, akey, sample_id, sample, base_url, token
+                )
+            elif akey in ("release", "cancel") and release_eligible:
+                if rel_results is None:
+                    partner_ids: list[str] = []
+                    for row in rows:
+                        ref = row.get(release_partner)
+                        pid = ref.get("id") if isinstance(ref, dict) else None
+                        if pid and str(pid) not in partner_ids:
+                            partner_ids.append(str(pid))
+                    if partner_ids:
+                        draft_body, _ = _doc_create_payload(
+                            schema, writable, sample, product_id, tag_title
+                        )
+                        draft_body["note"] = _RELEASE_NOTE
+                        rel_results = await _probe_release_cancel(
+                            adapter,
+                            draft_body,
+                            str(release_partner),
+                            partner_ids,
+                            base_url,
+                            token,
+                        )
+                    else:
+                        rel_results = {}
+                status, note = rel_results.get(akey) or await _probe_release_fallback(
+                    adapter, akey, sample_id, sample, base_url, token
+                )
             elif akey == "downloadPdf" and sample_id:
                 status, note = await _probe_download_pdf(adapter, sample_id, base_url, token)
             else:
