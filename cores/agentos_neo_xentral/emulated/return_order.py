@@ -387,6 +387,11 @@ class ReturnAdapter(FacadeAdapterBase):
                         ),
                         "condition": prop("select", "Condition"),
                         "action": prop("select", "Action"),
+                        # What was shipped in the first place. Without it the other
+                        # two have nothing to be measured against: `receivedQuantity`
+                        # alone cannot say whether a return came back in full, and
+                        # that is the question a clerk actually has.
+                        "deliveredQuantity": prop("decimal", "Delivered quantity", **RO),
                         "receivedQuantity": prop("decimal", "Received quantity", **RO),
                         "creditedQuantity": prop("decimal", "Credited quantity", **RO),
                     }
@@ -528,6 +533,7 @@ class ReturnAdapter(FacadeAdapterBase):
                     else None,
                     "condition": None,
                     "action": None,
+                    "deliveredQuantity": li.get("deliveredQuantity"),
                     "receivedQuantity": li.get("receivedQuantity"),
                     "creditedQuantity": li.get("reimbursementQuantity"),
                 }
