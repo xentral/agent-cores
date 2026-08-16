@@ -177,6 +177,12 @@ _PROBE_RELEASE = os.environ.get("VERIFY_RELEASE") == "1"
 #   CreditNote    v3 exposes no cancel at all; only the legacy UI can do it. A
 #                 released credit note would stay released forever.
 _RELEASE_REVERSIBLE = ("Quote", "SalesOrder", "DeliveryNote", "Return", "PurchaseOrder")
+# SalesInvoice gets its own flag rather than riding on VERIFY_RELEASE, because its
+# cost is different in KIND, not just in size: the other five leave one cancelled
+# document, an invoice storno leaves TWO permanent numbered documents in the books —
+# the invoice and the cancellation credit note answering it. Someone should decide
+# that on purpose. See _probe_invoice_storno.
+_PROBE_INVOICE_STORNO = os.environ.get("VERIFY_INVOICE_STORNO") == "1"
 # Says what it is on the document itself, so a cancelled probe document found in the
 # tenant explains itself without anyone having to find this file.
 _RELEASE_NOTE = "verify release probe — safe to delete"
@@ -1278,6 +1284,246 @@ async def _probe_release_fallback(
     return await _probe_action(adapter, action_key, sample_id, base_url, token)
 
 
+async def _act(
+    adapter: Any, action_key: str, handle: str, base_url: str, token: str
+) -> tuple[int, Any]:
+    """Invoke an input-free action on one record, through the facade."""
+    resp = await adapter.action(
+        action_key=action_key,
+        handle=handle,
+        body=json.dumps({"ids": [handle], "command": {}}).encode(),
+        base_url=base_url,
+        token=token,
+    )
+    try:
+        payload = json.loads(resp.content or b"{}")
+    except ValueError:
+        payload = {}
+    if resp.status_code in (401, 403):
+        raise _AuthFailed(f"{action_key} answered {resp.status_code}: {_err(payload)}")
+    return resp.status_code, payload
+
+
+async def _create_unreleased(
+    adapter: Any,
+    body: dict[str, Any],
+    partner_field: str,
+    partner_ids: list[str],
+    base_url: str,
+    token: str,
+) -> tuple[str, str] | None:
+    """A document this probe owns, guaranteed not to be in the books yet.
+
+    Returns ``(handle, status)`` or None. Shared by every probe that has to commit
+    something irreversible: whatever it does afterwards, it does to a record it made.
+
+    A sampled partner may not be usable for a create — measured on mvp, the first
+    customer on the SalesOrder page carries an address id upstream then rejects it
+    ("The specified address with ID 6 does not exist"). The create probe already
+    walks several partners for this reason; so does this.
+
+    UNRELEASED is judged by the absence of a document NUMBER, not by the word
+    `draft`. Not every document starts there — a fresh Return is created as
+    `requested` — and a per-entity status list would be wrong the first time upstream
+    added a state. The number is the invariant that matters anyway: no number means
+    the document is not in the books, which is exactly what makes it safe to release
+    and, if that fails, still deletable.
+    """
+    p = _Probe(adapter, base_url, token)
+    made: dict[str, Any] = {}
+    handle = ""
+    last = ""
+    for pid in partner_ids[:4]:
+        cst, cpl = await p.req("POST", body={**body, partner_field: {"id": pid}})
+        payload = (cpl.get("data") or {}) if isinstance(cpl, dict) else {}
+        if cst < 400 and payload.get("id"):
+            made, handle = payload, str(payload["id"])
+            break
+        last = f"POST {cst}: {_err(cpl)}"
+    if not handle:
+        print(f"    ({adapter.manifest.key}: no unreleased document could be created — {last})")
+        return None
+    if made.get("number"):
+        dst, _ = await p.req("DELETE", handle)
+        print(
+            f"    ({adapter.manifest.key}: created record already carries number "
+            f"{made.get('number')} — discarded, DELETE {dst})"
+        )
+        return None
+    return handle, str(made.get("status") or "")
+
+
+async def _make_own_and_probe(
+    probe: Any,
+    adapter: Any,
+    rows: list[dict[str, Any]],
+    partner_field: str | None,
+    schema: dict[str, Any],
+    writable: set[str],
+    sample: dict[str, Any],
+    product_id: str | None,
+    tag_title: str | None,
+    base_url: str,
+    token: str,
+) -> dict[str, tuple[str, str]]:
+    """Gather the partners and the payload a commit-probe needs, then run it.
+
+    The payload is the create probe's, because a minimal partner+note body is not
+    universally accepted — measured on mvp, it creates a quote but SalesOrder and
+    Return answer 400. One recipe, proven by `create`, rather than a second one that
+    has to be discovered again per entity.
+    """
+    if not partner_field:
+        return {}
+    partner_ids: list[str] = []
+    for row in rows:
+        ref = row.get(partner_field)
+        pid = ref.get("id") if isinstance(ref, dict) else None
+        if pid and str(pid) not in partner_ids:
+            partner_ids.append(str(pid))
+    if not partner_ids:
+        return {}
+    body, _ = _doc_create_payload(schema, writable, sample, product_id, tag_title)
+    body["note"] = _RELEASE_NOTE
+    return await probe(adapter, body, partner_field, partner_ids, base_url, token)
+
+
+async def _linked_credit_note(credit_id: str, base_url: str, token: str) -> str | None:
+    """Read the storno credit note back and describe what upstream actually made.
+
+    Returns a short description when the credit note exists AND points at an invoice,
+    else None. The description carries the SHAPE, because that is the part nobody
+    would guess: measured on mvp, the storno lands as a `draft` with no document
+    number and no line items — a counter-document that carries no amounts. Recording
+    that in the note is the difference between "the storno works" and "the storno
+    creates something that still has to be filled in by hand".
+    """
+    if not credit_id:
+        return None
+    for other in CORE.adapters:
+        if other.manifest.key != "CreditNote":
+            continue
+        st, pl = await _Probe(other, base_url, token).req(handle=credit_id)
+        rec = (pl.get("data") or {}) if isinstance(pl, dict) else {}
+        if st != 200 or not rec:
+            return None
+        # `documents.salesInvoice`, which is what the CORE calls it — upstream's own
+        # word is `invoice`, and reading the upstream name off a mapped record finds
+        # nothing and reports a missing link that is right there.
+        invoice = (rec.get("documents") or {}).get("salesInvoice")
+        inv_id = invoice.get("id") if isinstance(invoice, dict) else invoice
+        if not inv_id:
+            return None
+        items = rec.get("items") or rec.get("lineItems") or []
+        return (
+            f"invoice {inv_id}, status {rec.get('status')!r}, "
+            f"number {rec.get('number')!r}, {len(items)} line item(s)"
+        )
+    return None
+
+
+async def _probe_invoice_storno(
+    adapter: Any,
+    body: dict[str, Any],
+    partner_field: str,
+    partner_ids: list[str],
+    base_url: str,
+    token: str,
+) -> dict[str, tuple[str, str]]:
+    """Effect-checked `release` + `cancel` for SalesInvoice, on an invoice we made.
+
+    An invoice's `cancel` is not the status flip the other documents have. A released
+    invoice is write-protected (GoBD), so the reversal is a COUNTER-DOCUMENT: the
+    core POSTs /api/v1/creditNotes {invoice:{id}}, which creates a cancellation
+    credit note and marks the invoice cancelled. That is why SalesInvoice is not in
+    `_RELEASE_REVERSIBLE` — its release cannot be undone, only answered, and the
+    answer is itself permanent.
+
+    Which makes the generic probe worse here than anywhere else: `cancel` takes no
+    input, so an empty command commits, and pointed at a SAMPLED invoice it books a
+    cancellation credit note against a real customer document. That already happened
+    — the verdict this replaces was `executed`, meaning some earlier run did exactly
+    that and never looked at what came back.
+
+    So the probe books its own pair and checks both halves of the storno: the invoice
+    must read `cancelled`, AND the credit note must come back under `result`. Either
+    alone is too weak — a status that flips without a counter-document is a broken
+    storno, and a credit note beside an invoice that is still open is worse.
+
+    Cost, stated plainly: TWO permanent numbered documents per run, an invoice and
+    its credit note, neither of them deletable. Hence its own flag.
+    """
+    p = _Probe(adapter, base_url, token)
+    made = await _create_unreleased(adapter, body, partner_field, partner_ids, base_url, token)
+    if not made:
+        return {}
+    handle, before = made
+
+    async def state() -> tuple[Any, Any]:
+        _, pl = await p.req(handle=handle)
+        rec = (pl.get("data") or {}) if isinstance(pl, dict) else {}
+        return rec.get("status"), rec.get("number")
+
+    out: dict[str, tuple[str, str]] = {}
+    rst, rpl = await _act(adapter, "release", handle, base_url, token)
+    status, number = await state()
+    if rst >= 400 or not number:
+        out["release"] = (
+            "fail",
+            f"release on a fresh invoice → {rst}: {_err(rpl)}"
+            if rst >= 400
+            else f"release answered {rst} but the invoice took no number — accepted without effect",
+        )
+        dst, _ = await p.req("DELETE", handle)
+        print(f"    (storno probe: invoice {handle} discarded, DELETE {dst})")
+        return out
+    moved = f"left {before!r} for {status!r}" if status != before else f"stayed {status!r}"
+    out["release"] = (
+        PROVEN,
+        f"an unreleased invoice this probe created {moved} and took number {number} "
+        f"from the range — effect read back from the record",
+    )
+
+    cst, cpl = await _act(adapter, "cancel", handle, base_url, token)
+    cancelled, _ = await state()
+    credit = ((cpl.get("result") or {}) if isinstance(cpl, dict) else {}) or {}
+    credit_id = credit.get("id") or (credit.get("data") or {}).get("id")
+    # The id alone is the response's word for it. READ THE CREDIT NOTE, and read the
+    # link back off it — that is what makes this a proof rather than an echo, and it
+    # is also how the shape of what upstream produces gets recorded instead of
+    # assumed.
+    linked = await _linked_credit_note(str(credit_id or ""), base_url, token)
+    if cst < 400 and cancelled == "cancelled" and linked:
+        out["cancel"] = (
+            PROVEN,
+            f"invoice {handle} ({number}) reads {cancelled!r} and storno credit note "
+            f"{credit_id} reads back linked to it ({linked}) — both halves read back; "
+            f"both documents stay, a released invoice cannot be deleted",
+        )
+    elif cst < 400 and cancelled == "cancelled":
+        # The invoice is closed but nothing came back to answer for it. Do NOT call
+        # that "no credit note was created" — that claim cost a whole investigation
+        # once: upstream answers 201 with an EMPTY body and the new credit note only
+        # in the Location header, so the counter-document existed all along and the
+        # probe simply could not see it. What is reportable is only what is true:
+        # the invoice is cancelled and the storno could not be identified.
+        out["cancel"] = (
+            "fail",
+            f"invoice {handle} ({number}) reads {cancelled!r} but no storno credit note "
+            f"could be identified — upstream returned neither a record nor a Location "
+            f"to read one back from, so the counter-document cannot be confirmed",
+        )
+        print(f"    !! SalesInvoice {handle} ({number}) cancelled, storno unconfirmed")
+    else:
+        out["cancel"] = (
+            "fail",
+            f"cancel → {cst}, invoice reads {cancelled!r}, credit note {credit_id!r}: "
+            f"{_err(cpl)} — {handle} ({number}) IS LEFT RELEASED",
+        )
+        print(f"    !! SalesInvoice {handle} ({number}) left released, storno incomplete")
+    return out
+
+
 async def _probe_release_cancel(
     adapter: Any,
     body: dict[str, Any],
@@ -1307,55 +1553,13 @@ async def _probe_release_cancel(
     generic probe rather than inventing one.
     """
     p = _Probe(adapter, base_url, token)
-    # A sampled partner may not be usable for a create — measured on mvp, the first
-    # customer on the SalesOrder page carries an address id upstream then rejects
-    # ("The specified address with ID 6 does not exist"). The create probe already
-    # walks several partners for this reason; so does this one.
-    draft: dict[str, Any] = {}
-    handle = ""
-    last = ""
-    for pid in partner_ids[:4]:
-        cst, cpl = await p.req("POST", body={**body, partner_field: {"id": pid}})
-        payload = (cpl.get("data") or {}) if isinstance(cpl, dict) else {}
-        if cst < 400 and payload.get("id"):
-            draft, handle = payload, str(payload["id"])
-            break
-        last = f"POST {cst}: {_err(cpl)}"
-    if not handle:
-        print(f"    (release probe: no draft could be created — {last})")
+    made = await _create_unreleased(adapter, body, partner_field, partner_ids, base_url, token)
+    if not made:
         return {}
-
-    # UNRELEASED, judged by the absence of a document number rather than by the word
-    # `draft`. Not every document starts there — measured on mvp, a fresh Return is
-    # created as `requested` — and a status list would have to be maintained per
-    # entity and would be wrong the first time upstream added a state. The number is
-    # the invariant that matters anyway: no number means the document is not in the
-    # books yet, which is exactly what makes it safe to release and, if release
-    # fails, still deletable.
-    before = str(draft.get("status") or "")
-    if draft.get("number"):
-        dst, _ = await p.req("DELETE", handle)
-        print(
-            f"    (release probe: created record already carries number "
-            f"{draft.get('number')} — discarded, DELETE {dst})"
-        )
-        return {}
+    handle, before = made
 
     async def act(key: str) -> tuple[int, Any]:
-        resp = await adapter.action(
-            action_key=key,
-            handle=handle,
-            body=json.dumps({"ids": [handle], "command": {}}).encode(),
-            base_url=base_url,
-            token=token,
-        )
-        try:
-            payload = json.loads(resp.content or b"{}")
-        except ValueError:
-            payload = {}
-        if resp.status_code in (401, 403):
-            raise _AuthFailed(f"{key} answered {resp.status_code}: {_err(payload)}")
-        return resp.status_code, payload
+        return await _act(adapter, key, handle, base_url, token)
 
     async def state() -> tuple[Any, Any]:
         _, pl = await p.req(handle=handle)
@@ -2598,12 +2802,9 @@ async def _verify_entity(
         # two round trips above it cannot be undone. See _probe_release_cancel.
         rel_results: dict[str, tuple[str, str]] | None = None
         release_partner = _CREATE_PARTNER.get(key)
-        release_eligible = (
-            _PROBE_RELEASE
-            and key in _RELEASE_REVERSIBLE
-            and bool(release_partner)
-            and "create" in adapter.manifest.operations
-        )
+        can_make_own = bool(release_partner) and "create" in adapter.manifest.operations
+        release_eligible = _PROBE_RELEASE and key in _RELEASE_REVERSIBLE and can_make_own
+        storno_eligible = _PROBE_INVOICE_STORNO and key == "SalesInvoice" and can_make_own
         if _ACTIONS_ONLY:
             targets = [t for t in targets if t[0] in _ACTIONS_ONLY]
         for akey, res_map, note_map in targets:
@@ -2620,6 +2821,37 @@ async def _verify_entity(
                 # fallback IS the hazard. A key the roundtrip could not cover stays
                 # untested (status None), which is honest and leaves the document alone.
                 status, note = wp_results.get(akey, (None, None))
+            elif key == "SalesInvoice" and akey in ("release", "cancel"):
+                if storno_eligible:
+                    if rel_results is None:
+                        rel_results = await _make_own_and_probe(
+                            _probe_invoice_storno,
+                            adapter,
+                            rows,
+                            release_partner,
+                            schema,
+                            writable,
+                            sample,
+                            product_id,
+                            tag_title,
+                            base_url,
+                            token,
+                        )
+                    status, note = rel_results.get(akey, (None, None))
+                elif akey == "release":
+                    status, note = await _probe_release_fallback(
+                        adapter, akey, sample_id, sample, base_url, token
+                    )
+                else:
+                    # `cancel` on a SAMPLED invoice books a cancellation credit note
+                    # against a real customer document — the storno is a counter-
+                    # document, not a status flip, so there is no state upstream will
+                    # refuse it in. The `executed` verdict this replaces is the record
+                    # of a run that did exactly that and never looked. Untested is the
+                    # honest answer without the flag; the carry-forward keeps whatever
+                    # an earlier flagged run proved.
+                    print("    (SalesInvoice.cancel: would book a credit note — not probed)")
+                    status, note = None, None
             elif akey == "release" and not release_eligible:
                 # The bare hazard, with no effect probe to take its place: `release`
                 # takes no input, so the generic probe commits. Today it survives on
@@ -2632,27 +2864,19 @@ async def _verify_entity(
                 )
             elif akey in ("release", "cancel") and release_eligible:
                 if rel_results is None:
-                    partner_ids: list[str] = []
-                    for row in rows:
-                        ref = row.get(release_partner)
-                        pid = ref.get("id") if isinstance(ref, dict) else None
-                        if pid and str(pid) not in partner_ids:
-                            partner_ids.append(str(pid))
-                    if partner_ids:
-                        draft_body, _ = _doc_create_payload(
-                            schema, writable, sample, product_id, tag_title
-                        )
-                        draft_body["note"] = _RELEASE_NOTE
-                        rel_results = await _probe_release_cancel(
-                            adapter,
-                            draft_body,
-                            str(release_partner),
-                            partner_ids,
-                            base_url,
-                            token,
-                        )
-                    else:
-                        rel_results = {}
+                    rel_results = await _make_own_and_probe(
+                        _probe_release_cancel,
+                        adapter,
+                        rows,
+                        release_partner,
+                        schema,
+                        writable,
+                        sample,
+                        product_id,
+                        tag_title,
+                        base_url,
+                        token,
+                    )
                 status, note = rel_results.get(akey) or await _probe_release_fallback(
                     adapter, akey, sample_id, sample, base_url, token
                 )
