@@ -70,10 +70,23 @@ class _Invoice:
 BODY = {"note": "verify release probe"}
 
 
-def _probe(inv: _Invoice) -> dict[str, tuple[str, str]]:
-    return asyncio.run(
-        verify._probe_invoice_storno(inv, BODY, "customer", ["cus_5"], "https://x", "t")
-    )
+def _probe(inv: _Invoice, *, linked: str | None = "invoice 2263, status 'draft'") -> dict:
+    """`_linked_credit_note` reads the credit note back through the CreditNote
+    adapter, which is a tenant call — stubbed here so this file keeps its promise of
+    talking to nothing. What it returns is the switch under test: a description means
+    the counter-document was found and points at an invoice, None means it was not."""
+    original = verify._linked_credit_note
+
+    async def _stub(credit_id, base_url, token):
+        return linked if credit_id else None
+
+    verify._linked_credit_note = _stub
+    try:
+        return asyncio.run(
+            verify._probe_invoice_storno(inv, BODY, "customer", ["cus_5"], "https://x", "t")
+        )
+    finally:
+        verify._linked_credit_note = original
 
 
 def test_both_halves_of_the_storno_are_required() -> None:
@@ -83,22 +96,28 @@ def test_both_halves_of_the_storno_are_required() -> None:
     assert "RE-1001" in out["release"][1]
     assert out["cancel"][0] == PROVEN
     assert "cn_9" in out["cancel"][1], "the counter-document is half the claim"
+    assert "status 'draft'" in out["cancel"][1], "the note carries what upstream made"
     assert inv.calls == ["POST", "release", "cancel"]
 
 
 def test_a_cancelled_invoice_without_a_credit_note_is_a_broken_storno() -> None:
-    """MEASURED on mvp, not hypothetical: upstream took the POST, cancelled si_2260
-    and created no credit note. The status flipped and nothing answers for the money.
-    Reading that as success is exactly what `executed` did.
+    """The invoice is closed and the counter-document cannot be found. That is worth
+    a red cell — but the note must say exactly that and no more.
 
-    The note must not say the invoice was left released — it was not, and sending
-    someone to look for an open invoice that is actually closed wastes the one thing
-    a red cell is for."""
+    It must not claim the invoice was left released (it was not), and it must not
+    claim no credit note was created: upstream answers 201 with an EMPTY body and the
+    new id only in the Location header, so the counter-document can exist and be
+    invisible from here. Both wordings send a reader somewhere false."""
     inv = _Invoice(no_credit_note=True)
-    out = _probe(inv)
+    out = _probe(inv, linked=None)
     assert out["cancel"][0] == "fail"
-    assert "NO storno credit note" in out["cancel"][1]
+    assert "no storno credit note could be identified" in out["cancel"][1]
     assert "LEFT RELEASED" not in out["cancel"][1]
+    assert "not created" not in out["cancel"][1], (
+        "upstream answers 201 with an empty body and the id only in Location — the "
+        "credit note may exist and be invisible here, and claiming otherwise cost a "
+        "whole investigation once"
+    )
 
 
 def test_an_invoice_that_stays_open_is_reported_as_left_released() -> None:

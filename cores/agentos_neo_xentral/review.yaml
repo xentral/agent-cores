@@ -5,12 +5,12 @@
 # it was built from, so a diff here means a fact moved, not that it was re-run.
 core: agentos_neo_xentral
 source:
-  probedAt: '2026-08-16T11:04:39+00:00'
+  probedAt: '2026-08-16T11:21:51+00:00'
   instance: a2ad4180-0d41-4360-8044-9dca0c35608a
 totals:
   required: 80
-  proven: 50
-  unproven: 30
+  proven: 51
+  unproven: 29
   acceptedGaps: 100
   fieldRequirements: 145
   reviewedEntities: 23
@@ -680,8 +680,8 @@ entities:
     - key: cancel
       requirement: required
       implementation: built
-      evidence: fail
-      proven: false
+      evidence: pass
+      proven: true
     - key: downloadEInvoice
       requirement: acceptedGap
       implementation: blockedUpstream

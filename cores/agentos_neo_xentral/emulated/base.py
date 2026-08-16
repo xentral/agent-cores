@@ -2274,6 +2274,18 @@ class FacadeAdapterBase:
         # record — surface it so the caller can follow up on it.
         if isinstance(result, dict) and result.get("data"):
             out["result"] = result["data"]
+        elif created := id_from_location(
+            resp.headers.get("Location") or resp.headers.get("location")
+        ):
+            # Some of these answer 201 with an EMPTY body and the new record only in
+            # the Location header — the same shape `id_from_location` already handles
+            # for creates, which the action path simply never asked about. Measured on
+            # mvp: SalesInvoice.cancel POSTs /api/v1/creditNotes, which answers
+            # `201, Location: …/api/creditNotes/164` and no body. The credit note IS
+            # created and IS linked to the invoice; the caller was told nothing about
+            # it, so the storno looked like it had produced no counter-document at
+            # all. Only the id is known here — the caller can read the record itself.
+            out["result"] = {"id": created}
         return self._json(200, out)
 
 
