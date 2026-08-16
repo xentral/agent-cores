@@ -5,7 +5,7 @@
 # it was built from, so a diff here means a fact moved, not that it was re-run.
 core: agentos_neo_xentral
 source:
-  probedAt: '2026-08-16T11:21:51+00:00'
+  probedAt: '2026-08-16T17:00:33+00:00'
   instance: a2ad4180-0d41-4360-8044-9dca0c35608a
 totals:
   required: 80
@@ -938,7 +938,7 @@ entities:
     - key: restock
       requirement: required
       implementation: built
-      evidence: null
+      evidence: reachable
       proven: false
     - key: sendReturnLabel
       requirement: acceptedGap
@@ -1249,7 +1249,7 @@ entities:
     - key: createGoodsReceipt
       requirement: required
       implementation: built
-      evidence: null
+      evidence: reachable
       proven: false
     - key: createPurchaseInvoice
       requirement: acceptedGap

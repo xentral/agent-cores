@@ -139,13 +139,8 @@ class ReturnAdapter(FacadeAdapterBase):
                 "commands": [
                     # Release / freigeben from draft (v3 release) — uniform op.
                     self.step_cmd("release", "Release"),
-                    self.step_cmd(
-                        "receive",
-                        "Receive",
-                        wish=True                    ),
-                    self.step_cmd(
-                        "check", "Check", wish=True
-                    ),
+                    self.step_cmd("receive", "Receive", wish=True),
+                    self.step_cmd("check", "Check", wish=True),
                     self.step_cmd("settle", "Settle"),
                     self.step_cmd("cancel", "Cancel"),
                 ],
@@ -192,10 +187,7 @@ class ReturnAdapter(FacadeAdapterBase):
                     },
                 },
             ),
-            self.action_def(
-                "sendReturnLabel",
-                "Send return label",
-                wish=True            ),
+            self.action_def("sendReturnLabel", "Send return label", wish=True),
             self.action_def(
                 "createCreditNote",
                 "Create credit note",
@@ -925,7 +917,12 @@ class ReturnAdapter(FacadeAdapterBase):
             ref_id=self._ref_id,
         )
         if error:
-            return self._json(422, {"title": f"restock {error}"})
+            # `_refuse`, not `_json`: this rejection is OURS — goods_receipt_payload
+            # validates before the upstream is ever called. Without the `source: core`
+            # marker the capability probe reads the 422 as "the route exists and
+            # validated my request", which is a claim about Xentral that nothing here
+            # supports. Exactly the confusion `_refuse` was introduced to end.
+            return self._refuse(422, f"restock {error}")
 
         url = f"{base_url.rstrip('/')}/api/v1/returns/{ret['id']}/goodsReceipts"
         headers = self._headers(token, accept_language)

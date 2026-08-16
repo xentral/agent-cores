@@ -759,7 +759,8 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
             ref_id=self._ref_id,
         )
         if error:
-            return self._json(422, {"title": f"createGoodsReceipt {error}"})
+            # Ours, not upstream's — see the same correction in Return._restock.
+            return self._refuse(422, f"createGoodsReceipt {error}")
 
         url = f"{base_url.rstrip('/')}/api/v1/purchaseOrders/{order['id']}/goodsReceipts"
         headers = self._headers(token, accept_language)

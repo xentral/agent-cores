@@ -646,7 +646,7 @@ documents:
     can:
       createFromDeliveryNote: {evidence: reachable, params: [deliveryNote, lineItems]}
       createCreditNote: {evidence: executed}
-      restock: {evidence: null, params: [date, items]}
+      restock: {evidence: reachable, params: [date, items]}
       downloadPdf: {evidence: pass}
       addTag: {evidence: pass, params: [title]}
       removeTag: {evidence: pass, params: [title]}
@@ -840,7 +840,7 @@ documents:
       updatedAt: {type: datetime, ops: [filter, sort], proven: [filter, sort]}
     can:
       send: {evidence: reachable}
-      createGoodsReceipt: {evidence: null, params: [date, items]}
+      createGoodsReceipt: {evidence: reachable, params: [date, items]}
       downloadPdf: {evidence: pass}
       addTag: {evidence: pass, params: [title]}
       removeTag: {evidence: pass, params: [title]}
