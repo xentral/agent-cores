@@ -1019,6 +1019,13 @@ def _refused_by_the_facade(status: int, payload: Any) -> bool:
 def _err(payload: Any) -> str:
     if not isinstance(payload, dict):
         return "upstream error"
+    # The legacy generations wrap it: {"error": {"code": 7431, "http_code": 404,
+    # "message": "Route not found"}}. Reading only the top level turned that into the
+    # bare word "error" — measured on StockTake, where the note said "answered 404:
+    # error" for a response that spells out exactly what is wrong.
+    nested = payload.get("error")
+    if isinstance(nested, dict) and (nested.get("message") or nested.get("title")):
+        payload = nested
     title = payload.get("title") or payload.get("message") or "error"
     viol = payload.get("violations")
     if viol:
@@ -1490,6 +1497,10 @@ async def _verify_entity(
     # declares: an operation the entity offers but this run never saw work stays
     # absent, which is the entire point of the file.
     operations: dict[str, str] = {}
+    # A red cell has to explain itself — the same rule the field verdicts follow with
+    # `<facet>Note`. Without it "read: fail" says a capability is broken and offers
+    # nothing to act on.
+    operations_notes: dict[str, str] = {}
     declared_ops = set(adapter.manifest.operations)
 
     def note_delete(status: int) -> None:
@@ -1498,6 +1509,11 @@ async def _verify_entity(
         if "delete" not in declared_ops:
             return
         operations["delete"] = _delete_verdict(operations.get("delete"), status)
+        if operations["delete"] == "fail":
+            operations_notes["delete"] = (
+                f"a create probe's cleanup DELETE answered {status} — the record it "
+                "made is still there"
+            )
 
     # Getting this far already required a 200 with rows from the list read at the top
     # (the function returns early otherwise), so `list` is proven by arrival.
@@ -1520,8 +1536,19 @@ async def _verify_entity(
             # Answered, but not demonstrably with the record we asked for. That is not
             # a working single read, and it is not a broken route either.
             operations["read"] = "accepted"
+            operations_notes["read"] = (
+                f"GET /{sample_handle} answered 200 carrying id {record.get('id')!r} — "
+                "not demonstrably the record that was asked for"
+            )
         else:
             operations["read"] = "fail"
+            # WHICH record and WHICH status, because those separate a missing route
+            # from a single poisoned row — measured on mvp, StockTake answers 404
+            # "Route not found" for every id (v1 inventoryRuns has no single read at
+            # all) while Shipment answers 500 for exactly one of ten sampled records.
+            # Same verdict, entirely different repair, and the verdict alone cannot
+            # tell them apart.
+            operations_notes["read"] = f"GET /{sample_handle} answered {rst}: {_err(rpl)}"
 
     # Detail-only sections come from a sub-resource the adapter calls only on a
     # single read, so every list row carries null for them. Grading those against
@@ -2425,8 +2452,18 @@ async def _verify_entity(
         if op not in declared_ops:
             continue
         verdict = _operation_from_counts(counts[op])
-        if verdict:
-            operations[op] = verdict
+        if not verdict:
+            continue
+        operations[op] = verdict
+        if verdict != PROVEN:
+            # Points at the field verdicts rather than restating them: they carry the
+            # upstream error per field, and there is no single error to quote here.
+            c = counts[op]
+            operations_notes[op] = (
+                f"derived from the field suite ({c[PROVEN]}✓/{c['accepted']}~/{c['fail']}✗) — "
+                f"no field {'persisted' if op == 'update' else 'came back'} on this run; "
+                f"the per-field `{op}Note`s say why"
+            )
 
     observed = sum(1 for f in fields.values() if f.get("read") == PROVEN)
     summary = (
@@ -2459,6 +2496,8 @@ async def _verify_entity(
     result: dict[str, Any] = {"probedAt": _stamp(), "fields": fields}
     if operations:
         result["operations"] = operations
+        if operations_notes:
+            result["operationsNotes"] = operations_notes
     if uncovered:
         result["unprobed"] = uncovered
     if actions_res or steps_res:
@@ -2590,6 +2629,8 @@ async def _main() -> None:
             # not delete what an earlier run measured.
             if "operations" not in result and "operations" in before:
                 result["operations"] = before["operations"]
+                if "operationsNotes" in before:
+                    result["operationsNotes"] = before["operationsNotes"]
             for res_key, note_key in (
                 ("actions", "actionsNotes"),
                 ("processSteps", "processStepsNotes"),
