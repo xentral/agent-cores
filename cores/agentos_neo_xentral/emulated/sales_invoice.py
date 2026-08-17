@@ -173,6 +173,20 @@ class SalesInvoiceAdapter(FacadeAdapterBase):
         "status": {"open": "released", "paid": "completed"},
         "payment.status": {"unpaid": "pending"},
     }
+    # /api/v3/invoices defaults to released, sent, cancelled — it hides `completed`
+    # (i.e. paid) invoices as well as drafts, so an unfiltered invoice list was
+    # missing both ends of the lifecycle. `partiallyCancelled` is a real v3
+    # InvoiceStatus that `_STATUS` reads — a partial storno leaves an invoice in
+    # it — so it is included; if a build refuses it as a FILTER value the injected
+    # filter is dropped and the list re-asked without it.
+    list_status_values = (
+        "draft",
+        "released",
+        "sent",
+        "completed",
+        "partiallyCancelled",
+        "cancelled",
+    )
     sections = {
         "general": {"label": "General"},
         "references": {"label": "References"},

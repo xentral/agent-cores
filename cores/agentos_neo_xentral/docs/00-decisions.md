@@ -78,6 +78,14 @@ between, contains, startsWith, isNull. Listen haben KEINE versteckten Defaults.
 **Konsequenz:** Index-/Suchstrategie pro Entity ist Pflichtteil des Bau-Auftrags (Kostenpunkt!).
 **Invarianten:** Kein kuratiertes Filter-Whitelisting. Kein impliziter Status-Filter.
 
+**Umsetzung (2026-08-17):** Der zweite Teil war bis dahin nur zugesagt, nicht gebaut. Der
+Kern hängte gar keinen `status` an — womit der Default des Upstreams griff und Drafts
+verschwanden, genau der im Kontext beschriebene Fehler. `FacadeAdapterBase._get` benennt
+jetzt bei jedem Listenaufruf ohne eigenen `status`-Filter die vollständige Statusmenge des
+Endpunkts selbst (`list_status_values`, gesetzt auf den sieben Belegen), sodass der Default
+nie zum Zug kommt. Ein vom Aufrufer gesetzter `status` gewinnt unverändert; lehnt ein Build
+einen Wert ab, wird der injizierte Filter verworfen und ohne ihn erneut gefragt.
+
 ## ADR-008 · expand statt Include-Listen, keine „slim“ Resources
 
 **Kontext:** V3 hat pro Endpoint eigene Include-Listen; `include=lineItems.product` liefert

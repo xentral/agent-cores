@@ -227,6 +227,11 @@ class SalesOrderAdapter(FacadeAdapterBase):
     filter_value_maps = {
         "status": {"confirmed": "released", "fulfilled": "completed", "closed": "completed"}
     }
+    # Upstream vocabulary, complete — NOT the keys of `_STATUS`, which also holds
+    # the model-side names `confirmed` and `closed` that /api/v3/salesOrders
+    # rejects. This is the entity the draft trap was measured on: 10 rows for a
+    # customer, 4 more only once `draft` was named.
+    list_status_values = ("draft", "released", "sent", "completed", "cancelled")
     sections = {
         "general": {"label": "General"},
         "references": {"label": "References"},

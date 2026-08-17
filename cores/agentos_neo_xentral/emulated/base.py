@@ -5,8 +5,9 @@ proxies today's Xentral API (v3 + v1/v2) and maps 1:1 — **no own persistence**
 (ADR-014). Each adapter declares its outward ``fields()`` and implements
 ``map_read(v3_record)`` to translate a live upstream record into the new model.
 This base owns the shared machinery: the metadata envelope, the HTTP GET to the
-upstream (always requesting *all* statuses — ADR-007, no hidden draft filter),
-and the new-model helper types (reference objects, money, quantity, ids).
+upstream (always requesting *all* statuses — ADR-007, no hidden draft filter; see
+``list_status_values``, which is what actually delivers that), and the new-model
+helper types (reference objects, money, quantity, ids).
 
 Write paths are deliberately thin: fields the upstream cannot set are
 ``creatable/updatable = false`` and surface as blue wishes; a write that includes
@@ -40,6 +41,7 @@ from entity_registry.core_sdk import AdapterResponse, EmulationManifest
 from xentral_entity_cores.xentral_api.emulated._search import (
     extract_search,
     fan_out_search,
+    filter_groups,
     strip_search,
 )
 
@@ -377,8 +379,9 @@ def tags_prop(*, writable: bool = False, filterable: bool = True) -> dict[str, A
     # outright, so the entity that cannot filter says so instead of promising it.
     # The documents DO filter by tag (measured on mvp: one tagged sales order in,
     # one row out). An earlier probe read as "declared but broken" only because the
-    # tagged order was a DRAFT, and the v3 list endpoints exclude drafts unless the
-    # status filter is set explicitly — see the default-status trap in the playbook.
+    # tagged order was a DRAFT and the v3 list endpoints hid it. That misreading is
+    # no longer reachable: ``list_status_values`` names every status, so a tagged
+    # draft is in the rows the tag filter is measured against.
     flags: dict[str, Any] = {"filterable": True} if filterable else {}
     if writable:
         flags["creatable"] = True
@@ -473,6 +476,23 @@ class FacadeAdapterBase:
     # "oldest/newest by createdAt" are irreproducible. ``id`` is stable and
     # unique; set to None on an adapter whose upstream rejects a compound sort.
     sort_tiebreak: str | None = "id"
+    # The COMPLETE upstream `status` vocabulary of this endpoint — what makes
+    # ADR-007 ("Listen haben KEINE versteckten Defaults") true rather than merely
+    # promised. Every v3 document controller declares its status filter as
+    # `QueryFilter::string('status', …)->default([...])`, and every one of those
+    # defaults omits `draft`. So a list call that names no status silently drops
+    # every draft — measured on mvp: 10 rows for a customer, 4 more only with
+    # `status=draft`. A fresh document is a draft AND has `documentNumber: null`,
+    # so it is missing from lists and unfindable by number: the single most
+    # expensive trap in this core.
+    #
+    # Set this and ``_get`` appends the whole set on list calls where the caller
+    # named no status, so the upstream default never applies. MUST be UPSTREAM
+    # vocabulary: these values bypass ``filter_value_maps`` (they are injected
+    # after it ran), and a model-only name like DeliveryNote's `shipped` earns a
+    # 400 that would take the entire list down. Leave empty for endpoints whose
+    # status filter has no hidden default.
+    list_status_values: tuple[str, ...] = ()
 
     # ---- schema ----------------------------------------------------------
     def fields(self) -> dict[str, dict[str, Any]]:  # pragma: no cover - overridden
@@ -1188,6 +1208,27 @@ class FacadeAdapterBase:
             # schema carries no sortable/searchable marks on v1 entities).
             params = [(k, v) for k, v in params if k.startswith("filter[")]
             params += [("page[number]", str(number)), ("page[size]", str(size))]
+        # Neutralise the upstream's hidden status default by naming every status
+        # ourselves (see ``list_status_values``). Injected HERE, after the
+        # model→upstream translation above, because these are already upstream
+        # values — running them through ``filter_value_maps`` a second time would
+        # rewrite them. Only on lists (a read by id has no status filter to
+        # default), and only when the caller named no status: an explicit
+        # `status=draft` must keep meaning exactly that.
+        status_index: int | None = None
+        if upstream_handle is None and self.list_status_values:
+            groups = filter_groups(params)
+            if not any(parts.get("key") == "status" for parts in groups.values()):
+                # The caller's filters are indexed 0..n-1 by the query builder;
+                # take the next free index rather than assuming how many params
+                # precede us (page/sort/include all sit in the same flat list).
+                used = {int(i) for p in groups if (i := p[len("filter[") : -1]).isdigit()}
+                status_index = max(used, default=-1) + 1
+                params += [
+                    (f"filter[{status_index}][key]", "status"),
+                    (f"filter[{status_index}][op]", "in"),
+                    (f"filter[{status_index}][value]", ",".join(self.list_status_values)),
+                ]
         ours = False
         if not any(k == "include" for k, _ in params) and self.include:
             params.append(("include", self.include))
@@ -1200,14 +1241,40 @@ class FacadeAdapterBase:
 
         async def _run(c: httpx.AsyncClient) -> httpx.Response:
             got = await _do(c, params)
+            if got.status_code != 400:
+                return got
+            # Both parameters stripped below are OURS, not the caller's: the
+            # request would have gone through without them. So a 400 that one of
+            # them caused must cost detail, never the whole entity — drop the one
+            # the upstream complained about and ask again.
+            use, retry = params, False
             # Xentral rejects the WHOLE request when it does not know one of the
             # requested includes ("Requested include(s) `x` are not allowed"), so
             # an include this build lacks would take the entity down entirely
-            # rather than cost it some detail. Drop ours and ask again; the
-            # adapters treat a missing include key as "not loaded", not "empty".
-            if got.status_code == 400 and ours and self._include_rejected(got):
-                return await _do(c, [(k, v) for k, v in params if k != "include"])
-            return got
+            # rather than cost it some detail. The adapters treat a missing
+            # include key as "not loaded", not "empty".
+            if ours and self._include_rejected(got):
+                use = [(k, v) for k, v in use if k != "include"]
+                retry = True
+            # A status value this build's ``list_status_values`` has but the
+            # tenant's Xentral does not would otherwise break EVERY list on the
+            # entity. Falling back leaves the upstream default in charge, so
+            # drafts go missing again — the very bug the filter exists to fix —
+            # but a list short some rows beats no list at all.
+            #
+            # Unconditional on 400, deliberately: unlike `include`, the upstream's
+            # complaint about a bad enum value does not reliably name the
+            # parameter ("Invalid value: settled. Valid values are: …"), so
+            # sniffing the body for `status` would miss the very case this exists
+            # for. Retrying costs one request when the 400 was the CALLER's, and
+            # nothing is masked — dropping our filter cannot fix their query, so
+            # their 400 comes back on the retry and reaches them, minus the noise
+            # of a filter they never sent.
+            if status_index is not None:
+                prefix = f"filter[{status_index}]["
+                use = [(k, v) for k, v in use if not k.startswith(prefix)]
+                retry = True
+            return await _do(c, use) if retry else got
 
         if client is None:
             async with httpx.AsyncClient(timeout=_TIMEOUT) as c:

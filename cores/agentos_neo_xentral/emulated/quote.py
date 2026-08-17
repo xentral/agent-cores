@@ -122,6 +122,24 @@ class QuoteAdapter(FacadeAdapterBase):
             "accepted": "completed",
         }
     }
+    # The widest of the seven: /api/v3/offers defaults its status filter to
+    # released, sent, cancelled, completed — so an unfiltered quote list hides
+    # not only drafts but every `commissioned` (the operational accepted state,
+    # 605,663 of them in the tenant audit), `ordered`, `declined` and `expired`
+    # quote as well. All ten are in `_STATUS`, so nothing surfaced here falls
+    # back to `draft`.
+    list_status_values = (
+        "draft",
+        "released",
+        "sent",
+        "commissioned",
+        "ordered",
+        "accepted",
+        "declined",
+        "expired",
+        "completed",
+        "cancelled",
+    )
     sections = {
         "general": {"label": "General"},
         "references": {"label": "References"},

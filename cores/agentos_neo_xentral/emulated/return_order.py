@@ -45,10 +45,10 @@ _PROGRESS = {
 }
 _STATUS_OPTIONS = [
     {"value": v, "label": v.capitalize()}
-    for v in ("requested", "received", "checked", "settled", "cancelled")
+    for v in ("draft", "requested", "received", "checked", "settled", "cancelled")
 ]
 # The four `status` values that come from upstream `progress` — everything except
-# `cancelled`, which is a document status and has no progress equivalent.
+# `draft` and `cancelled`, which are document statuses with no progress equivalent.
 _PROGRESS_OPTIONS = [
     {"value": v, "label": v.capitalize()} for v in ("requested", "received", "checked", "settled")
 ]
@@ -105,6 +105,10 @@ class ReturnAdapter(FacadeAdapterBase):
     # checked | done. `status` carries no map any more — its only filterable
     # value, `cancelled`, is already the upstream spelling.
     filter_value_maps = {"progress": {"requested": "announced", "settled": "done"}}
+    # The upstream `status` axis, complete — independent of `progress`, which is
+    # the chain the model's own `status` mostly mirrors. Naming every value here
+    # is what stops /api/v3/returnOrders applying its draft-hiding default.
+    list_status_values = ("draft", "received", "released", "sent", "completed", "cancelled")
     sections = {
         "general": {"label": "General"},
         "references": {"label": "References"},
@@ -502,9 +506,16 @@ class ReturnAdapter(FacadeAdapterBase):
                 "vatId": vat,
             }
 
+        # `progress` is the operational chain, but two upstream DOCUMENT statuses
+        # have no progress equivalent and must win over it. `draft` matters now
+        # that drafts reach lists at all: a draft return carries progress
+        # `announced` like any other, so deriving from progress alone would
+        # announce an unreleased document as `requested` — a state it is not in,
+        # and one that hides the fact that it still needs releasing.
+        doc_status = r.get("status")
         status = (
-            "cancelled"
-            if r.get("status") == "cancelled"
+            doc_status
+            if doc_status in ("cancelled", "draft")
             else status_map(_PROGRESS, r.get("progress"), "requested")
         )
         items = []

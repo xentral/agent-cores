@@ -95,7 +95,7 @@
     "finance.creditorAccountNumber": "Deviating creditor (A/P) account for the bookkeeping / DATEV export."
   },
   "Quote": {
-    "status": "Lifecycle state of the quote: draft, sent, accepted, declined, expired, or cancelled.",
+    "status": "Lifecycle state of the quote: draft, sent, accepted, declined, expired, or cancelled. Lists cover every status, drafts included, unless you filter this field.",
     "customer": "The customer the quote is addressed to.",
     "channel": "Sales channel the quote originates from.",
     "project": "Project the quote is assigned to.",
@@ -161,7 +161,7 @@
     "number": "The quote number, drawn from the configured number range. It cannot be supplied: the v3 create does not accept a number for this document type."
   },
   "SalesOrder": {
-    "status": "Lifecycle state of the order: draft, confirmed, fulfilled, closed, or cancelled.",
+    "status": "Lifecycle state of the order: draft, confirmed, fulfilled, closed, or cancelled. Lists cover every status, drafts included, unless you filter this field.",
     "customer": "The customer the order is for.",
     "channel": "Sales channel the order came in through.",
     "project": "Project the order is assigned to.",
@@ -264,7 +264,7 @@
     "number": "The sales order number. Supply it on create to carry a number over from a previous system — Xentral stores it verbatim and it survives release. Omit it and the next number is drawn from the configured range. It cannot be changed afterwards; the number must be unique."
   },
   "SalesInvoice": {
-    "status": "Lifecycle state of the invoice: draft, open, paid, or cancelled.",
+    "status": "Lifecycle state of the invoice: draft, open, paid, partiallyCancelled, or cancelled. Lists cover every status, drafts included, unless you filter this field.",
     "fixedAt": "Timestamp the invoice was finalized / locked (GoBD-fixed), read-only.",
     "customer": "The customer being billed.",
     "channel": "Sales channel the invoice originates from.",
@@ -339,7 +339,7 @@
     "number": "The invoice number. Supply it on create to carry a number over from a previous system — Xentral stores it verbatim and it survives release. Omit it and the next number is drawn from the configured range. It cannot be changed afterwards; the number must be unique."
   },
   "DeliveryNote": {
-    "status": "Lifecycle state of the delivery: draft, picking, shipped, delivered, or cancelled.",
+    "status": "Lifecycle state of the delivery: draft, picking, shipped, delivered, or cancelled. Lists cover every status, drafts included, unless you filter this field.",
     "customer": "The customer being delivered to.",
     "channel": "Sales channel the delivery originates from.",
     "project": "Project the delivery note is assigned to.",
@@ -390,7 +390,7 @@
     "deliveryAddress.vatId": "VAT id (USt-IdNr.) recorded on the document for tax handling."
   },
   "CreditNote": {
-    "status": "Lifecycle state of the credit note: draft, open, settled, or cancelled.",
+    "status": "Lifecycle state of the credit note: draft, open, settled, or cancelled. Lists cover every status, drafts included, unless you filter this field.",
     "kind": "Whether the credit note is a correction or a full cancellation of an invoice (read-only).",
     "customer": "The customer being credited.",
     "project": "Project the credit note is assigned to.",
@@ -442,7 +442,7 @@
     "number": "The credit note number. Supply it on create to carry a number over from a previous system — Xentral stores it verbatim and it survives release. Omit it and the next number is drawn from the configured range. It cannot be changed afterwards; the number must be unique."
   },
   "Return": {
-    "status": "Lifecycle state of the return: requested, received, checked, settled, or cancelled.",
+    "status": "Lifecycle state of the return: draft, requested, received, checked, settled, or cancelled. `draft` and `cancelled` come from the document itself; the rest mirror `progress`. Lists cover every status, drafts included, unless you filter this field.",
     "customer": "The customer returning the goods.",
     "project": "Project the return is assigned to.",
     "references": "External / customer reference numbers on the return.",
@@ -484,7 +484,7 @@
     "number": "The return number, drawn from the configured number range. It cannot be supplied: the v3 create does not accept a number for this document type."
   },
   "PurchaseOrder": {
-    "status": "Lifecycle state of the purchase order: draft, sent, confirmed, received, closed, or cancelled.",
+    "status": "Lifecycle state of the purchase order: draft, sent, confirmed, received, closed, or cancelled. Lists cover every status, drafts included, unless you filter this field.",
     "supplier": "The supplier this order is placed with.",
     "project": "Project the purchase order is assigned to (for cost tracking).",
     "costCenter": "Cost center the purchase is booked against.",
