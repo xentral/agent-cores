@@ -147,6 +147,10 @@ class DeliveryNoteAdapter(FacadeAdapterBase):
     filter_value_maps = {
         "status": {"picking": "released", "shipped": "sent", "delivered": "completed"}
     }
+    # Upstream vocabulary only. The model names on the left of `filter_value_maps`
+    # above — picking/shipped/delivered — earn a 400 here; that is exactly what
+    # test_agentos_neo_xentral_delivery_note_status_filter.py guards.
+    list_status_values = ("draft", "released", "sent", "completed", "cancelled")
     sections = {
         "general": {"label": "General"},
         "references": {"label": "References"},

@@ -193,9 +193,13 @@ def test_a_document_hands_the_term_to_the_upstreams_own_search():
     assert len(seen) == 1, f"expected ONE upstream call, got {len(seen)}"
     params = dict(seen[0])
     assert params.get("search") == "Lily"
-    assert not any(k.startswith("filter[") for k in params), (
-        f"the search filter group must not travel on as a filter: {params}"
-    )
+    # The `search` group specifically must be gone — forwarded as a filter it
+    # arrives as a filter on a key called `search`, which several v3 endpoints
+    # ignore while answering 200 with the whole collection. Other filter groups
+    # are fine and expected: the facade's own `status` set travels with the
+    # search so a matching DRAFT is not dropped from the results.
+    keys = {v for k, v in params.items() if k.startswith("filter[") and k.endswith("][key]")}
+    assert "search" not in keys, f"the search group must not travel on as a filter: {params}"
 
 
 def test_a_partner_still_fans_out_because_upstream_would_ignore_the_term():

@@ -593,7 +593,7 @@ documents:
       object: {type: string}
       id: {type: string}
       number: {type: string, ops: [filter, sort, search], proven: [filter, sort, search]}
-      status: {type: select, ops: [filter], options: [requested, received, checked, settled, cancelled]}
+      status: {type: select, ops: [filter], options: [draft, requested, received, checked, settled, cancelled]}
       progress: {type: select, ops: [filter], proven: [filter], options: [requested, received, checked, settled]}
       customer: {type: reference, ref: Customer, required: true, ops: [create, filter], proven: [create, filter]}
       project: {type: reference, ref: Project, ops: [create, update], proven: [create, update]}

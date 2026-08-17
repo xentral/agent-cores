@@ -98,6 +98,11 @@ class CreditNoteAdapter(FacadeAdapterBase):
         "dates.serviceDate": "deliveryDate",
     }
     filter_value_maps = {"status": {"open": "released", "settled": "completed"}}
+    # /api/v3/creditNotes documents `sent` and `completed` as deprecated. Kept
+    # here because deprecated is not refused and `_STATUS` reads both, so omitting
+    # them would hide any historical row that still carries one — if a build does
+    # refuse them, `_get` drops the injected filter and re-asks without it.
+    list_status_values = ("draft", "released", "sent", "completed", "cancelled")
     sections = {
         "general": {"label": "General"},
         "references": {"label": "References"},

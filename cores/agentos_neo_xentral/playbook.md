@@ -40,8 +40,7 @@ field tree suggests — on `SalesInvoice` it accepts `number` only. Take it from
 
 **Tags** are your own memory on a record: `run op="addTag" command={"title":"express"}`,
 same for `removeTag`. A tag that does not exist is created automatically; you address it by
-title, never by id. `tags` is filterable on documents, customers and suppliers — mind the
-draft trap in §4.
+title, never by id. `tags` is filterable on documents, customers and suppliers.
 
 **Write protection (Schreibschutz).** `writeProtection` is a read-only, filterable boolean
 on all seven documents; flip it with `run op="setWriteProtection"` /
@@ -204,15 +203,18 @@ events, and the subscription is scoped by core *and* connection.
 
 ## §4 Traps that cost hours
 
-- **Drafts are invisible.** The v3 lists apply a hidden default status filter: without an
-  explicit `status` you get `released`/`completed`/`cancelled`/`sent` — **drafts are
-  excluded**. Measured: 10 rows for a customer, 4 more only with `status=draft`. A fresh
-  order is a draft *and* has `number: null`, so it is missing from lists and unfindable by
-  document number — keep the id from `create`. Any "my filter returns nothing" starts here.
+- **A fresh document has no number.** It is created as a draft, and `number` is `null` until
+  it is released — so it cannot be found by document number. Keep the id you got from
+  `create`.
+  *(Drafts themselves are no longer a trap: the v3 lists apply a hidden default status
+  filter that excludes them, but this core cancels it out by naming every status on any
+  list you did not filter yourself. An unfiltered list shows drafts. Filter `status`
+  explicitly and you get exactly what you asked for — including `status=draft` for the
+  drafts alone.)*
 - **Statuses are enums.** A guessed value matches silently nothing. Take them from
   `describe`'s `options`; the chains are draft→confirmed→fulfilled→closed (order),
   draft→open→paid (invoice), draft→picking→shipped→delivered (delivery note),
-  requested→received→checked→settled (return).
+  draft→requested→received→checked→settled (return).
 - **`detailOnly` fields are null in a list** — `get` one record before concluding a field is
   empty.
 - **Dates:** partner endpoints want `Y-m-d`, documents a timestamp, and neither accepts what

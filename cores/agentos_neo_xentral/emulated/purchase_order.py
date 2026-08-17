@@ -100,6 +100,9 @@ class PurchaseOrderAdapter(FacadeAdapterBase):
     filter_value_maps = {
         "status": {"confirmed": "released", "received": "completed", "closed": "completed"}
     }
+    # Upstream vocabulary only — `_STATUS` additionally carries the model names
+    # `confirmed`, `received` and `closed`, which /api/v3/purchaseOrders rejects.
+    list_status_values = ("draft", "released", "sent", "completed", "cancelled")
     sections = {
         "general": {"label": "General"},
         "references": {"label": "References"},

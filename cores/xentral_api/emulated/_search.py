@@ -35,8 +35,13 @@ _DEFAULT_PAGE_SIZE = 25
 _DEFAULT_OP = "contains"
 
 
-def _filter_groups(query: list[tuple[str, str]]) -> dict[str, dict[str, str]]:
-    """Group ``filter[i][key|op|value]`` triples by their ``filter[i]`` prefix."""
+def filter_groups(query: list[tuple[str, str]]) -> dict[str, dict[str, str]]:
+    """Group ``filter[i][key|op|value]`` triples by their ``filter[i]`` prefix.
+
+    Public because it is the one place that knows v3's filter shape, and callers
+    outside this module need the same reading of it — the Neo facade asks whether
+    the caller already filtered on a key before injecting one of its own.
+    """
     groups: dict[str, dict[str, str]] = {}
     for key, value in query:
         if key.startswith("filter[") and "][" in key:
@@ -50,7 +55,7 @@ def extract_search(query: list[tuple[str, str]]) -> tuple[str, str] | None:
 
     ``op`` defaults to ``contains`` when the caller didn't specify one.
     """
-    for parts in _filter_groups(query).values():
+    for parts in filter_groups(query).values():
         if parts.get("key") == "search":
             return parts.get("value", "") or "", parts.get("op") or _DEFAULT_OP
     return None
@@ -65,7 +70,7 @@ def strip_search(query: list[tuple[str, str]]) -> list[tuple[str, str]]:
     several v3 list endpoints ignore an unknown filter while answering 200 with
     the whole collection — the caller would read that as a search result.
     """
-    drop = {p for p, parts in _filter_groups(query).items() if parts.get("key") == "search"}
+    drop = {p for p, parts in filter_groups(query).items() if parts.get("key") == "search"}
     return [
         (k, v)
         for k, v in query
@@ -93,7 +98,7 @@ def build_field_query(
     ``page[number]`` to 1 (search returns the first page of matches), and
     appends a ``contains`` filter on ``field`` at a fresh, non-colliding index.
     """
-    groups = _filter_groups(query)
+    groups = filter_groups(query)
     search_prefixes = {p for p, parts in groups.items() if parts.get("key") == "search"}
     kept_prefixes = [p for p in groups if p not in search_prefixes]
 
